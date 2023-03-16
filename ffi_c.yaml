@@ -1,0 +1,22 @@
+name: LLVMCore
+output: 'lib/llvm_core.dart'
+headers:
+  entry-points:
+    - '../llvm_lang/src/llvm_wrapper.h'
+  include-directives:
+    - '../llvm_lang/src/llvm_wrapper.h'
+    - '/usr/local/include/llvm-c/Core.h'
+
+functions:
+  rename:
+    # 'LLVM(.*)': 'lLVM$1'
+    '_+(.*)': '$1'
+globals:
+  rename:
+    '_+(.*)': ''
+compiler-opts-automatic:
+  macos:
+    include-c-standard-library: false
+
+library-imports:
+  custom_lib: './src/llvm_wrapper/lib/libllvm_wrapper.dylib'
