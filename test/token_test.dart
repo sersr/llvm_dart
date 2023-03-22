@@ -1,5 +1,13 @@
+import 'dart:async';
+import 'dart:ffi';
+
+import 'package:llvm_dart/ast/context.dart';
+import 'package:llvm_dart/ast/llvm_context.dart';
+import 'package:llvm_dart/llvm_core.dart';
 import 'package:llvm_dart/parsers/lexers/token_kind.dart';
 import 'package:llvm_dart/parsers/lexers/token_stream.dart';
+import 'package:llvm_dart/parsers/parser.dart';
+import 'package:nop/nop.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -37,28 +45,180 @@ struct Gen<T> {
   test('token reader', () {
     final src = r'''
 
-"hello world
-你好
-"
-fn main() int {
-  let x: string = 11.1
-  let haha: float = 10202.111
-  let h: float = 10.e+10
-  fn inner() {
-    lex y: string = "1012\""
+static hello = "world"
+static hhh: string = "nihao"
+com Indd {
+  fn build() int
+  fn build2(name: string) void
+}
+
+impl Indd for Gen {
+  fn build() int {
+    let y = 1001
+  }
+
+  fn build2(name: string, )  {}
+}
+
+fn main(vv: string,) int {
+  let yx = 1 * (120 - 10)
+  g.fxx(name: 1010)
+  y += 102
+  y >= 10
+  let ss = ( 1 + 2) * 64
+  let x: string = "10122"
+  let ss = ( 1 + 2) * 64
+  let y = 101
+  if 10 < 10 {
+    
+  }
+
+  loop {
+    let lox = 101
+    if x > 1001 {
+      if y < 0001 {
+        let yxx = 101010
+      }
+      break
+      break ccs
+    }
+  }
+
+  while x > 10 {
+    let haha: string = "while test"
+    if y > 10 {
+      continue
+    }
+    break
+  }
+
+  fn innerFn() {
+    let innerY = 5501
+  }
+  if y > 10 {
+    y = x + 1
+  } else if y <=x 11 {
+    y = Gen {name: "hello"}
+    Gen {name: 'davia'}
+    g.fxx(name: 1010)
+    g.fyx()
+    fyy()
+  } else if h > 0 {
+  } else {
+    y = foo("sfs")
+    foo(name: "nihao")
   }
 }
 
-啊发发发
-"helloss 你啊"
-llllsss
-struct Gen<T> {
+fn foo() {
+
+}
+
+struct Gen {
   name: string,
-  value: int,
-}''';
-    final reader = TokenReader(src);
-    final tree = reader.parse(false);
-    forE(tree, src, isMain: true);
+  index: int,
+}
+
+enum Lang {
+  En(string),
+  zh
+  (
+    string
+    ),
+  Else(),
+  None,
+}
+''';
+    // LevelMixin.padSize = 2;
+    final m = parseTopItem(src);
+    runZoned(() {
+      print(m.globalVar.values.join('\n'));
+      print(m.globalTy.values.join('\n'));
+      final analys = AnalysisBuildContext.root();
+
+      analys.pushAllTy(m.globalTy);
+
+      Log.w('-' * 60, showPath: false, showTag: false);
+      print(analys.fns);
+      print(analys.components);
+      print(analys.impls);
+      print(analys.structs);
+      print(analys.enums);
+    }, zoneValues: {'astSrc': src});
+  });
+
+  test('test name', () async {
+    llvm.initLLVM();
+    final context = LLVMBackendBuildContext.root();
+
+    final builder = context.builder;
+    final C = context.llvmContext;
+    final retTy = llvm.LLVMDoubleType();
+    final fnty =
+        llvm.LLVMFunctionType(retTy, <Pointer>[].toNative().cast(), 0, 0);
+    final fn = llvm.getOrInsertFunction('main'.toChar(), context.module, fnty);
+    final bb = llvm.LLVMAppendBasicBlockInContext(C, fn, 'entry'.toChar());
+    llvm.LLVMPositionBuilderAtEnd(builder, bb);
+
+    final then = llvm.LLVMAppendBasicBlockInContext(C, fn, 'then'.toChar());
+    final elseF = llvm.LLVMAppendBasicBlockInContext(C, fn, 'else'.toChar());
+    final after = llvm.LLVMAppendBasicBlockInContext(C, fn, 'after'.toChar());
+
+    final t = llvm.LLVMInt32Type();
+    final t2 = llvm.LLVMInt32Type();
+    final l = llvm.LLVMConstInt(t, 10, 32);
+    final r = llvm.LLVMConstInt(t2, 101, 32);
+    final con = llvm.LLVMConstICmp(LLVMIntPredicate.LLVMIntULT, l, r);
+    llvm.LLVMBuildCondBr(builder, con, then, elseF);
+
+    llvm.LLVMPositionBuilderAtEnd(builder, then);
+    llvm.LLVMBuildBr(builder, after);
+    llvm.LLVMPositionBuilderAtEnd(builder, elseF);
+    llvm.LLVMBuildBr(builder, after);
+    llvm.LLVMPositionBuilderAtEnd(builder, after);
+
+    final dt = llvm.LLVMDoubleType();
+    final lr = llvm.LLVMConstReal(dt, 0);
+
+    llvm.LLVMBuildRet(builder, lr);
+    // llvm.LLVMBuildRetVoid(builder);
+    // llvmC.pushAllTy(m.globalTy);
+    // for (var fn in llvmC.fns.values) {
+    //   for (var f in fn) {
+    //     print(f);
+    //     f.build(llvmC);
+    //   }
+    // }
+    llvm.writeOutput(context.kModule);
+    llvm.destory(context.kModule);
+  });
+
+  test("test", () {
+    final src = '''
+fn main() double {
+  if 10 < 11 {
+  }else if 12 < 10 {
+
+  } else {
+    
+  }
+  return 0
+}
+''';
+    final m = parseTopItem(src);
+    runZoned(() {
+      llvm.initLLVM();
+      final root = LLVMBackendBuildContext.root();
+      root.pushAllTy(m.globalTy);
+
+      for (var fns in root.fns.values) {
+        for (var fn in fns) {
+          fn.build(root);
+        }
+      }
+      llvm.writeOutput(root.kModule);
+      llvm.destory(root.kModule);
+    }, zoneValues: {'astSrc': src});
   });
 }
 
@@ -67,9 +227,8 @@ void forE(TokenTree tree, String src, {int padWidth = 0, bool isMain = false}) {
   for (var token in tree.child) {
     forE(token, src, padWidth: padWidth + 2);
   }
-  if (token != null) {
-    final str = src.substring(token.start, token.end);
 
-    print('${' ' * padWidth}$str  ->  $token');
-  }
+  final str = src.substring(token.start, token.end);
+
+  print('${' ' * padWidth}$str  ->  $token');
 }

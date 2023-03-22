@@ -16,6 +16,9 @@ enum TokenKind {
   /// " "
   whiteSpace(''),
 
+  /// '\n'
+  lf('\n'),
+
   /// string, number
   literal(''),
 
@@ -105,6 +108,9 @@ enum TokenKind {
 
   String get str {
     if (char.isEmpty) return toString();
+    if (this == lf) {
+      return '${toString()} "\\n"';
+    }
     return '${toString()} "$char"';
   }
 
@@ -122,7 +128,7 @@ enum TokenKind {
 
 const whiteSpaceChars = [
   '\u{0009}', // \t
-  '\u{000A}', // \n
+  // '\u{000A}', // \n
   '\u{000B}', // vertical tab
   '\u{000C}', // form feed
   '\u{000D}', // \r
@@ -143,8 +149,10 @@ const whiteSpaceChars = [
 enum LiteralKind {
   kInt,
   kFloat,
+  kDouble,
 
   kString,
+  kVoid,
 }
 
 class Token {
@@ -232,7 +240,9 @@ class Cursor {
     return char;
   }
 
-  final idenKey = RegExp('[a-zA-Z_]');
+  final idenStartKey = RegExp('[a-zA-Z_]');
+  final idenKey = RegExp('[a-zA-Z_0-9]');
+
   Token advanceToken() {
     final char = nextChar;
     if (char.isEmpty) {
@@ -242,7 +252,7 @@ class Cursor {
       return whiteSpace();
     }
 
-    if (idenKey.hasMatch(char)) {
+    if (idenStartKey.hasMatch(char)) {
       return ident();
     }
 

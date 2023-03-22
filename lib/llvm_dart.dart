@@ -1,7 +1,12 @@
+// ignore_for_file: constant_identifier_names
+
 import 'dart:ffi';
 import 'dart:io';
 import 'package:file/local.dart';
 import 'package:llvm_dart/llvm_core.dart';
+
+const LLVMTrue = 1;
+const LLVMFalse = 0;
 
 class LLVMInstance {
   LLVMInstance._();

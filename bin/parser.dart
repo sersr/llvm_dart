@@ -28,9 +28,4 @@ struct Gen {
 }
 
 ''';
-  final parser = Parser(s);
-  parser.parse();
-  print(parser.globalVar.join('\n'));
-  print(parser.globalStruct);
-  print(parser.globalFunction);
 }

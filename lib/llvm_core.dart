@@ -11725,6 +11725,18 @@ class LLVMCore {
       _lookup<ffi.NativeFunction<ffi.Void Function()>>('initLLVM');
   late final _initLLVM = _initLLVMPtr.asFunction<void Function()>();
 
+  void destory(
+    KModuleRef module,
+  ) {
+    return _destory(
+      module,
+    );
+  }
+
+  late final _destoryPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(KModuleRef)>>('destory');
+  late final _destory = _destoryPtr.asFunction<void Function(KModuleRef)>();
+
   LLVMValueRef getOrInsertFunction(
     ffi.Pointer<ffi.Char> name,
     LLVMModuleRef module,
@@ -11812,6 +11824,34 @@ class LLVMCore {
           'getLLVMContext');
   late final _getLLVMContext =
       _getLLVMContextPtr.asFunction<LLVMContextRef Function(KModuleRef)>();
+
+  LLVMPassManagerRef getFPM(
+    KModuleRef ref,
+  ) {
+    return _getFPM(
+      ref,
+    );
+  }
+
+  late final _getFPMPtr =
+      _lookup<ffi.NativeFunction<LLVMPassManagerRef Function(KModuleRef)>>(
+          'getFPM');
+  late final _getFPM =
+      _getFPMPtr.asFunction<LLVMPassManagerRef Function(KModuleRef)>();
+
+  ffi.Pointer<ffi.Int> getM(
+    KModuleRef ref,
+  ) {
+    return _getM(
+      ref,
+    );
+  }
+
+  late final _getMPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Int> Function(KModuleRef)>>(
+          'getM');
+  late final _getM =
+      _getMPtr.asFunction<ffi.Pointer<ffi.Int> Function(KModuleRef)>();
 
   void insertBBFunction(
     LLVMBuilderRef ref,

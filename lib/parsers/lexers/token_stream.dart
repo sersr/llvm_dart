@@ -1,8 +1,8 @@
 import 'token_kind.dart';
 
 class TokenTree {
-  TokenTree({this.token, this.child = const []});
-  final Token? token;
+  TokenTree({required this.token, this.child = const []});
+  final Token token;
   final List<TokenTree> child;
 }
 
@@ -31,12 +31,11 @@ class TokenReader {
         }
       }
       if (token.kind == TokenKind.eof) {
-        break;
+        return TokenTree(token: token, child: tokens);
       }
       if (token.kind == TokenKind.whiteSpace) continue;
+      // if (token.kind == TokenKind.lf) continue;
       tokens.add(TokenTree(token: token));
     }
-
-    return TokenTree(child: tokens);
   }
 }

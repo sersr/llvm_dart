@@ -23,9 +23,6 @@ include: package:lints/recommended.yaml
 analyzer:
   exclude:
     - 'lib/llvm_core.dart'
-  enable-experiment:
-    - records
-    - patterns
 
 # For more information about the core and recommended set of lints, see
 # https://dart.dev/go/core-lints

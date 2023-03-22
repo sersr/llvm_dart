@@ -89,6 +89,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.0.2"
+  equatable:
+    dependency: "direct main"
+    description:
+      name: equatable
+      sha256: c2b87cb7756efdf69892005af546c56c0b5037f54d2a88269b4f347a505e3ca2
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.5"
   ffi:
     dependency: "direct main"
     description:
@@ -186,7 +194,7 @@ packages:
     source: hosted
     version: "0.12.14"
   meta:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: meta
       sha256: "12307e7f0605ce3da64cf0db90e5fcab0869f3ca03f76be6bb2991ce0a55e82b"
@@ -209,6 +217,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.2"
+  nop:
+    dependency: "direct main"
+    description:
+      name: nop
+      sha256: "4c9f9ba87a4e03ddceca7a0f7f1f737e5f97d0012e13617e50f8f8167060bcb1"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.0.4+1"
   package_config:
     dependency: transitive
     description:
@@ -418,4 +434,4 @@ packages:
     source: hosted
     version: "2.1.0"
 sdks:
-  dart: ">=3.0.0-322.0.dev <3.0.0"
+  dart: ">=3.0.0-290.2.beta <3.0.0"
