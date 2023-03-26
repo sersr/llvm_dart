@@ -3,9 +3,12 @@ output: 'lib/llvm_core.dart'
 headers:
   entry-points:
     - '../llvm_lang/src/llvm_wrapper.h'
+    - '/usr/local/include/llvm-c/TargetMachine.h'
+
   include-directives:
     - '../llvm_lang/src/llvm_wrapper.h'
     - '/usr/local/include/llvm-c/Core.h'
+    - '/usr/local/include/llvm-c/TargetMachine.h'
 
 functions:
   rename:

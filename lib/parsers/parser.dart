@@ -199,6 +199,7 @@ class Modules {
 
     Ty? retTy;
 
+    eatLfIfNeed(it);
     if (it.moveNext()) {
       final c = it.current;
       if (c.token.kind == TokenKind.ident) {
@@ -207,7 +208,7 @@ class Modules {
         it.moveBack();
       }
     }
-    retTy ??= BuiltInTy.kVoid(getIdent(it));
+    retTy ??= BuiltInTy.kVoid;
 
     return FnDecl(ident, params, retTy);
   }
@@ -227,7 +228,7 @@ class Modules {
       final block = parseBlock(it);
       return Fn(fnSign, block);
     }
-    return null;
+    return Fn(fnSign, Block([], null));
   }
 
   bool isBlockStart(TokenIterator it) {
@@ -383,7 +384,6 @@ class Modules {
     eatLfIfNeed(it);
 
     final expr = parseExpr(it);
-
     Block block;
     checkBlock(it);
 
@@ -495,7 +495,7 @@ class Modules {
     it.moveNext();
 
     var c = getToken(it);
-    Ty? ty;
+    PathTy? ty;
 
     if (c.kind == TokenKind.colon) {
       eatLfIfNeed(it);
@@ -526,13 +526,13 @@ class Modules {
       Expr? lhs;
       if (t.kind == TokenKind.literal) {
         final lit = t.literalKind!;
-        Ty? ty;
+        BuiltInTy? ty;
         if (lit == LiteralKind.kString) {
-          ty = BuiltInTy.string(getIdent(it));
+          ty = BuiltInTy.string;
         } else if (lit == LiteralKind.kInt) {
-          ty = BuiltInTy.int(getIdent(it));
+          ty = BuiltInTy.int;
         } else if (lit == LiteralKind.kFloat) {
-          ty = BuiltInTy.float(getIdent(it));
+          ty = BuiltInTy.float;
         }
         if (ty != null) {
           lhs = LiteralExpr(getIdent(it), ty);
@@ -564,8 +564,14 @@ class Modules {
 
           if (it.moveNext()) {
             final t = getToken(it);
+            final cursor = it.cursor;
             if (t.kind == TokenKind.openBrace) {
-              return parseStructExpr(it, ident);
+              final struct = parseStructExpr(it, ident);
+              if (struct.fields.any((e) => e.expr is UnknownExpr)) {
+                cursor.restore();
+              } else {
+                return struct;
+              }
             } else if (t.kind == TokenKind.openParen) {
               return parseCallExpr(it, ident);
             } else if (t.kind == TokenKind.dot) {
@@ -601,7 +607,6 @@ class Modules {
 
   Expr? parseOpExpr(TokenIterator it, Expr? lhs) {
     Expr? opLhs = lhs;
-
     loop(it, () {
       final k = getToken(it).kind;
       if (k == TokenKind.lf) return true;
@@ -655,7 +660,6 @@ class Modules {
 
     loop(it, () {
       final t = getToken(it);
-
       if (t.kind == TokenKind.lf || t.kind == TokenKind.openParen) return false;
       if (t.kind == TokenKind.closeParen || t.kind == TokenKind.semi) {
         return true;
@@ -667,6 +671,14 @@ class Modules {
         if (it.moveNext()) {
           // ignore: unused_local_variable
           final t = getToken(it); // :
+          if (t.kind == TokenKind.closeParen) {
+            it.moveBack();
+            it.moveBack();
+            final expr = parseExpr(it);
+            final f = FieldExpr(expr, null);
+            fields.add(f);
+            return true;
+          }
           final expr = parseExpr(it);
           final f = FieldExpr(expr, ident);
           fields.add(f);

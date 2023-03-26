@@ -8,7 +8,7 @@ class LetStmt extends Stmt {
   final Identifier ident;
   final Identifier nameIdent;
   final Expr? rExpr;
-  final Ty? ty;
+  final PathTy? ty;
 
   @override
   String toString() {
@@ -20,21 +20,28 @@ class LetStmt extends Stmt {
 
   @override
   void build(BuildContext context) {
-    Variable? val;
-    if (rExpr != null) {
-      val = rExpr!.build(context);
-    }
-    if (ty != null && val != null && ty != val.ty) {
+    ExprTempValue? val = rExpr?.build(context);
+    final realTy = ty?.getRealTy(context);
+    if (ty != null && val != null && realTy != val.ty) {
       // error
       return;
     }
-    final t = ty ?? val?.ty;
-    if (val != null) {
-      final v = context.buildAlloca(val, ty: t);
-      context.pushVariable(nameIdent, v);
-    } else if (t != null) {
-      final v = context.buildAllocaNull(t);
-      context.pushVariable(nameIdent, v);
+
+    final tty = realTy ?? val?.ty;
+    if (tty != null) {
+      final variable = val?.variable;
+      if (variable is LLVMAllocaVariable) {
+        context.pushVariable(nameIdent, variable);
+        return;
+      }
+      final type = tty.llvmType.createType(context);
+      final a = context.createAlloca(type);
+      final alloca = LLVMAllocaVariable(tty, a, type);
+      if (variable != null) {
+        final rValue = variable.load(context);
+        alloca.store(context, rValue);
+      }
+      context.pushVariable(nameIdent, alloca);
     }
   }
 
@@ -89,7 +96,7 @@ class StaticStmt extends Stmt {
       return;
     }
     final y = ty ?? e.ty;
-    final v = context.buildVariable(y, variable.src);
+    final v = y.llvmType.createValue(context);
     context.pushVariable(variable, v);
   }
 

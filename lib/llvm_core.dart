@@ -11869,6 +11869,444 @@ class LLVMCore {
               LLVMBuilderRef, LLVMBasicBlockRef)>>('insertBBFunction');
   late final _insertBBFunction = _insertBBFunctionPtr
       .asFunction<void Function(LLVMBuilderRef, LLVMBasicBlockRef)>();
+
+  /// Returns the first llvm::Target in the registered targets list.
+  LLVMTargetRef LLVMGetFirstTarget() {
+    return _LLVMGetFirstTarget();
+  }
+
+  late final _LLVMGetFirstTargetPtr =
+      _lookup<ffi.NativeFunction<LLVMTargetRef Function()>>(
+          'LLVMGetFirstTarget');
+  late final _LLVMGetFirstTarget =
+      _LLVMGetFirstTargetPtr.asFunction<LLVMTargetRef Function()>();
+
+  /// Returns the next llvm::Target given a previous one (or null if there's none)
+  LLVMTargetRef LLVMGetNextTarget(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMGetNextTarget(
+      T,
+    );
+  }
+
+  late final _LLVMGetNextTargetPtr =
+      _lookup<ffi.NativeFunction<LLVMTargetRef Function(LLVMTargetRef)>>(
+          'LLVMGetNextTarget');
+  late final _LLVMGetNextTarget =
+      _LLVMGetNextTargetPtr.asFunction<LLVMTargetRef Function(LLVMTargetRef)>();
+
+  /// Finds the target corresponding to the given name and stores it in \p T.
+  /// Returns 0 on success.
+  LLVMTargetRef LLVMGetTargetFromName(
+    ffi.Pointer<ffi.Char> Name,
+  ) {
+    return _LLVMGetTargetFromName(
+      Name,
+    );
+  }
+
+  late final _LLVMGetTargetFromNamePtr = _lookup<
+          ffi.NativeFunction<LLVMTargetRef Function(ffi.Pointer<ffi.Char>)>>(
+      'LLVMGetTargetFromName');
+  late final _LLVMGetTargetFromName = _LLVMGetTargetFromNamePtr.asFunction<
+      LLVMTargetRef Function(ffi.Pointer<ffi.Char>)>();
+
+  /// Finds the target corresponding to the given triple and stores it in \p T.
+  /// Returns 0 on success. Optionally returns any error in ErrorMessage.
+  /// Use LLVMDisposeMessage to dispose the message.
+  int LLVMGetTargetFromTriple(
+    ffi.Pointer<ffi.Char> Triple,
+    ffi.Pointer<LLVMTargetRef> T,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> ErrorMessage,
+  ) {
+    return _LLVMGetTargetFromTriple(
+      Triple,
+      T,
+      ErrorMessage,
+    );
+  }
+
+  late final _LLVMGetTargetFromTriplePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMBool Function(ffi.Pointer<ffi.Char>, ffi.Pointer<LLVMTargetRef>,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>)>>('LLVMGetTargetFromTriple');
+  late final _LLVMGetTargetFromTriple = _LLVMGetTargetFromTriplePtr.asFunction<
+      int Function(ffi.Pointer<ffi.Char>, ffi.Pointer<LLVMTargetRef>,
+          ffi.Pointer<ffi.Pointer<ffi.Char>>)>();
+
+  /// Returns the name of a target. See llvm::Target::getName
+  ffi.Pointer<ffi.Char> LLVMGetTargetName(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMGetTargetName(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetNamePtr = _lookup<
+          ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>>(
+      'LLVMGetTargetName');
+  late final _LLVMGetTargetName = _LLVMGetTargetNamePtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>();
+
+  /// Returns the description  of a target. See llvm::Target::getDescription
+  ffi.Pointer<ffi.Char> LLVMGetTargetDescription(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMGetTargetDescription(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetDescriptionPtr = _lookup<
+          ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>>(
+      'LLVMGetTargetDescription');
+  late final _LLVMGetTargetDescription = _LLVMGetTargetDescriptionPtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>();
+
+  /// Returns if the target has a JIT
+  int LLVMTargetHasJIT(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMTargetHasJIT(
+      T,
+    );
+  }
+
+  late final _LLVMTargetHasJITPtr =
+      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTargetRef)>>(
+          'LLVMTargetHasJIT');
+  late final _LLVMTargetHasJIT =
+      _LLVMTargetHasJITPtr.asFunction<int Function(LLVMTargetRef)>();
+
+  /// Returns if the target has a TargetMachine associated
+  int LLVMTargetHasTargetMachine(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMTargetHasTargetMachine(
+      T,
+    );
+  }
+
+  late final _LLVMTargetHasTargetMachinePtr =
+      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTargetRef)>>(
+          'LLVMTargetHasTargetMachine');
+  late final _LLVMTargetHasTargetMachine =
+      _LLVMTargetHasTargetMachinePtr.asFunction<int Function(LLVMTargetRef)>();
+
+  /// Returns if the target as an ASM backend (required for emitting output)
+  int LLVMTargetHasAsmBackend(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMTargetHasAsmBackend(
+      T,
+    );
+  }
+
+  late final _LLVMTargetHasAsmBackendPtr =
+      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTargetRef)>>(
+          'LLVMTargetHasAsmBackend');
+  late final _LLVMTargetHasAsmBackend =
+      _LLVMTargetHasAsmBackendPtr.asFunction<int Function(LLVMTargetRef)>();
+
+  /// Creates a new llvm::TargetMachine. See llvm::Target::createTargetMachine
+  LLVMTargetMachineRef LLVMCreateTargetMachine(
+    LLVMTargetRef T,
+    ffi.Pointer<ffi.Char> Triple,
+    ffi.Pointer<ffi.Char> CPU,
+    ffi.Pointer<ffi.Char> Features,
+    int Level,
+    int Reloc,
+    int CodeModel,
+  ) {
+    return _LLVMCreateTargetMachine(
+      T,
+      Triple,
+      CPU,
+      Features,
+      Level,
+      Reloc,
+      CodeModel,
+    );
+  }
+
+  late final _LLVMCreateTargetMachinePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMTargetMachineRef Function(
+              LLVMTargetRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int32,
+              ffi.Int32,
+              ffi.Int32)>>('LLVMCreateTargetMachine');
+  late final _LLVMCreateTargetMachine = _LLVMCreateTargetMachinePtr.asFunction<
+      LLVMTargetMachineRef Function(LLVMTargetRef, ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>, int, int, int)>();
+
+  /// Dispose the LLVMTargetMachineRef instance generated by
+  /// LLVMCreateTargetMachine.
+  void LLVMDisposeTargetMachine(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMDisposeTargetMachine(
+      T,
+    );
+  }
+
+  late final _LLVMDisposeTargetMachinePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMTargetMachineRef)>>(
+          'LLVMDisposeTargetMachine');
+  late final _LLVMDisposeTargetMachine = _LLVMDisposeTargetMachinePtr
+      .asFunction<void Function(LLVMTargetMachineRef)>();
+
+  /// Returns the Target used in a TargetMachine
+  LLVMTargetRef LLVMGetTargetMachineTarget(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMGetTargetMachineTarget(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetMachineTargetPtr =
+      _lookup<ffi.NativeFunction<LLVMTargetRef Function(LLVMTargetMachineRef)>>(
+          'LLVMGetTargetMachineTarget');
+  late final _LLVMGetTargetMachineTarget = _LLVMGetTargetMachineTargetPtr
+      .asFunction<LLVMTargetRef Function(LLVMTargetMachineRef)>();
+
+  /// Returns the triple used creating this target machine. See
+  /// llvm::TargetMachine::getTriple. The result needs to be disposed with
+  /// LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetTargetMachineTriple(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMGetTargetMachineTriple(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetMachineTriplePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              LLVMTargetMachineRef)>>('LLVMGetTargetMachineTriple');
+  late final _LLVMGetTargetMachineTriple = _LLVMGetTargetMachineTriplePtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetMachineRef)>();
+
+  /// Returns the cpu used creating this target machine. See
+  /// llvm::TargetMachine::getCPU. The result needs to be disposed with
+  /// LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetTargetMachineCPU(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMGetTargetMachineCPU(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetMachineCPUPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              LLVMTargetMachineRef)>>('LLVMGetTargetMachineCPU');
+  late final _LLVMGetTargetMachineCPU = _LLVMGetTargetMachineCPUPtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(LLVMTargetMachineRef)>();
+
+  /// Returns the feature string used creating this target machine. See
+  /// llvm::TargetMachine::getFeatureString. The result needs to be disposed with
+  /// LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetTargetMachineFeatureString(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMGetTargetMachineFeatureString(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetMachineFeatureStringPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              LLVMTargetMachineRef)>>('LLVMGetTargetMachineFeatureString');
+  late final _LLVMGetTargetMachineFeatureString =
+      _LLVMGetTargetMachineFeatureStringPtr.asFunction<
+          ffi.Pointer<ffi.Char> Function(LLVMTargetMachineRef)>();
+
+  /// Create a DataLayout based on the targetMachine.
+  LLVMTargetDataRef LLVMCreateTargetDataLayout(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMCreateTargetDataLayout(
+      T,
+    );
+  }
+
+  late final _LLVMCreateTargetDataLayoutPtr = _lookup<
+          ffi.NativeFunction<LLVMTargetDataRef Function(LLVMTargetMachineRef)>>(
+      'LLVMCreateTargetDataLayout');
+  late final _LLVMCreateTargetDataLayout = _LLVMCreateTargetDataLayoutPtr
+      .asFunction<LLVMTargetDataRef Function(LLVMTargetMachineRef)>();
+
+  /// Set the target machine's ASM verbosity.
+  void LLVMSetTargetMachineAsmVerbosity(
+    LLVMTargetMachineRef T,
+    int VerboseAsm,
+  ) {
+    return _LLVMSetTargetMachineAsmVerbosity(
+      T,
+      VerboseAsm,
+    );
+  }
+
+  late final _LLVMSetTargetMachineAsmVerbosityPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMTargetMachineRef,
+              LLVMBool)>>('LLVMSetTargetMachineAsmVerbosity');
+  late final _LLVMSetTargetMachineAsmVerbosity =
+      _LLVMSetTargetMachineAsmVerbosityPtr.asFunction<
+          void Function(LLVMTargetMachineRef, int)>();
+
+  /// Emits an asm or object file for the given module to the filename. This
+  /// wraps several c++ only classes (among them a file stream). Returns any
+  /// error in ErrorMessage. Use LLVMDisposeMessage to dispose the message.
+  int LLVMTargetMachineEmitToFile(
+    LLVMTargetMachineRef T,
+    LLVMModuleRef M,
+    ffi.Pointer<ffi.Char> Filename,
+    int codegen,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> ErrorMessage,
+  ) {
+    return _LLVMTargetMachineEmitToFile(
+      T,
+      M,
+      Filename,
+      codegen,
+      ErrorMessage,
+    );
+  }
+
+  late final _LLVMTargetMachineEmitToFilePtr = _lookup<
+          ffi.NativeFunction<
+              LLVMBool Function(
+                  LLVMTargetMachineRef,
+                  LLVMModuleRef,
+                  ffi.Pointer<ffi.Char>,
+                  ffi.Int32,
+                  ffi.Pointer<ffi.Pointer<ffi.Char>>)>>(
+      'LLVMTargetMachineEmitToFile');
+  late final _LLVMTargetMachineEmitToFile =
+      _LLVMTargetMachineEmitToFilePtr.asFunction<
+          int Function(
+              LLVMTargetMachineRef,
+              LLVMModuleRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>)>();
+
+  /// Compile the LLVM IR stored in \p M and store the result in \p OutMemBuf.
+  int LLVMTargetMachineEmitToMemoryBuffer(
+    LLVMTargetMachineRef T,
+    LLVMModuleRef M,
+    int codegen,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> ErrorMessage,
+    ffi.Pointer<LLVMMemoryBufferRef> OutMemBuf,
+  ) {
+    return _LLVMTargetMachineEmitToMemoryBuffer(
+      T,
+      M,
+      codegen,
+      ErrorMessage,
+      OutMemBuf,
+    );
+  }
+
+  late final _LLVMTargetMachineEmitToMemoryBufferPtr = _lookup<
+          ffi.NativeFunction<
+              LLVMBool Function(
+                  LLVMTargetMachineRef,
+                  LLVMModuleRef,
+                  ffi.Int32,
+                  ffi.Pointer<ffi.Pointer<ffi.Char>>,
+                  ffi.Pointer<LLVMMemoryBufferRef>)>>(
+      'LLVMTargetMachineEmitToMemoryBuffer');
+  late final _LLVMTargetMachineEmitToMemoryBuffer =
+      _LLVMTargetMachineEmitToMemoryBufferPtr.asFunction<
+          int Function(
+              LLVMTargetMachineRef,
+              LLVMModuleRef,
+              int,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>,
+              ffi.Pointer<LLVMMemoryBufferRef>)>();
+
+  /// Get a triple for the host machine as a string. The result needs to be
+  /// disposed with LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetDefaultTargetTriple() {
+    return _LLVMGetDefaultTargetTriple();
+  }
+
+  late final _LLVMGetDefaultTargetTriplePtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+          'LLVMGetDefaultTargetTriple');
+  late final _LLVMGetDefaultTargetTriple = _LLVMGetDefaultTargetTriplePtr
+      .asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  /// Normalize a target triple. The result needs to be disposed with
+  /// LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMNormalizeTargetTriple(
+    ffi.Pointer<ffi.Char> triple,
+  ) {
+    return _LLVMNormalizeTargetTriple(
+      triple,
+    );
+  }
+
+  late final _LLVMNormalizeTargetTriplePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              ffi.Pointer<ffi.Char>)>>('LLVMNormalizeTargetTriple');
+  late final _LLVMNormalizeTargetTriple = _LLVMNormalizeTargetTriplePtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)>();
+
+  /// Get the host CPU as a string. The result needs to be disposed with
+  /// LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetHostCPUName() {
+    return _LLVMGetHostCPUName();
+  }
+
+  late final _LLVMGetHostCPUNamePtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+          'LLVMGetHostCPUName');
+  late final _LLVMGetHostCPUName =
+      _LLVMGetHostCPUNamePtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  /// Get the host CPU's features as a string. The result needs to be disposed
+  /// with LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetHostCPUFeatures() {
+    return _LLVMGetHostCPUFeatures();
+  }
+
+  late final _LLVMGetHostCPUFeaturesPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+          'LLVMGetHostCPUFeatures');
+  late final _LLVMGetHostCPUFeatures =
+      _LLVMGetHostCPUFeaturesPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  /// Adds the target-specific analysis passes to the pass manager.
+  void LLVMAddAnalysisPasses(
+    LLVMTargetMachineRef T,
+    LLVMPassManagerRef PM,
+  ) {
+    return _LLVMAddAnalysisPasses(
+      T,
+      PM,
+    );
+  }
+
+  late final _LLVMAddAnalysisPassesPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMTargetMachineRef,
+              LLVMPassManagerRef)>>('LLVMAddAnalysisPasses');
+  late final _LLVMAddAnalysisPasses = _LLVMAddAnalysisPassesPtr.asFunction<
+      void Function(LLVMTargetMachineRef, LLVMPassManagerRef)>();
 }
 
 abstract class LLVMOpcode {
@@ -12251,6 +12689,52 @@ class LLVMOpaquePassManager extends ffi.Opaque {}
 class KOpaqueModule extends ffi.Opaque {}
 
 typedef KModuleRef = ffi.Pointer<KOpaqueModule>;
+
+class LLVMOpaqueTargetMachine extends ffi.Opaque {}
+
+class LLVMTarget extends ffi.Opaque {}
+
+abstract class LLVMCodeGenOptLevel {
+  static const int LLVMCodeGenLevelNone = 0;
+  static const int LLVMCodeGenLevelLess = 1;
+  static const int LLVMCodeGenLevelDefault = 2;
+  static const int LLVMCodeGenLevelAggressive = 3;
+}
+
+abstract class LLVMRelocMode {
+  static const int LLVMRelocDefault = 0;
+  static const int LLVMRelocStatic = 1;
+  static const int LLVMRelocPIC = 2;
+  static const int LLVMRelocDynamicNoPic = 3;
+  static const int LLVMRelocROPI = 4;
+  static const int LLVMRelocRWPI = 5;
+  static const int LLVMRelocROPI_RWPI = 6;
+}
+
+abstract class LLVMCodeModel {
+  static const int LLVMCodeModelDefault = 0;
+  static const int LLVMCodeModelJITDefault = 1;
+  static const int LLVMCodeModelTiny = 2;
+  static const int LLVMCodeModelSmall = 3;
+  static const int LLVMCodeModelKernel = 4;
+  static const int LLVMCodeModelMedium = 5;
+  static const int LLVMCodeModelLarge = 6;
+}
+
+abstract class LLVMCodeGenFileType {
+  static const int LLVMAssemblyFile = 0;
+  static const int LLVMObjectFile = 1;
+}
+
+typedef LLVMTargetRef = ffi.Pointer<LLVMTarget>;
+
+/// @addtogroup LLVMCTarget
+///
+/// @{
+typedef LLVMTargetMachineRef = ffi.Pointer<LLVMOpaqueTargetMachine>;
+typedef LLVMTargetDataRef = ffi.Pointer<LLVMOpaqueTargetData>;
+
+class LLVMOpaqueTargetData extends ffi.Opaque {}
 
 const int LLVMAttributeReturnIndex = 0;
 

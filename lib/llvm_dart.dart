@@ -8,6 +8,8 @@ import 'package:llvm_dart/llvm_core.dart';
 const LLVMTrue = 1;
 const LLVMFalse = 0;
 
+LLVMCore get llvm => LLVMInstance.getInstance();
+
 class LLVMInstance {
   LLVMInstance._();
 

@@ -5,7 +5,9 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:llvm_dart/ast/context.dart';
+import 'package:llvm_dart/ast/tys.dart';
 import 'package:meta/meta.dart';
+import 'package:nop/nop.dart';
 
 import '../parsers/lexers/token_kind.dart';
 
@@ -66,16 +68,22 @@ class GenericParam with EquatableMixin {
   List<Object?> get props => [ident, ty];
 }
 
+class ExprTempValue {
+  ExprTempValue(this.variable, this.ty);
+  final Ty ty;
+  final Variable? variable;
+}
+
 abstract class Expr extends BuildMixin {
   @override
-  Variable? build(BuildContext context) {
+  ExprTempValue? build(BuildContext context) {
     return _ty = buildExpr(context);
   }
 
-  Variable? _ty;
-  Variable? get currentTy => _ty;
+  ExprTempValue? _ty;
+  ExprTempValue? get currentTy => _ty;
 
-  Variable? buildExpr(BuildContext context);
+  ExprTempValue? buildExpr(BuildContext context);
   // return ty
 }
 
@@ -90,7 +98,7 @@ class UnknownExpr extends Expr {
   }
 
   @override
-  Variable? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context) {
     context.errorExpr(this);
     return null;
   }
@@ -121,7 +129,13 @@ enum LitKind {
   kFloat('float'),
   kDouble('double'),
   kString('string'),
-
+  i8('i8'),
+  i16('i16'),
+  i32('i32'),
+  i64('i64'),
+  i128('i128'),
+  f32('f32'),
+  f64('f64'),
   kBool('bool'),
   kVoid('void'),
   ;
@@ -201,6 +215,20 @@ class FnSign with EquatableMixin {
   List<Object?> get props => [fnDecl, extern];
 }
 
+enum BuiltInKind {
+  int('int'),
+  float('float'),
+  double('double'),
+  bool('bool'),
+  kVoid('void'),
+  string('string'),
+  ;
+
+  final String text;
+
+  const BuiltInKind(this.text);
+}
+
 /// ----- Ty -----
 
 abstract class Ty extends BuildMixin with EquatableMixin {
@@ -208,25 +236,30 @@ abstract class Ty extends BuildMixin with EquatableMixin {
   // void build(BuildContext context) {
   //   throw UnimplementedError('ty');
   // }
+
+  static final Ty unknown = UnknownTy(Identifier('', 0, 0));
+
+  LLVMType get llvmType;
+  @override
+  void build(BuildContext context);
 }
 
 class BuiltInTy extends Ty {
-  BuiltInTy._(this.ident, this.ty);
-  BuiltInTy.int(this.ident) : ty = LitKind.kInt;
-  BuiltInTy.float(this.ident) : ty = LitKind.kFloat;
-  BuiltInTy.double(this.ident) : ty = LitKind.kDouble;
-  BuiltInTy.string(this.ident) : ty = LitKind.kString;
-  BuiltInTy.kVoid(this.ident) : ty = LitKind.kVoid;
-  BuiltInTy.kBool(this.ident) : ty = LitKind.kBool;
+  BuiltInTy._(this.ty);
+  static final int = BuiltInTy._(LitKind.kInt);
+  static final float = BuiltInTy._(LitKind.kFloat);
+  static final double = BuiltInTy._(LitKind.kDouble);
+  static final string = BuiltInTy._(LitKind.kString);
+  static final kVoid = BuiltInTy._(LitKind.kVoid);
+  static final kBool = BuiltInTy._(LitKind.kBool);
 
   final LitKind ty;
-  final Identifier ident;
 
   static BuiltInTy? from(Identifier ident, String src) {
     final lit = LitKind.values.firstWhereOrNull((e) => e.lit == src);
     if (lit == null) return null;
 
-    return BuiltInTy._(ident, lit);
+    return BuiltInTy._(lit);
   }
 
   @override
@@ -235,12 +268,16 @@ class BuiltInTy extends Ty {
   }
 
   @override
-  List<Object?> get props => [ty, ident];
+  List<Object?> get props => [ty];
+
+  @override
+  LLVMTypeLit get llvmType => LLVMTypeLit(this);
 
   @override
   void build(BuildContext context) {}
 }
 
+/// [PathTy] 只用于声明
 class PathTy extends Ty {
   PathTy(this.ident);
   final Identifier ident;
@@ -262,6 +299,19 @@ class PathTy extends Ty {
       assert(hasTy);
     }
   }
+
+  Ty? getRealTy(BuildContext c) {
+    final tySrc = ident.src;
+    var ty = BuiltInTy.from(ident, tySrc);
+    if (ty != null) {
+      return ty;
+    }
+
+    return c.getTy(ident);
+  }
+
+  @override
+  LLVMType get llvmType => LLVMPathType(this);
 }
 
 class UnknownTy extends PathTy {
@@ -287,6 +337,9 @@ class Fn extends Ty {
 
   @override
   String toString() {
+    if (block.stmts.isEmpty) {
+      return '${pad}extern fn $fnSign';
+    }
     return '${pad}fn $fnSign$block';
   }
 
@@ -299,10 +352,11 @@ class Fn extends Ty {
     // final fn = context.buildFn(fnSign);
     // // final blockBB =
     // block.build(context);
-    context.buildFnBB(this, (child) {
-      block.build(child);
-    });
+    context.buildFnBB(this);
   }
+
+  @override
+  late final LLVMFnType llvmType = LLVMFnType(this);
 }
 
 class FieldDef with EquatableMixin {
@@ -336,6 +390,9 @@ class StructTy extends Ty with EquatableMixin {
   void build(BuildContext context) {
     context.pushStruct(ident, this);
   }
+
+  @override
+  late final LLVMStructType llvmType = LLVMStructType(this);
 }
 
 class UnionTy extends StructTy {
@@ -359,6 +416,9 @@ class EnumTy extends Ty {
   void build(BuildContext context) {
     context.pushEnum(ident, this);
   }
+
+  @override
+  LLVMType get llvmType => throw UnimplementedError();
 }
 
 /// 与 `struct` 类似
@@ -397,6 +457,9 @@ class ComponentTy extends Ty {
 
   @override
   List<Object?> get props => [ident, fns];
+
+  @override
+  LLVMType get llvmType => throw UnimplementedError();
 }
 
 class ImplTy extends Ty {
@@ -432,4 +495,7 @@ class ImplTy extends Ty {
 
   @override
   List<Object?> get props => [ident, ty, fns, label];
+
+  @override
+  LLVMType get llvmType => throw UnimplementedError();
 }

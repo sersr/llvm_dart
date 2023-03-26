@@ -6,6 +6,17 @@ extension TokenItExt on List<TokenTree> {
   }
 }
 
+class CursorState {
+  CursorState(this._it, this.cursor);
+  final TokenIterator _it;
+
+  final int cursor;
+
+  void restore() {
+    _it._cursor = cursor;
+  }
+}
+
 class TokenIterator extends Iterator<TokenTree> {
   TokenIterator(List<TokenTree> tree) : _current = List.of(tree);
   final List<TokenTree> _current;
@@ -14,6 +25,8 @@ class TokenIterator extends Iterator<TokenTree> {
 
   @override
   TokenTree get current => _current[_cursor];
+
+  CursorState get cursor => CursorState(this, _cursor);
 
   bool moveBack() {
     if (_cursor <= -1) return false;
