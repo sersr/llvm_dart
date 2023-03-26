@@ -3,6 +3,7 @@ import 'dart:ffi';
 
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/llvm_context.dart';
+import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/llvm_core.dart';
 import 'package:llvm_dart/parsers/lexers/token_kind.dart';
 import 'package:llvm_dart/parsers/lexers/token_stream.dart';
@@ -134,7 +135,7 @@ enum Lang {
     runZoned(() {
       print(m.globalVar.values.join('\n'));
       print(m.globalTy.values.join('\n'));
-      final analys = AnalysisBuildContext.root();
+      final analys = BuildContext.root();
 
       analys.pushAllTy(m.globalTy);
 
@@ -149,7 +150,7 @@ enum Lang {
 
   test('test name', () async {
     llvm.initLLVM();
-    final context = LLVMBackendBuildContext.root();
+    final context = BuildContext.root();
 
     final builder = context.builder;
     final C = context.llvmContext;
@@ -193,22 +194,44 @@ enum Lang {
     llvm.destory(context.kModule);
   });
 
-  test("test", () {
+  /// cc ./base.c ./out.o -o main
+  /// main
+  test("control flow", () {
     final src = '''
+fn printxx(y: int)int
+
+struct Gen {
+  y: int,
+}
+
 fn main() double {
+  let y = 101
+  let hah = Gen {y: 1202}
+  y = printxx(y)
+  while y < 12 {
+    if y < 1001 {
+      printxx(3)
+      break
+    }
+    printxx(2)
+    break
+  }
+  
   if 10 < 11 {
-  }else if 12 < 10 {
+  }else if 12.0 < 10.0 {
 
   } else {
-    
   }
+
   return 0
 }
+
 ''';
     final m = parseTopItem(src);
     runZoned(() {
+      print(m.globalTy.values.join('\n'));
       llvm.initLLVM();
-      final root = LLVMBackendBuildContext.root();
+      final root = BuildContext.root();
       root.pushAllTy(m.globalTy);
 
       for (var fns in root.fns.values) {
@@ -216,8 +239,9 @@ fn main() double {
           fn.build(root);
         }
       }
+      llvm.LLVMDumpModule(root.module);
       llvm.writeOutput(root.kModule);
-      llvm.destory(root.kModule);
+      root.dispose();
     }, zoneValues: {'astSrc': src});
   });
 }
