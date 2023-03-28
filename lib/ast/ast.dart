@@ -7,7 +7,6 @@ import 'package:equatable/equatable.dart';
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/tys.dart';
 import 'package:meta/meta.dart';
-import 'package:nop/nop.dart';
 
 import '../parsers/lexers/token_kind.dart';
 
@@ -16,17 +15,33 @@ String getWhiteSpace(int level, int pad) {
 }
 
 class Identifier with EquatableMixin {
-  Identifier(this.name, this.start, int? end) : end = (end ?? start) + 1;
+  Identifier(this.name, this.start, int? end)
+      : end = (end ?? start) + 1,
+        builtInName = '';
+
   Identifier.fromToken(Token token)
       : start = token.start,
         end = token.end,
+        builtInName = '',
         name = '';
+
+  Identifier.builtIn(this.builtInName)
+      : name = '',
+        start = 0,
+        end = 0;
+
   final String name;
   final int start;
   final int end;
+  final String builtInName;
+
+  static final Identifier none = Identifier('', 0, 0);
 
   @override
   List<Object?> get props {
+    if (builtInName.isNotEmpty) {
+      return [builtInName];
+    }
     final src = Zone.current['astSrc'];
     if (src is String) {
       return [src.substring(start, end)];
@@ -35,6 +50,9 @@ class Identifier with EquatableMixin {
   }
 
   String get src {
+    if (builtInName.isNotEmpty) {
+      return builtInName;
+    }
     final src = Zone.current['astSrc'];
     if (src is String) {
       return src.substring(start, end);
@@ -44,6 +62,9 @@ class Identifier with EquatableMixin {
 
   @override
   String toString() {
+    if (builtInName.isNotEmpty) {
+      return '[$builtInName]';
+    }
     final src = Zone.current['astSrc'];
     var rang = '[$start - $end]';
     if (src is String) {
@@ -55,12 +76,16 @@ class Identifier with EquatableMixin {
 
 // foo( ... ), Gen{ ... }
 class GenericParam with EquatableMixin {
-  GenericParam(this.ident, this.ty);
+  GenericParam(this.ident, this.ty, this.isRef);
   final Identifier ident;
   final Ty ty;
+  final bool isRef;
 
   @override
   String toString() {
+    if (isRef) {
+      return '$ident: &$ty';
+    }
     return '$ident: $ty';
   }
 
@@ -240,6 +265,10 @@ abstract class Ty extends BuildMixin with EquatableMixin {
   static final Ty unknown = UnknownTy(Identifier('', 0, 0));
 
   LLVMType get llvmType;
+
+  Ty getRealTy(BuildContext c) => this;
+
+  bool extern = false;
   @override
   void build(BuildContext context);
 }
@@ -300,14 +329,19 @@ class PathTy extends Ty {
     }
   }
 
-  Ty? getRealTy(BuildContext c) {
+  @override
+  Ty getRealTy(BuildContext c) {
     final tySrc = ident.src;
-    var ty = BuiltInTy.from(ident, tySrc);
+    Ty? ty = BuiltInTy.from(ident, tySrc);
     if (ty != null) {
       return ty;
     }
 
-    return c.getTy(ident);
+    ty = c.getTy(ident);
+    if (ty != null) {
+      // error
+    }
+    return ty!;
   }
 
   @override
@@ -337,10 +371,14 @@ class Fn extends Ty {
 
   @override
   String toString() {
-    if (block.stmts.isEmpty) {
-      return '${pad}extern fn $fnSign';
+    var b = '';
+    if (block.stmts.isNotEmpty) {
+      b = '$block';
     }
-    return '${pad}fn $fnSign$block';
+    if (extern) {
+      return '${pad}extern fn $fnSign$b';
+    }
+    return '${pad}fn $fnSign$b';
   }
 
   @override

@@ -1,6 +1,7 @@
 // ignore_for_file: constant_identifier_names
 
 import 'package:collection/collection.dart';
+import 'package:llvm_dart/ast/buildin.dart';
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/llvm_core.dart';
@@ -225,7 +226,7 @@ class StructExpr extends Expr {
 
 class StructExprField {
   StructExprField(this.ident, this.expr);
-  final Identifier ident;
+  final Identifier? ident;
   final Expr expr;
 
   @override
@@ -314,15 +315,41 @@ class FnCallExpr extends Expr {
   ExprTempValue? buildExpr(BuildContext context) {
     final fn = context.getFn(ident);
     if (fn == null) return null;
+    if (fn is SizeofFn) {
+      if (params.isEmpty) {
+        return null;
+      }
+      final first = params.first;
+      final e = first.expr.build(context);
+      Ty? ty = e?.ty;
+      if (ty == null) {
+        final e = first.expr;
+        if (e is VariableIdentExpr) {
+          final p = PathTy(e.ident);
+          ty = p.getRealTy(context);
+        }
+      }
+      if (ty == null) return null;
 
+      final v = fn.llvmType.createValue(context, ty: ty);
+      return ExprTempValue(v, BuiltInTy.int);
+    }
     final fnType = fn.llvmType.createType(context);
+    final isExtern = fn.extern;
     final fnValue = fn.llvmType.createValue(context);
-    // final declParams = fn.fnSign.fnDecl.params;
+
     final args = <LLVMValueRef>[];
     for (var p in params) {
       final v = p.build(context)?.variable;
       if (v != null) {
-        args.add(v.load(context));
+        Log.i('...$isExtern ${v.runtimeType}');
+        if (isExtern && v is LLVMStructAllocaVariable) {
+          final value = v.load2(context, isExtern);
+          args.add(value);
+        } else {
+          final value = v.load(context);
+          args.add(value);
+        }
       }
     }
     final ret = llvm.LLVMBuildCall2(context.builder, fnType,
@@ -357,6 +384,30 @@ class MethodCallExpr extends Expr {
     for (var p in params) {
       p.build(context);
     }
+  }
+}
+
+class StructDotFieldExpr extends Expr {
+  StructDotFieldExpr(this.structIdent, this.ident);
+  final Identifier ident;
+  final Identifier structIdent;
+  @override
+  ExprTempValue? buildExpr(BuildContext context) {
+    final val = context.getVariable(structIdent);
+    var ty = val?.ty;
+    if (ty is PathTy) {
+      ty = ty.getRealTy(context);
+    }
+    if (ty is! StructTy) return null;
+    final alloca = (val as LLVMAllocaVariable);
+    final v = ty.llvmType.getField(alloca, context, ident);
+    if (v == null) return null;
+    return ExprTempValue(v, v.ty);
+  }
+
+  @override
+  String toString() {
+    return '$structIdent.$ident';
   }
 }
 
@@ -486,7 +537,6 @@ class OpExpr extends Expr {
 class VariableIdentExpr extends Expr {
   VariableIdentExpr(this.ident);
   final Identifier ident;
-
   @override
   String toString() {
     return '$ident';
@@ -497,5 +547,27 @@ class VariableIdentExpr extends Expr {
     final val = context.getVariable(ident);
     if (val == null) return null;
     return ExprTempValue(val, val.ty);
+  }
+}
+
+class RefExpr extends Expr {
+  RefExpr(this.current, this.isRef);
+  final Expr current;
+  final bool isRef;
+  @override
+  ExprTempValue? buildExpr(BuildContext context) {
+    final val = current.build(context);
+    final vall = val?.variable;
+    if (vall is LLVMAllocaVariable) {
+      final inst = vall.clone(isRef);
+      return ExprTempValue(inst, val!.ty);
+    }
+    return val;
+  }
+
+  @override
+  String toString() {
+    if (!isRef) return current.toString();
+    return '$current [Ref]';
   }
 }

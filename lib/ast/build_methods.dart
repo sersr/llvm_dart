@@ -1,3 +1,4 @@
+import 'package:llvm_dart/ast/ast.dart';
 import 'package:llvm_dart/ast/memory.dart';
 
 import '../llvm_core.dart';
@@ -52,13 +53,22 @@ mixin BuildMethods {
   }
 
   LLVMTypeRef typeFn(List<LLVMTypeRef> params, LLVMTypeRef ret) {
-    return llvm.LLVMFunctionType(
+    final type = llvm.LLVMFunctionType(
         ret, params.toNative().cast(), params.length, LLVMFalse);
+    return type;
   }
 
-  LLVMTypeRef typeStruct(List<LLVMTypeRef> types) {
-    return llvm.LLVMStructTypeInContext(
-        llvmContext, types.toNative().cast(), types.length, LLVMFalse);
+  LLVMTypeRef typeStruct(List<LLVMTypeRef> types, Identifier ident) {
+    final struct =
+        llvm.LLVMStructCreateNamed(llvmContext, 'struct_$ident'.toChar());
+    llvm.LLVMStructSetBody(
+        struct, types.toNative().cast(), types.length, LLVMFalse);
+
+    return struct;
+  }
+
+  LLVMTypeRef pointer() {
+    return llvm.LLVMPointerTypeInContext(llvmContext, 0);
   }
 }
 

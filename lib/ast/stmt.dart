@@ -35,12 +35,13 @@ class LetStmt extends Stmt {
         return;
       }
       final type = tty.llvmType.createType(context);
-      final a = context.createAlloca(type);
+      final a = context.createAlloca(type, nameIdent);
       final alloca = LLVMAllocaVariable(tty, a, type);
       if (variable != null) {
         final rValue = variable.load(context);
         alloca.store(context, rValue);
       }
+
       context.pushVariable(nameIdent, alloca);
     }
   }

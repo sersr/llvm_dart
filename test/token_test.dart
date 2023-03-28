@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ffi';
 
+import 'package:llvm_dart/ast/buildin.dart';
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/llvm_context.dart';
 import 'package:llvm_dart/ast/memory.dart';
@@ -195,44 +196,45 @@ enum Lang {
   });
 
   /// cc ./base.c ./out.o -o main
-  /// main
+  /// ./main
   test("control flow", () {
     final src = '''
 fn printxx(y: int)int
+fn strx(hh: int, g: &Gen)
+extern fn stra(g: Gen)
+fn getGen()Gen
+fn ggg()
+
+fn hhh() int {
+  return 12
+}
 
 struct Gen {
-  y: int,
+  y: i32,
+  x: i32,
+  a: i32,
 }
 
 fn main() double {
   let y = 101
-  let hah = Gen {y: 1202}
-  y = printxx(y)
-  while y < 12 {
-    if y < 1001 {
-      printxx(3)
-      break
-    }
-    printxx(2)
-    break
-  }
+  let hah = Gen {205, 26, 102}
   
-  if 10 < 11 {
-  }else if 12.0 < 10.0 {
-
-  } else {
-  }
+  let x = 22
+  strx(hh: 710, g: &hah)
+  stra(g: hah)
 
   return 0
 }
 
 ''';
     final m = parseTopItem(src);
+
     runZoned(() {
       print(m.globalTy.values.join('\n'));
       llvm.initLLVM();
       final root = BuildContext.root();
       root.pushAllTy(m.globalTy);
+      root.pushFn(sizeOfFn.ident, sizeOfFn);
 
       for (var fns in root.fns.values) {
         for (var fn in fns) {

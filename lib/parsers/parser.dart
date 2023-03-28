@@ -29,7 +29,7 @@ class Modules {
         if (token.kind == TokenKind.lf) return false;
         print('token : ${Identifier.fromToken(token)}');
         if (token.kind == TokenKind.ident) {
-          parseIdent(it, null);
+          parseIdent(it, global: true);
         }
         return false;
       });
@@ -46,13 +46,13 @@ class Modules {
   final globalTy = <Token, Ty>{};
   final globalVar = <Token, Stmt>{};
 
-  void parseIdent(TokenIterator it, Block? block) {
+  Ty? parseIdent(TokenIterator it, {bool global = true}) {
     final token = getToken(it);
     assert(token.kind == TokenKind.ident);
 
     final key = Key.from(getSrc(token.start, token.end));
+    Ty? ty;
     if (key != null) {
-      Ty? ty;
       switch (key) {
         case Key.fn:
           ty = parseFn(it);
@@ -76,17 +76,37 @@ class Modules {
         case Key.kImpl:
           ty = parseImpl(it);
           break;
+        case Key.kExtern:
+          ty = parseExtern(it);
+          break;
         default:
       }
-      if (ty != null) {
-        if (block != null) {
-          final stmt = TyStmt(ty);
-          block.stmts.add(stmt);
-        } else {
-          globalTy[token] = ty;
-        }
+      if (ty != null && global) {
+        globalTy[token] = ty;
       }
     }
+    return ty;
+  }
+
+  Ty? parseExtern(TokenIterator it) {
+    eatLfIfNeed(it);
+    if (it.moveNext()) {
+      final t = getToken(it);
+      if (t.kind == TokenKind.openBrace) {
+        it.moveNext(); // {
+        final childIt = it.current.child.tokenIt;
+        eatLfIfNeed(childIt);
+        if (it.moveNext()) {
+          final t = getToken(it);
+          if (t.kind == TokenKind.ident) {
+            return parseIdent(it, global: false)?..extern = true;
+          }
+        }
+      } else if (t.kind == TokenKind.ident) {
+        return parseIdent(it, global: false)?..extern = true;
+      }
+    }
+    return null;
   }
 
   ImplTy? parseImpl(TokenIterator it) {
@@ -180,12 +200,21 @@ class Modules {
 
       if (kind == TokenKind.ident) {
         final ident = Identifier.fromToken(token);
+        eatLfIfNeed(it);
         if (it.moveNext()) {
           assert(it.current.token.kind == TokenKind.colon);
+          eatLfIfNeed(it);
           if (it.moveNext()) {
+            final t = getToken(it);
+            bool isRef = false;
+            if (t.kind == TokenKind.and) {
+              isRef = true;
+              eatLfIfNeed(it);
+              it.moveNext();
+            }
             final name = it.current;
             final ty = PathTy(Identifier.fromToken(name.token));
-            final param = GenericParam(ident, ty);
+            final param = GenericParam(ident, ty, isRef);
             params.add(param);
           }
         }
@@ -203,7 +232,12 @@ class Modules {
     if (it.moveNext()) {
       final c = it.current;
       if (c.token.kind == TokenKind.ident) {
-        retTy = PathTy(Identifier.fromToken(c.token));
+        final key = getKey(it);
+        if (key == null) {
+          retTy = PathTy(Identifier.fromToken(c.token));
+        } else {
+          it.moveBack();
+        }
       } else {
         it.moveBack();
       }
@@ -222,11 +256,22 @@ class Modules {
 
     final fnSign = FnSign(true, parseFnDecl(it, ident));
 
-    checkBlock(it);
+    final state = it.cursor;
 
-    if (getToken(it).kind == TokenKind.openBrace) {
-      final block = parseBlock(it);
-      return Fn(fnSign, block);
+    if (it.moveNext()) {
+      final key = getKey(it);
+      if (key == null) {
+        checkBlock(it);
+
+        if (getToken(it).kind == TokenKind.openBrace) {
+          final block = parseBlock(it);
+          return Fn(fnSign, block);
+        } else {
+          state.restore();
+        }
+      } else {
+        state.restore();
+      }
     }
     return Fn(fnSign, Block([], null));
   }
@@ -521,6 +566,17 @@ class Modules {
 
   Expr parseExpr(TokenIterator it, {bool runOp = false}) {
     eatLfIfNeed(it);
+    var isRef = false;
+
+    if (it.moveNext()) {
+      if (getToken(it).kind == TokenKind.and) {
+        isRef = true;
+        eatLfIfNeed(it);
+      } else {
+        it.moveBack();
+      }
+    }
+
     if (it.moveNext()) {
       final t = getToken(it);
       Expr? lhs;
@@ -588,14 +644,17 @@ class Modules {
             it.moveNext();
             expr = parseExpr(it);
           }
-          return expr;
+          return RefExpr(expr, isRef);
         }
       }
       if (lhs != null) {
         if (runOp) {
-          return lhs;
+          return RefExpr(lhs, isRef);
         }
-        return parseOpExpr(it, lhs) ?? lhs;
+        final op = parseOpExpr(it, lhs);
+        if (op != null) {
+          return RefExpr(op, isRef);
+        }
       }
     }
     return UnknownExpr(getIdent(it), '');
@@ -660,6 +719,7 @@ class Modules {
 
     loop(it, () {
       final t = getToken(it);
+      if (t.kind == TokenKind.comma) return false;
       if (t.kind == TokenKind.lf || t.kind == TokenKind.openParen) return false;
       if (t.kind == TokenKind.closeParen || t.kind == TokenKind.semi) {
         return true;
@@ -689,25 +749,39 @@ class Modules {
         final f = FieldExpr(expr, null);
         fields.add(f);
       }
-
       return false;
     });
     return fields;
   }
 
-  MethodCallExpr parseMethodCallExpr(TokenIterator it, Identifier ident) {
-    it.moveNext(); // .
+  Expr parseMethodCallExpr(TokenIterator it, Identifier ident) {
     eatLfIfNeed(it);
+    it.moveNext(); // .
 
-    final fnName = getIdent(it);
+    final fnOrFieldName = getIdent(it);
+    eatLfIfNeed(it);
+    Log.w('.. ${getIdent(it)}');
+    if (it.moveNext()) {
+      final t = getToken(it);
+      if (t.kind != TokenKind.openParen) {
+        final expr = StructDotFieldExpr(ident, fnOrFieldName);
+        it.moveBack();
+        return expr;
+      } else {
+        it.moveBack();
+      }
+    }
     // check Syntax
 
-    return MethodCallExpr(fnName, VariableIdentExpr(ident), parseFieldExpr(it));
+    return MethodCallExpr(
+        fnOrFieldName, VariableIdentExpr(ident), parseFieldExpr(it));
   }
 
+  /// { }: 由于这个token会回解析到`child`中
+  /// 和[parseCallExpr]有点区别
   StructExpr parseStructExpr(TokenIterator it, Identifier ident) {
     final fields = <StructExprField>[];
-    it.moveNext();
+    it.moveNext(); // `}`
     it = it.current.child.tokenIt;
 
     loop(it, () {
@@ -716,16 +790,36 @@ class Modules {
         return true;
       }
 
+      if (t.kind == TokenKind.comma) return false;
+
+      void parseCommon() {
+        it.moveBack();
+        final expr = parseExpr(it);
+        final f = StructExprField(null, expr);
+        fields.add(f);
+      }
+
       if (t.kind == TokenKind.ident) {
         final ident = getIdent(it);
+        final state = it.cursor;
         eatLfIfNeed(it);
         if (it.moveNext()) {
-          // ignore: unused_local_variable
           final t = getToken(it); // :
-          final expr = parseExpr(it);
-          final f = StructExprField(ident, expr);
-          fields.add(f);
+          if (t.kind == TokenKind.colon) {
+            final expr = parseExpr(it);
+            final f = StructExprField(ident, expr);
+            fields.add(f);
+          } else {
+            state.restore();
+            parseCommon();
+          }
+        } else {
+          // 最后一个
+          parseCommon();
+          return true;
         }
+      } else {
+        parseCommon();
       }
 
       return false;
@@ -898,6 +992,7 @@ enum Key {
   kImpl('impl'),
   kComponent('com'),
   kRet('return'),
+  kExtern('extern'),
 
   kFor('for'),
   kIf('if'),
