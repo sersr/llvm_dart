@@ -100,9 +100,12 @@ class ExprTempValue {
 }
 
 abstract class Expr extends BuildMixin {
+  bool _first = true;
   @override
   ExprTempValue? build(BuildContext context) {
-    return _ty = buildExpr(context);
+    if (!_first) return _ty;
+    _first = false;
+    return _ty ??= buildExpr(context);
   }
 
   ExprTempValue? _ty;
@@ -271,6 +274,20 @@ abstract class Ty extends BuildMixin with EquatableMixin {
   bool extern = false;
   @override
   void build(BuildContext context);
+}
+
+class RefTy extends Ty {
+  RefTy(this.parent);
+  final Ty parent;
+
+  @override
+  void build(BuildContext context) {}
+
+  @override
+  LLVMType get llvmType => LLVMRefType(this);
+
+  @override
+  List<Object?> get props => [parent];
 }
 
 class BuiltInTy extends Ty {

@@ -11870,6 +11870,370 @@ class LLVMCore {
   late final _insertBBFunction = _insertBBFunctionPtr
       .asFunction<void Function(LLVMBuilderRef, LLVMBasicBlockRef)>();
 
+  LLVMTargetDataRef LLVMGetModuleDataLayout(
+    LLVMModuleRef M,
+  ) {
+    return _LLVMGetModuleDataLayout(
+      M,
+    );
+  }
+
+  late final _LLVMGetModuleDataLayoutPtr =
+      _lookup<ffi.NativeFunction<LLVMTargetDataRef Function(LLVMModuleRef)>>(
+          'LLVMGetModuleDataLayout');
+  late final _LLVMGetModuleDataLayout = _LLVMGetModuleDataLayoutPtr.asFunction<
+      LLVMTargetDataRef Function(LLVMModuleRef)>();
+
+  void LLVMSetModuleDataLayout(
+    LLVMModuleRef M,
+    LLVMTargetDataRef DL,
+  ) {
+    return _LLVMSetModuleDataLayout(
+      M,
+      DL,
+    );
+  }
+
+  late final _LLVMSetModuleDataLayoutPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              LLVMModuleRef, LLVMTargetDataRef)>>('LLVMSetModuleDataLayout');
+  late final _LLVMSetModuleDataLayout = _LLVMSetModuleDataLayoutPtr.asFunction<
+      void Function(LLVMModuleRef, LLVMTargetDataRef)>();
+
+  LLVMTargetDataRef LLVMCreateTargetData(
+    ffi.Pointer<ffi.Char> StringRep,
+  ) {
+    return _LLVMCreateTargetData(
+      StringRep,
+    );
+  }
+
+  late final _LLVMCreateTargetDataPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMTargetDataRef Function(
+              ffi.Pointer<ffi.Char>)>>('LLVMCreateTargetData');
+  late final _LLVMCreateTargetData = _LLVMCreateTargetDataPtr.asFunction<
+      LLVMTargetDataRef Function(ffi.Pointer<ffi.Char>)>();
+
+  void LLVMDisposeTargetData(
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMDisposeTargetData(
+      TD,
+    );
+  }
+
+  late final _LLVMDisposeTargetDataPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMTargetDataRef)>>(
+          'LLVMDisposeTargetData');
+  late final _LLVMDisposeTargetData =
+      _LLVMDisposeTargetDataPtr.asFunction<void Function(LLVMTargetDataRef)>();
+
+  void LLVMAddTargetLibraryInfo(
+    LLVMTargetLibraryInfoRef TLI,
+    LLVMPassManagerRef PM,
+  ) {
+    return _LLVMAddTargetLibraryInfo(
+      TLI,
+      PM,
+    );
+  }
+
+  late final _LLVMAddTargetLibraryInfoPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMTargetLibraryInfoRef,
+              LLVMPassManagerRef)>>('LLVMAddTargetLibraryInfo');
+  late final _LLVMAddTargetLibraryInfo =
+      _LLVMAddTargetLibraryInfoPtr.asFunction<
+          void Function(LLVMTargetLibraryInfoRef, LLVMPassManagerRef)>();
+
+  ffi.Pointer<ffi.Char> LLVMCopyStringRepOfTargetData(
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMCopyStringRepOfTargetData(
+      TD,
+    );
+  }
+
+  late final _LLVMCopyStringRepOfTargetDataPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              LLVMTargetDataRef)>>('LLVMCopyStringRepOfTargetData');
+  late final _LLVMCopyStringRepOfTargetData = _LLVMCopyStringRepOfTargetDataPtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetDataRef)>();
+
+  int LLVMByteOrder(
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMByteOrder(
+      TD,
+    );
+  }
+
+  late final _LLVMByteOrderPtr =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(LLVMTargetDataRef)>>(
+          'LLVMByteOrder');
+  late final _LLVMByteOrder =
+      _LLVMByteOrderPtr.asFunction<int Function(LLVMTargetDataRef)>();
+
+  int LLVMPointerSize(
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMPointerSize(
+      TD,
+    );
+  }
+
+  late final _LLVMPointerSizePtr =
+      _lookup<ffi.NativeFunction<ffi.UnsignedInt Function(LLVMTargetDataRef)>>(
+          'LLVMPointerSize');
+  late final _LLVMPointerSize =
+      _LLVMPointerSizePtr.asFunction<int Function(LLVMTargetDataRef)>();
+
+  int LLVMPointerSizeForAS(
+    LLVMTargetDataRef TD,
+    int AS,
+  ) {
+    return _LLVMPointerSizeForAS(
+      TD,
+      AS,
+    );
+  }
+
+  late final _LLVMPointerSizeForASPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+              LLVMTargetDataRef, ffi.UnsignedInt)>>('LLVMPointerSizeForAS');
+  late final _LLVMPointerSizeForAS = _LLVMPointerSizeForASPtr.asFunction<
+      int Function(LLVMTargetDataRef, int)>();
+
+  LLVMTypeRef LLVMIntPtrType(
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMIntPtrType(
+      TD,
+    );
+  }
+
+  late final _LLVMIntPtrTypePtr =
+      _lookup<ffi.NativeFunction<LLVMTypeRef Function(LLVMTargetDataRef)>>(
+          'LLVMIntPtrType');
+  late final _LLVMIntPtrType =
+      _LLVMIntPtrTypePtr.asFunction<LLVMTypeRef Function(LLVMTargetDataRef)>();
+
+  LLVMTypeRef LLVMIntPtrTypeForAS(
+    LLVMTargetDataRef TD,
+    int AS,
+  ) {
+    return _LLVMIntPtrTypeForAS(
+      TD,
+      AS,
+    );
+  }
+
+  late final _LLVMIntPtrTypeForASPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMTypeRef Function(
+              LLVMTargetDataRef, ffi.UnsignedInt)>>('LLVMIntPtrTypeForAS');
+  late final _LLVMIntPtrTypeForAS = _LLVMIntPtrTypeForASPtr.asFunction<
+      LLVMTypeRef Function(LLVMTargetDataRef, int)>();
+
+  LLVMTypeRef LLVMIntPtrTypeInContext(
+    LLVMContextRef C,
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMIntPtrTypeInContext(
+      C,
+      TD,
+    );
+  }
+
+  late final _LLVMIntPtrTypeInContextPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMTypeRef Function(
+              LLVMContextRef, LLVMTargetDataRef)>>('LLVMIntPtrTypeInContext');
+  late final _LLVMIntPtrTypeInContext = _LLVMIntPtrTypeInContextPtr.asFunction<
+      LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef)>();
+
+  LLVMTypeRef LLVMIntPtrTypeForASInContext(
+    LLVMContextRef C,
+    LLVMTargetDataRef TD,
+    int AS,
+  ) {
+    return _LLVMIntPtrTypeForASInContext(
+      C,
+      TD,
+      AS,
+    );
+  }
+
+  late final _LLVMIntPtrTypeForASInContextPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef,
+              ffi.UnsignedInt)>>('LLVMIntPtrTypeForASInContext');
+  late final _LLVMIntPtrTypeForASInContext =
+      _LLVMIntPtrTypeForASInContextPtr.asFunction<
+          LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef, int)>();
+
+  int LLVMSizeOfTypeInBits(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMSizeOfTypeInBits(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMSizeOfTypeInBitsPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedLongLong Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMSizeOfTypeInBits');
+  late final _LLVMSizeOfTypeInBits = _LLVMSizeOfTypeInBitsPtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  int LLVMStoreSizeOfType(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMStoreSizeOfType(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMStoreSizeOfTypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedLongLong Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMStoreSizeOfType');
+  late final _LLVMStoreSizeOfType = _LLVMStoreSizeOfTypePtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  int LLVMABISizeOfType(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMABISizeOfType(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMABISizeOfTypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedLongLong Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMABISizeOfType');
+  late final _LLVMABISizeOfType = _LLVMABISizeOfTypePtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  int LLVMABIAlignmentOfType(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMABIAlignmentOfType(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMABIAlignmentOfTypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMABIAlignmentOfType');
+  late final _LLVMABIAlignmentOfType = _LLVMABIAlignmentOfTypePtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  int LLVMCallFrameAlignmentOfType(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMCallFrameAlignmentOfType(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMCallFrameAlignmentOfTypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMCallFrameAlignmentOfType');
+  late final _LLVMCallFrameAlignmentOfType = _LLVMCallFrameAlignmentOfTypePtr
+      .asFunction<int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  int LLVMPreferredAlignmentOfType(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMPreferredAlignmentOfType(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMPreferredAlignmentOfTypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMPreferredAlignmentOfType');
+  late final _LLVMPreferredAlignmentOfType = _LLVMPreferredAlignmentOfTypePtr
+      .asFunction<int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  int LLVMPreferredAlignmentOfGlobal(
+    LLVMTargetDataRef TD,
+    LLVMValueRef GlobalVar,
+  ) {
+    return _LLVMPreferredAlignmentOfGlobal(
+      TD,
+      GlobalVar,
+    );
+  }
+
+  late final _LLVMPreferredAlignmentOfGlobalPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(LLVMTargetDataRef,
+              LLVMValueRef)>>('LLVMPreferredAlignmentOfGlobal');
+  late final _LLVMPreferredAlignmentOfGlobal =
+      _LLVMPreferredAlignmentOfGlobalPtr.asFunction<
+          int Function(LLVMTargetDataRef, LLVMValueRef)>();
+
+  int LLVMElementAtOffset(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef StructTy,
+    int Offset,
+  ) {
+    return _LLVMElementAtOffset(
+      TD,
+      StructTy,
+      Offset,
+    );
+  }
+
+  late final _LLVMElementAtOffsetPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(LLVMTargetDataRef, LLVMTypeRef,
+              ffi.UnsignedLongLong)>>('LLVMElementAtOffset');
+  late final _LLVMElementAtOffset = _LLVMElementAtOffsetPtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef, int)>();
+
+  int LLVMOffsetOfElement(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef StructTy,
+    int Element,
+  ) {
+    return _LLVMOffsetOfElement(
+      TD,
+      StructTy,
+      Element,
+    );
+  }
+
+  late final _LLVMOffsetOfElementPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedLongLong Function(LLVMTargetDataRef, LLVMTypeRef,
+              ffi.UnsignedInt)>>('LLVMOffsetOfElement');
+  late final _LLVMOffsetOfElement = _LLVMOffsetOfElementPtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef, int)>();
+
   /// Returns the first llvm::Target in the registered targets list.
   LLVMTargetRef LLVMGetFirstTarget() {
     return _LLVMGetFirstTarget();
@@ -12307,6 +12671,3314 @@ class LLVMCore {
               LLVMPassManagerRef)>>('LLVMAddAnalysisPasses');
   late final _LLVMAddAnalysisPasses = _LLVMAddAnalysisPassesPtr.asFunction<
       void Function(LLVMTargetMachineRef, LLVMPassManagerRef)>();
+
+  /// The current debug metadata version number.
+  int LLVMDebugMetadataVersion() {
+    return _LLVMDebugMetadataVersion();
+  }
+
+  late final _LLVMDebugMetadataVersionPtr =
+      _lookup<ffi.NativeFunction<ffi.UnsignedInt Function()>>(
+          'LLVMDebugMetadataVersion');
+  late final _LLVMDebugMetadataVersion =
+      _LLVMDebugMetadataVersionPtr.asFunction<int Function()>();
+
+  /// The version of debug metadata that's present in the provided \c Module.
+  int LLVMGetModuleDebugMetadataVersion(
+    LLVMModuleRef Module,
+  ) {
+    return _LLVMGetModuleDebugMetadataVersion(
+      Module,
+    );
+  }
+
+  late final _LLVMGetModuleDebugMetadataVersionPtr =
+      _lookup<ffi.NativeFunction<ffi.UnsignedInt Function(LLVMModuleRef)>>(
+          'LLVMGetModuleDebugMetadataVersion');
+  late final _LLVMGetModuleDebugMetadataVersion =
+      _LLVMGetModuleDebugMetadataVersionPtr.asFunction<
+          int Function(LLVMModuleRef)>();
+
+  /// Strip debug info in the module if it exists.
+  /// To do this, we remove all calls to the debugger intrinsics and any named
+  /// metadata for debugging. We also remove debug locations for instructions.
+  /// Return true if module is modified.
+  int LLVMStripModuleDebugInfo(
+    LLVMModuleRef Module,
+  ) {
+    return _LLVMStripModuleDebugInfo(
+      Module,
+    );
+  }
+
+  late final _LLVMStripModuleDebugInfoPtr =
+      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMModuleRef)>>(
+          'LLVMStripModuleDebugInfo');
+  late final _LLVMStripModuleDebugInfo =
+      _LLVMStripModuleDebugInfoPtr.asFunction<int Function(LLVMModuleRef)>();
+
+  /// Construct a builder for a module, and do not allow for unresolved nodes
+  /// attached to the module.
+  LLVMDIBuilderRef LLVMCreateDIBuilderDisallowUnresolved(
+    LLVMModuleRef M,
+  ) {
+    return _LLVMCreateDIBuilderDisallowUnresolved(
+      M,
+    );
+  }
+
+  late final _LLVMCreateDIBuilderDisallowUnresolvedPtr =
+      _lookup<ffi.NativeFunction<LLVMDIBuilderRef Function(LLVMModuleRef)>>(
+          'LLVMCreateDIBuilderDisallowUnresolved');
+  late final _LLVMCreateDIBuilderDisallowUnresolved =
+      _LLVMCreateDIBuilderDisallowUnresolvedPtr.asFunction<
+          LLVMDIBuilderRef Function(LLVMModuleRef)>();
+
+  /// Construct a builder for a module and collect unresolved nodes attached
+  /// to the module in order to resolve cycles during a call to
+  /// \c LLVMDIBuilderFinalize.
+  LLVMDIBuilderRef LLVMCreateDIBuilder(
+    LLVMModuleRef M,
+  ) {
+    return _LLVMCreateDIBuilder(
+      M,
+    );
+  }
+
+  late final _LLVMCreateDIBuilderPtr =
+      _lookup<ffi.NativeFunction<LLVMDIBuilderRef Function(LLVMModuleRef)>>(
+          'LLVMCreateDIBuilder');
+  late final _LLVMCreateDIBuilder = _LLVMCreateDIBuilderPtr.asFunction<
+      LLVMDIBuilderRef Function(LLVMModuleRef)>();
+
+  /// Deallocates the \c DIBuilder and everything it owns.
+  /// @note You must call \c LLVMDIBuilderFinalize before this
+  void LLVMDisposeDIBuilder(
+    LLVMDIBuilderRef Builder,
+  ) {
+    return _LLVMDisposeDIBuilder(
+      Builder,
+    );
+  }
+
+  late final _LLVMDisposeDIBuilderPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMDIBuilderRef)>>(
+          'LLVMDisposeDIBuilder');
+  late final _LLVMDisposeDIBuilder =
+      _LLVMDisposeDIBuilderPtr.asFunction<void Function(LLVMDIBuilderRef)>();
+
+  /// Construct any deferred debug info descriptors.
+  void LLVMDIBuilderFinalize(
+    LLVMDIBuilderRef Builder,
+  ) {
+    return _LLVMDIBuilderFinalize(
+      Builder,
+    );
+  }
+
+  late final _LLVMDIBuilderFinalizePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMDIBuilderRef)>>(
+          'LLVMDIBuilderFinalize');
+  late final _LLVMDIBuilderFinalize =
+      _LLVMDIBuilderFinalizePtr.asFunction<void Function(LLVMDIBuilderRef)>();
+
+  /// Finalize a specific subprogram.
+  /// No new variables may be added to this subprogram afterwards.
+  void LLVMDIBuilderFinalizeSubprogram(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Subprogram,
+  ) {
+    return _LLVMDIBuilderFinalizeSubprogram(
+      Builder,
+      Subprogram,
+    );
+  }
+
+  late final _LLVMDIBuilderFinalizeSubprogramPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMDIBuilderRef,
+              LLVMMetadataRef)>>('LLVMDIBuilderFinalizeSubprogram');
+  late final _LLVMDIBuilderFinalizeSubprogram =
+      _LLVMDIBuilderFinalizeSubprogramPtr.asFunction<
+          void Function(LLVMDIBuilderRef, LLVMMetadataRef)>();
+
+  /// A CompileUnit provides an anchor for all debugging
+  /// information generated during this instance of compilation.
+  /// \param Lang          Source programming language, eg.
+  /// \c LLVMDWARFSourceLanguageC99
+  /// \param FileRef       File info.
+  /// \param Producer      Identify the producer of debugging information
+  /// and code.  Usually this is a compiler
+  /// version string.
+  /// \param ProducerLen   The length of the C string passed to \c Producer.
+  /// \param isOptimized   A boolean flag which indicates whether optimization
+  /// is enabled or not.
+  /// \param Flags         This string lists command line options. This
+  /// string is directly embedded in debug info
+  /// output which may be used by a tool
+  /// analyzing generated debugging information.
+  /// \param FlagsLen      The length of the C string passed to \c Flags.
+  /// \param RuntimeVer    This indicates runtime version for languages like
+  /// Objective-C.
+  /// \param SplitName     The name of the file that we'll split debug info
+  /// out into.
+  /// \param SplitNameLen  The length of the C string passed to \c SplitName.
+  /// \param Kind          The kind of debug information to generate.
+  /// \param DWOId         The DWOId if this is a split skeleton compile unit.
+  /// \param SplitDebugInlining    Whether to emit inline debug info.
+  /// \param DebugInfoForProfiling Whether to emit extra debug info for
+  /// profile collection.
+  /// \param SysRoot         The Clang system root (value of -isysroot).
+  /// \param SysRootLen      The length of the C string passed to \c SysRoot.
+  /// \param SDK           The SDK. On Darwin, the last component of the sysroot.
+  /// \param SDKLen        The length of the C string passed to \c SDK.
+  LLVMMetadataRef LLVMDIBuilderCreateCompileUnit(
+    LLVMDIBuilderRef Builder,
+    int Lang,
+    LLVMMetadataRef FileRef,
+    ffi.Pointer<ffi.Char> Producer,
+    int ProducerLen,
+    int isOptimized,
+    ffi.Pointer<ffi.Char> Flags,
+    int FlagsLen,
+    int RuntimeVer,
+    ffi.Pointer<ffi.Char> SplitName,
+    int SplitNameLen,
+    int Kind,
+    int DWOId,
+    int SplitDebugInlining,
+    int DebugInfoForProfiling,
+    ffi.Pointer<ffi.Char> SysRoot,
+    int SysRootLen,
+    ffi.Pointer<ffi.Char> SDK,
+    int SDKLen,
+  ) {
+    return _LLVMDIBuilderCreateCompileUnit(
+      Builder,
+      Lang,
+      FileRef,
+      Producer,
+      ProducerLen,
+      isOptimized,
+      Flags,
+      FlagsLen,
+      RuntimeVer,
+      SplitName,
+      SplitNameLen,
+      Kind,
+      DWOId,
+      SplitDebugInlining,
+      DebugInfoForProfiling,
+      SysRoot,
+      SysRootLen,
+      SDK,
+      SDKLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateCompileUnitPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Int32,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMBool,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.UnsignedInt,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Int32,
+              ffi.UnsignedInt,
+              LLVMBool,
+              LLVMBool,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreateCompileUnit');
+  late final _LLVMDIBuilderCreateCompileUnit =
+      _LLVMDIBuilderCreateCompileUnitPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              int,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+              int,
+              int,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int)>();
+
+  /// Create a file descriptor to hold debugging information for a file.
+  /// \param Builder      The \c DIBuilder.
+  /// \param Filename     File name.
+  /// \param FilenameLen  The length of the C string passed to \c Filename.
+  /// \param Directory    Directory.
+  /// \param DirectoryLen The length of the C string passed to \c Directory.
+  LLVMMetadataRef LLVMDIBuilderCreateFile(
+    LLVMDIBuilderRef Builder,
+    ffi.Pointer<ffi.Char> Filename,
+    int FilenameLen,
+    ffi.Pointer<ffi.Char> Directory,
+    int DirectoryLen,
+  ) {
+    return _LLVMDIBuilderCreateFile(
+      Builder,
+      Filename,
+      FilenameLen,
+      Directory,
+      DirectoryLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateFilePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreateFile');
+  late final _LLVMDIBuilderCreateFile = _LLVMDIBuilderCreateFilePtr.asFunction<
+      LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Char>, int,
+          ffi.Pointer<ffi.Char>, int)>();
+
+  /// Creates a new descriptor for a module with the specified parent scope.
+  /// \param Builder         The \c DIBuilder.
+  /// \param ParentScope     The parent scope containing this module declaration.
+  /// \param Name            Module name.
+  /// \param NameLen         The length of the C string passed to \c Name.
+  /// \param ConfigMacros    A space-separated shell-quoted list of -D macro
+  /// definitions as they would appear on a command line.
+  /// \param ConfigMacrosLen The length of the C string passed to \c ConfigMacros.
+  /// \param IncludePath     The path to the module map file.
+  /// \param IncludePathLen  The length of the C string passed to \c IncludePath.
+  /// \param APINotesFile    The path to an API notes file for the module.
+  /// \param APINotesFileLen The length of the C string passed to \c APINotestFile.
+  LLVMMetadataRef LLVMDIBuilderCreateModule(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef ParentScope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    ffi.Pointer<ffi.Char> ConfigMacros,
+    int ConfigMacrosLen,
+    ffi.Pointer<ffi.Char> IncludePath,
+    int IncludePathLen,
+    ffi.Pointer<ffi.Char> APINotesFile,
+    int APINotesFileLen,
+  ) {
+    return _LLVMDIBuilderCreateModule(
+      Builder,
+      ParentScope,
+      Name,
+      NameLen,
+      ConfigMacros,
+      ConfigMacrosLen,
+      IncludePath,
+      IncludePathLen,
+      APINotesFile,
+      APINotesFileLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateModulePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreateModule');
+  late final _LLVMDIBuilderCreateModule =
+      _LLVMDIBuilderCreateModulePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int)>();
+
+  /// Creates a new descriptor for a namespace with the specified parent scope.
+  /// \param Builder          The \c DIBuilder.
+  /// \param ParentScope      The parent scope containing this module declaration.
+  /// \param Name             NameSpace name.
+  /// \param NameLen          The length of the C string passed to \c Name.
+  /// \param ExportSymbols    Whether or not the namespace exports symbols, e.g.
+  /// this is true of C++ inline namespaces.
+  LLVMMetadataRef LLVMDIBuilderCreateNameSpace(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef ParentScope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    int ExportSymbols,
+  ) {
+    return _LLVMDIBuilderCreateNameSpace(
+      Builder,
+      ParentScope,
+      Name,
+      NameLen,
+      ExportSymbols,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateNameSpacePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMBool)>>('LLVMDIBuilderCreateNameSpace');
+  late final _LLVMDIBuilderCreateNameSpace =
+      _LLVMDIBuilderCreateNameSpacePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>, int, int)>();
+
+  /// Create a new descriptor for the specified subprogram.
+  /// \param Builder         The \c DIBuilder.
+  /// \param Scope           Function scope.
+  /// \param Name            Function name.
+  /// \param NameLen         Length of enumeration name.
+  /// \param LinkageName     Mangled function name.
+  /// \param LinkageNameLen  Length of linkage name.
+  /// \param File            File where this variable is defined.
+  /// \param LineNo          Line number.
+  /// \param Ty              Function type.
+  /// \param IsLocalToUnit   True if this function is not externally visible.
+  /// \param IsDefinition    True if this is a function definition.
+  /// \param ScopeLine       Set to the beginning of the scope this starts
+  /// \param Flags           E.g.: \c LLVMDIFlagLValueReference. These flags are
+  /// used to emit dwarf attributes.
+  /// \param IsOptimized     True if optimization is ON.
+  LLVMMetadataRef LLVMDIBuilderCreateFunction(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    ffi.Pointer<ffi.Char> LinkageName,
+    int LinkageNameLen,
+    LLVMMetadataRef File,
+    int LineNo,
+    LLVMMetadataRef Ty,
+    int IsLocalToUnit,
+    int IsDefinition,
+    int ScopeLine,
+    int Flags,
+    int IsOptimized,
+  ) {
+    return _LLVMDIBuilderCreateFunction(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      LinkageName,
+      LinkageNameLen,
+      File,
+      LineNo,
+      Ty,
+      IsLocalToUnit,
+      IsDefinition,
+      ScopeLine,
+      Flags,
+      IsOptimized,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateFunctionPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              LLVMBool,
+              LLVMBool,
+              ffi.UnsignedInt,
+              ffi.Int32,
+              LLVMBool)>>('LLVMDIBuilderCreateFunction');
+  late final _LLVMDIBuilderCreateFunction =
+      _LLVMDIBuilderCreateFunctionPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              LLVMMetadataRef,
+              int,
+              int,
+              int,
+              int,
+              int)>();
+
+  /// Create a descriptor for a lexical block with the specified parent context.
+  /// \param Builder      The \c DIBuilder.
+  /// \param Scope        Parent lexical block.
+  /// \param File         Source file.
+  /// \param Line         The line in the source file.
+  /// \param Column       The column in the source file.
+  LLVMMetadataRef LLVMDIBuilderCreateLexicalBlock(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    LLVMMetadataRef File,
+    int Line,
+    int Column,
+  ) {
+    return _LLVMDIBuilderCreateLexicalBlock(
+      Builder,
+      Scope,
+      File,
+      Line,
+      Column,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateLexicalBlockPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.UnsignedInt)>>('LLVMDIBuilderCreateLexicalBlock');
+  late final _LLVMDIBuilderCreateLexicalBlock =
+      _LLVMDIBuilderCreateLexicalBlockPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef, LLVMMetadataRef, LLVMMetadataRef, int, int)>();
+
+  /// Create a descriptor for a lexical block with a new file attached.
+  /// \param Builder        The \c DIBuilder.
+  /// \param Scope          Lexical block.
+  /// \param File           Source file.
+  /// \param Discriminator  DWARF path discriminator value.
+  LLVMMetadataRef LLVMDIBuilderCreateLexicalBlockFile(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    LLVMMetadataRef File,
+    int Discriminator,
+  ) {
+    return _LLVMDIBuilderCreateLexicalBlockFile(
+      Builder,
+      Scope,
+      File,
+      Discriminator,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateLexicalBlockFilePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.UnsignedInt)>>('LLVMDIBuilderCreateLexicalBlockFile');
+  late final _LLVMDIBuilderCreateLexicalBlockFile =
+      _LLVMDIBuilderCreateLexicalBlockFilePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef, LLVMMetadataRef, LLVMMetadataRef, int)>();
+
+  /// Create a descriptor for an imported namespace. Suitable for e.g. C++
+  /// using declarations.
+  /// \param Builder    The \c DIBuilder.
+  /// \param Scope      The scope this module is imported into
+  /// \param File       File where the declaration is located.
+  /// \param Line       Line number of the declaration.
+  LLVMMetadataRef LLVMDIBuilderCreateImportedModuleFromNamespace(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    LLVMMetadataRef NS,
+    LLVMMetadataRef File,
+    int Line,
+  ) {
+    return _LLVMDIBuilderCreateImportedModuleFromNamespace(
+      Builder,
+      Scope,
+      NS,
+      File,
+      Line,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateImportedModuleFromNamespacePtr = _lookup<
+          ffi.NativeFunction<
+              LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef,
+                  LLVMMetadataRef, LLVMMetadataRef, ffi.UnsignedInt)>>(
+      'LLVMDIBuilderCreateImportedModuleFromNamespace');
+  late final _LLVMDIBuilderCreateImportedModuleFromNamespace =
+      _LLVMDIBuilderCreateImportedModuleFromNamespacePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef,
+              LLVMMetadataRef, LLVMMetadataRef, int)>();
+
+  /// Create a descriptor for an imported module that aliases another
+  /// imported entity descriptor.
+  /// \param Builder        The \c DIBuilder.
+  /// \param Scope          The scope this module is imported into
+  /// \param ImportedEntity Previous imported entity to alias.
+  /// \param File           File where the declaration is located.
+  /// \param Line           Line number of the declaration.
+  /// \param Elements       Renamed elements.
+  /// \param NumElements    Number of renamed elements.
+  LLVMMetadataRef LLVMDIBuilderCreateImportedModuleFromAlias(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    LLVMMetadataRef ImportedEntity,
+    LLVMMetadataRef File,
+    int Line,
+    ffi.Pointer<LLVMMetadataRef> Elements,
+    int NumElements,
+  ) {
+    return _LLVMDIBuilderCreateImportedModuleFromAlias(
+      Builder,
+      Scope,
+      ImportedEntity,
+      File,
+      Line,
+      Elements,
+      NumElements,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateImportedModuleFromAliasPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.UnsignedInt)>>('LLVMDIBuilderCreateImportedModuleFromAlias');
+  late final _LLVMDIBuilderCreateImportedModuleFromAlias =
+      _LLVMDIBuilderCreateImportedModuleFromAliasPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              int,
+              ffi.Pointer<LLVMMetadataRef>,
+              int)>();
+
+  /// Create a descriptor for an imported module.
+  /// \param Builder        The \c DIBuilder.
+  /// \param Scope          The scope this module is imported into
+  /// \param M              The module being imported here
+  /// \param File           File where the declaration is located.
+  /// \param Line           Line number of the declaration.
+  /// \param Elements       Renamed elements.
+  /// \param NumElements    Number of renamed elements.
+  LLVMMetadataRef LLVMDIBuilderCreateImportedModuleFromModule(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    LLVMMetadataRef M,
+    LLVMMetadataRef File,
+    int Line,
+    ffi.Pointer<LLVMMetadataRef> Elements,
+    int NumElements,
+  ) {
+    return _LLVMDIBuilderCreateImportedModuleFromModule(
+      Builder,
+      Scope,
+      M,
+      File,
+      Line,
+      Elements,
+      NumElements,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateImportedModuleFromModulePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.UnsignedInt)>>('LLVMDIBuilderCreateImportedModuleFromModule');
+  late final _LLVMDIBuilderCreateImportedModuleFromModule =
+      _LLVMDIBuilderCreateImportedModuleFromModulePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              int,
+              ffi.Pointer<LLVMMetadataRef>,
+              int)>();
+
+  /// Create a descriptor for an imported function, type, or variable.  Suitable
+  /// for e.g. FORTRAN-style USE declarations.
+  /// \param Builder        The DIBuilder.
+  /// \param Scope          The scope this module is imported into.
+  /// \param Decl           The declaration (or definition) of a function, type,
+  /// or variable.
+  /// \param File           File where the declaration is located.
+  /// \param Line           Line number of the declaration.
+  /// \param Name           A name that uniquely identifies this imported
+  /// declaration.
+  /// \param NameLen        The length of the C string passed to \c Name.
+  /// \param Elements       Renamed elements.
+  /// \param NumElements    Number of renamed elements.
+  LLVMMetadataRef LLVMDIBuilderCreateImportedDeclaration(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    LLVMMetadataRef Decl,
+    LLVMMetadataRef File,
+    int Line,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    ffi.Pointer<LLVMMetadataRef> Elements,
+    int NumElements,
+  ) {
+    return _LLVMDIBuilderCreateImportedDeclaration(
+      Builder,
+      Scope,
+      Decl,
+      File,
+      Line,
+      Name,
+      NameLen,
+      Elements,
+      NumElements,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateImportedDeclarationPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.UnsignedInt)>>('LLVMDIBuilderCreateImportedDeclaration');
+  late final _LLVMDIBuilderCreateImportedDeclaration =
+      _LLVMDIBuilderCreateImportedDeclarationPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<LLVMMetadataRef>,
+              int)>();
+
+  /// Creates a new DebugLocation that describes a source location.
+  /// \param Line The line in the source file.
+  /// \param Column The column in the source file.
+  /// \param Scope The scope in which the location resides.
+  /// \param InlinedAt The scope where this location was inlined, if at all.
+  /// (optional).
+  /// \note If the item to which this location is attached cannot be
+  /// attributed to a source line, pass 0 for the line and column.
+  LLVMMetadataRef LLVMDIBuilderCreateDebugLocation(
+    LLVMContextRef Ctx,
+    int Line,
+    int Column,
+    LLVMMetadataRef Scope,
+    LLVMMetadataRef InlinedAt,
+  ) {
+    return _LLVMDIBuilderCreateDebugLocation(
+      Ctx,
+      Line,
+      Column,
+      Scope,
+      InlinedAt,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateDebugLocationPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMContextRef,
+              ffi.UnsignedInt,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateDebugLocation');
+  late final _LLVMDIBuilderCreateDebugLocation =
+      _LLVMDIBuilderCreateDebugLocationPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMContextRef, int, int, LLVMMetadataRef, LLVMMetadataRef)>();
+
+  /// Get the line number of this debug location.
+  /// \param Location     The debug location.
+  ///
+  /// @see DILocation::getLine()
+  int LLVMDILocationGetLine(
+    LLVMMetadataRef Location,
+  ) {
+    return _LLVMDILocationGetLine(
+      Location,
+    );
+  }
+
+  late final _LLVMDILocationGetLinePtr =
+      _lookup<ffi.NativeFunction<ffi.UnsignedInt Function(LLVMMetadataRef)>>(
+          'LLVMDILocationGetLine');
+  late final _LLVMDILocationGetLine =
+      _LLVMDILocationGetLinePtr.asFunction<int Function(LLVMMetadataRef)>();
+
+  /// Get the column number of this debug location.
+  /// \param Location     The debug location.
+  ///
+  /// @see DILocation::getColumn()
+  int LLVMDILocationGetColumn(
+    LLVMMetadataRef Location,
+  ) {
+    return _LLVMDILocationGetColumn(
+      Location,
+    );
+  }
+
+  late final _LLVMDILocationGetColumnPtr =
+      _lookup<ffi.NativeFunction<ffi.UnsignedInt Function(LLVMMetadataRef)>>(
+          'LLVMDILocationGetColumn');
+  late final _LLVMDILocationGetColumn =
+      _LLVMDILocationGetColumnPtr.asFunction<int Function(LLVMMetadataRef)>();
+
+  /// Get the local scope associated with this debug location.
+  /// \param Location     The debug location.
+  ///
+  /// @see DILocation::getScope()
+  LLVMMetadataRef LLVMDILocationGetScope(
+    LLVMMetadataRef Location,
+  ) {
+    return _LLVMDILocationGetScope(
+      Location,
+    );
+  }
+
+  late final _LLVMDILocationGetScopePtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataRef Function(LLVMMetadataRef)>>(
+          'LLVMDILocationGetScope');
+  late final _LLVMDILocationGetScope = _LLVMDILocationGetScopePtr.asFunction<
+      LLVMMetadataRef Function(LLVMMetadataRef)>();
+
+  /// Get the "inline at" location associated with this debug location.
+  /// \param Location     The debug location.
+  ///
+  /// @see DILocation::getInlinedAt()
+  LLVMMetadataRef LLVMDILocationGetInlinedAt(
+    LLVMMetadataRef Location,
+  ) {
+    return _LLVMDILocationGetInlinedAt(
+      Location,
+    );
+  }
+
+  late final _LLVMDILocationGetInlinedAtPtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataRef Function(LLVMMetadataRef)>>(
+          'LLVMDILocationGetInlinedAt');
+  late final _LLVMDILocationGetInlinedAt = _LLVMDILocationGetInlinedAtPtr
+      .asFunction<LLVMMetadataRef Function(LLVMMetadataRef)>();
+
+  /// Get the metadata of the file associated with a given scope.
+  /// \param Scope     The scope object.
+  ///
+  /// @see DIScope::getFile()
+  LLVMMetadataRef LLVMDIScopeGetFile(
+    LLVMMetadataRef Scope,
+  ) {
+    return _LLVMDIScopeGetFile(
+      Scope,
+    );
+  }
+
+  late final _LLVMDIScopeGetFilePtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataRef Function(LLVMMetadataRef)>>(
+          'LLVMDIScopeGetFile');
+  late final _LLVMDIScopeGetFile = _LLVMDIScopeGetFilePtr.asFunction<
+      LLVMMetadataRef Function(LLVMMetadataRef)>();
+
+  /// Get the directory of a given file.
+  /// \param File     The file object.
+  /// \param Len      The length of the returned string.
+  ///
+  /// @see DIFile::getDirectory()
+  ffi.Pointer<ffi.Char> LLVMDIFileGetDirectory(
+    LLVMMetadataRef File,
+    ffi.Pointer<ffi.UnsignedInt> Len,
+  ) {
+    return _LLVMDIFileGetDirectory(
+      File,
+      Len,
+    );
+  }
+
+  late final _LLVMDIFileGetDirectoryPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(LLVMMetadataRef,
+              ffi.Pointer<ffi.UnsignedInt>)>>('LLVMDIFileGetDirectory');
+  late final _LLVMDIFileGetDirectory = _LLVMDIFileGetDirectoryPtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(
+          LLVMMetadataRef, ffi.Pointer<ffi.UnsignedInt>)>();
+
+  /// Get the name of a given file.
+  /// \param File     The file object.
+  /// \param Len      The length of the returned string.
+  ///
+  /// @see DIFile::getFilename()
+  ffi.Pointer<ffi.Char> LLVMDIFileGetFilename(
+    LLVMMetadataRef File,
+    ffi.Pointer<ffi.UnsignedInt> Len,
+  ) {
+    return _LLVMDIFileGetFilename(
+      File,
+      Len,
+    );
+  }
+
+  late final _LLVMDIFileGetFilenamePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(LLVMMetadataRef,
+              ffi.Pointer<ffi.UnsignedInt>)>>('LLVMDIFileGetFilename');
+  late final _LLVMDIFileGetFilename = _LLVMDIFileGetFilenamePtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(
+          LLVMMetadataRef, ffi.Pointer<ffi.UnsignedInt>)>();
+
+  /// Get the source of a given file.
+  /// \param File     The file object.
+  /// \param Len      The length of the returned string.
+  ///
+  /// @see DIFile::getSource()
+  ffi.Pointer<ffi.Char> LLVMDIFileGetSource(
+    LLVMMetadataRef File,
+    ffi.Pointer<ffi.UnsignedInt> Len,
+  ) {
+    return _LLVMDIFileGetSource(
+      File,
+      Len,
+    );
+  }
+
+  late final _LLVMDIFileGetSourcePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(LLVMMetadataRef,
+              ffi.Pointer<ffi.UnsignedInt>)>>('LLVMDIFileGetSource');
+  late final _LLVMDIFileGetSource = _LLVMDIFileGetSourcePtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(
+          LLVMMetadataRef, ffi.Pointer<ffi.UnsignedInt>)>();
+
+  /// Create a type array.
+  /// \param Builder        The DIBuilder.
+  /// \param Data           The type elements.
+  /// \param NumElements    Number of type elements.
+  LLVMMetadataRef LLVMDIBuilderGetOrCreateTypeArray(
+    LLVMDIBuilderRef Builder,
+    ffi.Pointer<LLVMMetadataRef> Data,
+    int NumElements,
+  ) {
+    return _LLVMDIBuilderGetOrCreateTypeArray(
+      Builder,
+      Data,
+      NumElements,
+    );
+  }
+
+  late final _LLVMDIBuilderGetOrCreateTypeArrayPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.Int)>>('LLVMDIBuilderGetOrCreateTypeArray');
+  late final _LLVMDIBuilderGetOrCreateTypeArray =
+      _LLVMDIBuilderGetOrCreateTypeArrayPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef, ffi.Pointer<LLVMMetadataRef>, int)>();
+
+  /// Create subroutine type.
+  /// \param Builder        The DIBuilder.
+  /// \param File            The file in which the subroutine resides.
+  /// \param ParameterTypes  An array of subroutine parameter types. This
+  /// includes return type at 0th index.
+  /// \param NumParameterTypes The number of parameter types in \c ParameterTypes
+  /// \param Flags           E.g.: \c LLVMDIFlagLValueReference.
+  /// These flags are used to emit dwarf attributes.
+  LLVMMetadataRef LLVMDIBuilderCreateSubroutineType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef File,
+    ffi.Pointer<LLVMMetadataRef> ParameterTypes,
+    int NumParameterTypes,
+    int Flags,
+  ) {
+    return _LLVMDIBuilderCreateSubroutineType(
+      Builder,
+      File,
+      ParameterTypes,
+      NumParameterTypes,
+      Flags,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateSubroutineTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.UnsignedInt,
+              ffi.Int32)>>('LLVMDIBuilderCreateSubroutineType');
+  late final _LLVMDIBuilderCreateSubroutineType =
+      _LLVMDIBuilderCreateSubroutineTypePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef,
+              ffi.Pointer<LLVMMetadataRef>, int, int)>();
+
+  /// Create debugging information entry for a macro.
+  /// @param Builder         The DIBuilder.
+  /// @param ParentMacroFile Macro parent (could be NULL).
+  /// @param Line            Source line number where the macro is defined.
+  /// @param RecordType      DW_MACINFO_define or DW_MACINFO_undef.
+  /// @param Name            Macro name.
+  /// @param NameLen         Macro name length.
+  /// @param Value           Macro value.
+  /// @param ValueLen        Macro value length.
+  LLVMMetadataRef LLVMDIBuilderCreateMacro(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef ParentMacroFile,
+    int Line,
+    int RecordType,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    ffi.Pointer<ffi.Char> Value,
+    int ValueLen,
+  ) {
+    return _LLVMDIBuilderCreateMacro(
+      Builder,
+      ParentMacroFile,
+      Line,
+      RecordType,
+      Name,
+      NameLen,
+      Value,
+      ValueLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateMacroPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Int32,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreateMacro');
+  late final _LLVMDIBuilderCreateMacro =
+      _LLVMDIBuilderCreateMacroPtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef, int, int,
+              ffi.Pointer<ffi.Char>, int, ffi.Pointer<ffi.Char>, int)>();
+
+  /// Create debugging information temporary entry for a macro file.
+  /// List of macro node direct children will be calculated by DIBuilder,
+  /// using the \p ParentMacroFile relationship.
+  /// @param Builder         The DIBuilder.
+  /// @param ParentMacroFile Macro parent (could be NULL).
+  /// @param Line            Source line number where the macro file is included.
+  /// @param File            File descriptor containing the name of the macro file.
+  LLVMMetadataRef LLVMDIBuilderCreateTempMacroFile(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef ParentMacroFile,
+    int Line,
+    LLVMMetadataRef File,
+  ) {
+    return _LLVMDIBuilderCreateTempMacroFile(
+      Builder,
+      ParentMacroFile,
+      Line,
+      File,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateTempMacroFilePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateTempMacroFile');
+  late final _LLVMDIBuilderCreateTempMacroFile =
+      _LLVMDIBuilderCreateTempMacroFilePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef, LLVMMetadataRef, int, LLVMMetadataRef)>();
+
+  /// Create debugging information entry for an enumerator.
+  /// @param Builder        The DIBuilder.
+  /// @param Name           Enumerator name.
+  /// @param NameLen        Length of enumerator name.
+  /// @param Value          Enumerator value.
+  /// @param IsUnsigned     True if the value is unsigned.
+  LLVMMetadataRef LLVMDIBuilderCreateEnumerator(
+    LLVMDIBuilderRef Builder,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    int Value,
+    int IsUnsigned,
+  ) {
+    return _LLVMDIBuilderCreateEnumerator(
+      Builder,
+      Name,
+      NameLen,
+      Value,
+      IsUnsigned,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateEnumeratorPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Char>,
+              ffi.Int, ffi.Int64, LLVMBool)>>('LLVMDIBuilderCreateEnumerator');
+  late final _LLVMDIBuilderCreateEnumerator =
+      _LLVMDIBuilderCreateEnumeratorPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef, ffi.Pointer<ffi.Char>, int, int, int)>();
+
+  /// Create debugging information entry for an enumeration.
+  /// \param Builder        The DIBuilder.
+  /// \param Scope          Scope in which this enumeration is defined.
+  /// \param Name           Enumeration name.
+  /// \param NameLen        Length of enumeration name.
+  /// \param File           File where this member is defined.
+  /// \param LineNumber     Line number.
+  /// \param SizeInBits     Member size.
+  /// \param AlignInBits    Member alignment.
+  /// \param Elements       Enumeration elements.
+  /// \param NumElements    Number of enumeration elements.
+  /// \param ClassTy        Underlying type of a C++11/ObjC fixed enum.
+  LLVMMetadataRef LLVMDIBuilderCreateEnumerationType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNumber,
+    int SizeInBits,
+    int AlignInBits,
+    ffi.Pointer<LLVMMetadataRef> Elements,
+    int NumElements,
+    LLVMMetadataRef ClassTy,
+  ) {
+    return _LLVMDIBuilderCreateEnumerationType(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      File,
+      LineNumber,
+      SizeInBits,
+      AlignInBits,
+      Elements,
+      NumElements,
+      ClassTy,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateEnumerationTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.UnsignedInt,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateEnumerationType');
+  late final _LLVMDIBuilderCreateEnumerationType =
+      _LLVMDIBuilderCreateEnumerationTypePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              int,
+              int,
+              ffi.Pointer<LLVMMetadataRef>,
+              int,
+              LLVMMetadataRef)>();
+
+  /// Create debugging information entry for a union.
+  /// \param Builder      The DIBuilder.
+  /// \param Scope        Scope in which this union is defined.
+  /// \param Name         Union name.
+  /// \param NameLen      Length of union name.
+  /// \param File         File where this member is defined.
+  /// \param LineNumber   Line number.
+  /// \param SizeInBits   Member size.
+  /// \param AlignInBits  Member alignment.
+  /// \param Flags        Flags to encode member attribute, e.g. private
+  /// \param Elements     Union elements.
+  /// \param NumElements  Number of union elements.
+  /// \param RunTimeLang  Optional parameter, Objective-C runtime version.
+  /// \param UniqueId     A unique identifier for the union.
+  /// \param UniqueIdLen  Length of unique identifier.
+  LLVMMetadataRef LLVMDIBuilderCreateUnionType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNumber,
+    int SizeInBits,
+    int AlignInBits,
+    int Flags,
+    ffi.Pointer<LLVMMetadataRef> Elements,
+    int NumElements,
+    int RunTimeLang,
+    ffi.Pointer<ffi.Char> UniqueId,
+    int UniqueIdLen,
+  ) {
+    return _LLVMDIBuilderCreateUnionType(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      File,
+      LineNumber,
+      SizeInBits,
+      AlignInBits,
+      Flags,
+      Elements,
+      NumElements,
+      RunTimeLang,
+      UniqueId,
+      UniqueIdLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateUnionTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.Int32,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.UnsignedInt,
+              ffi.UnsignedInt,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreateUnionType');
+  late final _LLVMDIBuilderCreateUnionType =
+      _LLVMDIBuilderCreateUnionTypePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              int,
+              int,
+              int,
+              ffi.Pointer<LLVMMetadataRef>,
+              int,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int)>();
+
+  /// Create debugging information entry for an array.
+  /// \param Builder      The DIBuilder.
+  /// \param Size         Array size.
+  /// \param AlignInBits  Alignment.
+  /// \param Ty           Element type.
+  /// \param Subscripts   Subscripts.
+  /// \param NumSubscripts Number of subscripts.
+  LLVMMetadataRef LLVMDIBuilderCreateArrayType(
+    LLVMDIBuilderRef Builder,
+    int Size,
+    int AlignInBits,
+    LLVMMetadataRef Ty,
+    ffi.Pointer<LLVMMetadataRef> Subscripts,
+    int NumSubscripts,
+  ) {
+    return _LLVMDIBuilderCreateArrayType(
+      Builder,
+      Size,
+      AlignInBits,
+      Ty,
+      Subscripts,
+      NumSubscripts,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateArrayTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Uint64,
+              ffi.Uint32,
+              LLVMMetadataRef,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.UnsignedInt)>>('LLVMDIBuilderCreateArrayType');
+  late final _LLVMDIBuilderCreateArrayType =
+      _LLVMDIBuilderCreateArrayTypePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, int, int, LLVMMetadataRef,
+              ffi.Pointer<LLVMMetadataRef>, int)>();
+
+  /// Create debugging information entry for a vector type.
+  /// \param Builder      The DIBuilder.
+  /// \param Size         Vector size.
+  /// \param AlignInBits  Alignment.
+  /// \param Ty           Element type.
+  /// \param Subscripts   Subscripts.
+  /// \param NumSubscripts Number of subscripts.
+  LLVMMetadataRef LLVMDIBuilderCreateVectorType(
+    LLVMDIBuilderRef Builder,
+    int Size,
+    int AlignInBits,
+    LLVMMetadataRef Ty,
+    ffi.Pointer<LLVMMetadataRef> Subscripts,
+    int NumSubscripts,
+  ) {
+    return _LLVMDIBuilderCreateVectorType(
+      Builder,
+      Size,
+      AlignInBits,
+      Ty,
+      Subscripts,
+      NumSubscripts,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateVectorTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Uint64,
+              ffi.Uint32,
+              LLVMMetadataRef,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.UnsignedInt)>>('LLVMDIBuilderCreateVectorType');
+  late final _LLVMDIBuilderCreateVectorType =
+      _LLVMDIBuilderCreateVectorTypePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, int, int, LLVMMetadataRef,
+              ffi.Pointer<LLVMMetadataRef>, int)>();
+
+  /// Create a DWARF unspecified type.
+  /// \param Builder   The DIBuilder.
+  /// \param Name      The unspecified type's name.
+  /// \param NameLen   Length of type name.
+  LLVMMetadataRef LLVMDIBuilderCreateUnspecifiedType(
+    LLVMDIBuilderRef Builder,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+  ) {
+    return _LLVMDIBuilderCreateUnspecifiedType(
+      Builder,
+      Name,
+      NameLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateUnspecifiedTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreateUnspecifiedType');
+  late final _LLVMDIBuilderCreateUnspecifiedType =
+      _LLVMDIBuilderCreateUnspecifiedTypePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef, ffi.Pointer<ffi.Char>, int)>();
+
+  /// Create debugging information entry for a basic
+  /// type.
+  /// \param Builder     The DIBuilder.
+  /// \param Name        Type name.
+  /// \param NameLen     Length of type name.
+  /// \param SizeInBits  Size of the type.
+  /// \param Encoding    DWARF encoding code, e.g. \c LLVMDWARFTypeEncoding_float.
+  /// \param Flags       Flags to encode optional attribute like endianity
+  LLVMMetadataRef LLVMDIBuilderCreateBasicType(
+    LLVMDIBuilderRef Builder,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    int SizeInBits,
+    int Encoding,
+    int Flags,
+  ) {
+    return _LLVMDIBuilderCreateBasicType(
+      Builder,
+      Name,
+      NameLen,
+      SizeInBits,
+      Encoding,
+      Flags,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateBasicTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Uint64,
+              LLVMDWARFTypeEncoding,
+              ffi.Int32)>>('LLVMDIBuilderCreateBasicType');
+  late final _LLVMDIBuilderCreateBasicType =
+      _LLVMDIBuilderCreateBasicTypePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef, ffi.Pointer<ffi.Char>, int, int, int, int)>();
+
+  /// Create debugging information entry for a pointer.
+  /// \param Builder     The DIBuilder.
+  /// \param PointeeTy         Type pointed by this pointer.
+  /// \param SizeInBits        Size.
+  /// \param AlignInBits       Alignment. (optional, pass 0 to ignore)
+  /// \param AddressSpace      DWARF address space. (optional, pass 0 to ignore)
+  /// \param Name              Pointer type name. (optional)
+  /// \param NameLen           Length of pointer type name. (optional)
+  LLVMMetadataRef LLVMDIBuilderCreatePointerType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef PointeeTy,
+    int SizeInBits,
+    int AlignInBits,
+    int AddressSpace,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+  ) {
+    return _LLVMDIBuilderCreatePointerType(
+      Builder,
+      PointeeTy,
+      SizeInBits,
+      AlignInBits,
+      AddressSpace,
+      Name,
+      NameLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreatePointerTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.UnsignedInt,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreatePointerType');
+  late final _LLVMDIBuilderCreatePointerType =
+      _LLVMDIBuilderCreatePointerTypePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef, int, int,
+              int, ffi.Pointer<ffi.Char>, int)>();
+
+  /// Create debugging information entry for a struct.
+  /// \param Builder     The DIBuilder.
+  /// \param Scope        Scope in which this struct is defined.
+  /// \param Name         Struct name.
+  /// \param NameLen      Struct name length.
+  /// \param File         File where this member is defined.
+  /// \param LineNumber   Line number.
+  /// \param SizeInBits   Member size.
+  /// \param AlignInBits  Member alignment.
+  /// \param Flags        Flags to encode member attribute, e.g. private
+  /// \param Elements     Struct elements.
+  /// \param NumElements  Number of struct elements.
+  /// \param RunTimeLang  Optional parameter, Objective-C runtime version.
+  /// \param VTableHolder The object containing the vtable for the struct.
+  /// \param UniqueId     A unique identifier for the struct.
+  /// \param UniqueIdLen  Length of the unique identifier for the struct.
+  LLVMMetadataRef LLVMDIBuilderCreateStructType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNumber,
+    int SizeInBits,
+    int AlignInBits,
+    int Flags,
+    LLVMMetadataRef DerivedFrom,
+    ffi.Pointer<LLVMMetadataRef> Elements,
+    int NumElements,
+    int RunTimeLang,
+    LLVMMetadataRef VTableHolder,
+    ffi.Pointer<ffi.Char> UniqueId,
+    int UniqueIdLen,
+  ) {
+    return _LLVMDIBuilderCreateStructType(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      File,
+      LineNumber,
+      SizeInBits,
+      AlignInBits,
+      Flags,
+      DerivedFrom,
+      Elements,
+      NumElements,
+      RunTimeLang,
+      VTableHolder,
+      UniqueId,
+      UniqueIdLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateStructTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.Int32,
+              LLVMMetadataRef,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.UnsignedInt,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreateStructType');
+  late final _LLVMDIBuilderCreateStructType =
+      _LLVMDIBuilderCreateStructTypePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              int,
+              int,
+              int,
+              LLVMMetadataRef,
+              ffi.Pointer<LLVMMetadataRef>,
+              int,
+              int,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int)>();
+
+  /// Create debugging information entry for a member.
+  /// \param Builder      The DIBuilder.
+  /// \param Scope        Member scope.
+  /// \param Name         Member name.
+  /// \param NameLen      Length of member name.
+  /// \param File         File where this member is defined.
+  /// \param LineNo       Line number.
+  /// \param SizeInBits   Member size.
+  /// \param AlignInBits  Member alignment.
+  /// \param OffsetInBits Member offset.
+  /// \param Flags        Flags to encode member attribute, e.g. private
+  /// \param Ty           Parent type.
+  LLVMMetadataRef LLVMDIBuilderCreateMemberType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNo,
+    int SizeInBits,
+    int AlignInBits,
+    int OffsetInBits,
+    int Flags,
+    LLVMMetadataRef Ty,
+  ) {
+    return _LLVMDIBuilderCreateMemberType(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      File,
+      LineNo,
+      SizeInBits,
+      AlignInBits,
+      OffsetInBits,
+      Flags,
+      Ty,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateMemberTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.Uint64,
+              ffi.Int32,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateMemberType');
+  late final _LLVMDIBuilderCreateMemberType =
+      _LLVMDIBuilderCreateMemberTypePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              int,
+              int,
+              int,
+              int,
+              LLVMMetadataRef)>();
+
+  /// Create debugging information entry for a
+  /// C++ static data member.
+  /// \param Builder      The DIBuilder.
+  /// \param Scope        Member scope.
+  /// \param Name         Member name.
+  /// \param NameLen      Length of member name.
+  /// \param File         File where this member is declared.
+  /// \param LineNumber   Line number.
+  /// \param Type         Type of the static member.
+  /// \param Flags        Flags to encode member attribute, e.g. private.
+  /// \param ConstantVal  Const initializer of the member.
+  /// \param AlignInBits  Member alignment.
+  LLVMMetadataRef LLVMDIBuilderCreateStaticMemberType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNumber,
+    LLVMMetadataRef Type,
+    int Flags,
+    LLVMValueRef ConstantVal,
+    int AlignInBits,
+  ) {
+    return _LLVMDIBuilderCreateStaticMemberType(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      File,
+      LineNumber,
+      Type,
+      Flags,
+      ConstantVal,
+      AlignInBits,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateStaticMemberTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              ffi.Int32,
+              LLVMValueRef,
+              ffi.Uint32)>>('LLVMDIBuilderCreateStaticMemberType');
+  late final _LLVMDIBuilderCreateStaticMemberType =
+      _LLVMDIBuilderCreateStaticMemberTypePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              LLVMMetadataRef,
+              int,
+              LLVMValueRef,
+              int)>();
+
+  /// Create debugging information entry for a pointer to member.
+  /// \param Builder      The DIBuilder.
+  /// \param PointeeType  Type pointed to by this pointer.
+  /// \param ClassType    Type for which this pointer points to members of.
+  /// \param SizeInBits   Size.
+  /// \param AlignInBits  Alignment.
+  /// \param Flags        Flags.
+  LLVMMetadataRef LLVMDIBuilderCreateMemberPointerType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef PointeeType,
+    LLVMMetadataRef ClassType,
+    int SizeInBits,
+    int AlignInBits,
+    int Flags,
+  ) {
+    return _LLVMDIBuilderCreateMemberPointerType(
+      Builder,
+      PointeeType,
+      ClassType,
+      SizeInBits,
+      AlignInBits,
+      Flags,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateMemberPointerTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.Int32)>>('LLVMDIBuilderCreateMemberPointerType');
+  late final _LLVMDIBuilderCreateMemberPointerType =
+      _LLVMDIBuilderCreateMemberPointerTypePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef,
+              LLVMMetadataRef, int, int, int)>();
+
+  /// Create debugging information entry for Objective-C instance variable.
+  /// \param Builder      The DIBuilder.
+  /// \param Name         Member name.
+  /// \param NameLen      The length of the C string passed to \c Name.
+  /// \param File         File where this member is defined.
+  /// \param LineNo       Line number.
+  /// \param SizeInBits   Member size.
+  /// \param AlignInBits  Member alignment.
+  /// \param OffsetInBits Member offset.
+  /// \param Flags        Flags to encode member attribute, e.g. private
+  /// \param Ty           Parent type.
+  /// \param PropertyNode Property associated with this ivar.
+  LLVMMetadataRef LLVMDIBuilderCreateObjCIVar(
+    LLVMDIBuilderRef Builder,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNo,
+    int SizeInBits,
+    int AlignInBits,
+    int OffsetInBits,
+    int Flags,
+    LLVMMetadataRef Ty,
+    LLVMMetadataRef PropertyNode,
+  ) {
+    return _LLVMDIBuilderCreateObjCIVar(
+      Builder,
+      Name,
+      NameLen,
+      File,
+      LineNo,
+      SizeInBits,
+      AlignInBits,
+      OffsetInBits,
+      Flags,
+      Ty,
+      PropertyNode,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateObjCIVarPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.Uint64,
+              ffi.Int32,
+              LLVMMetadataRef,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateObjCIVar');
+  late final _LLVMDIBuilderCreateObjCIVar =
+      _LLVMDIBuilderCreateObjCIVarPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              int,
+              int,
+              int,
+              int,
+              LLVMMetadataRef,
+              LLVMMetadataRef)>();
+
+  /// Create debugging information entry for Objective-C property.
+  /// \param Builder            The DIBuilder.
+  /// \param Name               Property name.
+  /// \param NameLen            The length of the C string passed to \c Name.
+  /// \param File               File where this property is defined.
+  /// \param LineNo             Line number.
+  /// \param GetterName         Name of the Objective C property getter selector.
+  /// \param GetterNameLen      The length of the C string passed to \c GetterName.
+  /// \param SetterName         Name of the Objective C property setter selector.
+  /// \param SetterNameLen      The length of the C string passed to \c SetterName.
+  /// \param PropertyAttributes Objective C property attributes.
+  /// \param Ty                 Type.
+  LLVMMetadataRef LLVMDIBuilderCreateObjCProperty(
+    LLVMDIBuilderRef Builder,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNo,
+    ffi.Pointer<ffi.Char> GetterName,
+    int GetterNameLen,
+    ffi.Pointer<ffi.Char> SetterName,
+    int SetterNameLen,
+    int PropertyAttributes,
+    LLVMMetadataRef Ty,
+  ) {
+    return _LLVMDIBuilderCreateObjCProperty(
+      Builder,
+      Name,
+      NameLen,
+      File,
+      LineNo,
+      GetterName,
+      GetterNameLen,
+      SetterName,
+      SetterNameLen,
+      PropertyAttributes,
+      Ty,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateObjCPropertyPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.UnsignedInt,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateObjCProperty');
+  late final _LLVMDIBuilderCreateObjCProperty =
+      _LLVMDIBuilderCreateObjCPropertyPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+              LLVMMetadataRef)>();
+
+  /// Create a uniqued DIType* clone with FlagObjectPointer and FlagArtificial set.
+  /// \param Builder   The DIBuilder.
+  /// \param Type      The underlying type to which this pointer points.
+  LLVMMetadataRef LLVMDIBuilderCreateObjectPointerType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Type,
+  ) {
+    return _LLVMDIBuilderCreateObjectPointerType(
+      Builder,
+      Type,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateObjectPointerTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateObjectPointerType');
+  late final _LLVMDIBuilderCreateObjectPointerType =
+      _LLVMDIBuilderCreateObjectPointerTypePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef)>();
+
+  /// Create debugging information entry for a qualified
+  /// type, e.g. 'const int'.
+  /// \param Builder     The DIBuilder.
+  /// \param Tag         Tag identifying type,
+  /// e.g. LLVMDWARFTypeQualifier_volatile_type
+  /// \param Type        Base Type.
+  LLVMMetadataRef LLVMDIBuilderCreateQualifiedType(
+    LLVMDIBuilderRef Builder,
+    int Tag,
+    LLVMMetadataRef Type,
+  ) {
+    return _LLVMDIBuilderCreateQualifiedType(
+      Builder,
+      Tag,
+      Type,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateQualifiedTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.UnsignedInt,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateQualifiedType');
+  late final _LLVMDIBuilderCreateQualifiedType =
+      _LLVMDIBuilderCreateQualifiedTypePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, int, LLVMMetadataRef)>();
+
+  /// Create debugging information entry for a c++
+  /// style reference or rvalue reference type.
+  /// \param Builder   The DIBuilder.
+  /// \param Tag       Tag identifying type,
+  /// \param Type      Base Type.
+  LLVMMetadataRef LLVMDIBuilderCreateReferenceType(
+    LLVMDIBuilderRef Builder,
+    int Tag,
+    LLVMMetadataRef Type,
+  ) {
+    return _LLVMDIBuilderCreateReferenceType(
+      Builder,
+      Tag,
+      Type,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateReferenceTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.UnsignedInt,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateReferenceType');
+  late final _LLVMDIBuilderCreateReferenceType =
+      _LLVMDIBuilderCreateReferenceTypePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, int, LLVMMetadataRef)>();
+
+  /// Create C++11 nullptr type.
+  /// \param Builder   The DIBuilder.
+  LLVMMetadataRef LLVMDIBuilderCreateNullPtrType(
+    LLVMDIBuilderRef Builder,
+  ) {
+    return _LLVMDIBuilderCreateNullPtrType(
+      Builder,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateNullPtrTypePtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataRef Function(LLVMDIBuilderRef)>>(
+          'LLVMDIBuilderCreateNullPtrType');
+  late final _LLVMDIBuilderCreateNullPtrType =
+      _LLVMDIBuilderCreateNullPtrTypePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef)>();
+
+  /// Create debugging information entry for a typedef.
+  /// \param Builder    The DIBuilder.
+  /// \param Type       Original type.
+  /// \param Name       Typedef name.
+  /// \param File       File where this type is defined.
+  /// \param LineNo     Line number.
+  /// \param Scope      The surrounding context for the typedef.
+  LLVMMetadataRef LLVMDIBuilderCreateTypedef(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Type,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNo,
+    LLVMMetadataRef Scope,
+    int AlignInBits,
+  ) {
+    return _LLVMDIBuilderCreateTypedef(
+      Builder,
+      Type,
+      Name,
+      NameLen,
+      File,
+      LineNo,
+      Scope,
+      AlignInBits,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateTypedefPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              ffi.Uint32)>>('LLVMDIBuilderCreateTypedef');
+  late final _LLVMDIBuilderCreateTypedef =
+      _LLVMDIBuilderCreateTypedefPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              LLVMMetadataRef,
+              int)>();
+
+  /// Create debugging information entry to establish inheritance relationship
+  /// between two types.
+  /// \param Builder       The DIBuilder.
+  /// \param Ty            Original type.
+  /// \param BaseTy        Base type. Ty is inherits from base.
+  /// \param BaseOffset    Base offset.
+  /// \param VBPtrOffset  Virtual base pointer offset.
+  /// \param Flags         Flags to describe inheritance attribute, e.g. private
+  LLVMMetadataRef LLVMDIBuilderCreateInheritance(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Ty,
+    LLVMMetadataRef BaseTy,
+    int BaseOffset,
+    int VBPtrOffset,
+    int Flags,
+  ) {
+    return _LLVMDIBuilderCreateInheritance(
+      Builder,
+      Ty,
+      BaseTy,
+      BaseOffset,
+      VBPtrOffset,
+      Flags,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateInheritancePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.Int32)>>('LLVMDIBuilderCreateInheritance');
+  late final _LLVMDIBuilderCreateInheritance =
+      _LLVMDIBuilderCreateInheritancePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef,
+              LLVMMetadataRef, int, int, int)>();
+
+  /// Create a permanent forward-declared type.
+  /// \param Builder             The DIBuilder.
+  /// \param Tag                 A unique tag for this type.
+  /// \param Name                Type name.
+  /// \param NameLen             Length of type name.
+  /// \param Scope               Type scope.
+  /// \param File                File where this type is defined.
+  /// \param Line                Line number where this type is defined.
+  /// \param RuntimeLang         Indicates runtime version for languages like
+  /// Objective-C.
+  /// \param SizeInBits          Member size.
+  /// \param AlignInBits         Member alignment.
+  /// \param UniqueIdentifier    A unique identifier for the type.
+  /// \param UniqueIdentifierLen Length of the unique identifier.
+  LLVMMetadataRef LLVMDIBuilderCreateForwardDecl(
+    LLVMDIBuilderRef Builder,
+    int Tag,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef Scope,
+    LLVMMetadataRef File,
+    int Line,
+    int RuntimeLang,
+    int SizeInBits,
+    int AlignInBits,
+    ffi.Pointer<ffi.Char> UniqueIdentifier,
+    int UniqueIdentifierLen,
+  ) {
+    return _LLVMDIBuilderCreateForwardDecl(
+      Builder,
+      Tag,
+      Name,
+      NameLen,
+      Scope,
+      File,
+      Line,
+      RuntimeLang,
+      SizeInBits,
+      AlignInBits,
+      UniqueIdentifier,
+      UniqueIdentifierLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateForwardDeclPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.UnsignedInt,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.UnsignedInt,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreateForwardDecl');
+  late final _LLVMDIBuilderCreateForwardDecl =
+      _LLVMDIBuilderCreateForwardDeclPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              int,
+              int,
+              int,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int)>();
+
+  /// Create a temporary forward-declared type.
+  /// \param Builder             The DIBuilder.
+  /// \param Tag                 A unique tag for this type.
+  /// \param Name                Type name.
+  /// \param NameLen             Length of type name.
+  /// \param Scope               Type scope.
+  /// \param File                File where this type is defined.
+  /// \param Line                Line number where this type is defined.
+  /// \param RuntimeLang         Indicates runtime version for languages like
+  /// Objective-C.
+  /// \param SizeInBits          Member size.
+  /// \param AlignInBits         Member alignment.
+  /// \param Flags               Flags.
+  /// \param UniqueIdentifier    A unique identifier for the type.
+  /// \param UniqueIdentifierLen Length of the unique identifier.
+  LLVMMetadataRef LLVMDIBuilderCreateReplaceableCompositeType(
+    LLVMDIBuilderRef Builder,
+    int Tag,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef Scope,
+    LLVMMetadataRef File,
+    int Line,
+    int RuntimeLang,
+    int SizeInBits,
+    int AlignInBits,
+    int Flags,
+    ffi.Pointer<ffi.Char> UniqueIdentifier,
+    int UniqueIdentifierLen,
+  ) {
+    return _LLVMDIBuilderCreateReplaceableCompositeType(
+      Builder,
+      Tag,
+      Name,
+      NameLen,
+      Scope,
+      File,
+      Line,
+      RuntimeLang,
+      SizeInBits,
+      AlignInBits,
+      Flags,
+      UniqueIdentifier,
+      UniqueIdentifierLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateReplaceableCompositeTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.UnsignedInt,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.UnsignedInt,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.Int32,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreateReplaceableCompositeType');
+  late final _LLVMDIBuilderCreateReplaceableCompositeType =
+      _LLVMDIBuilderCreateReplaceableCompositeTypePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              int,
+              int,
+              int,
+              int,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int)>();
+
+  /// Create debugging information entry for a bit field member.
+  /// \param Builder             The DIBuilder.
+  /// \param Scope               Member scope.
+  /// \param Name                Member name.
+  /// \param NameLen             Length of member name.
+  /// \param File                File where this member is defined.
+  /// \param LineNumber          Line number.
+  /// \param SizeInBits          Member size.
+  /// \param OffsetInBits        Member offset.
+  /// \param StorageOffsetInBits Member storage offset.
+  /// \param Flags               Flags to encode member attribute.
+  /// \param Type                Parent type.
+  LLVMMetadataRef LLVMDIBuilderCreateBitFieldMemberType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNumber,
+    int SizeInBits,
+    int OffsetInBits,
+    int StorageOffsetInBits,
+    int Flags,
+    LLVMMetadataRef Type,
+  ) {
+    return _LLVMDIBuilderCreateBitFieldMemberType(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      File,
+      LineNumber,
+      SizeInBits,
+      OffsetInBits,
+      StorageOffsetInBits,
+      Flags,
+      Type,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateBitFieldMemberTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Uint64,
+              ffi.Uint64,
+              ffi.Uint64,
+              ffi.Int32,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateBitFieldMemberType');
+  late final _LLVMDIBuilderCreateBitFieldMemberType =
+      _LLVMDIBuilderCreateBitFieldMemberTypePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              int,
+              int,
+              int,
+              int,
+              LLVMMetadataRef)>();
+
+  /// Create debugging information entry for a class.
+  /// \param Scope               Scope in which this class is defined.
+  /// \param Name                Class name.
+  /// \param NameLen             The length of the C string passed to \c Name.
+  /// \param File                File where this member is defined.
+  /// \param LineNumber          Line number.
+  /// \param SizeInBits          Member size.
+  /// \param AlignInBits         Member alignment.
+  /// \param OffsetInBits        Member offset.
+  /// \param Flags               Flags to encode member attribute, e.g. private.
+  /// \param DerivedFrom         Debug info of the base class of this type.
+  /// \param Elements            Class members.
+  /// \param NumElements         Number of class elements.
+  /// \param VTableHolder        Debug info of the base class that contains vtable
+  /// for this type. This is used in
+  /// DW_AT_containing_type. See DWARF documentation
+  /// for more info.
+  /// \param TemplateParamsNode  Template type parameters.
+  /// \param UniqueIdentifier    A unique identifier for the type.
+  /// \param UniqueIdentifierLen Length of the unique identifier.
+  LLVMMetadataRef LLVMDIBuilderCreateClassType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNumber,
+    int SizeInBits,
+    int AlignInBits,
+    int OffsetInBits,
+    int Flags,
+    LLVMMetadataRef DerivedFrom,
+    ffi.Pointer<LLVMMetadataRef> Elements,
+    int NumElements,
+    LLVMMetadataRef VTableHolder,
+    LLVMMetadataRef TemplateParamsNode,
+    ffi.Pointer<ffi.Char> UniqueIdentifier,
+    int UniqueIdentifierLen,
+  ) {
+    return _LLVMDIBuilderCreateClassType(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      File,
+      LineNumber,
+      SizeInBits,
+      AlignInBits,
+      OffsetInBits,
+      Flags,
+      DerivedFrom,
+      Elements,
+      NumElements,
+      VTableHolder,
+      TemplateParamsNode,
+      UniqueIdentifier,
+      UniqueIdentifierLen,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateClassTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              ffi.Uint64,
+              ffi.Uint32,
+              ffi.Uint64,
+              ffi.Int32,
+              LLVMMetadataRef,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int)>>('LLVMDIBuilderCreateClassType');
+  late final _LLVMDIBuilderCreateClassType =
+      _LLVMDIBuilderCreateClassTypePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              int,
+              int,
+              int,
+              int,
+              LLVMMetadataRef,
+              ffi.Pointer<LLVMMetadataRef>,
+              int,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int)>();
+
+  /// Create a uniqued DIType* clone with FlagArtificial set.
+  /// \param Builder     The DIBuilder.
+  /// \param Type        The underlying type.
+  LLVMMetadataRef LLVMDIBuilderCreateArtificialType(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Type,
+  ) {
+    return _LLVMDIBuilderCreateArtificialType(
+      Builder,
+      Type,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateArtificialTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef,
+              LLVMMetadataRef)>>('LLVMDIBuilderCreateArtificialType');
+  late final _LLVMDIBuilderCreateArtificialType =
+      _LLVMDIBuilderCreateArtificialTypePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef)>();
+
+  /// Get the name of this DIType.
+  /// \param DType     The DIType.
+  /// \param Length    The length of the returned string.
+  ///
+  /// @see DIType::getName()
+  ffi.Pointer<ffi.Char> LLVMDITypeGetName(
+    LLVMMetadataRef DType,
+    ffi.Pointer<ffi.Int> Length,
+  ) {
+    return _LLVMDITypeGetName(
+      DType,
+      Length,
+    );
+  }
+
+  late final _LLVMDITypeGetNamePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              LLVMMetadataRef, ffi.Pointer<ffi.Int>)>>('LLVMDITypeGetName');
+  late final _LLVMDITypeGetName = _LLVMDITypeGetNamePtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(LLVMMetadataRef, ffi.Pointer<ffi.Int>)>();
+
+  /// Get the size of this DIType in bits.
+  /// \param DType     The DIType.
+  ///
+  /// @see DIType::getSizeInBits()
+  int LLVMDITypeGetSizeInBits(
+    LLVMMetadataRef DType,
+  ) {
+    return _LLVMDITypeGetSizeInBits(
+      DType,
+    );
+  }
+
+  late final _LLVMDITypeGetSizeInBitsPtr =
+      _lookup<ffi.NativeFunction<ffi.Uint64 Function(LLVMMetadataRef)>>(
+          'LLVMDITypeGetSizeInBits');
+  late final _LLVMDITypeGetSizeInBits =
+      _LLVMDITypeGetSizeInBitsPtr.asFunction<int Function(LLVMMetadataRef)>();
+
+  /// Get the offset of this DIType in bits.
+  /// \param DType     The DIType.
+  ///
+  /// @see DIType::getOffsetInBits()
+  int LLVMDITypeGetOffsetInBits(
+    LLVMMetadataRef DType,
+  ) {
+    return _LLVMDITypeGetOffsetInBits(
+      DType,
+    );
+  }
+
+  late final _LLVMDITypeGetOffsetInBitsPtr =
+      _lookup<ffi.NativeFunction<ffi.Uint64 Function(LLVMMetadataRef)>>(
+          'LLVMDITypeGetOffsetInBits');
+  late final _LLVMDITypeGetOffsetInBits =
+      _LLVMDITypeGetOffsetInBitsPtr.asFunction<int Function(LLVMMetadataRef)>();
+
+  /// Get the alignment of this DIType in bits.
+  /// \param DType     The DIType.
+  ///
+  /// @see DIType::getAlignInBits()
+  int LLVMDITypeGetAlignInBits(
+    LLVMMetadataRef DType,
+  ) {
+    return _LLVMDITypeGetAlignInBits(
+      DType,
+    );
+  }
+
+  late final _LLVMDITypeGetAlignInBitsPtr =
+      _lookup<ffi.NativeFunction<ffi.Uint32 Function(LLVMMetadataRef)>>(
+          'LLVMDITypeGetAlignInBits');
+  late final _LLVMDITypeGetAlignInBits =
+      _LLVMDITypeGetAlignInBitsPtr.asFunction<int Function(LLVMMetadataRef)>();
+
+  /// Get the source line where this DIType is declared.
+  /// \param DType     The DIType.
+  ///
+  /// @see DIType::getLine()
+  int LLVMDITypeGetLine(
+    LLVMMetadataRef DType,
+  ) {
+    return _LLVMDITypeGetLine(
+      DType,
+    );
+  }
+
+  late final _LLVMDITypeGetLinePtr =
+      _lookup<ffi.NativeFunction<ffi.UnsignedInt Function(LLVMMetadataRef)>>(
+          'LLVMDITypeGetLine');
+  late final _LLVMDITypeGetLine =
+      _LLVMDITypeGetLinePtr.asFunction<int Function(LLVMMetadataRef)>();
+
+  /// Get the flags associated with this DIType.
+  /// \param DType     The DIType.
+  ///
+  /// @see DIType::getFlags()
+  int LLVMDITypeGetFlags(
+    LLVMMetadataRef DType,
+  ) {
+    return _LLVMDITypeGetFlags(
+      DType,
+    );
+  }
+
+  late final _LLVMDITypeGetFlagsPtr =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(LLVMMetadataRef)>>(
+          'LLVMDITypeGetFlags');
+  late final _LLVMDITypeGetFlags =
+      _LLVMDITypeGetFlagsPtr.asFunction<int Function(LLVMMetadataRef)>();
+
+  /// Create a descriptor for a value range.
+  /// \param Builder    The DIBuilder.
+  /// \param LowerBound Lower bound of the subrange, e.g. 0 for C, 1 for Fortran.
+  /// \param Count      Count of elements in the subrange.
+  LLVMMetadataRef LLVMDIBuilderGetOrCreateSubrange(
+    LLVMDIBuilderRef Builder,
+    int LowerBound,
+    int Count,
+  ) {
+    return _LLVMDIBuilderGetOrCreateSubrange(
+      Builder,
+      LowerBound,
+      Count,
+    );
+  }
+
+  late final _LLVMDIBuilderGetOrCreateSubrangePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Int64,
+              ffi.Int64)>>('LLVMDIBuilderGetOrCreateSubrange');
+  late final _LLVMDIBuilderGetOrCreateSubrange =
+      _LLVMDIBuilderGetOrCreateSubrangePtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, int, int)>();
+
+  /// Create an array of DI Nodes.
+  /// \param Builder        The DIBuilder.
+  /// \param Data           The DI Node elements.
+  /// \param NumElements    Number of DI Node elements.
+  LLVMMetadataRef LLVMDIBuilderGetOrCreateArray(
+    LLVMDIBuilderRef Builder,
+    ffi.Pointer<LLVMMetadataRef> Data,
+    int NumElements,
+  ) {
+    return _LLVMDIBuilderGetOrCreateArray(
+      Builder,
+      Data,
+      NumElements,
+    );
+  }
+
+  late final _LLVMDIBuilderGetOrCreateArrayPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              ffi.Pointer<LLVMMetadataRef>,
+              ffi.Int)>>('LLVMDIBuilderGetOrCreateArray');
+  late final _LLVMDIBuilderGetOrCreateArray =
+      _LLVMDIBuilderGetOrCreateArrayPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef, ffi.Pointer<LLVMMetadataRef>, int)>();
+
+  /// Create a new descriptor for the specified variable which has a complex
+  /// address expression for its address.
+  /// \param Builder     The DIBuilder.
+  /// \param Addr        An array of complex address operations.
+  /// \param Length      Length of the address operation array.
+  LLVMMetadataRef LLVMDIBuilderCreateExpression(
+    LLVMDIBuilderRef Builder,
+    ffi.Pointer<ffi.Uint64> Addr,
+    int Length,
+  ) {
+    return _LLVMDIBuilderCreateExpression(
+      Builder,
+      Addr,
+      Length,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateExpressionPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Uint64>,
+              ffi.Int)>>('LLVMDIBuilderCreateExpression');
+  late final _LLVMDIBuilderCreateExpression =
+      _LLVMDIBuilderCreateExpressionPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef, ffi.Pointer<ffi.Uint64>, int)>();
+
+  /// Create a new descriptor for the specified variable that does not have an
+  /// address, but does have a constant value.
+  /// \param Builder     The DIBuilder.
+  /// \param Value       The constant value.
+  LLVMMetadataRef LLVMDIBuilderCreateConstantValueExpression(
+    LLVMDIBuilderRef Builder,
+    int Value,
+  ) {
+    return _LLVMDIBuilderCreateConstantValueExpression(
+      Builder,
+      Value,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateConstantValueExpressionPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef,
+              ffi.Uint64)>>('LLVMDIBuilderCreateConstantValueExpression');
+  late final _LLVMDIBuilderCreateConstantValueExpression =
+      _LLVMDIBuilderCreateConstantValueExpressionPtr.asFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, int)>();
+
+  /// Create a new descriptor for the specified variable.
+  /// \param Scope       Variable scope.
+  /// \param Name        Name of the variable.
+  /// \param NameLen     The length of the C string passed to \c Name.
+  /// \param Linkage     Mangled  name of the variable.
+  /// \param LinkLen     The length of the C string passed to \c Linkage.
+  /// \param File        File where this variable is defined.
+  /// \param LineNo      Line number.
+  /// \param Ty          Variable Type.
+  /// \param LocalToUnit Boolean flag indicate whether this variable is
+  /// externally visible or not.
+  /// \param Expr        The location of the global relative to the attached
+  /// GlobalVariable.
+  /// \param Decl        Reference to the corresponding declaration.
+  /// variables.
+  /// \param AlignInBits Variable alignment(or 0 if no alignment attr was
+  /// specified)
+  LLVMMetadataRef LLVMDIBuilderCreateGlobalVariableExpression(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    ffi.Pointer<ffi.Char> Linkage,
+    int LinkLen,
+    LLVMMetadataRef File,
+    int LineNo,
+    LLVMMetadataRef Ty,
+    int LocalToUnit,
+    LLVMMetadataRef Expr,
+    LLVMMetadataRef Decl,
+    int AlignInBits,
+  ) {
+    return _LLVMDIBuilderCreateGlobalVariableExpression(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      Linkage,
+      LinkLen,
+      File,
+      LineNo,
+      Ty,
+      LocalToUnit,
+      Expr,
+      Decl,
+      AlignInBits,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateGlobalVariableExpressionPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              LLVMBool,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              ffi.Uint32)>>('LLVMDIBuilderCreateGlobalVariableExpression');
+  late final _LLVMDIBuilderCreateGlobalVariableExpression =
+      _LLVMDIBuilderCreateGlobalVariableExpressionPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              LLVMMetadataRef,
+              int,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              int)>();
+
+  /// Get the dwarf::Tag of a DINode
+  int LLVMGetDINodeTag(
+    LLVMMetadataRef MD,
+  ) {
+    return _LLVMGetDINodeTag(
+      MD,
+    );
+  }
+
+  late final _LLVMGetDINodeTagPtr =
+      _lookup<ffi.NativeFunction<ffi.Uint16 Function(LLVMMetadataRef)>>(
+          'LLVMGetDINodeTag');
+  late final _LLVMGetDINodeTag =
+      _LLVMGetDINodeTagPtr.asFunction<int Function(LLVMMetadataRef)>();
+
+  /// Retrieves the \c DIVariable associated with this global variable expression.
+  /// \param GVE    The global variable expression.
+  ///
+  /// @see llvm::DIGlobalVariableExpression::getVariable()
+  LLVMMetadataRef LLVMDIGlobalVariableExpressionGetVariable(
+    LLVMMetadataRef GVE,
+  ) {
+    return _LLVMDIGlobalVariableExpressionGetVariable(
+      GVE,
+    );
+  }
+
+  late final _LLVMDIGlobalVariableExpressionGetVariablePtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataRef Function(LLVMMetadataRef)>>(
+          'LLVMDIGlobalVariableExpressionGetVariable');
+  late final _LLVMDIGlobalVariableExpressionGetVariable =
+      _LLVMDIGlobalVariableExpressionGetVariablePtr.asFunction<
+          LLVMMetadataRef Function(LLVMMetadataRef)>();
+
+  /// Retrieves the \c DIExpression associated with this global variable expression.
+  /// \param GVE    The global variable expression.
+  ///
+  /// @see llvm::DIGlobalVariableExpression::getExpression()
+  LLVMMetadataRef LLVMDIGlobalVariableExpressionGetExpression(
+    LLVMMetadataRef GVE,
+  ) {
+    return _LLVMDIGlobalVariableExpressionGetExpression(
+      GVE,
+    );
+  }
+
+  late final _LLVMDIGlobalVariableExpressionGetExpressionPtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataRef Function(LLVMMetadataRef)>>(
+          'LLVMDIGlobalVariableExpressionGetExpression');
+  late final _LLVMDIGlobalVariableExpressionGetExpression =
+      _LLVMDIGlobalVariableExpressionGetExpressionPtr.asFunction<
+          LLVMMetadataRef Function(LLVMMetadataRef)>();
+
+  /// Get the metadata of the file associated with a given variable.
+  /// \param Var     The variable object.
+  ///
+  /// @see DIVariable::getFile()
+  LLVMMetadataRef LLVMDIVariableGetFile(
+    LLVMMetadataRef Var,
+  ) {
+    return _LLVMDIVariableGetFile(
+      Var,
+    );
+  }
+
+  late final _LLVMDIVariableGetFilePtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataRef Function(LLVMMetadataRef)>>(
+          'LLVMDIVariableGetFile');
+  late final _LLVMDIVariableGetFile = _LLVMDIVariableGetFilePtr.asFunction<
+      LLVMMetadataRef Function(LLVMMetadataRef)>();
+
+  /// Get the metadata of the scope associated with a given variable.
+  /// \param Var     The variable object.
+  ///
+  /// @see DIVariable::getScope()
+  LLVMMetadataRef LLVMDIVariableGetScope(
+    LLVMMetadataRef Var,
+  ) {
+    return _LLVMDIVariableGetScope(
+      Var,
+    );
+  }
+
+  late final _LLVMDIVariableGetScopePtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataRef Function(LLVMMetadataRef)>>(
+          'LLVMDIVariableGetScope');
+  late final _LLVMDIVariableGetScope = _LLVMDIVariableGetScopePtr.asFunction<
+      LLVMMetadataRef Function(LLVMMetadataRef)>();
+
+  /// Get the source line where this \c DIVariable is declared.
+  /// \param Var     The DIVariable.
+  ///
+  /// @see DIVariable::getLine()
+  int LLVMDIVariableGetLine(
+    LLVMMetadataRef Var,
+  ) {
+    return _LLVMDIVariableGetLine(
+      Var,
+    );
+  }
+
+  late final _LLVMDIVariableGetLinePtr =
+      _lookup<ffi.NativeFunction<ffi.UnsignedInt Function(LLVMMetadataRef)>>(
+          'LLVMDIVariableGetLine');
+  late final _LLVMDIVariableGetLine =
+      _LLVMDIVariableGetLinePtr.asFunction<int Function(LLVMMetadataRef)>();
+
+  /// Create a new temporary \c MDNode.  Suitable for use in constructing cyclic
+  /// \c MDNode structures. A temporary \c MDNode is not uniqued, may be RAUW'd,
+  /// and must be manually deleted with \c LLVMDisposeTemporaryMDNode.
+  /// \param Ctx            The context in which to construct the temporary node.
+  /// \param Data           The metadata elements.
+  /// \param NumElements    Number of metadata elements.
+  LLVMMetadataRef LLVMTemporaryMDNode(
+    LLVMContextRef Ctx,
+    ffi.Pointer<LLVMMetadataRef> Data,
+    int NumElements,
+  ) {
+    return _LLVMTemporaryMDNode(
+      Ctx,
+      Data,
+      NumElements,
+    );
+  }
+
+  late final _LLVMTemporaryMDNodePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMContextRef, ffi.Pointer<LLVMMetadataRef>,
+              ffi.Int)>>('LLVMTemporaryMDNode');
+  late final _LLVMTemporaryMDNode = _LLVMTemporaryMDNodePtr.asFunction<
+      LLVMMetadataRef Function(
+          LLVMContextRef, ffi.Pointer<LLVMMetadataRef>, int)>();
+
+  /// Deallocate a temporary node.
+  ///
+  /// Calls \c replaceAllUsesWith(nullptr) before deleting, so any remaining
+  /// references will be reset.
+  /// \param TempNode    The temporary metadata node.
+  void LLVMDisposeTemporaryMDNode(
+    LLVMMetadataRef TempNode,
+  ) {
+    return _LLVMDisposeTemporaryMDNode(
+      TempNode,
+    );
+  }
+
+  late final _LLVMDisposeTemporaryMDNodePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMMetadataRef)>>(
+          'LLVMDisposeTemporaryMDNode');
+  late final _LLVMDisposeTemporaryMDNode = _LLVMDisposeTemporaryMDNodePtr
+      .asFunction<void Function(LLVMMetadataRef)>();
+
+  /// Replace all uses of temporary metadata.
+  /// \param TempTargetMetadata    The temporary metadata node.
+  /// \param Replacement           The replacement metadata node.
+  void LLVMMetadataReplaceAllUsesWith(
+    LLVMMetadataRef TempTargetMetadata,
+    LLVMMetadataRef Replacement,
+  ) {
+    return _LLVMMetadataReplaceAllUsesWith(
+      TempTargetMetadata,
+      Replacement,
+    );
+  }
+
+  late final _LLVMMetadataReplaceAllUsesWithPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMMetadataRef,
+              LLVMMetadataRef)>>('LLVMMetadataReplaceAllUsesWith');
+  late final _LLVMMetadataReplaceAllUsesWith =
+      _LLVMMetadataReplaceAllUsesWithPtr.asFunction<
+          void Function(LLVMMetadataRef, LLVMMetadataRef)>();
+
+  /// Create a new descriptor for the specified global variable that is temporary
+  /// and meant to be RAUWed.
+  /// \param Scope       Variable scope.
+  /// \param Name        Name of the variable.
+  /// \param NameLen     The length of the C string passed to \c Name.
+  /// \param Linkage     Mangled  name of the variable.
+  /// \param LnkLen      The length of the C string passed to \c Linkage.
+  /// \param File        File where this variable is defined.
+  /// \param LineNo      Line number.
+  /// \param Ty          Variable Type.
+  /// \param LocalToUnit Boolean flag indicate whether this variable is
+  /// externally visible or not.
+  /// \param Decl        Reference to the corresponding declaration.
+  /// \param AlignInBits Variable alignment(or 0 if no alignment attr was
+  /// specified)
+  LLVMMetadataRef LLVMDIBuilderCreateTempGlobalVariableFwdDecl(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    ffi.Pointer<ffi.Char> Linkage,
+    int LnkLen,
+    LLVMMetadataRef File,
+    int LineNo,
+    LLVMMetadataRef Ty,
+    int LocalToUnit,
+    LLVMMetadataRef Decl,
+    int AlignInBits,
+  ) {
+    return _LLVMDIBuilderCreateTempGlobalVariableFwdDecl(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      Linkage,
+      LnkLen,
+      File,
+      LineNo,
+      Ty,
+      LocalToUnit,
+      Decl,
+      AlignInBits,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateTempGlobalVariableFwdDeclPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              LLVMBool,
+              LLVMMetadataRef,
+              ffi.Uint32)>>('LLVMDIBuilderCreateTempGlobalVariableFwdDecl');
+  late final _LLVMDIBuilderCreateTempGlobalVariableFwdDecl =
+      _LLVMDIBuilderCreateTempGlobalVariableFwdDeclPtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              LLVMMetadataRef,
+              int,
+              LLVMMetadataRef,
+              int)>();
+
+  /// Insert a new llvm.dbg.declare intrinsic call before the given instruction.
+  /// \param Builder     The DIBuilder.
+  /// \param Storage     The storage of the variable to declare.
+  /// \param VarInfo     The variable's debug info descriptor.
+  /// \param Expr        A complex location expression for the variable.
+  /// \param DebugLoc    Debug info location.
+  /// \param Instr       Instruction acting as a location for the new intrinsic.
+  LLVMValueRef LLVMDIBuilderInsertDeclareBefore(
+    LLVMDIBuilderRef Builder,
+    LLVMValueRef Storage,
+    LLVMMetadataRef VarInfo,
+    LLVMMetadataRef Expr,
+    LLVMMetadataRef DebugLoc,
+    LLVMValueRef Instr,
+  ) {
+    return _LLVMDIBuilderInsertDeclareBefore(
+      Builder,
+      Storage,
+      VarInfo,
+      Expr,
+      DebugLoc,
+      Instr,
+    );
+  }
+
+  late final _LLVMDIBuilderInsertDeclareBeforePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMValueRef Function(
+              LLVMDIBuilderRef,
+              LLVMValueRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMValueRef)>>('LLVMDIBuilderInsertDeclareBefore');
+  late final _LLVMDIBuilderInsertDeclareBefore =
+      _LLVMDIBuilderInsertDeclareBeforePtr.asFunction<
+          LLVMValueRef Function(LLVMDIBuilderRef, LLVMValueRef, LLVMMetadataRef,
+              LLVMMetadataRef, LLVMMetadataRef, LLVMValueRef)>();
+
+  /// Insert a new llvm.dbg.declare intrinsic call at the end of the given basic
+  /// block. If the basic block has a terminator instruction, the intrinsic is
+  /// inserted before that terminator instruction.
+  /// \param Builder     The DIBuilder.
+  /// \param Storage     The storage of the variable to declare.
+  /// \param VarInfo     The variable's debug info descriptor.
+  /// \param Expr        A complex location expression for the variable.
+  /// \param DebugLoc    Debug info location.
+  /// \param Block       Basic block acting as a location for the new intrinsic.
+  LLVMValueRef LLVMDIBuilderInsertDeclareAtEnd(
+    LLVMDIBuilderRef Builder,
+    LLVMValueRef Storage,
+    LLVMMetadataRef VarInfo,
+    LLVMMetadataRef Expr,
+    LLVMMetadataRef DebugLoc,
+    LLVMBasicBlockRef Block,
+  ) {
+    return _LLVMDIBuilderInsertDeclareAtEnd(
+      Builder,
+      Storage,
+      VarInfo,
+      Expr,
+      DebugLoc,
+      Block,
+    );
+  }
+
+  late final _LLVMDIBuilderInsertDeclareAtEndPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMValueRef Function(
+              LLVMDIBuilderRef,
+              LLVMValueRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMBasicBlockRef)>>('LLVMDIBuilderInsertDeclareAtEnd');
+  late final _LLVMDIBuilderInsertDeclareAtEnd =
+      _LLVMDIBuilderInsertDeclareAtEndPtr.asFunction<
+          LLVMValueRef Function(LLVMDIBuilderRef, LLVMValueRef, LLVMMetadataRef,
+              LLVMMetadataRef, LLVMMetadataRef, LLVMBasicBlockRef)>();
+
+  /// Insert a new llvm.dbg.value intrinsic call before the given instruction.
+  /// \param Builder     The DIBuilder.
+  /// \param Val         The value of the variable.
+  /// \param VarInfo     The variable's debug info descriptor.
+  /// \param Expr        A complex location expression for the variable.
+  /// \param DebugLoc    Debug info location.
+  /// \param Instr       Instruction acting as a location for the new intrinsic.
+  LLVMValueRef LLVMDIBuilderInsertDbgValueBefore(
+    LLVMDIBuilderRef Builder,
+    LLVMValueRef Val,
+    LLVMMetadataRef VarInfo,
+    LLVMMetadataRef Expr,
+    LLVMMetadataRef DebugLoc,
+    LLVMValueRef Instr,
+  ) {
+    return _LLVMDIBuilderInsertDbgValueBefore(
+      Builder,
+      Val,
+      VarInfo,
+      Expr,
+      DebugLoc,
+      Instr,
+    );
+  }
+
+  late final _LLVMDIBuilderInsertDbgValueBeforePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMValueRef Function(
+              LLVMDIBuilderRef,
+              LLVMValueRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMValueRef)>>('LLVMDIBuilderInsertDbgValueBefore');
+  late final _LLVMDIBuilderInsertDbgValueBefore =
+      _LLVMDIBuilderInsertDbgValueBeforePtr.asFunction<
+          LLVMValueRef Function(LLVMDIBuilderRef, LLVMValueRef, LLVMMetadataRef,
+              LLVMMetadataRef, LLVMMetadataRef, LLVMValueRef)>();
+
+  /// Insert a new llvm.dbg.value intrinsic call at the end of the given basic
+  /// block. If the basic block has a terminator instruction, the intrinsic is
+  /// inserted before that terminator instruction.
+  /// \param Builder     The DIBuilder.
+  /// \param Val         The value of the variable.
+  /// \param VarInfo     The variable's debug info descriptor.
+  /// \param Expr        A complex location expression for the variable.
+  /// \param DebugLoc    Debug info location.
+  /// \param Block       Basic block acting as a location for the new intrinsic.
+  LLVMValueRef LLVMDIBuilderInsertDbgValueAtEnd(
+    LLVMDIBuilderRef Builder,
+    LLVMValueRef Val,
+    LLVMMetadataRef VarInfo,
+    LLVMMetadataRef Expr,
+    LLVMMetadataRef DebugLoc,
+    LLVMBasicBlockRef Block,
+  ) {
+    return _LLVMDIBuilderInsertDbgValueAtEnd(
+      Builder,
+      Val,
+      VarInfo,
+      Expr,
+      DebugLoc,
+      Block,
+    );
+  }
+
+  late final _LLVMDIBuilderInsertDbgValueAtEndPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMValueRef Function(
+              LLVMDIBuilderRef,
+              LLVMValueRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMMetadataRef,
+              LLVMBasicBlockRef)>>('LLVMDIBuilderInsertDbgValueAtEnd');
+  late final _LLVMDIBuilderInsertDbgValueAtEnd =
+      _LLVMDIBuilderInsertDbgValueAtEndPtr.asFunction<
+          LLVMValueRef Function(LLVMDIBuilderRef, LLVMValueRef, LLVMMetadataRef,
+              LLVMMetadataRef, LLVMMetadataRef, LLVMBasicBlockRef)>();
+
+  /// Create a new descriptor for a local auto variable.
+  /// \param Builder         The DIBuilder.
+  /// \param Scope           The local scope the variable is declared in.
+  /// \param Name            Variable name.
+  /// \param NameLen         Length of variable name.
+  /// \param File            File where this variable is defined.
+  /// \param LineNo          Line number.
+  /// \param Ty              Metadata describing the type of the variable.
+  /// \param AlwaysPreserve  If true, this descriptor will survive optimizations.
+  /// \param Flags           Flags.
+  /// \param AlignInBits     Variable alignment.
+  LLVMMetadataRef LLVMDIBuilderCreateAutoVariable(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    LLVMMetadataRef File,
+    int LineNo,
+    LLVMMetadataRef Ty,
+    int AlwaysPreserve,
+    int Flags,
+    int AlignInBits,
+  ) {
+    return _LLVMDIBuilderCreateAutoVariable(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      File,
+      LineNo,
+      Ty,
+      AlwaysPreserve,
+      Flags,
+      AlignInBits,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateAutoVariablePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              LLVMBool,
+              ffi.Int32,
+              ffi.Uint32)>>('LLVMDIBuilderCreateAutoVariable');
+  late final _LLVMDIBuilderCreateAutoVariable =
+      _LLVMDIBuilderCreateAutoVariablePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              LLVMMetadataRef,
+              int,
+              LLVMMetadataRef,
+              int,
+              int,
+              int)>();
+
+  /// Create a new descriptor for a function parameter variable.
+  /// \param Builder         The DIBuilder.
+  /// \param Scope           The local scope the variable is declared in.
+  /// \param Name            Variable name.
+  /// \param NameLen         Length of variable name.
+  /// \param ArgNo           Unique argument number for this variable; starts at 1.
+  /// \param File            File where this variable is defined.
+  /// \param LineNo          Line number.
+  /// \param Ty              Metadata describing the type of the variable.
+  /// \param AlwaysPreserve  If true, this descriptor will survive optimizations.
+  /// \param Flags           Flags.
+  LLVMMetadataRef LLVMDIBuilderCreateParameterVariable(
+    LLVMDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    ffi.Pointer<ffi.Char> Name,
+    int NameLen,
+    int ArgNo,
+    LLVMMetadataRef File,
+    int LineNo,
+    LLVMMetadataRef Ty,
+    int AlwaysPreserve,
+    int Flags,
+  ) {
+    return _LLVMDIBuilderCreateParameterVariable(
+      Builder,
+      Scope,
+      Name,
+      NameLen,
+      ArgNo,
+      File,
+      LineNo,
+      Ty,
+      AlwaysPreserve,
+      Flags,
+    );
+  }
+
+  late final _LLVMDIBuilderCreateParameterVariablePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              ffi.UnsignedInt,
+              LLVMMetadataRef,
+              LLVMBool,
+              ffi.Int32)>>('LLVMDIBuilderCreateParameterVariable');
+  late final _LLVMDIBuilderCreateParameterVariable =
+      _LLVMDIBuilderCreateParameterVariablePtr.asFunction<
+          LLVMMetadataRef Function(
+              LLVMDIBuilderRef,
+              LLVMMetadataRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+              LLVMMetadataRef,
+              int,
+              LLVMMetadataRef,
+              int,
+              int)>();
+
+  /// Get the metadata of the subprogram attached to a function.
+  ///
+  /// @see llvm::Function::getSubprogram()
+  LLVMMetadataRef LLVMGetSubprogram(
+    LLVMValueRef Func,
+  ) {
+    return _LLVMGetSubprogram(
+      Func,
+    );
+  }
+
+  late final _LLVMGetSubprogramPtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataRef Function(LLVMValueRef)>>(
+          'LLVMGetSubprogram');
+  late final _LLVMGetSubprogram = _LLVMGetSubprogramPtr.asFunction<
+      LLVMMetadataRef Function(LLVMValueRef)>();
+
+  /// Set the subprogram attached to a function.
+  ///
+  /// @see llvm::Function::setSubprogram()
+  void LLVMSetSubprogram(
+    LLVMValueRef Func,
+    LLVMMetadataRef SP,
+  ) {
+    return _LLVMSetSubprogram(
+      Func,
+      SP,
+    );
+  }
+
+  late final _LLVMSetSubprogramPtr = _lookup<
+          ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMMetadataRef)>>(
+      'LLVMSetSubprogram');
+  late final _LLVMSetSubprogram = _LLVMSetSubprogramPtr.asFunction<
+      void Function(LLVMValueRef, LLVMMetadataRef)>();
+
+  /// Get the line associated with a given subprogram.
+  /// \param Subprogram     The subprogram object.
+  ///
+  /// @see DISubprogram::getLine()
+  int LLVMDISubprogramGetLine(
+    LLVMMetadataRef Subprogram,
+  ) {
+    return _LLVMDISubprogramGetLine(
+      Subprogram,
+    );
+  }
+
+  late final _LLVMDISubprogramGetLinePtr =
+      _lookup<ffi.NativeFunction<ffi.UnsignedInt Function(LLVMMetadataRef)>>(
+          'LLVMDISubprogramGetLine');
+  late final _LLVMDISubprogramGetLine =
+      _LLVMDISubprogramGetLinePtr.asFunction<int Function(LLVMMetadataRef)>();
+
+  /// Get the debug location for the given instruction.
+  ///
+  /// @see llvm::Instruction::getDebugLoc()
+  LLVMMetadataRef LLVMInstructionGetDebugLoc(
+    LLVMValueRef Inst,
+  ) {
+    return _LLVMInstructionGetDebugLoc(
+      Inst,
+    );
+  }
+
+  late final _LLVMInstructionGetDebugLocPtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataRef Function(LLVMValueRef)>>(
+          'LLVMInstructionGetDebugLoc');
+  late final _LLVMInstructionGetDebugLoc = _LLVMInstructionGetDebugLocPtr
+      .asFunction<LLVMMetadataRef Function(LLVMValueRef)>();
+
+  /// Set the debug location for the given instruction.
+  ///
+  /// To clear the location metadata of the given instruction, pass NULL to \p Loc.
+  ///
+  /// @see llvm::Instruction::setDebugLoc()
+  void LLVMInstructionSetDebugLoc(
+    LLVMValueRef Inst,
+    LLVMMetadataRef Loc,
+  ) {
+    return _LLVMInstructionSetDebugLoc(
+      Inst,
+      Loc,
+    );
+  }
+
+  late final _LLVMInstructionSetDebugLocPtr = _lookup<
+          ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMMetadataRef)>>(
+      'LLVMInstructionSetDebugLoc');
+  late final _LLVMInstructionSetDebugLoc = _LLVMInstructionSetDebugLocPtr
+      .asFunction<void Function(LLVMValueRef, LLVMMetadataRef)>();
+
+  /// Obtain the enumerated type of a Metadata instance.
+  ///
+  /// @see llvm::Metadata::getMetadataID()
+  int LLVMGetMetadataKind(
+    LLVMMetadataRef Metadata,
+  ) {
+    return _LLVMGetMetadataKind(
+      Metadata,
+    );
+  }
+
+  late final _LLVMGetMetadataKindPtr =
+      _lookup<ffi.NativeFunction<LLVMMetadataKind Function(LLVMMetadataRef)>>(
+          'LLVMGetMetadataKind');
+  late final _LLVMGetMetadataKind =
+      _LLVMGetMetadataKindPtr.asFunction<int Function(LLVMMetadataRef)>();
 }
 
 abstract class LLVMOpcode {
@@ -12690,6 +16362,19 @@ class KOpaqueModule extends ffi.Opaque {}
 
 typedef KModuleRef = ffi.Pointer<KOpaqueModule>;
 
+abstract class LLVMByteOrdering {
+  static const int LLVMBigEndian = 0;
+  static const int LLVMLittleEndian = 1;
+}
+
+class LLVMOpaqueTargetData extends ffi.Opaque {}
+
+class LLVMOpaqueTargetLibraryInfotData extends ffi.Opaque {}
+
+typedef LLVMTargetDataRef = ffi.Pointer<LLVMOpaqueTargetData>;
+typedef LLVMTargetLibraryInfoRef
+    = ffi.Pointer<LLVMOpaqueTargetLibraryInfotData>;
+
 class LLVMOpaqueTargetMachine extends ffi.Opaque {}
 
 class LLVMTarget extends ffi.Opaque {}
@@ -12732,10 +16417,197 @@ typedef LLVMTargetRef = ffi.Pointer<LLVMTarget>;
 ///
 /// @{
 typedef LLVMTargetMachineRef = ffi.Pointer<LLVMOpaqueTargetMachine>;
-typedef LLVMTargetDataRef = ffi.Pointer<LLVMOpaqueTargetData>;
 
-class LLVMOpaqueTargetData extends ffi.Opaque {}
+/// Debug info flags.
+abstract class LLVMDIFlags {
+  static const int LLVMDIFlagZero = 0;
+  static const int LLVMDIFlagPrivate = 1;
+  static const int LLVMDIFlagProtected = 2;
+  static const int LLVMDIFlagPublic = 3;
+  static const int LLVMDIFlagFwdDecl = 4;
+  static const int LLVMDIFlagAppleBlock = 8;
+  static const int LLVMDIFlagReservedBit4 = 16;
+  static const int LLVMDIFlagVirtual = 32;
+  static const int LLVMDIFlagArtificial = 64;
+  static const int LLVMDIFlagExplicit = 128;
+  static const int LLVMDIFlagPrototyped = 256;
+  static const int LLVMDIFlagObjcClassComplete = 512;
+  static const int LLVMDIFlagObjectPointer = 1024;
+  static const int LLVMDIFlagVector = 2048;
+  static const int LLVMDIFlagStaticMember = 4096;
+  static const int LLVMDIFlagLValueReference = 8192;
+  static const int LLVMDIFlagRValueReference = 16384;
+  static const int LLVMDIFlagReserved = 32768;
+  static const int LLVMDIFlagSingleInheritance = 65536;
+  static const int LLVMDIFlagMultipleInheritance = 131072;
+  static const int LLVMDIFlagVirtualInheritance = 196608;
+  static const int LLVMDIFlagIntroducedVirtual = 262144;
+  static const int LLVMDIFlagBitField = 524288;
+  static const int LLVMDIFlagNoReturn = 1048576;
+  static const int LLVMDIFlagTypePassByValue = 4194304;
+  static const int LLVMDIFlagTypePassByReference = 8388608;
+  static const int LLVMDIFlagEnumClass = 16777216;
+  static const int LLVMDIFlagFixedEnum = 16777216;
+  static const int LLVMDIFlagThunk = 33554432;
+  static const int LLVMDIFlagNonTrivial = 67108864;
+  static const int LLVMDIFlagBigEndian = 134217728;
+  static const int LLVMDIFlagLittleEndian = 268435456;
+  static const int LLVMDIFlagIndirectVirtualBase = 36;
+  static const int LLVMDIFlagAccessibility = 3;
+  static const int LLVMDIFlagPtrToMemberRep = 196608;
+}
+
+/// Source languages known by DWARF.
+abstract class LLVMDWARFSourceLanguage {
+  static const int LLVMDWARFSourceLanguageC89 = 0;
+  static const int LLVMDWARFSourceLanguageC = 1;
+  static const int LLVMDWARFSourceLanguageAda83 = 2;
+  static const int LLVMDWARFSourceLanguageC_plus_plus = 3;
+  static const int LLVMDWARFSourceLanguageCobol74 = 4;
+  static const int LLVMDWARFSourceLanguageCobol85 = 5;
+  static const int LLVMDWARFSourceLanguageFortran77 = 6;
+  static const int LLVMDWARFSourceLanguageFortran90 = 7;
+  static const int LLVMDWARFSourceLanguagePascal83 = 8;
+  static const int LLVMDWARFSourceLanguageModula2 = 9;
+  static const int LLVMDWARFSourceLanguageJava = 10;
+  static const int LLVMDWARFSourceLanguageC99 = 11;
+  static const int LLVMDWARFSourceLanguageAda95 = 12;
+  static const int LLVMDWARFSourceLanguageFortran95 = 13;
+  static const int LLVMDWARFSourceLanguagePLI = 14;
+  static const int LLVMDWARFSourceLanguageObjC = 15;
+  static const int LLVMDWARFSourceLanguageObjC_plus_plus = 16;
+  static const int LLVMDWARFSourceLanguageUPC = 17;
+  static const int LLVMDWARFSourceLanguageD = 18;
+  static const int LLVMDWARFSourceLanguagePython = 19;
+  static const int LLVMDWARFSourceLanguageOpenCL = 20;
+  static const int LLVMDWARFSourceLanguageGo = 21;
+  static const int LLVMDWARFSourceLanguageModula3 = 22;
+  static const int LLVMDWARFSourceLanguageHaskell = 23;
+  static const int LLVMDWARFSourceLanguageC_plus_plus_03 = 24;
+  static const int LLVMDWARFSourceLanguageC_plus_plus_11 = 25;
+  static const int LLVMDWARFSourceLanguageOCaml = 26;
+  static const int LLVMDWARFSourceLanguageRust = 27;
+  static const int LLVMDWARFSourceLanguageC11 = 28;
+  static const int LLVMDWARFSourceLanguageSwift = 29;
+  static const int LLVMDWARFSourceLanguageJulia = 30;
+  static const int LLVMDWARFSourceLanguageDylan = 31;
+  static const int LLVMDWARFSourceLanguageC_plus_plus_14 = 32;
+  static const int LLVMDWARFSourceLanguageFortran03 = 33;
+  static const int LLVMDWARFSourceLanguageFortran08 = 34;
+  static const int LLVMDWARFSourceLanguageRenderScript = 35;
+  static const int LLVMDWARFSourceLanguageBLISS = 36;
+  static const int LLVMDWARFSourceLanguageKotlin = 37;
+  static const int LLVMDWARFSourceLanguageZig = 38;
+  static const int LLVMDWARFSourceLanguageCrystal = 39;
+  static const int LLVMDWARFSourceLanguageC_plus_plus_17 = 40;
+  static const int LLVMDWARFSourceLanguageC_plus_plus_20 = 41;
+  static const int LLVMDWARFSourceLanguageC17 = 42;
+  static const int LLVMDWARFSourceLanguageFortran18 = 43;
+  static const int LLVMDWARFSourceLanguageAda2005 = 44;
+  static const int LLVMDWARFSourceLanguageAda2012 = 45;
+  static const int LLVMDWARFSourceLanguageMips_Assembler = 46;
+  static const int LLVMDWARFSourceLanguageGOOGLE_RenderScript = 47;
+  static const int LLVMDWARFSourceLanguageBORLAND_Delphi = 48;
+}
+
+/// The amount of debug information to emit.
+abstract class LLVMDWARFEmissionKind {
+  static const int LLVMDWARFEmissionNone = 0;
+  static const int LLVMDWARFEmissionFull = 1;
+  static const int LLVMDWARFEmissionLineTablesOnly = 2;
+}
+
+/// Describes the kind of macro declaration used for LLVMDIBuilderCreateMacro.
+/// @see llvm::dwarf::MacinfoRecordType
+/// @note Values are from DW_MACINFO_* constants in the DWARF specification.
+abstract class LLVMDWARFMacinfoRecordType {
+  static const int LLVMDWARFMacinfoRecordTypeDefine = 1;
+  static const int LLVMDWARFMacinfoRecordTypeMacro = 2;
+  static const int LLVMDWARFMacinfoRecordTypeStartFile = 3;
+  static const int LLVMDWARFMacinfoRecordTypeEndFile = 4;
+  static const int LLVMDWARFMacinfoRecordTypeVendorExt = 255;
+}
+
+typedef LLVMDIBuilderRef = ffi.Pointer<LLVMOpaqueDIBuilder>;
+
+class LLVMOpaqueDIBuilder extends ffi.Opaque {}
+
+/// An LLVM DWARF type encoding.
+typedef LLVMDWARFTypeEncoding = ffi.UnsignedInt;
+typedef LLVMMetadataKind = ffi.UnsignedInt;
 
 const int LLVMAttributeReturnIndex = 0;
 
 const int LLVMAttributeFunctionIndex = -1;
+
+const int LLVMMDStringMetadataKind = 0;
+
+const int LLVMConstantAsMetadataMetadataKind = 1;
+
+const int LLVMLocalAsMetadataMetadataKind = 2;
+
+const int LLVMDistinctMDOperandPlaceholderMetadataKind = 3;
+
+const int LLVMMDTupleMetadataKind = 4;
+
+const int LLVMDILocationMetadataKind = 5;
+
+const int LLVMDIExpressionMetadataKind = 6;
+
+const int LLVMDIGlobalVariableExpressionMetadataKind = 7;
+
+const int LLVMGenericDINodeMetadataKind = 8;
+
+const int LLVMDISubrangeMetadataKind = 9;
+
+const int LLVMDIEnumeratorMetadataKind = 10;
+
+const int LLVMDIBasicTypeMetadataKind = 11;
+
+const int LLVMDIDerivedTypeMetadataKind = 12;
+
+const int LLVMDICompositeTypeMetadataKind = 13;
+
+const int LLVMDISubroutineTypeMetadataKind = 14;
+
+const int LLVMDIFileMetadataKind = 15;
+
+const int LLVMDICompileUnitMetadataKind = 16;
+
+const int LLVMDISubprogramMetadataKind = 17;
+
+const int LLVMDILexicalBlockMetadataKind = 18;
+
+const int LLVMDILexicalBlockFileMetadataKind = 19;
+
+const int LLVMDINamespaceMetadataKind = 20;
+
+const int LLVMDIModuleMetadataKind = 21;
+
+const int LLVMDITemplateTypeParameterMetadataKind = 22;
+
+const int LLVMDITemplateValueParameterMetadataKind = 23;
+
+const int LLVMDIGlobalVariableMetadataKind = 24;
+
+const int LLVMDILocalVariableMetadataKind = 25;
+
+const int LLVMDILabelMetadataKind = 26;
+
+const int LLVMDIObjCPropertyMetadataKind = 27;
+
+const int LLVMDIImportedEntityMetadataKind = 28;
+
+const int LLVMDIMacroMetadataKind = 29;
+
+const int LLVMDIMacroFileMetadataKind = 30;
+
+const int LLVMDICommonBlockMetadataKind = 31;
+
+const int LLVMDIStringTypeMetadataKind = 32;
+
+const int LLVMDIGenericSubrangeMetadataKind = 33;
+
+const int LLVMDIArgListMetadataKind = 34;
+
+const int LLVMDIAssignIDMetadataKind = 35;

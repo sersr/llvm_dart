@@ -30,13 +30,15 @@ class LetStmt extends Stmt {
     final tty = realTy ?? val?.ty;
     if (tty != null) {
       final variable = val?.variable;
-      if (variable is LLVMAllocaVariable) {
+      if (variable is LLVMStructAllocaVariable && !variable.isParam) {
+        context.setName(variable.alloca, nameIdent.src);
         context.pushVariable(nameIdent, variable);
         return;
       }
-      final type = tty.llvmType.createType(context);
-      final a = context.createAlloca(type, nameIdent);
-      final alloca = LLVMAllocaVariable(tty, a, type);
+      final alloca = tty.llvmType.createAlloca(context, nameIdent);
+      // final type = tty.llvmType.createType(context);
+      // final a = context.createAlloca(type, nameIdent);
+      // final alloca = LLVMAllocaVariable(tty, a, type);
       if (variable != null) {
         final rValue = variable.load(context);
         alloca.store(context, rValue);

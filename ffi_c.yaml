@@ -4,11 +4,15 @@ headers:
   entry-points:
     - '../llvm_lang/src/llvm_wrapper.h'
     - '/usr/local/include/llvm-c/TargetMachine.h'
+    - '/usr/local/include/llvm-c/Target.h'
+    - '/usr/local/include/llvm-c/DebugInfo.h'
 
   include-directives:
     - '../llvm_lang/src/llvm_wrapper.h'
     - '/usr/local/include/llvm-c/Core.h'
     - '/usr/local/include/llvm-c/TargetMachine.h'
+    - '/usr/local/include/llvm-c/Target.h'
+    - '/usr/local/include/llvm-c/DebugInfo.h'
 
 functions:
   rename:

@@ -8,6 +8,8 @@ mixin BuildMethods {
   LLVMModuleRef get module;
   LLVMContextRef get llvmContext;
   LLVMBuilderRef get builder;
+  BuildMethods? get parent;
+
   LLVMTypeRef get typeVoid {
     return llvm.LLVMVoidTypeInContext(llvmContext);
   }
@@ -70,6 +72,70 @@ mixin BuildMethods {
   LLVMTypeRef pointer() {
     return llvm.LLVMPointerTypeInContext(llvmContext, 0);
   }
+
+  LLVMTypeRef typePointer(LLVMTypeRef type) {
+    return llvm.LLVMPointerType(type, 0);
+  }
+
+  int pointerSize() {
+    final td = llvm.LLVMGetModuleDataLayout(module);
+    return llvm.LLVMPointerSize(td);
+  }
+
+  LLVMTypeRef getStructExternType(int count) {
+    LLVMTypeRef loadTy;
+    if (count > 8) {
+      final d = count / 8;
+      count = d.ceil();
+      loadTy = arrayType(i64, count);
+    } else {
+      loadTy = i64;
+    }
+    return loadTy;
+  }
+
+  bool isFnBBContext = false;
+  LLVMValueRef? _allocaInst;
+  BuildMethods? getLastFnContext() {
+    if (isFnBBContext) return this;
+    return parent?.getLastFnContext();
+  }
+
+  LLVMValueRef get fnValue;
+
+  LLVMBuilderRef get allocaBuilder {
+    final fnContext = getLastFnContext();
+    LLVMBuilderRef b = builder;
+    if (fnContext != null) {
+      final alloca = fnContext._allocaInst;
+      if (alloca != null) {
+        // 在 entry 中分配
+        b = llvm.LLVMCreateBuilderInContext(llvmContext);
+        final fnEntry = llvm.LLVMGetFirstBasicBlock(fnValue);
+        final next = llvm.LLVMGetNextInstruction(alloca);
+        llvm.LLVMPositionBuilder(b, fnEntry, next);
+      }
+    }
+    return b;
+  }
+
+  void setLastAlloca(LLVMValueRef val) {
+    final fnContext = getLastFnContext();
+    if (fnContext != null) {
+      fnContext._allocaInst = val;
+    }
+  }
+
+  LLVMValueRef alloctor(LLVMTypeRef type, String name) {
+    final alloca =
+        llvm.LLVMBuildAlloca(allocaBuilder, type, 'alloca_$name'.toChar());
+    setLastAlloca(alloca);
+    return alloca;
+  }
+
+  void setName(LLVMValueRef ref, String name) {
+    llvm.LLVMSetValueName(ref, name.toChar());
+  }
 }
 
 mixin Consts on BuildMethods {
@@ -128,5 +194,12 @@ mixin Consts on BuildMethods {
   LLVMValueRef constStr(String str) {
     return llvm.LLVMConstStringInContext(
         llvmContext, str.toChar(), str.length, LLVMFalse);
+  }
+
+  LLVMValueRef constArray(LLVMTypeRef ty, int size) {
+    final alloca =
+        llvm.LLVMBuildArrayAlloca(builder, ty, constI64(size), unname);
+    llvm.LLVMSetAlignment(alloca, 4);
+    return alloca;
   }
 }

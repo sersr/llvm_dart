@@ -187,7 +187,7 @@ class RetExpr extends Expr {
 
   @override
   String toString() {
-    return 'return [Ret]';
+    return 'return $expr [Ret]';
   }
 }
 
@@ -342,7 +342,6 @@ class FnCallExpr extends Expr {
     for (var p in params) {
       final v = p.build(context)?.variable;
       if (v != null) {
-        Log.i('...$isExtern ${v.runtimeType}');
         if (isExtern && v is LLVMStructAllocaVariable) {
           final value = v.load2(context, isExtern);
           args.add(value);
@@ -394,11 +393,10 @@ class StructDotFieldExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final val = context.getVariable(structIdent);
-    var ty = val?.ty;
-    if (ty is PathTy) {
-      ty = ty.getRealTy(context);
-    }
+    var ty = val?.ty.getRealTy(context);
+
     if (ty is! StructTy) return null;
+
     final alloca = (val as LLVMAllocaVariable);
     final v = ty.llvmType.getField(alloca, context, ident);
     if (v == null) return null;

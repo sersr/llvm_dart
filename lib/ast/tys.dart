@@ -1,3 +1,5 @@
+import 'package:llvm_dart/ast/build_methods.dart';
+
 import '../llvm_core.dart';
 import '../parsers/lexers/token_kind.dart';
 import 'ast.dart';
@@ -8,7 +10,8 @@ abstract class Variable {
   Ty get ty;
 }
 
-mixin Tys<T extends Tys<T>> {
+mixin Tys<T extends Tys<T>> on BuildMethods {
+  @override
   T? get parent;
 
   final variables = <Identifier, List<Variable>>{};

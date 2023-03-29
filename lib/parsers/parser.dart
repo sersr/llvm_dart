@@ -289,12 +289,11 @@ class Modules {
     loop(it, () {
       final t = getToken(it);
       final k = t.kind;
+      if (k == TokenKind.lf) return false;
 
-      if (k == TokenKind.ident) {
-        final stmt = parseStmt(it);
-        if (stmt != null) {
-          stmts.add(stmt);
-        }
+      final stmt = parseStmt(it);
+      if (stmt != null) {
+        stmts.add(stmt);
       }
       return false;
     });
@@ -315,10 +314,6 @@ class Modules {
   }
 
   Stmt? parseStmt(TokenIterator it) {
-    final t = it.current.token;
-    final k = t.kind;
-    assert(k == TokenKind.ident);
-
     Stmt? stmt = parseLetStmt(it);
     stmt ??= parseIfExpr(it);
     stmt ??= parseLoopExpr(it);
@@ -725,6 +720,14 @@ class Modules {
         return true;
       }
 
+      void parseCommon() {
+        it.moveBack();
+        final expr = parseExpr(it);
+        final f = FieldExpr(expr, null);
+        fields.add(f);
+        Log.i('...$expr ${getIdent(it)}');
+      }
+
       if (t.kind == TokenKind.ident) {
         final ident = getIdent(it);
         eatLfIfNeed(it);
@@ -737,17 +740,19 @@ class Modules {
             final expr = parseExpr(it);
             final f = FieldExpr(expr, null);
             fields.add(f);
+            it.moveNext(); // eat `)`
             return true;
+          } else if (t.kind == TokenKind.colon) {
+            final expr = parseExpr(it);
+            final f = FieldExpr(expr, ident);
+            fields.add(f);
+          } else {
+            it.moveBack();
+            parseCommon();
           }
-          final expr = parseExpr(it);
-          final f = FieldExpr(expr, ident);
-          fields.add(f);
         }
       } else {
-        it.moveBack();
-        final expr = parseExpr(it);
-        final f = FieldExpr(expr, null);
-        fields.add(f);
+        parseCommon();
       }
       return false;
     });
@@ -760,7 +765,6 @@ class Modules {
 
     final fnOrFieldName = getIdent(it);
     eatLfIfNeed(it);
-    Log.w('.. ${getIdent(it)}');
     if (it.moveNext()) {
       final t = getToken(it);
       if (t.kind != TokenKind.openParen) {

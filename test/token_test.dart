@@ -206,21 +206,34 @@ fn getGen()Gen
 fn ggg()
 
 fn hhh() int {
-  return 12
+  12
+}
+
+extern fn yy(y: int, g: Gen) Gen {
+  let gg = g
+  let hss = gg.z
+  gg.y = 102
+  gg.x = 6556
+  gg.z = 6772
+  printxx(gg.z)
+  printxx(hss)
+  printxx(hss)
+  gg
 }
 
 struct Gen {
   y: i32,
   x: i32,
-  a: i32,
+  z: i32,
 }
 
-fn main() double {
+fn main() int {
   let y = 101
-  let hah = Gen {205, 26, 102}
-  
+  let hah = Gen {205, 55, 801}
+
   let x = 22
   strx(hh: 710, g: &hah)
+  let hh = 101
   stra(g: hah)
 
   return 0
@@ -228,23 +241,28 @@ fn main() double {
 
 ''';
     final m = parseTopItem(src);
+    return runZoned(
+      () {
+        print(m.globalTy.values.join('\n'));
+        llvm.initLLVM();
+        final root = BuildContext.root();
+        root.pushAllTy(m.globalTy);
+        root.pushFn(sizeOfFn.ident, sizeOfFn);
 
-    runZoned(() {
-      print(m.globalTy.values.join('\n'));
-      llvm.initLLVM();
-      final root = BuildContext.root();
-      root.pushAllTy(m.globalTy);
-      root.pushFn(sizeOfFn.ident, sizeOfFn);
-
-      for (var fns in root.fns.values) {
-        for (var fn in fns) {
-          fn.build(root);
+        for (var fns in root.fns.values) {
+          for (var fn in fns) {
+            fn.build(root);
+          }
         }
-      }
-      llvm.LLVMDumpModule(root.module);
-      llvm.writeOutput(root.kModule);
-      root.dispose();
-    }, zoneValues: {'astSrc': src});
+        llvm.LLVMDumpModule(root.module);
+        llvm.writeOutput(root.kModule);
+        root.dispose();
+      },
+      zoneValues: {'astSrc': src},
+      zoneSpecification: ZoneSpecification(print: (self, parent, zone, line) {
+        Zone.root.print(line.replaceAll('(package:llvm_dart/', '(./lib/'));
+      }),
+    );
   });
 }
 
