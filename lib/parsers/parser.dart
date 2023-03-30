@@ -112,46 +112,78 @@ class Modules {
   ImplTy? parseImpl(TokenIterator it) {
     eatLfIfNeed(it);
     if (!it.moveNext()) return null;
-    final ident = getIdent(it);
-
-    eatLfIfNeed(it);
-    if (!it.moveNext()) return null;
-    final t = getToken(it);
+    Identifier? com = getIdent(it);
     Identifier? label;
-    if (t.kind == TokenKind.colon) {
+    Identifier? ident;
+    if (getKey(it) == Key.kFor) {
+      com = null;
       eatLfIfNeed(it);
-      if (!it.moveNext()) {
-        label = getIdent(it);
+      if (it.moveNext()) {
+        ident = getIdent(it);
+      }
+    } else {
+      eatLfIfNeed(it);
+      if (!it.moveNext()) return null;
+      final t = getToken(it);
+      if (t.kind == TokenKind.colon) {
+        eatLfIfNeed(it);
+        if (!it.moveNext()) {
+          label = getIdent(it);
+          if (!it.moveNext()) return null;
+        }
+      } else if (t.kind == TokenKind.openBrace) {
+        // no com
+        ident = com;
+        com = null;
+      } else {
+        eatLfIfNeed(it);
         if (!it.moveNext()) return null;
+        ident = getIdent(it);
       }
     }
-    // final forKey = getIdent(it);
-    eatLfIfNeed(it);
-    if (!it.moveNext()) return null;
-    final targetTy = getIdent(it);
-    final ty = PathTy(targetTy);
-    eatLfIfNeed(it);
 
+    if (ident == null) {
+      // error
+      return null;
+    }
+
+    final ty = PathTy(ident);
+
+    eatLfIfNeed(it);
     checkBlock(it);
 
     if (getToken(it).kind == TokenKind.openBrace) {
       final fns = <Fn>[];
+      final staticFns = <Fn>[];
       it.moveNext();
       it = it.current.child.tokenIt;
       loop(it, () {
         final t = getToken(it);
         if (t.kind == TokenKind.closeBrace) return true;
         if (t.kind == TokenKind.ident) {
-          final key = getKey(it);
+          var key = getKey(it);
+          var isStatic = false;
+          if (key == Key.kStatic) {
+            eatLfIfNeed(it);
+            it.moveNext();
+            key = getKey(it);
+            isStatic = true;
+          }
           if (key == Key.fn) {
-            final fn = parseFn(it);
-            if (fn != null) fns.add(fn);
+            var fn = parseFn(it);
+            if (fn != null) {
+              if (isStatic) {
+                staticFns.add(fn);
+              } else {
+                fns.add(fn);
+              }
+            }
           }
         }
         return false;
       });
 
-      return ImplTy(ident, ty, label, fns);
+      return ImplTy(ident, com, ty, label, fns, staticFns);
     }
 
     return null;
@@ -273,7 +305,7 @@ class Modules {
         state.restore();
       }
     }
-    return Fn(fnSign, Block([], null));
+    return Fn(fnSign, null);
   }
 
   bool isBlockStart(TokenIterator it) {
@@ -774,9 +806,13 @@ class Modules {
       } else {
         it.moveBack();
       }
+    } else {
+      final expr = StructDotFieldExpr(ident, fnOrFieldName);
+      it.moveBack();
+      return expr;
     }
-    // check Syntax
 
+    // check Syntax
     return MethodCallExpr(
         fnOrFieldName, VariableIdentExpr(ident), parseFieldExpr(it));
   }

@@ -95,20 +95,36 @@ class LLVMTypeLit extends LLVMType {
 
   @override
   Variable createValue(BuildContext c, {String str = ''}) {
-    final raw = LLVMRawValue(str);
-    final kind = ty.ty;
-    switch (kind) {
-      case LitKind.f32:
-      case LitKind.kFloat:
-        return LLVMTempVariable(c.constF32(raw.value));
-      case LitKind.kDouble:
-        return LLVMTempVariable(c.constF64(raw.value));
-      case LitKind.kString:
-        return LLVMTempVariable(c.constStr(raw.raw));
-      case LitKind.kInt:
-      default:
-        return LLVMTempVariable(c.constI32(raw.iValue));
+    LLVMValueRef v(BuildContext c, BuiltInTy? bty) {
+      final raw = LLVMRawValue(str);
+      final kind = (bty ?? ty).ty;
+      Log.w('.... $bty');
+      switch (kind) {
+        case LitKind.f32:
+        case LitKind.kFloat:
+          return c.constF32(raw.value);
+        case LitKind.kDouble:
+          return c.constF64(raw.value);
+        case LitKind.kString:
+          return c.constStr(raw.raw);
+        case LitKind.kBool:
+          return c.constI1(raw.raw == 'true' ? 1 : 0);
+        case LitKind.i8:
+          return c.constI8(raw.iValue);
+        case LitKind.i16:
+          return c.constI16(raw.iValue);
+        case LitKind.i64:
+          return c.constI64(raw.iValue);
+        case LitKind.i128:
+          return c.constI128(raw.raw);
+        case LitKind.kInt:
+        case LitKind.i32:
+        default:
+          return c.constI32(raw.iValue);
+      }
     }
+
+    return LLVMLitVariable(v, ty);
   }
 
   @override
@@ -147,7 +163,7 @@ class LLVMPathType extends LLVMType {
   LLVMTypeRef createType(BuildContext c) {
     final ident = ty.ident;
     final tySrc = ident.src;
-    var t = BuiltInTy.from(ident, tySrc);
+    var t = BuiltInTy.from(tySrc);
     if (t != null) {
       return t.llvmType.createType(c);
     }
@@ -161,7 +177,7 @@ class LLVMPathType extends LLVMType {
   Variable createValue(BuildContext c) {
     final ident = ty.ident;
     final tySrc = ident.src;
-    var t = BuiltInTy.from(ident, tySrc);
+    var t = BuiltInTy.from(tySrc);
     if (t != null) {
       return t.llvmType.createValue(c);
     }
@@ -178,7 +194,7 @@ class LLVMPathType extends LLVMType {
   int getBytes(BuildContext c) {
     final ident = ty.ident;
     final tySrc = ident.src;
-    var t = BuiltInTy.from(ident, tySrc);
+    var t = BuiltInTy.from(tySrc);
     if (t != null) {
       return t.llvmType.getBytes(c);
     }
@@ -195,7 +211,7 @@ class LLVMPathType extends LLVMType {
   LLVMAllocaVariable createAlloca(BuildContext c, Identifier ident) {
     final id = ty.ident;
     final tySrc = id.src;
-    var t = BuiltInTy.from(id, tySrc);
+    var t = BuiltInTy.from(tySrc);
     if (t != null) {
       return t.llvmType.createAlloca(c, ident);
     }
@@ -219,13 +235,19 @@ class LLVMFnType extends LLVMType {
   LLVMTypeRef createType(BuildContext c) {
     final params = fn.fnSign.fnDecl.params;
     final list = <LLVMTypeRef>[];
+
+    if (fn is ImplFn) {
+      final ty = c.pointer();
+      list.add(ty);
+    }
+
     for (var p in params) {
       final realTy = p.ty.getRealTy(c);
       LLVMTypeRef ty = realTy.llvmType.createType(c);
       if (p.isRef) {
         ty = c.typePointer(ty);
       } else {
-        if (realTy is StructTy) {
+        if (realTy is StructTy && fn.extern) {
           final size = realTy.llvmType.getBytes(c);
           ty = c.getStructExternType(size);
         }
@@ -294,7 +316,7 @@ class LLVMStructType extends LLVMType {
     indics.add(context.constI32(0));
     indics.add(context.constI32(index));
     final c = llvm.LLVMBuildInBoundsGEP2(context.builder, createType(context),
-        alloca.alloca, indics.toNative().cast(), indics.length, unname);
+        alloca.alloca, indics.toNative(), indics.length, unname);
     return LLVMAllocaVariable(
         field.ty, c, field.ty.llvmType.createType(context));
   }
@@ -321,6 +343,18 @@ class LLVMStructType extends LLVMType {
     return LLVMStructAllocaVariable(ty, alloca, type, loadTy);
   }
 
+  LLVMStructAllocaVariable createAllocaFromParam(
+      BuildContext c, LLVMValueRef value, Identifier ident) {
+    // final type = createType(c);
+    final type = createType(c);
+    final size = getBytes(c);
+    final loadTy = c.getStructExternType(size);
+    final alloca = c.alloctor(loadTy, 'param_$ident');
+    llvm.LLVMBuildStore(c.builder, value, alloca);
+    llvm.LLVMSetAlignment(alloca, 4);
+    return LLVMStructAllocaVariable(ty, alloca, loadTy, type);
+  }
+
   @override
   int getBytes(BuildContext c) {
     var size = 0;
@@ -336,21 +370,41 @@ class LLVMRefType extends LLVMType {
   LLVMRefType(this.ty);
   @override
   final RefTy ty;
+  Ty get parent => ty.parent;
   @override
   LLVMTypeRef createType(BuildContext c) {
-    return c.typePointer(ty.llvmType.createType(c));
+    return parent.llvmType.createType(c);
+    // return c.typePointer(parent.llvmType.createType(c));
+  }
+
+  LLVMTypeRef ref(BuildContext c) {
+    return c.pointer();
   }
 
   @override
+  @protected
+  LLVMAllocaVariable createAlloca(BuildContext c, Identifier ident) {
+    return super.createAlloca(c, ident);
+  }
+
+  LLVMAllocaVariable createRefAlloca(BuildContext c, Identifier ident) {
+    final type = ref(c);
+    final v = c.createAlloca(type, ident);
+    return LLVMAllocaVariable(parent, v, createType(c));
+  }
+
+  @protected
+  @override
   Variable createValue(BuildContext c) {
-    final size = ty.llvmType.getBytes(c);
-    final array = c.constArray(ty.llvmType.createType(c), size);
-    return LLVMAllocaVariable(ty, array, createType(c));
+    return parent.llvmType.createValue(c);
+    // final size = getBytes(c);
+    // final array = c.constArray(createType(c), size);
+    // return LLVMAllocaVariable(ty, array, createType(c));
   }
 
   @override
   int getBytes(BuildContext c) {
-    return c.pointerSize();
+    return parent.llvmType.getBytes(c);
   }
 }
 
@@ -425,11 +479,11 @@ class LLVMStructAllocaVariable extends LLVMAllocaVariable {
     if (extern && !_isRef) {
       // final ss = llvm.LLVMBuildBitCast(
       //     c.builder, alloca, c.typePointer(type), '.s.s.'.toChar());
-      final ss = llvm.LLVMBuildPointerCast(
-          c.builder, alloca, c.typePointer(type), 'ssaxx'.toChar());
+      // final ss = llvm.LLVMBuildPointerCast(
+      //     c.builder, alloca, c.typePointer(type), 'ssaxx'.toChar());
       final arr = c.createAlloca(loadTy, null, name: 'struct_arr');
       llvm.LLVMBuildMemCpy(
-          c.builder, arr, 4, ss, 4, c.constI64(ty.llvmType.getBytes(c)));
+          c.builder, arr, 4, alloca, 4, c.constI64(ty.llvmType.getBytes(c)));
       final v = llvm.LLVMBuildLoad2(c.builder, loadTy, arr, unname);
       return v;
     }
@@ -447,6 +501,17 @@ class LLVMTempVariable extends Variable {
   @override
   LLVMValueRef load(BuildContext c) {
     return value;
+  }
+}
+
+class LLVMLitVariable extends Variable {
+  LLVMLitVariable(this._load, this.ty);
+  @override
+  final Ty ty;
+  final LLVMValueRef Function(BuildContext c, BuiltInTy? ty) _load;
+  @override
+  LLVMValueRef load(BuildContext c, {BuiltInTy? ty}) {
+    return _load(c, ty);
   }
 }
 
@@ -546,81 +611,106 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts {
     bb.inserted = true;
   }
 
-  void _build(LLVMValueRef fn, FnDecl decl) {
+  void _build(LLVMValueRef fn, FnDecl decl, Fn fnty) {
     final params = decl.params;
+    var self = 0;
+    if (fnty is ImplFn) {
+      self = 1;
+      final p = fnty.ty;
+      Variable aa;
+      final selfParam = llvm.LLVMGetParam(fn, 0);
+
+      final llty = RefTy(p).llvmType;
+      final alloca = aa = llty.createRefAlloca(this, p.ident);
+      alloca.store(this, selfParam);
+
+      pushVariable(Identifier.builtIn('self'), aa);
+    }
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
       final isRef = p.isRef;
-      // LLVMTypeRef ty;
-      final fnParam = llvm.LLVMGetParam(fn, i);
+
+      final fnParam = llvm.LLVMGetParam(fn, i + self);
       Variable aa;
       if (!isRef) {
         final realTy = p.ty.getRealTy(this);
-        final alloca = aa = realTy.llvmType.createAlloca(this, p.ident);
-        // final ss = LLVMAllocaVariable(
-        //     realTy, fnParam, realTy.llvmType.createType(this));
-        // final lll = ss.load(this);
-        // Log.w('...$alloca $realTy ');
-        alloca._isParam = true;
-        alloca.store(this, fnParam);
+        if (realTy is StructTy) {
+          final allocaf =
+              realTy.llvmType.createAllocaFromParam(this, fnParam, p.ident);
+          final alloca = realTy.llvmType.createAlloca(this, p.ident);
+          llvm.LLVMBuildMemCpy(builder, alloca.alloca, 4, allocaf.alloca, 4,
+              constI64(realTy.llvmType.getBytes(this)));
+          aa = alloca;
+          alloca._isParam = true;
+          // final v = pa.load2(this, fnty.extern);
+          // final alloca = aa = realTy.llvmType.createAlloca(this, p.ident);
+          // alloca._isParam = true;
+          // alloca.store(this, pa);
+        } else {
+          final alloca = aa = realTy.llvmType.createAlloca(this, p.ident);
+          alloca._isParam = true;
+          alloca.store(this, fnParam);
+        }
+        // } else {
+        //   aa = LLVMConstVariable(fnParam, realTy);
+        // }
       } else {
         final llty = RefTy(p.ty).llvmType;
-        final alloca = aa = llty.createAlloca(this, p.ident);
-        // final ss = LLVMAllocaVariable(p.ty, fnParam, pointer());
+        final alloca = aa = llty.createRefAlloca(this, p.ident);
         alloca.store(this, fnParam);
       }
-      // if (isRef) {
-      //   ty = typePointer();
-      //   continue;
-      // } else {
-      //   ty = p.ty.llvmType.createType(this);
-      // }
-      // final v = LLVMParamVariable(fnParam, p.ty, isRef);
+
       pushVariable(p.ident, aa);
     }
   }
 
   void buildFnBB(Fn fn) {
     final fv = fn.llvmType.createValue(this);
-    final isDecl = fn.block.stmts.isEmpty;
+    final block = fn.block;
+    final isDecl = block == null;
 
     if (isDecl) return;
     final bbContext = createChildContext();
     bbContext.fn = fv;
     bbContext.isFnBBContext = true;
     bbContext.createAndInsertBB(fv);
-    bbContext._build(fv.value, fn.fnSign.fnDecl);
-    fn.block.build(bbContext);
+    bbContext._build(fv.value, fn.fnSign.fnDecl, fn);
+    block.build(bbContext);
 
-    void voidRet() {
+    bool hasRet = false;
+    bool voidRet({bool back = false}) {
+      if (hasRet) return true;
       final decl = fn.fnSign.fnDecl;
       if (decl.returnTy is BuiltInTy) {
         final lit = (decl.returnTy as BuiltInTy).ty;
         if (lit != LitKind.kVoid) {
-          /// error
+          if (back) return false;
+          // error
         }
         bbContext.ret(null);
+        hasRet = true;
+        return true;
       }
+      return false;
     }
 
-    if (fn.block.stmts.isNotEmpty) {
-      final lastStmt = fn.block.stmts.last;
+    if (block.stmts.isNotEmpty) {
+      final lastStmt = block.stmts.last;
       if (lastStmt is ExprStmt) {
         final expr = lastStmt.expr;
         if (expr is! RetExpr) {
-          // 获取缓存的value
-          final val = expr.build(bbContext)?.variable;
-          if (val == null) {
-            // error
+          if (!voidRet(back: true)) {
+            // 获取缓存的value
+            final val = expr.build(bbContext)?.variable;
+            if (val == null) {
+              // error
+            }
+            bbContext.ret(val);
           }
-          bbContext.ret(val);
         }
-      } else {
-        voidRet();
       }
-    } else {
-      voidRet();
     }
+    voidRet();
     // mem2reg pass
     // llvm.LLVMRunFunctionPassManager(fpm, fv.value);
   }

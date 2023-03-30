@@ -111,8 +111,8 @@ abstract class Expr extends BuildMixin {
   ExprTempValue? _ty;
   ExprTempValue? get currentTy => _ty;
 
+  @protected
   ExprTempValue? buildExpr(BuildContext context);
-  // return ty
 }
 
 class UnknownExpr extends Expr {
@@ -122,7 +122,7 @@ class UnknownExpr extends Expr {
 
   @override
   String toString() {
-    return 'UnknowExpr $ident($message)';
+    return 'UnknownExpr $ident($message)';
   }
 
   @override
@@ -243,20 +243,6 @@ class FnSign with EquatableMixin {
   List<Object?> get props => [fnDecl, extern];
 }
 
-enum BuiltInKind {
-  int('int'),
-  float('float'),
-  double('double'),
-  bool('bool'),
-  kVoid('void'),
-  string('string'),
-  ;
-
-  final String text;
-
-  const BuiltInKind(this.text);
-}
-
 /// ----- Ty -----
 
 abstract class Ty extends BuildMixin with EquatableMixin {
@@ -284,7 +270,7 @@ class RefTy extends Ty {
   void build(BuildContext context) {}
 
   @override
-  LLVMType get llvmType => LLVMRefType(this);
+  LLVMRefType get llvmType => LLVMRefType(this);
 
   @override
   List<Object?> get props => [parent];
@@ -301,7 +287,7 @@ class BuiltInTy extends Ty {
 
   final LitKind ty;
 
-  static BuiltInTy? from(Identifier ident, String src) {
+  static BuiltInTy? from(String src) {
     final lit = LitKind.values.firstWhereOrNull((e) => e.lit == src);
     if (lit == null) return null;
 
@@ -339,7 +325,7 @@ class PathTy extends Ty {
   @override
   void build(BuildContext context) {
     final tySrc = ident.src;
-    var ty = BuiltInTy.from(ident, tySrc);
+    var ty = BuiltInTy.from(tySrc);
     if (ty != null) {
       final hasTy = context.contains(ty);
       assert(hasTy);
@@ -349,7 +335,7 @@ class PathTy extends Ty {
   @override
   Ty getRealTy(BuildContext c) {
     final tySrc = ident.src;
-    Ty? ty = BuiltInTy.from(ident, tySrc);
+    Ty? ty = BuiltInTy.from(tySrc);
     if (ty != null) {
       return ty;
     }
@@ -380,16 +366,16 @@ class Fn extends Ty {
   @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
-    block.incLevel(count);
+    block?.incLevel(count);
   }
 
   final FnSign fnSign;
-  final Block block;
+  final Block? block;
 
   @override
   String toString() {
     var b = '';
-    if (block.stmts.isNotEmpty) {
+    if (block != null) {
       b = '$block';
     }
     if (extern) {
@@ -412,6 +398,11 @@ class Fn extends Ty {
 
   @override
   late final LLVMFnType llvmType = LLVMFnType(this);
+}
+
+class ImplFn extends Fn {
+  ImplFn(super.fnSign, super.block, this.ty);
+  final StructTy ty;
 }
 
 class FieldDef with EquatableMixin {
@@ -518,15 +509,20 @@ class ComponentTy extends Ty {
 }
 
 class ImplTy extends Ty {
-  ImplTy(this.ident, this.ty, this.label, this.fns) {
+  ImplTy(this.ident, this.com, this.ty, this.label, this.fns, this.staticFns) {
     for (var fn in fns) {
+      fn.incLevel();
+    }
+    for (var fn in staticFns) {
       fn.incLevel();
     }
   }
   final Ty ty;
   final Identifier ident;
+  final Identifier? com;
   final Identifier? label;
   final List<Fn> fns;
+  final List<Fn> staticFns;
 
   @override
   void incLevel([int count = 1]) {
@@ -534,18 +530,49 @@ class ImplTy extends Ty {
     for (var fn in fns) {
       fn.incLevel(count);
     }
+
+    for (var fn in staticFns) {
+      fn.incLevel(count);
+    }
   }
+
+  List<ImplFn>? _fns;
 
   @override
   void build(BuildContext context) {
     // check ty
     context.pushImpl(ident, this);
+    final ty = context.getStruct(ident);
+    if (ty == null) {
+      //error
+      return;
+    }
+
+    for (var fn in staticFns) {
+      context.buildFnBB(fn);
+    }
+    final ifns =
+        _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty)).toList();
+    for (var fn in ifns) {
+      context.buildFnBB(fn);
+    }
   }
 
   @override
   String toString() {
     final l = label == null ? '' : ': $label';
-    return 'impl $ident$l for $ty {\n$pad${fns.map((e) => '$e\n').join()}$pad}';
+    final cc = com == null ? '' : '$com$l for ';
+    var sfnn = staticFns.map((e) {
+      final pad = getWhiteSpace(level + 1, BuildMixin.padSize);
+      var str = '$e'.toString().replaceFirst(pad, '${pad}static ');
+      return '$str\n';
+    }).join();
+    var fnnStr = fns.map((e) => '$e\n').join();
+
+    if (sfnn.isNotEmpty) {
+      fnnStr = '$pad$fnnStr';
+    }
+    return 'impl $cc$ty {\n$pad$sfnn$fnnStr$pad}';
   }
 
   @override

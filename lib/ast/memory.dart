@@ -56,11 +56,11 @@ extension StringToChar on String {
 }
 
 extension ArrayExt<T extends NativeType> on List<Pointer<T>> {
-  Pointer<Pointer> toNative() {
+  Pointer<Pointer<D>> toNative<D extends NativeType>() {
     final arr = llvmMalloc<Pointer>(length);
     for (var i = 0; i < length; i++) {
       arr[i] = this[i];
     }
-    return arr;
+    return arr.cast();
   }
 }

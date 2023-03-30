@@ -22,23 +22,32 @@ class LetStmt extends Stmt {
   void build(BuildContext context) {
     ExprTempValue? val = rExpr?.build(context);
     final realTy = ty?.getRealTy(context);
-    if (ty != null && val != null && realTy != val.ty) {
-      // error
-      return;
-    }
+    // if (ty == null && val == null) {
+    //   // error
+    //   return;
+    // }
 
+    Log.w('...$realTy $ty');
     final tty = realTy ?? val?.ty;
     if (tty != null) {
       final variable = val?.variable;
+      if (realTy != null && variable is LLVMLitVariable) {
+        if (tty is BuiltInTy) {
+          final alloca = tty.llvmType.createAlloca(context, nameIdent);
+          final rValue = variable.load(context, ty: tty);
+          alloca.store(context, rValue);
+
+          context.pushVariable(nameIdent, alloca);
+          return;
+        }
+        // error
+      }
       if (variable is LLVMStructAllocaVariable && !variable.isParam) {
         context.setName(variable.alloca, nameIdent.src);
         context.pushVariable(nameIdent, variable);
         return;
       }
       final alloca = tty.llvmType.createAlloca(context, nameIdent);
-      // final type = tty.llvmType.createType(context);
-      // final a = context.createAlloca(type, nameIdent);
-      // final alloca = LLVMAllocaVariable(tty, a, type);
       if (variable != null) {
         final rValue = variable.load(context);
         alloca.store(context, rValue);

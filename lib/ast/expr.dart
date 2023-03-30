@@ -5,7 +5,6 @@ import 'package:llvm_dart/ast/buildin.dart';
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/llvm_core.dart';
-import 'package:nop/nop.dart';
 
 import 'ast.dart';
 
@@ -208,16 +207,20 @@ class StructExpr extends Expr {
     if (struct == null) return null;
     final structType = struct.llvmType.createType(context);
     final value = struct.llvmType.createValue(context);
-    for (var i = 0; i < fields.length; i++) {
-      final f = fields[i];
+    final sortFields = alignParam(
+        fields, (p) => struct.fields.indexWhere((e) => e.ident == p.ident));
+
+    for (var i = 0; i < sortFields.length; i++) {
+      final f = sortFields[i];
+
       final v = f.build(context)?.variable;
       if (v == null) continue;
       final indics = <LLVMValueRef>[];
       indics.add(context.constI32(0));
       indics.add(context.constI32(i));
       final c = llvm.LLVMBuildInBoundsGEP2(context.builder, structType,
-          value.alloca, indics.toNative().cast(), indics.length, unname);
-      // value.store(context, c);
+          value.alloca, indics.toNative(), indics.length, unname);
+
       llvm.LLVMBuildStore(context.builder, v.load(context), c);
     }
     return ExprTempValue(value, value.ty);
@@ -301,6 +304,45 @@ class FieldExpr extends Expr {
   }
 }
 
+List<F> alignParam<F>(List<F> src, int Function(F) test) {
+  final sortFields = <F>[];
+  final fieldMap = <int, F>{};
+
+  for (var i = 0; i < src.length; i++) {
+    final p = src[i];
+    final index = test(p);
+    if (index != -1) {
+      fieldMap[index] = p;
+    } else {
+      sortFields.add(p);
+    }
+  }
+
+  var index = 0;
+  for (var i = 0; i < sortFields.length; i++) {
+    final p = sortFields[i];
+    while (true) {
+      if (fieldMap.containsKey(index)) {
+        index++;
+        continue;
+      }
+      fieldMap[index] = p;
+      break;
+    }
+  }
+
+  sortFields.clear();
+  final keys = fieldMap.keys.toList()..sort();
+  for (var k in keys) {
+    final v = fieldMap[k];
+    if (v != null) {
+      sortFields.add(v);
+    }
+  }
+
+  return sortFields;
+}
+
 class FnCallExpr extends Expr {
   FnCallExpr(this.ident, this.params);
   final Identifier ident;
@@ -338,21 +380,28 @@ class FnCallExpr extends Expr {
     final isExtern = fn.extern;
     final fnValue = fn.llvmType.createValue(context);
 
+    final fnParams = fn.fnSign.fnDecl.params;
     final args = <LLVMValueRef>[];
-    for (var p in params) {
+
+    final sortFields = alignParam(
+        params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
+
+    for (var p in sortFields) {
       final v = p.build(context)?.variable;
       if (v != null) {
+        LLVMValueRef value;
         if (isExtern && v is LLVMStructAllocaVariable) {
-          final value = v.load2(context, isExtern);
-          args.add(value);
+          value = v.load2(context, isExtern);
         } else {
-          final value = v.load(context);
-          args.add(value);
+          value = v.load(context);
         }
+
+        args.add(value);
       }
     }
+
     final ret = llvm.LLVMBuildCall2(context.builder, fnType,
-        fnValue.load(context), args.toNative().cast(), args.length, unname);
+        fnValue.load(context), args.toNative(), args.length, unname);
     // return fn.fnSign.fnDecl.returnTy;
     return ExprTempValue(LLVMTempVariable(ret), fn.fnSign.fnDecl.returnTy);
   }
@@ -525,7 +574,7 @@ class OpExpr extends Expr {
         }
       }
     }
-    Log.w('isFloat $isFloat');
+
     final v =
         context.math(l.variable!, r.variable!, op, isFloat, signed: signed);
     return ExprTempValue(v, v.ty);

@@ -55,16 +55,15 @@ mixin BuildMethods {
   }
 
   LLVMTypeRef typeFn(List<LLVMTypeRef> params, LLVMTypeRef ret) {
-    final type = llvm.LLVMFunctionType(
-        ret, params.toNative().cast(), params.length, LLVMFalse);
+    final type =
+        llvm.LLVMFunctionType(ret, params.toNative(), params.length, LLVMFalse);
     return type;
   }
 
   LLVMTypeRef typeStruct(List<LLVMTypeRef> types, Identifier ident) {
     final struct =
         llvm.LLVMStructCreateNamed(llvmContext, 'struct_$ident'.toChar());
-    llvm.LLVMStructSetBody(
-        struct, types.toNative().cast(), types.length, LLVMFalse);
+    llvm.LLVMStructSetBody(struct, types.toNative(), types.length, LLVMFalse);
 
     return struct;
   }
@@ -175,8 +174,8 @@ mixin Consts on BuildMethods {
     return llvm.LLVMConstInt(i64, v, LLVMTrue);
   }
 
-  LLVMValueRef constI128(int v) {
-    return llvm.LLVMConstInt(i128, v, LLVMFalse);
+  LLVMValueRef constI128(String v) {
+    return llvm.LLVMConstIntOfString(i128, v.toChar(), LLVMFalse);
   }
 
   LLVMValueRef constU128(int v) {

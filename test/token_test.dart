@@ -156,8 +156,7 @@ enum Lang {
     final builder = context.builder;
     final C = context.llvmContext;
     final retTy = llvm.LLVMDoubleType();
-    final fnty =
-        llvm.LLVMFunctionType(retTy, <Pointer>[].toNative().cast(), 0, 0);
+    final fnty = llvm.LLVMFunctionType(retTy, <Pointer>[].toNative(), 0, 0);
     final fn = llvm.getOrInsertFunction('main'.toChar(), context.module, fnty);
     final bb = llvm.LLVMAppendBasicBlockInContext(C, fn, 'entry'.toChar());
     llvm.LLVMPositionBuilderAtEnd(builder, bb);
@@ -200,8 +199,9 @@ enum Lang {
   test("control flow", () {
     final src = '''
 fn printxx(y: int)int
+fn printxxa(y: &int)int
 fn strx(hh: int, g: &Gen)
-extern fn stra(g: Gen)
+extern fn stra()
 fn getGen()Gen
 fn ggg()
 
@@ -209,18 +209,29 @@ fn hhh() int {
   12
 }
 
-extern fn yy(y: int, g: Gen) Gen {
+impl Gen {
+  static fn new() Gen {
+    Gen {15, 18, 55}
+  }
+
+  fn compl() i32 {
+    let y = self.y
+    y
+  }
+}
+
+extern fn yy(y: int, g: Gen) {
   let gg = g
   let hss = gg.z
   gg.y = 102
   gg.x = 6556
   gg.z = 6772
-  printxx(gg.z)
   printxx(hss)
+  printxx(y)
+  hss = y
+  printxxa(&hss)
   printxx(hss)
-  gg
 }
-
 struct Gen {
   y: i32,
   x: i32,
@@ -228,14 +239,7 @@ struct Gen {
 }
 
 fn main() int {
-  let y = 101
-  let hah = Gen {205, 55, 801}
-
-  let x = 22
-  strx(hh: 710, g: &hah)
-  let hh = 101
-  stra(g: hah)
-
+  stra()
   return 0
 }
 
@@ -252,6 +256,11 @@ fn main() int {
         for (var fns in root.fns.values) {
           for (var fn in fns) {
             fn.build(root);
+          }
+        }
+        for (var impls in root.impls.values) {
+          for (var impl in impls) {
+            impl.build(root);
           }
         }
         llvm.LLVMDumpModule(root.module);
