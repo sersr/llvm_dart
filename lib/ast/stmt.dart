@@ -1,7 +1,9 @@
 import 'package:llvm_dart/ast/context.dart';
+import 'package:llvm_dart/ast/tys.dart';
 import 'package:nop/nop.dart';
 
 import 'ast.dart';
+import 'variables.dart';
 
 class LetStmt extends Stmt {
   LetStmt(this.ident, this.nameIdent, this.rExpr, this.ty);
@@ -21,13 +23,8 @@ class LetStmt extends Stmt {
   @override
   void build(BuildContext context) {
     ExprTempValue? val = rExpr?.build(context);
-    final realTy = ty?.getRealTy(context);
-    // if (ty == null && val == null) {
-    //   // error
-    //   return;
-    // }
+    final realTy = ty?.grt(context);
 
-    Log.w('...$realTy $ty');
     final tty = realTy ?? val?.ty;
     if (tty != null) {
       final variable = val?.variable;
@@ -42,18 +39,27 @@ class LetStmt extends Stmt {
         }
         // error
       }
-      if (variable is LLVMStructAllocaVariable && !variable.isParam) {
+      if (variable is StoreVariable && variable.isTemp) {
+        variable.isTemp = false;
         context.setName(variable.alloca, nameIdent.src);
         context.pushVariable(nameIdent, variable);
         return;
       }
-      final alloca = tty.llvmType.createAlloca(context, nameIdent);
       if (variable != null) {
         final rValue = variable.load(context);
-        alloca.store(context, rValue);
-      }
+        if (variable is LLVMRefAllocaVariable) {
+          final s = LLVMRefAllocaVariable.create(context, variable.parent);
+          s.store(context, rValue);
+          context.setName(s.alloca, nameIdent.src);
+          // context.setName(variable.alloca, nameIdent.src);
+          context.pushVariable(nameIdent, s);
+        } else {
+          final alloca = tty.llvmType.createAlloca(context, nameIdent);
+          alloca.store(context, rValue);
 
-      context.pushVariable(nameIdent, alloca);
+          context.pushVariable(nameIdent, alloca);
+        }
+      }
     }
   }
 
@@ -89,7 +95,7 @@ class StaticStmt extends Stmt {
   StaticStmt(this.ident, this.variable, this.expr, this.ty);
 
   final Identifier variable;
-  final Ty? ty;
+  final PathTy? ty;
   final Identifier ident;
   final Expr expr;
 
@@ -102,13 +108,14 @@ class StaticStmt extends Stmt {
   @override
   void build(BuildContext context) {
     final e = expr.build(context);
+    final rty = ty?.grt(context);
     if (e == null) return;
-    if (ty != null && e.ty != ty) {
+    if (rty != null && e.ty != rty) {
       Log.e('$ty = ${e.ty}');
       return;
     }
-    final y = ty ?? e.ty;
-    final v = y.llvmType.createValue(context);
+    final y = rty ?? e.ty;
+    final v = y.llvmType.createAlloca(context, ident);
     context.pushVariable(variable, v);
   }
 
@@ -139,9 +146,7 @@ class FnStmt extends Stmt {
   }
 
   @override
-  void build(BuildContext context) {
-    // TODO: implement build
-  }
+  void build(BuildContext context) {}
 
   @override
   List<Object?> get props => [fn];
@@ -158,9 +163,7 @@ class StructStmt extends Stmt {
   final StructTy ty;
 
   @override
-  void build(BuildContext context) {
-    // TODO: implement build
-  }
+  void build(BuildContext context) {}
 
   @override
   List<Object?> get props => [ty];
@@ -177,9 +180,7 @@ class EnumStmt extends Stmt {
   final EnumTy ty;
 
   @override
-  void build(BuildContext context) {
-    // TODO: implement build
-  }
+  void build(BuildContext context) {}
 
   @override
   List<Object?> get props => [ty];

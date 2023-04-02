@@ -1,14 +1,14 @@
 import 'package:llvm_dart/parsers/lexers/token_stream.dart';
 
-extension TokenItExt on List<TokenTree> {
-  TokenIterator get tokenIt {
-    return TokenIterator(this);
+extension TokenItExt<T> on List<T> {
+  BackIterator<T> get tokenIt {
+    return BackIterator(this);
   }
 }
 
 class CursorState {
   CursorState(this._it, this.cursor);
-  final TokenIterator _it;
+  final BackIterator _it;
 
   final int cursor;
 
@@ -17,14 +17,18 @@ class CursorState {
   }
 }
 
-class TokenIterator extends Iterator<TokenTree> {
-  TokenIterator(List<TokenTree> tree) : _current = List.of(tree);
-  final List<TokenTree> _current;
+typedef TokenIterator = BackIterator<TokenTree>;
+
+class BackIterator<T> extends Iterator<T> {
+  BackIterator(List<T> tree) : _current = List.of(tree);
+  final List<T> _current;
   int get length => _current.length;
   int _cursor = -1;
 
   @override
-  TokenTree get current => _current[_cursor];
+  T get current => _current[_cursor];
+
+  bool get curentIsValid => _cursor > -1 && _cursor < length;
 
   CursorState get cursor => CursorState(this, _cursor);
 

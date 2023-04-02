@@ -9,6 +9,7 @@ import 'package:llvm_dart/ast/tys.dart';
 import 'package:meta/meta.dart';
 
 import '../parsers/lexers/token_kind.dart';
+import 'llvm_types.dart';
 
 String getWhiteSpace(int level, int pad) {
   return ' ' * level * pad;
@@ -37,8 +38,27 @@ class Identifier with EquatableMixin {
 
   static final Identifier none = Identifier('', 0, 0);
 
+  String ext([int count = 1]) {
+    if (start <= 0) return src;
+    final s = (start - count).clamp(0, start);
+    if (identical(this, none)) {
+      return '';
+    }
+    if (builtInName.isNotEmpty) {
+      return builtInName;
+    }
+    final raw = Zone.current['astSrc'];
+    if (raw is String) {
+      return raw.substring(s, end);
+    }
+    return '';
+  }
+
   @override
   List<Object?> get props {
+    if (identical(this, none)) {
+      return [''];
+    }
     if (builtInName.isNotEmpty) {
       return [builtInName];
     }
@@ -50,6 +70,9 @@ class Identifier with EquatableMixin {
   }
 
   String get src {
+    if (identical(this, none)) {
+      return '';
+    }
     if (builtInName.isNotEmpty) {
       return builtInName;
     }
@@ -62,6 +85,9 @@ class Identifier with EquatableMixin {
 
   @override
   String toString() {
+    if (identical(this, none)) {
+      return '';
+    }
     if (builtInName.isNotEmpty) {
       return '[$builtInName]';
     }
@@ -78,7 +104,7 @@ class Identifier with EquatableMixin {
 class GenericParam with EquatableMixin {
   GenericParam(this.ident, this.ty, this.isRef);
   final Identifier ident;
-  final Ty ty;
+  final PathTy ty;
   final bool isRef;
 
   @override
@@ -216,7 +242,7 @@ class FnDecl with EquatableMixin {
   FnDecl(this.ident, this.params, this.returnTy);
   final Identifier ident;
   final List<GenericParam> params;
-  final Ty returnTy;
+  final PathTy returnTy;
 
   @override
   String toString() {
@@ -251,7 +277,7 @@ abstract class Ty extends BuildMixin with EquatableMixin {
   //   throw UnimplementedError('ty');
   // }
 
-  static final Ty unknown = UnknownTy(Identifier('', 0, 0));
+  static final PathTy unknown = UnknownTy(Identifier('', 0, 0));
 
   LLVMType get llvmType;
 
@@ -310,50 +336,50 @@ class BuiltInTy extends Ty {
 }
 
 /// [PathTy] 只用于声明
-class PathTy extends Ty {
-  PathTy(this.ident);
+class PathTy with EquatableMixin {
+  PathTy(this.ident) : ty = null;
+  PathTy.ty(Ty this.ty) : ident = Identifier.none;
   final Identifier ident;
-
+  final Ty? ty;
   @override
   String toString() {
+    if (ty != null) return ty!.toString();
     return '$ident';
   }
 
   @override
   List<Object?> get props => [ident];
 
-  @override
   void build(BuildContext context) {
+    if (ty != null) return;
+
     final tySrc = ident.src;
-    var ty = BuiltInTy.from(tySrc);
-    if (ty != null) {
-      final hasTy = context.contains(ty);
+    var rty = BuiltInTy.from(tySrc);
+    if (rty != null) {
+      final hasTy = context.contains(rty);
       assert(hasTy);
     }
   }
 
-  @override
-  Ty getRealTy(BuildContext c) {
+  Ty grt(BuildContext c) {
+    if (ty != null) return ty!;
+
     final tySrc = ident.src;
-    Ty? ty = BuiltInTy.from(tySrc);
-    if (ty != null) {
-      return ty;
+    Ty? tty = BuiltInTy.from(tySrc);
+    if (tty != null) {
+      return tty;
     }
 
-    ty = c.getTy(ident);
-    if (ty != null) {
+    tty = c.getTy(ident);
+    if (tty != null) {
       // error
     }
-    return ty!;
+    return tty!;
   }
-
-  @override
-  LLVMType get llvmType => LLVMPathType(this);
 }
 
 class UnknownTy extends PathTy {
   UnknownTy(super.ident);
-
   @override
   String toString() {
     return '{Unknown}';
@@ -408,8 +434,7 @@ class ImplFn extends Fn {
 class FieldDef with EquatableMixin {
   FieldDef(this.ident, this.ty);
   final Identifier ident;
-  final Ty ty;
-
+  final PathTy ty;
   @override
   String toString() {
     return '$ident: $ty';
@@ -517,7 +542,7 @@ class ImplTy extends Ty {
       fn.incLevel();
     }
   }
-  final Ty ty;
+  final PathTy ty;
   final Identifier ident;
   final Identifier? com;
   final Identifier? label;
@@ -536,12 +561,31 @@ class ImplTy extends Ty {
     }
   }
 
+  Fn? getFn(Identifier ident) {
+    return _fns?.firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident);
+  }
+
   List<ImplFn>? _fns;
+
+  void initStructFns(Tys context) {
+    final structTy = context.getStruct(ident);
+    if (structTy == null) return;
+    context.pushImplForStruct(structTy, this);
+    final ty = context.getStruct(ident);
+    if (ty == null) {
+      //error
+      return;
+    }
+    _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty)).toList();
+  }
 
   @override
   void build(BuildContext context) {
-    // check ty
     context.pushImpl(ident, this);
+    // check ty
+    final structTy = context.getStruct(ident);
+    if (structTy == null) return;
+    context.pushImplForStruct(structTy, this);
     final ty = context.getStruct(ident);
     if (ty == null) {
       //error

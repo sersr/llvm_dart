@@ -34,6 +34,8 @@ class TokenReader {
         return TokenTree(token: token, child: tokens);
       }
       if (token.kind == TokenKind.whiteSpace) continue;
+      if (token.kind == TokenKind.lineCommnet) continue;
+      if (token.kind == TokenKind.blockComment) continue;
       // if (token.kind == TokenKind.lf) continue;
       tokens.add(TokenTree(token: token));
     }

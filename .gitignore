@@ -6,3 +6,4 @@
 /out.o
 /*.exe
 /main
+/base.ll

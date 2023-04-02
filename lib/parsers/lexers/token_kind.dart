@@ -54,9 +54,11 @@ enum TokenKind {
 
   /// "<"
   lt('<'),
+  shr('<<'),
 
   /// ">"
   gt('>'),
+  shl('>>'),
 
   /// "="
   eq('='),
@@ -75,6 +77,9 @@ enum TokenKind {
 
   /// "*",
   star('*'),
+
+  /// "/"
+  div('/'),
 
   /// "\"
   slash('\\'),
@@ -252,6 +257,12 @@ class Cursor {
       return whiteSpace();
     }
 
+    if (char == '/') {
+      final t = comment();
+      if (t != null) {
+        return t;
+      }
+    }
     if (idenStartKey.hasMatch(char)) {
       return ident();
     }
@@ -265,10 +276,31 @@ class Cursor {
       return doubleQuotedString();
     }
 
+    if (char == '>' && nextCharRead == '>') {
+      final start = cursor;
+      nextChar;
+      return Token(kind: TokenKind.shl, start: start, end: cursor);
+    }
+
+    if (char == '<' && nextCharRead == '<') {
+      final start = cursor;
+      nextChar;
+      return Token(kind: TokenKind.shr, start: start, end: cursor);
+    }
     final tk = TokenKind.parse(char, cursor);
     if (tk != null) return tk;
 
     return Token(kind: TokenKind.unknown, start: cursor);
+  }
+
+  Token? comment() {
+    assert(current == '/');
+    final start = cursor;
+    if (nextCharRead == '/') {
+      eatLine();
+      return Token(kind: TokenKind.lineCommnet, start: start, end: cursor);
+    }
+    return null;
   }
 
   Token ident() {
@@ -349,8 +381,16 @@ class Cursor {
           eatNumberLiteral();
         }
       }
-      return Token.literal(
-          literalKind: LiteralKind.kFloat, start: start, end: cursor);
+      LiteralKind k;
+      final c = cursor;
+      if (nextCharRead == 'f') {
+        nextChar;
+        k = LiteralKind.kFloat;
+      } else {
+        if (nextCharRead == 'd') nextChar;
+        k = LiteralKind.kDouble;
+      }
+      return Token.literal(literalKind: k, start: start, end: c);
     }
 
     return Token.literal(
@@ -362,6 +402,13 @@ class Cursor {
       if (rawNumbers.contains(char)) return false;
       if (char == '_') return false;
       return true;
+    });
+  }
+
+  void eatLine() {
+    loop((char) {
+      if (char == '\n') return true;
+      return false;
     });
   }
 

@@ -2,6 +2,10 @@ import 'package:llvm_dart/ast/ast.dart';
 import 'package:llvm_dart/ast/llvm_context.dart';
 import 'package:llvm_dart/llvm_core.dart';
 
+import '../llvm_dart.dart';
+import 'llvm_types.dart';
+import 'variables.dart';
+
 class SizeofFn extends Fn {
   SizeofFn()
       : super(FnSign(true, FnDecl(Identifier.none, [], Ty.unknown)),
@@ -23,7 +27,7 @@ class SizeOfType extends LLVMFnType {
   }
 
   @override
-  LLVMConstVariable createValue(BuildContext c, {Ty? ty}) {
+  LLVMConstVariable createFunction(BuildContext c, {Ty? ty}) {
     final tyy = ty!.llvmType.createType(c);
     final size = llvm.LLVMSizeOf(tyy);
     return LLVMConstVariable(size, ty);

@@ -6,11 +6,15 @@ import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/llvm_context.dart';
 import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/llvm_core.dart';
+import 'package:llvm_dart/llvm_dart.dart';
 import 'package:llvm_dart/parsers/lexers/token_kind.dart';
 import 'package:llvm_dart/parsers/lexers/token_stream.dart';
 import 'package:llvm_dart/parsers/parser.dart';
 import 'package:nop/nop.dart';
 import 'package:test/test.dart';
+
+// ignore: unused_import
+import 'str.dart';
 
 void main() {
   test('token', () {
@@ -197,59 +201,35 @@ enum Lang {
   /// cc ./base.c ./out.o -o main
   /// ./main
   test("control flow", () {
-    final src = '''
-fn printxx(y: int)int
-fn printxxa(y: &int)int
-fn strx(hh: int, g: &Gen)
-extern fn stra()
-fn getGen()Gen
-fn ggg()
+    var src = '''
+extern fn printxx(y: int);
 
-fn hhh() int {
-  12
-}
-
-impl Gen {
-  static fn new() Gen {
-    Gen {15, 18, 55}
-  }
-
-  fn compl() i32 {
-    let y = self.y
-    y
-  }
-}
-
-extern fn yy(y: int, g: Gen) {
-  let gg = g
-  let hss = gg.z
-  gg.y = 102
-  gg.x = 6556
-  gg.z = 6772
-  printxx(hss)
-  printxx(y)
-  hss = y
-  printxxa(&hss)
-  printxx(hss)
-}
 struct Gen {
-  y: i32,
-  x: i32,
-  z: i32,
+  y: int,
 }
 
 fn main() int {
-  stra()
-  return 0
+  // test: expr
+  // let hh = Gen {y: y(x,10,22, hhxx.dd())}
+  // let x = (10 + y()) * 30 / (40 + 50) * 111 / (10 + hh.fnxx(1,2) ) * 444
+  
+  /// TODO: 
+  let y = 10.d + 20.d
+  let x: i64 = 11111111111
+  let z = (1 << 20 )  - 1
+  printxx(z)
+  0
 }
-
 ''';
-    final m = parseTopItem(src);
+
     return runZoned(
       () {
+        final m = parseTopItem(src);
         print(m.globalTy.values.join('\n'));
+        // return;
         llvm.initLLVM();
         final root = BuildContext.root();
+        // root.initMathO();
         root.pushAllTy(m.globalTy);
         root.pushFn(sizeOfFn.ident, sizeOfFn);
 

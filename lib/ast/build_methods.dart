@@ -60,7 +60,11 @@ mixin BuildMethods {
     return type;
   }
 
-  LLVMTypeRef typeStruct(List<LLVMTypeRef> types, Identifier ident) {
+  LLVMTypeRef typeStruct(List<LLVMTypeRef> types, Identifier? ident) {
+    if (ident == null) {
+      return llvm.LLVMStructTypeInContext(
+          llvmContext, types.toNative(), types.length, LLVMFalse);
+    }
     final struct =
         llvm.LLVMStructCreateNamed(llvmContext, 'struct_$ident'.toChar());
     llvm.LLVMStructSetBody(struct, types.toNative(), types.length, LLVMFalse);

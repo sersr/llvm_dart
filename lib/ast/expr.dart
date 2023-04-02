@@ -4,9 +4,13 @@ import 'package:collection/collection.dart';
 import 'package:llvm_dart/ast/buildin.dart';
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/memory.dart';
+import 'package:llvm_dart/ast/tys.dart';
 import 'package:llvm_dart/llvm_core.dart';
+import 'package:llvm_dart/parsers/lexers/token_kind.dart';
 
+import '../llvm_dart.dart';
 import 'ast.dart';
+import 'variables.dart';
 
 class LiteralExpr extends Expr {
   LiteralExpr(this.ident, this.ty);
@@ -82,7 +86,8 @@ class IfExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final v = context.createIfBlock(ifExpr);
-    return ExprTempValue(v, Ty.unknown);
+    if (v == null) return null;
+    return ExprTempValue(v, v.ty);
   }
 }
 
@@ -142,6 +147,8 @@ class LoopExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     context.forLoop(block, null, null);
+    // todo: phi
+    return null;
   }
 }
 
@@ -167,6 +174,7 @@ class WhileExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     context.forLoop(block, null, expr);
+    return null;
   }
 }
 
@@ -181,7 +189,6 @@ class RetExpr extends Expr {
 
     context.ret(e?.variable);
     return e;
-    // return expr?.build(context);
   }
 
   @override
@@ -240,14 +247,6 @@ class StructExprField {
   ExprTempValue? build(BuildContext context) {
     return expr.build(context);
   }
-}
-
-class VariableRefExpr extends Expr {
-  VariableRefExpr(this.ident);
-  final Identifier ident;
-
-  @override
-  ExprTempValue? buildExpr(BuildContext context) {}
 }
 
 class AssignExpr extends Expr {
@@ -368,17 +367,17 @@ class FnCallExpr extends Expr {
         final e = first.expr;
         if (e is VariableIdentExpr) {
           final p = PathTy(e.ident);
-          ty = p.getRealTy(context);
+          ty = p.grt(context);
         }
       }
       if (ty == null) return null;
 
-      final v = fn.llvmType.createValue(context, ty: ty);
+      final v = fn.llvmType.createFunction(context, ty: ty);
       return ExprTempValue(v, BuiltInTy.int);
     }
     final fnType = fn.llvmType.createType(context);
     final isExtern = fn.extern;
-    final fnValue = fn.llvmType.createValue(context);
+    final fnValue = fn.llvmType.createFunction(context);
 
     final fnParams = fn.fnSign.fnDecl.params;
     final args = <LLVMValueRef>[];
@@ -392,6 +391,8 @@ class FnCallExpr extends Expr {
         LLVMValueRef value;
         if (isExtern && v is LLVMStructAllocaVariable) {
           value = v.load2(context, isExtern);
+        } else if (v is LLVMRefAllocaVariable) {
+          value = v.load(context);
         } else {
           value = v.load(context);
         }
@@ -402,8 +403,9 @@ class FnCallExpr extends Expr {
 
     final ret = llvm.LLVMBuildCall2(context.builder, fnType,
         fnValue.load(context), args.toNative(), args.length, unname);
-    // return fn.fnSign.fnDecl.returnTy;
-    return ExprTempValue(LLVMTempVariable(ret), fn.fnSign.fnDecl.returnTy);
+
+    final retTy = fn.fnSign.fnDecl.returnTy.grt(context);
+    return ExprTempValue(LLVMTempVariable(ret, retTy), retTy);
   }
 }
 
@@ -420,105 +422,224 @@ class MethodCallExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final fn = context.getFn(ident);
+    final variable = receiver.build(context);
+    if (variable == null) return null;
+
+    final valTy = variable.ty;
+    if (valTy is! StructTy) return null;
+    final structTy = valTy;
+    final val = variable.variable;
+    final impl = context.getImplForStruct(structTy);
+    if (val == null || impl == null) {
+      // error
+      return null;
+    }
+
+    final fn = impl.getFn(ident);
     if (fn == null) {
       return null;
     }
-    final declParams = fn.fnSign.fnDecl.params;
-    for (var p in params) {
-      p.build(context);
+
+    /// `FnCallExpr`
+    final fnType = fn.llvmType.createType(context);
+    final isExtern = fn.extern;
+    final fnValue = fn.llvmType.createFunction(context);
+
+    final fnParams = fn.fnSign.fnDecl.params;
+    final args = <LLVMValueRef>[];
+
+    // struct 一般是 StoreVariable
+    if (val is StoreVariable) {
+      args.add(val.alloca);
+    } else {
+      args.add(val.load(context));
     }
 
-    for (var p in params) {
-      p.build(context);
+    final sortFields = alignParam(
+        params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
+
+    for (var p in sortFields) {
+      final v = p.build(context)?.variable;
+      if (v != null) {
+        LLVMValueRef value;
+        if (isExtern && v is LLVMStructAllocaVariable) {
+          value = v.load2(context, isExtern);
+        } else if (v is LLVMRefAllocaVariable) {
+          value = v.load(context);
+        } else {
+          value = v.load(context);
+        }
+
+        args.add(value);
+      }
     }
+
+    final ret = llvm.LLVMBuildCall2(context.builder, fnType,
+        fnValue.load(context), args.toNative(), args.length, unname);
+
+    final retTy = fn.fnSign.fnDecl.returnTy.grt(context);
+    return ExprTempValue(LLVMTempVariable(ret, retTy), retTy);
   }
 }
 
 class StructDotFieldExpr extends Expr {
-  StructDotFieldExpr(this.structIdent, this.ident);
+  StructDotFieldExpr(this.struct, this.kind, this.ident);
   final Identifier ident;
-  final Identifier structIdent;
+  final Expr struct;
+
+  final List<PointerKind> kind;
+
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final val = context.getVariable(structIdent);
+    final structVal = struct.build(context);
+    final val = structVal?.variable;
     var ty = val?.ty.getRealTy(context);
 
     if (ty is! StructTy) return null;
+    final newVal = PointerKind.refDerefs(val, context, kind);
 
-    final alloca = (val as LLVMAllocaVariable);
-    final v = ty.llvmType.getField(alloca, context, ident);
+    final v = ty.llvmType.getField(newVal as StoreVariable, context, ident);
     if (v == null) return null;
     return ExprTempValue(v, v.ty);
   }
 
   @override
   String toString() {
-    return '$structIdent.$ident';
+    return '${kind.join(',')}$struct.$ident';
   }
 }
 
 enum OpKind {
   /// The `+` operator (addition)
-  Add('+'),
+  Add('+', 60),
 
   /// The `-` operator (subtraction)
-  Sub('-'),
+  Sub('-', 60),
 
   /// The `*` operator (multiplication)
-  Mul('*'),
+  Mul('*', 110),
 
   /// The `/` operator (division)
-  Div('/'),
+  Div('/', 110),
 
   /// The `%` operator (modulus)
-  Rem('%'),
+  Rem('%', 110),
 
   /// The `&&` operator (logical and)
-  And('&&'),
+  And('&&', 0),
 
   /// The `||` operator (logical or)
-  Or('||'),
+  Or('||', 0),
 
   /// The `^` operator (bitwise xor)
-  BitXor('^'),
+  BitXor('^', 1000),
 
   /// The `&` operator (bitwise and)
-  BitAnd('&'),
+  BitAnd('&', 50),
 
   /// The `|` operator (bitwise or)
-  BitOr('|'),
+  BitOr('|', 50),
 
   /// The `<<` operator (shift left)
-  Shl('<<'),
+  Shl('<<', 50),
 
   /// The `>>` operator (shift right)
-  Shr('>>'),
+  Shr('>>', 50),
 
   /// The `==` operator (equality)
-  Eq('=='),
+  Eq('==', 10),
 
   /// The `<` operator (less than)
-  Lt('<'),
+  Lt('<', 10),
 
   /// The `<=` operator (less than or equal to)
-  Le('<='),
+  Le('<=', 10),
 
   /// The `!=` operator (not equal to)
-  Ne('!='),
+  Ne('!=', 10),
 
   /// The `>=` operator (greater than or equal to)
-  Ge('>='),
+  Ge('>=', 10),
 
   /// The `>` operator (greater than)
-  Gt('>'),
+  Gt('>', 10),
   ;
 
   final String op;
-  const OpKind(this.op);
+  const OpKind(this.op, this.level);
+  final int level;
 
   static OpKind? from(String src) {
     return values.firstWhereOrNull((element) => element.op == src);
+  }
+
+  int? getICmpId(bool isSigned) {
+    if (index < Eq.index) return null;
+    int? i;
+    switch (this) {
+      case Eq:
+        return LLVMIntPredicate.LLVMIntEQ;
+      case Ne:
+        return LLVMIntPredicate.LLVMIntNE;
+      case Gt:
+        i = LLVMIntPredicate.LLVMIntUGT;
+        break;
+      case Ge:
+        i = LLVMIntPredicate.LLVMIntUGE;
+        break;
+      case Lt:
+        i = LLVMIntPredicate.LLVMIntULT;
+        break;
+      case Le:
+        i = LLVMIntPredicate.LLVMIntULE;
+        break;
+      default:
+    }
+    if (i != null && isSigned) {
+      return i + 4;
+    }
+    return i;
+  }
+
+  int? getFCmpId(bool isSigned) {
+    if (index < Eq.index) return null;
+    int? i;
+
+    switch (this) {
+      case Eq:
+        i = isSigned
+            ? LLVMRealPredicate.LLVMRealOEQ
+            : LLVMRealPredicate.LLVMRealUEQ;
+        break;
+      case Ne:
+        i = isSigned
+            ? LLVMRealPredicate.LLVMRealONE
+            : LLVMRealPredicate.LLVMRealUNE;
+        break;
+      case Gt:
+        i = isSigned
+            ? LLVMRealPredicate.LLVMRealOGT
+            : LLVMRealPredicate.LLVMRealUGT;
+        break;
+      case Ge:
+        i = isSigned
+            ? LLVMRealPredicate.LLVMRealOGE
+            : LLVMRealPredicate.LLVMRealUGE;
+        break;
+      case Lt:
+        i = isSigned
+            ? LLVMRealPredicate.LLVMRealOLT
+            : LLVMRealPredicate.LLVMRealULT;
+        break;
+      case Le:
+        i = isSigned
+            ? LLVMRealPredicate.LLVMRealOLE
+            : LLVMRealPredicate.LLVMRealULE;
+        break;
+      default:
+    }
+
+    return i;
   }
 }
 
@@ -532,29 +653,41 @@ class OpExpr extends Expr {
   String toString() {
     var rs = '$rhs';
     var ls = '$lhs';
-    if (rhs is OpExpr) {
-      final r = rhs as OpExpr;
-      if (op.index > r.op.index) {
+
+    var rc = rhs;
+    if (rc is RefExpr) {
+      if (rc.current is OpExpr) {
+        rc = rc.current;
+      }
+    }
+
+    if (rc is OpExpr) {
+      if (op.level > rc.op.level) {
         rs = '($rs)';
       }
     }
-    if (lhs is OpExpr) {
-      final l = lhs as OpExpr;
-      if (op.index > l.op.index) {
+    var lc = lhs;
+    if (lc is RefExpr) {
+      if (lc.current is OpExpr) {
+        lc = lc.current;
+      }
+    }
+    if (lc is OpExpr) {
+      if (op.level > lc.op.level) {
         ls = '($ls)';
       }
     }
-    var ss = '$ls ${op.op} $rs';
 
+    var ss = '$ls ${op.op} $rs';
     return ss;
   }
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final l = lhs.build(context);
-    final r = rhs.build(context);
+    // final r = rhs.build(context);
 
-    if (l == null || r == null) return null;
+    if (l == null) return null;
     var isFloat = false;
     var signed = false;
     final lValue = l.variable;
@@ -565,7 +698,7 @@ class OpExpr extends Expr {
     } else {
       var lty = l.ty;
       if (lty is PathTy) {
-        lty = lty.getRealTy(context) ?? lty;
+        lty = lty.getRealTy(context);
       }
       if (lty is BuiltInTy) {
         final kind = lty.ty;
@@ -575,15 +708,63 @@ class OpExpr extends Expr {
       }
     }
 
-    final v =
-        context.math(l.variable!, r.variable!, op, isFloat, signed: signed);
+    final v = context.math(l.variable!, (context) {
+      return rhs.build(context)?.variable;
+    }, op, isFloat, signed: signed);
     return ExprTempValue(v, v.ty);
   }
 }
 
+enum PointerKind {
+  deref('*'),
+  none(''),
+  ref('&');
+
+  final String char;
+  const PointerKind(this.char);
+
+  static PointerKind? from(TokenKind kind) {
+    if (kind == TokenKind.and) {
+      return PointerKind.ref;
+    } else if (kind == TokenKind.star) {
+      return PointerKind.deref;
+    }
+    return null;
+  }
+
+  Variable? refDeref(Variable? val, BuildContext c) {
+    if (this == PointerKind.none) return val;
+    Variable? inst;
+    if (val != null) {
+      if (val is LLVMRefAllocaVariable && this == PointerKind.deref) {
+        inst = val.getDeref(c);
+      } else if (this == PointerKind.ref) {
+        inst = val.getRef(c);
+      }
+    }
+    return inst;
+  }
+
+  static Variable? refDerefs(
+      Variable? val, BuildContext c, List<PointerKind> kind) {
+    if (val == null) return val;
+    Variable? vv = val;
+    for (var k in kind) {
+      vv = k.refDeref(vv, c);
+    }
+    return vv;
+  }
+
+  @override
+  String toString() => char == '' ? '$runtimeType' : char;
+}
+
 class VariableIdentExpr extends Expr {
-  VariableIdentExpr(this.ident);
+  VariableIdentExpr(this.ident, List<PointerKind>? pointerKind)
+      : pointerKind = pointerKind ?? [];
   final Identifier ident;
+
+  final List<PointerKind> pointerKind;
   @override
   String toString() {
     return '$ident';
@@ -593,28 +774,28 @@ class VariableIdentExpr extends Expr {
   ExprTempValue? buildExpr(BuildContext context) {
     final val = context.getVariable(ident);
     if (val == null) return null;
-    return ExprTempValue(val, val.ty);
+    final newVal = PointerKind.refDerefs(val, context, pointerKind);
+    return ExprTempValue(newVal, val.ty);
   }
 }
 
 class RefExpr extends Expr {
-  RefExpr(this.current, this.isRef);
+  RefExpr(this.current, this.kind);
   final Expr current;
-  final bool isRef;
+  final List<PointerKind> kind;
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final val = current.build(context);
-    final vall = val?.variable;
-    if (vall is LLVMAllocaVariable) {
-      final inst = vall.clone(isRef);
-      return ExprTempValue(inst, val!.ty);
+    var vv = PointerKind.refDerefs(val?.variable, context, kind);
+    if (vv != null) {
+      return ExprTempValue(vv, val!.variable!.ty);
     }
     return val;
   }
 
   @override
   String toString() {
-    if (!isRef) return current.toString();
-    return '$current [Ref]';
+    var s = kind.join('');
+    return '$s$current';
   }
 }
