@@ -179,23 +179,64 @@ abstract class BuildMixin {
 abstract class Stmt with BuildMixin, EquatableMixin {}
 
 enum LitKind {
-  kInt('int'),
   kFloat('float'),
   kDouble('double'),
+  f32('f32'),
+  f64('f64'),
+  kInt('int'),
   kString('string'),
+
   i8('i8'),
   i16('i16'),
   i32('i32'),
   i64('i64'),
   i128('i128'),
-  f32('f32'),
-  f64('f64'),
+
+  u8('u8'),
+  u16('u16'),
+  u32('u32'),
+  u64('u64'),
+  u128('u128'),
+
   kBool('bool'),
   kVoid('void'),
   ;
 
+  bool get isFp {
+    if (index <= f64.index) {
+      return true;
+    }
+    return false;
+  }
+
+  bool get isInt {
+    if (index > f64.index && index < kBool.index) {
+      return true;
+    }
+    return false;
+  }
+
+  LitKind get convert {
+    if (index >= u8.index && index <= u128.index) {
+      return values[index - 5];
+    }
+    return this;
+  }
+
+  bool get signed {
+    assert(isInt);
+    if (index >= i8.index && index <= i128.index) {
+      return true;
+    }
+    return false;
+  }
+
   final String lit;
   const LitKind(this.lit);
+
+  static LitKind? from(LiteralKind kind) {
+    return values.firstWhereOrNull((element) => element.lit == kind.lit);
+  }
 }
 
 class Block extends BuildMixin with EquatableMixin {
@@ -303,15 +344,17 @@ class RefTy extends Ty {
 }
 
 class BuiltInTy extends Ty {
-  BuiltInTy._(this.ty);
+  BuiltInTy._(this._ty);
   static final int = BuiltInTy._(LitKind.kInt);
   static final float = BuiltInTy._(LitKind.kFloat);
   static final double = BuiltInTy._(LitKind.kDouble);
   static final string = BuiltInTy._(LitKind.kString);
   static final kVoid = BuiltInTy._(LitKind.kVoid);
   static final kBool = BuiltInTy._(LitKind.kBool);
+  BuiltInTy.lit(this._ty);
 
-  final LitKind ty;
+  final LitKind _ty;
+  LitKind get ty => _ty.convert;
 
   static BuiltInTy? from(String src) {
     final lit = LitKind.values.firstWhereOrNull((e) => e.lit == src);

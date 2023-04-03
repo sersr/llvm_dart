@@ -17,7 +17,7 @@ import 'package:test/test.dart';
 import 'str.dart';
 
 void main() {
-  test('token', () {
+  test('token', /* ffsfsfsd */ () {
     final s = '''
 fn main() int {
   let x: string = 1
@@ -202,23 +202,37 @@ enum Lang {
   /// ./main
   test("control flow", () {
     var src = '''
-extern fn printxx(y: int);
+// extern fn printxx(y: int);
 
 struct Gen {
   y: int,
-}
+};
+
+fn prxx(y: u64) {
+  let x = y + 10u64;
+};
 
 fn main() int {
+  // let hx = (10 + y().call((2 + 3).callIn())).call2()
+  // let hxaa = (50 + y(10,y, (10 * (50 + 22)).call()))
   // test: expr
   // let hh = Gen {y: y(x,10,22, hhxx.dd())}
-  // let x = (10 + y()) * 30 / (40 + 50) * 111 / (10 + hh.fnxx(1,2) ) * 444
-  
+  //  let x = (10 + y((y *(*(30 + 66) / hall.call(yyy, xxxx, (y + x * 10)))).call())) * 30 / (40 + 50) * 111 / (10 + hh.fnxx(1,2) ) * 444
+  // let z =1  * (*(1 + /* hello */ 20)).x()  - 1
   /// TODO: 
-  let y = 10.d + 20.d
-  let x: i64 = 11111111111
-  let z = (1 << 20 )  - 1
-  printxx(z)
-  0
+  // let y = 10.d + 20.d
+  // let x: i64 = 11111111111
+  // let hhx: i64 = 1
+  // let z: i64 = (1 << 63 ) - 1
+  // printxx(z)
+  // Gen {y: 11, x: pinfs(y: 22)}
+  // let unn = 10 * (10 * (-20 * (30 + yy.call() + Gen {y: 10, 2424}) + 50) + 50)
+  // printxx(y: 110u64);
+  // let y = -10.;
+
+  let x = 12u8 + 22_u8;
+  let y = 10.000e+1_double;
+  0;
 }
 ''';
 

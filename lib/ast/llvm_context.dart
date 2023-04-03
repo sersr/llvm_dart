@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:llvm_dart/ast/expr.dart';
 import 'package:llvm_dart/ast/stmt.dart';
 import 'package:llvm_dart/ast/tys.dart';
+import 'package:nop/nop.dart';
 
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
@@ -14,8 +15,10 @@ import 'memory.dart';
 import 'variables.dart';
 
 class LLVMRawValue {
-  LLVMRawValue(this.raw);
-  final String raw;
+  LLVMRawValue(this._raw);
+  final String _raw;
+
+  String get raw => _raw.replaceAll('_', '');
 
   Pointer<Char> toChar() {
     return raw.toChar();
@@ -139,6 +142,7 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
       final isRef = p.isRef;
 
       final fnParam = llvm.LLVMGetParam(fn, i + self);
+      Log.w('..${llvm.LLVMGetValueKind(fnParam)}$self');
       Variable aa;
       final realTy = p.ty.grt(this);
       if (!isRef) {
@@ -376,7 +380,7 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
   LLVMValueRef createAlloca(LLVMTypeRef type, Identifier? ident,
       {String? name}) {
     final alloca = alloctor(type, name ?? ident?.src ?? '');
-    llvm.LLVMSetAlignment(alloca, 4);
+    // llvm.LLVMSetAlignment(alloca, 4);
     return alloca;
   }
 
@@ -393,8 +397,7 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
       final opBB = buildSubBB(name: 'op_bb');
       final allocaValue = createAlloca(i1, null, name: 'op');
       final variable = LLVMAllocaVariable(BuiltInTy.kBool, allocaValue, i1);
-      // final lv = llvm.LLVMBuildICmp(
-      //     builder, LLVMIntPredicate.LLVMIntEQ, l, constI1(LLVMTrue), unname);
+
       variable.store(this, l);
       appendBB(opBB);
 
@@ -408,8 +411,7 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
       if (r == null) {
         // error
       }
-      // final rv = llvm.LLVMBuildICmp(
-      //     c.builder, LLVMIntPredicate.LLVMIntEQ, r, constI1(LLVMTrue), unname);
+
       variable.store(c, r!);
       c.br(after.context);
       insertPointBB(after);

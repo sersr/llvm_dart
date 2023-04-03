@@ -26,6 +26,8 @@ class Modules {
       loop(it, () {
         final token = getToken(it);
         if (token.kind == TokenKind.lf) return false;
+        if (token.kind == TokenKind.semi) return false;
+
         print('token : ${Identifier.fromToken(token)}');
         if (token.kind == TokenKind.ident) {
           parseIdent(it, global: true);
@@ -39,9 +41,6 @@ class Modules {
     return src.substring(s, e);
   }
 
-  // final globalFn = <Identifier, Fn>{};
-  // final globalStruct = <Identifier, StructTy>{};
-  // final globalEnum = <Identifier, EnumTy>{};
   final globalTy = <Token, Ty>{};
   final globalVar = <Token, Stmt>{};
 
@@ -322,6 +321,7 @@ class Modules {
       final t = getToken(it);
       final k = t.kind;
       if (k == TokenKind.lf) return false;
+      if (k == TokenKind.semi) return false;
 
       final stmt = parseStmt(it);
       if (stmt != null) {
@@ -404,7 +404,6 @@ class Modules {
     final ident = getIdent(it);
     eatLfIfNeed(it);
 
-    // if (getToken(it).kind == TokenKind.openParen) return null;
     final expr = parseExpr(it);
 
     checkBlock(it);
@@ -594,38 +593,26 @@ class Modules {
     }
   }
 
-  void eatCloseParen(TokenIterator it) {
-    if (it.moveNext()) {
-      if (getToken(it).kind == TokenKind.closeParen) {
-        it.moveNext();
-      } else {
-        it.moveBack();
-      }
-    }
-  }
-
   Expr parseExpr(TokenIterator it,
       {bool runOp = false, bool runOpInner = false}) {
     eatLfIfNeed(it);
     var pointerKind = <PointerKind>[];
     if (it.curentIsValid && !runOp) {
-      if (getToken(it).kind == TokenKind.and) {
-        pointerKind.add(PointerKind.ref);
-      } else if (getToken(it).kind == TokenKind.star) {
-        pointerKind.add(PointerKind.deref);
+      final t = getToken(it).kind;
+      final kind = PointerKind.from(t);
+      if (kind != null) {
+        pointerKind.add(kind);
       }
       eatLfIfNeed(it);
     }
     loop(it, () {
-      if (getToken(it).kind == TokenKind.and) {
-        pointerKind.add(PointerKind.ref);
-        eatLfIfNeed(it);
-        return false;
-      } else if (getToken(it).kind == TokenKind.star) {
-        pointerKind.add(PointerKind.deref);
-        eatLfIfNeed(it);
+      final t = getToken(it).kind;
+      final kind = PointerKind.from(t);
+      if (kind != null) {
+        pointerKind.add(kind);
         return false;
       }
+
       it.moveBack();
       return true;
     });
@@ -635,24 +622,23 @@ class Modules {
       Expr? lhs;
       if (t.kind == TokenKind.openParen) {
         lhs = parseExpr(it, runOpInner: runOp);
-        eatCloseParen(it);
-
-        return RefExpr(lhs, pointerKind);
       } else if (t.kind == TokenKind.literal) {
         final lit = t.literalKind!;
-        BuiltInTy? ty;
-        if (lit == LiteralKind.kString) {
-          ty = BuiltInTy.string;
-        } else if (lit == LiteralKind.kInt) {
-          ty = BuiltInTy.int;
-        } else if (lit == LiteralKind.kFloat) {
-          ty = BuiltInTy.float;
-        } else if (lit == LiteralKind.kDouble) {
-          ty = BuiltInTy.double;
-        }
-        if (ty != null) {
+        final lkd = LitKind.from(lit);
+
+        if (lkd != null) {
+          final ty = BuiltInTy.lit(lkd);
           lhs = LiteralExpr(getIdent(it), ty);
         }
+        // if (lit == LiteralKind.kString) {
+        //   ty = BuiltInTy.string;
+        // } else if (lit == LiteralKind.kInt) {
+        //   ty = BuiltInTy.int;
+        // } else if (lit == LiteralKind.kFloat) {
+        //   ty = BuiltInTy.float;
+        // } else if (lit == LiteralKind.kDouble) {
+        //   ty = BuiltInTy.double;
+        // }
       }
 
       if (lhs == null) {
@@ -699,7 +685,6 @@ class Modules {
         }
       }
       if (lhs != null) {
-        lhs = RefExpr(lhs, pointerKind);
         eatLfIfNeed(it);
         CursorState state = it.cursor;
         if (it.moveNext()) {
@@ -709,13 +694,11 @@ class Modules {
             state.restore();
           }
         }
+        lhs = RefExpr(lhs, pointerKind);
         eatLfIfNeed(it);
         // 遇到`)`结束本次表达式解析
         if (it.moveNext()) {
           if (getToken(it).kind == TokenKind.closeParen) {
-            // 保留 `)`，其他解析需要，如解析函数中的参数，
-            // 判断是否到结尾
-            it.moveBack();
             return lhs;
           } else {
             it.moveBack();
@@ -779,25 +762,19 @@ class Modules {
         exprs.add(expr);
         if (runOpInner) {
           eatLfIfNeed(it);
-          if (it.moveNext()) {
-            if (getToken(it).kind == TokenKind.closeParen) {
-              it.moveNext();
-              break;
-            }
-            it.moveBack();
+          // 在一个运算解析中，结束循环并移到下一个token
+          if (getToken(it).kind == TokenKind.closeParen) {
+            it.moveNext();
+            break;
           }
         } else {
-          if (it.moveNext()) {
-            if (getToken(it).kind == TokenKind.closeParen) {
-              eIt = exprs.tokenIt;
-              final expr = combine()!;
-              ops.clear();
-              exprs.clear();
-              exprs.add(expr);
-              it.moveNext();
-            } else {
-              it.moveBack();
-            }
+          // 如果上面移动到下一个token，这里就会解析错误
+          if (getToken(it).kind == TokenKind.closeParen) {
+            eIt = exprs.tokenIt;
+            final expr = combine()!;
+            ops.clear();
+            exprs.clear();
+            exprs.add(expr);
           }
         }
         continue;
@@ -831,23 +808,37 @@ class Modules {
       if (t.kind == TokenKind.semi) {
         return true;
       }
-      // 优先解析下一个表达式
-      if (t.kind == TokenKind.openParen) {
-        it.moveBack();
-        final expr = parseExpr(it);
-        final f = FieldExpr(expr, null);
-        fields.add(f);
-        return false;
-      }
 
+      // eat `)`
       if (t.kind == TokenKind.closeParen) {
         return true;
+      }
+      if (t.kind == TokenKind.ident) {
+        eatLfIfNeed(it);
+        final name = getIdent(it);
+
+        final state = it.cursor;
+        if (it.moveNext()) {
+          if (getToken(it).kind == TokenKind.colon) {
+            final expr = parseExpr(it);
+            final f = FieldExpr(expr, name);
+            fields.add(f);
+            if (getToken(it).kind == TokenKind.closeParen) {
+              return true;
+            }
+            return false;
+          }
+        }
+        state.restore();
       }
 
       it.moveBack();
       final expr = parseExpr(it);
       final f = FieldExpr(expr, null);
       fields.add(f);
+      if (getToken(it).kind == TokenKind.closeParen) {
+        return true;
+      }
 
       return false;
     });

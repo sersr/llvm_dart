@@ -1,5 +1,7 @@
 // ignore_for_file: constant_identifier_names
 
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:llvm_dart/ast/buildin.dart';
 import 'package:llvm_dart/ast/context.dart';
@@ -22,9 +24,21 @@ class LiteralExpr extends Expr {
     return '$ident[:$ty]';
   }
 
+  static T run<T>(T Function() body, Ty? ty) {
+    return runZoned(body, zoneValues: {#ty: ty});
+  }
+
+  BuiltInTy get realTy {
+    final r = Zone.current[#ty];
+    if (r is BuiltInTy) {
+      return r;
+    }
+    return ty;
+  }
+
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final v = ty.llvmType.createValue(context, str: ident.src);
+    final v = realTy.llvmType.createValue(context, str: ident.src);
 
     return ExprTempValue(v, ty);
   }
@@ -417,6 +431,9 @@ class MethodCallExpr extends Expr {
 
   @override
   String toString() {
+    if (receiver is OpExpr) {
+      return '($receiver).$ident(${params.join(',')})';
+    }
     return '$receiver.$ident(${params.join(',')})';
   }
 
@@ -505,7 +522,13 @@ class StructDotFieldExpr extends Expr {
 
   @override
   String toString() {
-    return '${kind.join(',')}$struct.$ident';
+    var e = struct;
+    if (e is RefExpr) {
+      if (e.kind.isNotEmpty) {
+        return '${kind.join('')}($struct).$ident';
+      }
+    }
+    return '${kind.join('')}$struct.$ident';
   }
 }
 
@@ -656,8 +679,10 @@ class OpExpr extends Expr {
 
     var rc = rhs;
     if (rc is RefExpr) {
-      if (rc.current is OpExpr) {
-        rc = rc.current;
+      if (rc.kind.isEmpty) {
+        if (rc.current is OpExpr) {
+          rc = rc.current;
+        }
       }
     }
 
@@ -668,8 +693,10 @@ class OpExpr extends Expr {
     }
     var lc = lhs;
     if (lc is RefExpr) {
-      if (lc.current is OpExpr) {
-        lc = lc.current;
+      if (lc.kind.isEmpty) {
+        if (lc.current is OpExpr) {
+          lc = lc.current;
+        }
       }
     }
     if (lc is OpExpr) {
@@ -697,19 +724,19 @@ class OpExpr extends Expr {
       signed = lValue.isSigned;
     } else {
       var lty = l.ty;
-      if (lty is PathTy) {
-        lty = lty.getRealTy(context);
-      }
       if (lty is BuiltInTy) {
         final kind = lty.ty;
-        if (kind == LitKind.kFloat || kind == LitKind.kDouble) {
+        if (kind.isFp) {
           isFloat = true;
+        } else if (kind.isInt) {
+          signed = kind.signed;
         }
       }
     }
 
     final v = context.math(l.variable!, (context) {
-      return rhs.build(context)?.variable;
+      final r = rhs.build(context)?.variable;
+      return r;
     }, op, isFloat, signed: signed);
     return ExprTempValue(v, v.ty);
   }
@@ -718,6 +745,7 @@ class OpExpr extends Expr {
 enum PointerKind {
   deref('*'),
   none(''),
+  neg('-'),
   ref('&');
 
   final String char;
@@ -728,6 +756,8 @@ enum PointerKind {
       return PointerKind.ref;
     } else if (kind == TokenKind.star) {
       return PointerKind.deref;
+    } else if (kind == TokenKind.minus) {
+      return PointerKind.neg;
     }
     return null;
   }
@@ -740,6 +770,20 @@ enum PointerKind {
         inst = val.getDeref(c);
       } else if (this == PointerKind.ref) {
         inst = val.getRef(c);
+      } else if (this == PointerKind.neg) {
+        final va = val.load(c);
+        final t = llvm.LLVMTypeOf(va);
+        final tyKind = llvm.LLVMGetTypeKind(t);
+        final isFloat = tyKind == LLVMTypeKind.LLVMFloatTypeKind ||
+            tyKind == LLVMTypeKind.LLVMDoubleTypeKind ||
+            tyKind == LLVMTypeKind.LLVMBFloatTypeKind;
+        LLVMValueRef llvmValue;
+        if (isFloat) {
+          llvmValue = llvm.LLVMBuildFNeg(c.builder, va, unname);
+        } else {
+          llvmValue = llvm.LLVMBuildNeg(c.builder, va, unname);
+        }
+        return LLVMTempVariable(llvmValue, val.ty);
       }
     }
     return inst;
@@ -749,7 +793,7 @@ enum PointerKind {
       Variable? val, BuildContext c, List<PointerKind> kind) {
     if (val == null) return val;
     Variable? vv = val;
-    for (var k in kind) {
+    for (var k in kind.reversed) {
       vv = k.refDeref(vv, c);
     }
     return vv;
@@ -796,6 +840,15 @@ class RefExpr extends Expr {
   @override
   String toString() {
     var s = kind.join('');
+    if (kind.isNotEmpty) {
+      var e = current;
+      if (e is RefExpr) {
+        e = e.current;
+      }
+      if (e is OpExpr) {
+        return '$s($current)';
+      }
+    }
     return '$s$current';
   }
 }

@@ -1,11 +1,12 @@
 import 'package:characters/characters.dart';
 import 'package:collection/collection.dart';
+import 'package:llvm_dart/parsers/token_it.dart';
 
 enum TokenKind {
   /// "//"
   lineCommnet(''),
 
-  /// "///"
+  /// "///", "/* */"
   blockComment(''),
 
   /// keys or identifiers
@@ -152,12 +153,64 @@ const whiteSpaceChars = [
 ];
 
 enum LiteralKind {
-  kInt,
-  kFloat,
-  kDouble,
+  kFloat('float'),
+  kDouble('double'),
+  f32('f32'),
+  f64('f64'),
+  kInt('int'),
+  kString('string'),
 
-  kString,
-  kVoid,
+  i8('i8'),
+  i16('i16'),
+  i32('i32'),
+  i64('i64'),
+  i128('i128'),
+
+  u8('u8'),
+  u16('u16'),
+  u32('u32'),
+  u64('u64'),
+  u128('u128'),
+
+  kBool('bool'),
+  kVoid('void'),
+  ;
+
+  static int? _max;
+  static int get max {
+    if (_max != null) return _max!;
+    return _max = values.fold<int>(0, (previousValue, element) {
+      if (previousValue > element.lit.length) {
+        return previousValue;
+      }
+      return element.lit.length;
+    });
+  }
+
+  bool get isFp {
+    if (index <= f64.index) {
+      return true;
+    }
+    return false;
+  }
+
+  bool get isInt {
+    if (index > f64.index && index < kBool.index) {
+      return true;
+    }
+    return false;
+  }
+
+  bool get signed {
+    assert(isInt);
+    if (index >= i8.index && index <= i128.index) {
+      return true;
+    }
+    return false;
+  }
+
+  final String lit;
+  const LiteralKind(this.lit);
 }
 
 class Token {
@@ -189,60 +242,39 @@ class Cursor {
   }
   void _reset() {
     final pc = src.characters;
-    _it = pc.iterator;
-    _cursor = -1;
-    _len = src.length;
+    _it = pc.toList().tokenIt;
   }
 
   final String src;
 
-  late CharacterRange _it;
+  late BackIterator<String> _it;
 
-  int _len = 0;
-  int _cursor = -1;
-  int get cursor => _cursor;
+  int get cursor => _it.cursor.cursor;
 
   void moveBack() {
-    if (_cursor <= -1) return;
-    _cursor -= _it.current.length;
     _it.moveBack();
   }
 
   String get current {
-    if (_cursor <= -1) return '';
+    if (!_it.curentIsValid) return '';
     return _it.current;
   }
 
   String get nextChar {
-    if (_cursor >= _len) return '';
-    if (_cursor <= -1) {
-      _cursor = 0;
-    } else {
-      final cursor = _cursor + _it.current.length;
-      if (cursor < _len) {
-        _cursor = cursor;
-      } else {
-        return '';
-      }
+    if (_it.moveNext()) {
+      return _it.current;
     }
-
-    _it.moveNext();
-    final char = _it.current;
-    return char;
+    return '';
   }
 
   // 不移动光标
   String get nextCharRead {
-    if (_cursor >= _len) return '';
-    final cursor = _cursor + _it.current.length;
-    if (cursor >= _len) {
-      return '';
+    if (_it.moveNext()) {
+      final current = _it.current;
+      _it.moveBack();
+      return current;
     }
-
-    _it.moveNext();
-    final char = _it.current;
-    _it.moveBack();
-    return char;
+    return '';
   }
 
   final idenStartKey = RegExp('[a-zA-Z_]');
@@ -299,6 +331,17 @@ class Cursor {
     if (nextCharRead == '/') {
       eatLine();
       return Token(kind: TokenKind.lineCommnet, start: start, end: cursor);
+    }
+    if (nextCharRead == '*') {
+      String preChar = '';
+      loop((char) {
+        if (preChar == '*' && char == '/') {
+          return true;
+        }
+        preChar = char;
+        return false;
+      }, back: false);
+      return Token(kind: TokenKind.blockComment, start: start, end: cursor);
     }
     return null;
   }
@@ -381,20 +424,41 @@ class Cursor {
           eatNumberLiteral();
         }
       }
-      LiteralKind k;
       final c = cursor;
-      if (nextCharRead == 'f') {
-        nextChar;
-        k = LiteralKind.kFloat;
-      } else {
-        if (nextCharRead == 'd') nextChar;
-        k = LiteralKind.kDouble;
-      }
+      final k = getLitKind() ?? LiteralKind.kDouble;
+
       return Token.literal(literalKind: k, start: start, end: c);
     }
 
-    return Token.literal(
-        literalKind: LiteralKind.kInt, start: start, end: cursor);
+    final end = cursor;
+    LiteralKind lkd = getLitKind() ?? LiteralKind.kInt;
+
+    return Token.literal(literalKind: lkd, start: start, end: end);
+  }
+
+  LiteralKind? getLitKind() {
+    var allChar = '';
+    LiteralKind? k;
+    final state = _it.cursor;
+    loop((char) {
+      allChar = '$allChar$char';
+      if (allChar.length > LiteralKind.max) {
+        return true;
+      }
+      final lit = LiteralKind.values
+          .firstWhereOrNull((element) => element.lit == allChar);
+      if (lit != null) {
+        k = lit;
+        return true;
+      }
+      return false;
+    }, back: false);
+
+    if (k == null) {
+      state.restore();
+    }
+
+    return k;
   }
 
   void eatNumberLiteral() {

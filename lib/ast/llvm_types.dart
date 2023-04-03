@@ -27,7 +27,7 @@ class LLVMTypeLit extends LLVMType {
 
   @override
   LLVMTypeRef createType(BuildContext c) {
-    final kind = ty.ty;
+    final kind = ty.ty.convert;
     LLVMTypeRef type;
     switch (kind) {
       case LitKind.kDouble:
@@ -41,6 +41,9 @@ class LLVMTypeLit extends LLVMType {
       case LitKind.kBool:
         type = c.i1;
         break;
+      case LitKind.i8:
+        type = c.i8;
+        break;
       case LitKind.i16:
         type = c.i16;
         break;
@@ -51,7 +54,7 @@ class LLVMTypeLit extends LLVMType {
         type = c.i128;
         break;
       case LitKind.kString:
-        type = c.i8;
+        type = c.pointer();
         break;
       case LitKind.kVoid:
         type = c.typeVoid;
@@ -67,12 +70,13 @@ class LLVMTypeLit extends LLVMType {
   Variable createValue(BuildContext c, {String str = ''}) {
     LLVMValueRef v(BuildContext c, BuiltInTy? bty) {
       final raw = LLVMRawValue(str);
-      final kind = (bty ?? ty).ty;
+      final kind = (bty ?? ty).ty.convert;
 
       switch (kind) {
         case LitKind.f32:
         case LitKind.kFloat:
           return c.constF32(raw.value);
+        case LitKind.f64:
         case LitKind.kDouble:
           return c.constF64(raw.value);
         case LitKind.kString:
@@ -80,17 +84,17 @@ class LLVMTypeLit extends LLVMType {
         case LitKind.kBool:
           return c.constI1(raw.raw == 'true' ? 1 : 0);
         case LitKind.i8:
-          return c.constI8(raw.iValue);
+          return c.constI8(raw.iValue, kind.signed);
         case LitKind.i16:
-          return c.constI16(raw.iValue);
+          return c.constI16(raw.iValue, kind.signed);
         case LitKind.i64:
-          return c.constI64(raw.iValue);
+          return c.constI64(raw.iValue, kind.signed);
         case LitKind.i128:
-          return c.constI128(raw.raw);
+          return c.constI128(raw.raw, kind.signed);
         case LitKind.kInt:
         case LitKind.i32:
         default:
-          return c.constI32(raw.iValue);
+          return c.constI32(raw.iValue, kind.signed);
       }
     }
 
@@ -243,6 +247,7 @@ class LLVMFnType extends LLVMType {
   LLVMConstVariable createFunction(BuildContext c) {
     if (_value != null) return _value!;
     final ty = createType(c);
+    llvm.LLVMDumpType(ty);
     final ident = fn.fnSign.fnDecl.ident.src;
     final v = llvm.LLVMAddFunction(c.module, ident.toChar(), ty);
     llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);

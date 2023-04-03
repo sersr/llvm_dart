@@ -1,4 +1,5 @@
 import 'package:llvm_dart/ast/context.dart';
+import 'package:llvm_dart/ast/expr.dart';
 import 'package:llvm_dart/ast/tys.dart';
 import 'package:nop/nop.dart';
 
@@ -22,8 +23,8 @@ class LetStmt extends Stmt {
 
   @override
   void build(BuildContext context) {
-    ExprTempValue? val = rExpr?.build(context);
     final realTy = ty?.grt(context);
+    ExprTempValue? val = LiteralExpr.run(() => rExpr?.build(context), realTy);
 
     final tty = realTy ?? val?.ty;
     if (tty != null) {
