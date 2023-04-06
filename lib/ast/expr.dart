@@ -264,8 +264,7 @@ class StructExprField {
 }
 
 class AssignExpr extends Expr {
-  AssignExpr(this.ref, this.ident, this.expr);
-  final Identifier ident;
+  AssignExpr(this.ref, this.expr);
   final Expr ref;
   final Expr expr;
 
@@ -289,12 +288,28 @@ class AssignExpr extends Expr {
 }
 
 class AssignOpExpr extends AssignExpr {
-  AssignOpExpr(this.op, super.ref, super.ident, super.expr);
+  AssignOpExpr(this.op, super.ref, super.expr);
   final OpKind op;
 
   @override
   String toString() {
     return '$ref ${op.op}= $expr';
+  }
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context) {
+    final lhs = ref.build(context);
+    final lVariable = lhs?.variable;
+
+    if (lVariable is StoreVariable) {
+      final val = OpExpr.math(context, op, lVariable, expr);
+      final rValue = val?.variable;
+      if (rValue != null) {
+        lVariable.store(context, rValue.load(context));
+      }
+    }
+
+    return null;
   }
 }
 
@@ -356,20 +371,36 @@ List<F> alignParam<F>(List<F> src, int Function(F) test) {
   return sortFields;
 }
 
+class FnExpr extends Expr {
+  FnExpr(this.fn);
+  final Fn fn;
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context) {
+    final fnV = fn.build(context);
+    final alloca = fn.llvmType.createAlloca(context, Identifier.builtIn('_fn'));
+    alloca.store(context, fnV!.value);
+    return ExprTempValue(alloca, fn);
+  }
+}
+
 class FnCallExpr extends Expr {
-  FnCallExpr(this.ident, this.params);
-  final Identifier ident;
+  FnCallExpr(this.expr, this.params);
+  final Expr expr;
   final List<FieldExpr> params;
 
   @override
   String toString() {
-    return '$ident(${params.join(',')})';
+    return '$expr(${params.join(',')})';
   }
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final fn = context.getFn(ident);
-    if (fn == null) return null;
+    final fnV = expr.build(context);
+    final variable = fnV?.variable;
+    final fn = variable?.ty;
+    if (variable == null || fn is! Fn) return null;
+
     if (fn is SizeofFn) {
       if (params.isEmpty) {
         return null;
@@ -389,18 +420,39 @@ class FnCallExpr extends Expr {
       final v = fn.llvmType.createFunction(context, ty: ty);
       return ExprTempValue(v, BuiltInTy.int);
     }
-    final fnType = fn.llvmType.createType(context);
+    // LLVMValueRef? fnValue;
+    // if (variable is StoreVariable) {
+    //   fnValue = variable.alloca;
+    // }
+    return fnCall(context, fn, params, variable, null);
+  }
+
+  static ExprTempValue? fnCall(BuildContext context, Fn fn,
+      List<FieldExpr> params, Variable? fnVariable, LLVMValueRef? struct) {
+    final fnType = fn.llvmType.createFnType(context);
     final isExtern = fn.extern;
-    final fnValue = fn.llvmType.createFunction(context);
+    LLVMValueRef fnValue;
+    if (fnVariable != null) {
+      fnValue = fnVariable.load(context);
+    } else {
+      final value = fn.llvmType.createFunction(context);
+      fnValue = value.load(context);
+    }
 
     final fnParams = fn.fnSign.fnDecl.params;
     final args = <LLVMValueRef>[];
-
+    if (struct != null) {
+      args.add(struct);
+    }
     final sortFields = alignParam(
         params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
 
-    for (var p in sortFields) {
-      final v = p.build(context)?.variable;
+    for (var i = 0; i < sortFields.length; i++) {
+      final p = sortFields[i];
+      final c = fnParams[i].ty.grt(context);
+      final v = LiteralExpr.run(() {
+        return p.build(context)?.variable;
+      }, c);
       if (v != null) {
         LLVMValueRef value;
         if (isExtern && v is LLVMStructAllocaVariable) {
@@ -415,8 +467,8 @@ class FnCallExpr extends Expr {
       }
     }
 
-    final ret = llvm.LLVMBuildCall2(context.builder, fnType,
-        fnValue.load(context), args.toNative(), args.length, unname);
+    final ret = llvm.LLVMBuildCall2(
+        context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 
     final retTy = fn.fnSign.fnDecl.returnTy.grt(context);
     return ExprTempValue(LLVMTempVariable(ret, retTy), retTy);
@@ -440,62 +492,47 @@ class MethodCallExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final variable = receiver.build(context);
+    var val = variable?.variable;
     if (variable == null) return null;
+    while (true) {
+      if (val is! LLVMRefAllocaVariable) {
+        break;
+      }
+      val = val.getDeref(context);
+    }
+    if (val == null) return null;
 
     final valTy = variable.ty;
     if (valTy is! StructTy) return null;
     final structTy = valTy;
-    final val = variable.variable;
     final impl = context.getImplForStruct(structTy);
-    if (val == null || impl == null) {
-      // error
-      return null;
-    }
+    var fn = impl?.getFn(ident);
+    LLVMValueRef? st;
 
-    final fn = impl.getFn(ident);
+    Variable? fnVariable;
+    // 字段有可能是一个函数指针
     if (fn == null) {
-      return null;
-    }
-
-    /// `FnCallExpr`
-    final fnType = fn.llvmType.createType(context);
-    final isExtern = fn.extern;
-    final fnValue = fn.llvmType.createFunction(context);
-
-    final fnParams = fn.fnSign.fnDecl.params;
-    final args = <LLVMValueRef>[];
-
-    // struct 一般是 StoreVariable
-    if (val is StoreVariable) {
-      args.add(val.alloca);
-    } else {
-      args.add(val.load(context));
-    }
-
-    final sortFields = alignParam(
-        params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
-
-    for (var p in sortFields) {
-      final v = p.build(context)?.variable;
-      if (v != null) {
-        LLVMValueRef value;
-        if (isExtern && v is LLVMStructAllocaVariable) {
-          value = v.load2(context, isExtern);
-        } else if (v is LLVMRefAllocaVariable) {
-          value = v.load(context);
-        } else {
-          value = v.load(context);
+      if (val is StoreVariable) {
+        final field = structTy.llvmType.getField(val, context, ident);
+        if (field != null) {
+          if (field.ty is FnTy) {
+            st = null;
+            fnVariable = field;
+            fn = field.ty as FnTy;
+          }
         }
-
-        args.add(value);
+      }
+    } else {
+      // struct 一般是 StoreVariable
+      if (val is StoreVariable) {
+        st = val.alloca;
+      } else {
+        st = val.load(context);
       }
     }
 
-    final ret = llvm.LLVMBuildCall2(context.builder, fnType,
-        fnValue.load(context), args.toNative(), args.length, unname);
-
-    final retTy = fn.fnSign.fnDecl.returnTy.grt(context);
-    return ExprTempValue(LLVMTempVariable(ret, retTy), retTy);
+    if (fn == null) return null;
+    return FnCallExpr.fnCall(context, fn, params, fnVariable, st);
   }
 }
 
@@ -513,7 +550,13 @@ class StructDotFieldExpr extends Expr {
     var ty = val?.ty.getRealTy(context);
 
     if (ty is! StructTy) return null;
-    final newVal = PointerKind.refDerefs(val, context, kind);
+    var newVal = PointerKind.refDerefs(val, context, kind);
+    while (true) {
+      if (newVal is! LLVMRefAllocaVariable) {
+        break;
+      }
+      newVal = newVal.getDeref(context);
+    }
 
     final v = ty.llvmType.getField(newVal as StoreVariable, context, ident);
     if (v == null) return null;
@@ -712,16 +755,20 @@ class OpExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final l = lhs.build(context);
-    // final r = rhs.build(context);
 
+    if (l == null) return null;
+    return math(context, op, l.variable, rhs);
+  }
+
+  static ExprTempValue? math(
+      BuildContext context, OpKind op, Variable? l, Expr rhs) {
     if (l == null) return null;
     var isFloat = false;
     var signed = false;
-    final lValue = l.variable;
     // final RValue = r.variable;
-    if (lValue is LLVMTempOpVariable) {
-      isFloat = lValue.isFloat;
-      signed = lValue.isSigned;
+    if (l is LLVMTempOpVariable) {
+      isFloat = l.isFloat;
+      signed = l.isSigned;
     } else {
       var lty = l.ty;
       if (lty is BuiltInTy) {
@@ -734,7 +781,7 @@ class OpExpr extends Expr {
       }
     }
 
-    final v = context.math(l.variable!, (context) {
+    final v = context.math(l, (context) {
       final r = rhs.build(context)?.variable;
       return r;
     }, op, isFloat, signed: signed);
@@ -817,9 +864,18 @@ class VariableIdentExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final val = context.getVariable(ident);
-    if (val == null) return null;
-    final newVal = PointerKind.refDerefs(val, context, pointerKind);
-    return ExprTempValue(newVal, val.ty);
+    if (val != null) {
+      final newVal = PointerKind.refDerefs(val, context, pointerKind);
+      return ExprTempValue(newVal, val.ty);
+    }
+    final fn = context.getFn(ident);
+    if (fn != null) {
+      final value = fn.build(context);
+      if (value != null) {
+        return ExprTempValue(value, value.ty);
+      }
+    }
+    return null;
   }
 }
 

@@ -5,7 +5,9 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:llvm_dart/ast/context.dart';
+import 'package:llvm_dart/ast/expr.dart';
 import 'package:llvm_dart/ast/tys.dart';
+import 'package:llvm_dart/ast/variables.dart';
 import 'package:meta/meta.dart';
 
 import '../parsers/lexers/token_kind.dart';
@@ -116,7 +118,7 @@ class GenericParam with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [ident, ty];
+  List<Object?> get props => [ident, isRef, ty];
 }
 
 class ExprTempValue {
@@ -197,6 +199,7 @@ enum LitKind {
   u32('u32'),
   u64('u64'),
   u128('u128'),
+  usize('usize'),
 
   kBool('bool'),
   kVoid('void'),
@@ -285,6 +288,11 @@ class FnDecl with EquatableMixin {
   final List<GenericParam> params;
   final PathTy returnTy;
 
+  bool eq(FnDecl other) {
+    return const DeepCollectionEquality().equals(params, other.params) &&
+        returnTy == other.returnTy;
+  }
+
   @override
   String toString() {
     return '$ident(${params.join(',')}) -> $returnTy';
@@ -365,7 +373,7 @@ class BuiltInTy extends Ty {
 
   @override
   String toString() {
-    return ty.name;
+    return _ty.name;
   }
 
   @override
@@ -429,6 +437,15 @@ class UnknownTy extends PathTy {
   }
 }
 
+class FnTy extends Fn {
+  FnTy(FnDecl fnDecl) : super(FnSign(false, fnDecl), null);
+
+  @override
+  LLVMConstVariable? build(BuildContext context) {
+    return null;
+  }
+}
+
 class Fn extends Ty {
   Fn(this.fnSign, this.block);
 
@@ -456,13 +473,15 @@ class Fn extends Ty {
   @override
   List<Object?> get props => [fnSign, block];
 
+  LLVMConstVariable? _fnV;
   @override
-  void build(BuildContext context) {
+  LLVMConstVariable? build(BuildContext context) {
+    if (_fnV != null) return _fnV!;
     context.pushFn(fnSign.fnDecl.ident, this);
     // final fn = context.buildFn(fnSign);
     // // final blockBB =
     // block.build(context);
-    context.buildFnBB(this);
+    return _fnV = context.buildFnBB(this);
   }
 
   @override
@@ -475,12 +494,27 @@ class ImplFn extends Fn {
 }
 
 class FieldDef with EquatableMixin {
-  FieldDef(this.ident, this.ty);
+  FieldDef(this.ident, this.ty, this.kinds);
   final Identifier ident;
   final PathTy ty;
+  final List<PointerKind> kinds;
   @override
   String toString() {
-    return '$ident: $ty';
+    return '$ident: ${kinds.join('')}$ty';
+  }
+
+  bool? _isRef;
+  bool get isRef {
+    if (_isRef != null) return _isRef!;
+    var refCount = 0;
+    for (var k in kinds.reversed) {
+      if (k == PointerKind.ref) {
+        refCount += 1;
+      } else {
+        refCount -= 1;
+      }
+    }
+    return _isRef = refCount > 0;
   }
 
   @override
@@ -494,7 +528,7 @@ class StructTy extends Ty with EquatableMixin {
 
   @override
   String toString() {
-    return 'struct $ident {${fields.join(',')}}';
+    return '${pad}struct $ident {${fields.join(',')}}';
   }
 
   @override

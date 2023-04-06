@@ -134,8 +134,7 @@ mixin BuildMethods {
 
   LLVMValueRef alloctor(LLVMTypeRef type, String name) {
     final nb = allocaBuilder;
-    final alloca =
-        llvm.LLVMBuildAlloca(nb ?? builder, type, 'alloca_$name'.toChar());
+    final alloca = llvm.LLVMBuildAlloca(nb ?? builder, type, name.toChar());
     setLastAlloca(alloca);
     if (nb != null) {
       llvm.LLVMDisposeBuilder(nb);
@@ -157,42 +156,22 @@ mixin Consts on BuildMethods {
     return llvm.LLVMConstInt(i8, v, signed ? LLVMTrue : LLVMFalse);
   }
 
-  // LLVMValueRef constU8(int v) {
-  //   return llvm.LLVMConstInt(i8, v, LLVMFalse);
-  // }
-
   LLVMValueRef constI16(int v, [bool signed = false]) {
     return llvm.LLVMConstInt(i16, v, signed ? LLVMTrue : LLVMFalse);
   }
-
-  // LLVMValueRef constU16(int v) {
-  //   return llvm.LLVMConstInt(i16, v, LLVMTrue);
-  // }
 
   LLVMValueRef constI32(int v, [bool signed = false]) {
     return llvm.LLVMConstInt(i32, v, signed ? LLVMTrue : LLVMFalse);
   }
 
-  // LLVMValueRef constU32(int v) {
-  //   return llvm.LLVMConstInt(i32, v, LLVMTrue);
-  // }
-
   LLVMValueRef constI64(int v, [bool signed = false]) {
     return llvm.LLVMConstInt(i64, v, signed ? LLVMTrue : LLVMFalse);
   }
-
-  // LLVMValueRef constU64(int v) {
-  //   return llvm.LLVMConstInt(i64, v, LLVMTrue);
-  // }
 
   LLVMValueRef constI128(String v, [bool signed = false]) {
     return llvm.LLVMConstIntOfString(
         i128, v.toChar(), signed ? LLVMTrue : LLVMFalse);
   }
-
-  // LLVMValueRef constU128(int v) {
-  //   return llvm.LLVMConstInt(i128, v, LLVMTrue);
-  // }
 
   LLVMValueRef constF32(double v) {
     return llvm.LLVMConstReal(f32, v);
@@ -210,7 +189,6 @@ mixin Consts on BuildMethods {
   LLVMValueRef constArray(LLVMTypeRef ty, int size) {
     final alloca =
         llvm.LLVMBuildArrayAlloca(builder, ty, constI64(size, false), unname);
-    llvm.LLVMSetAlignment(alloca, 4);
     return alloca;
   }
 }

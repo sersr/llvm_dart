@@ -12,7 +12,9 @@ class SizeofFn extends Fn {
             Block([], null));
   final ident = Identifier.builtIn('sizeof');
   @override
-  void build(BuildContext context) {}
+  LLVMConstVariable? build(BuildContext context) {
+    return null;
+  }
 
   @override
   SizeOfType get llvmType => SizeOfType(this);

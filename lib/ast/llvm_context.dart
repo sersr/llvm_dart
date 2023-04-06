@@ -4,7 +4,6 @@ import 'package:collection/collection.dart';
 import 'package:llvm_dart/ast/expr.dart';
 import 'package:llvm_dart/ast/stmt.dart';
 import 'package:llvm_dart/ast/tys.dart';
-import 'package:nop/nop.dart';
 
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
@@ -142,7 +141,6 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
       final isRef = p.isRef;
 
       final fnParam = llvm.LLVMGetParam(fn, i + self);
-      Log.w('..${llvm.LLVMGetValueKind(fnParam)}$self');
       Variable aa;
       final realTy = p.ty.grt(this);
       if (!isRef) {
@@ -168,12 +166,12 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
     }
   }
 
-  void buildFnBB(Fn fn) {
+  LLVMConstVariable buildFnBB(Fn fn) {
     final fv = fn.llvmType.createFunction(this);
     final block = fn.block;
     final isDecl = block == null;
 
-    if (isDecl) return;
+    if (isDecl) return fv;
     final bbContext = createChildContext();
     bbContext.fn = fv;
     bbContext.isFnBBContext = true;
@@ -217,8 +215,11 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
     }
     voidRet();
     // mem2reg pass
-    // llvm.LLVMRunFunctionPassManager(fpm, fv.value);
+    if (mem2reg) llvm.LLVMRunFunctionPassManager(fpm, fv.value);
+    return fv;
   }
+
+  static bool mem2reg = false;
 
   LLVMBasicBlock buildSubBB({String name = 'entry'}) {
     final child = createChildContext();
@@ -377,11 +378,13 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
     llvm.LLVMBuildUnreachable(builder);
   }
 
-  LLVMValueRef createAlloca(LLVMTypeRef type, Identifier? ident,
-      {String? name}) {
-    final alloca = alloctor(type, name ?? ident?.src ?? '');
-    // llvm.LLVMSetAlignment(alloca, 4);
-    return alloca;
+  LLVMValueRef createAlloca(LLVMTypeRef type, {String? name}) {
+    return alloctor(type, name ?? '_');
+  }
+
+  LLVMValueRef createMalloc(LLVMTypeRef type, {String? name}) {
+    final n = name ?? '_';
+    return llvm.LLVMBuildMalloc(builder, type, n.toChar());
   }
 
   LLVMTempOpVariable math(
@@ -395,7 +398,7 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
     if (op == OpKind.And || op == OpKind.Or) {
       final after = buildSubBB(name: 'op_after');
       final opBB = buildSubBB(name: 'op_bb');
-      final allocaValue = createAlloca(i1, null, name: 'op');
+      final allocaValue = createAlloca(i1, name: 'op');
       final variable = LLVMAllocaVariable(BuiltInTy.kBool, allocaValue, i1);
 
       variable.store(this, l);

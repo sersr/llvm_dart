@@ -7,11 +7,12 @@ import 'ast.dart';
 import 'variables.dart';
 
 class LetStmt extends Stmt {
-  LetStmt(this.ident, this.nameIdent, this.rExpr, this.ty);
+  LetStmt(this.isFinal, this.ident, this.nameIdent, this.rExpr, this.ty);
   final Identifier ident;
   final Identifier nameIdent;
   final Expr? rExpr;
   final PathTy? ty;
+  final bool isFinal;
 
   @override
   String toString() {
@@ -31,10 +32,8 @@ class LetStmt extends Stmt {
       final variable = val?.variable;
       if (realTy != null && variable is LLVMLitVariable) {
         if (tty is BuiltInTy) {
-          final alloca = tty.llvmType.createAlloca(context, nameIdent);
-          final rValue = variable.load(context, ty: tty);
-          alloca.store(context, rValue);
-
+          final alloca = variable.createAlloca(context, tty);
+          alloca.isTemp = false;
           context.pushVariable(nameIdent, alloca);
           return;
         }
@@ -51,13 +50,13 @@ class LetStmt extends Stmt {
         if (variable is LLVMRefAllocaVariable) {
           final s = LLVMRefAllocaVariable.create(context, variable.parent);
           s.store(context, rValue);
+          s.isTemp = false;
           context.setName(s.alloca, nameIdent.src);
-          // context.setName(variable.alloca, nameIdent.src);
           context.pushVariable(nameIdent, s);
         } else {
           final alloca = tty.llvmType.createAlloca(context, nameIdent);
           alloca.store(context, rValue);
-
+          alloca.isTemp = false;
           context.pushVariable(nameIdent, alloca);
         }
       }
@@ -136,18 +135,24 @@ class TyStmt extends Stmt {
 }
 
 class FnStmt extends Stmt {
-  FnStmt(this.fn) {
-    fn.incLevel();
-  }
+  FnStmt(this.fn);
   final Fn fn;
 
   @override
-  String toString() {
-    return '$pad$fn';
+  void incLevel([int count = 1]) {
+    super.incLevel(count);
+    fn.incLevel(count);
   }
 
   @override
-  void build(BuildContext context) {}
+  String toString() {
+    return '$fn';
+  }
+
+  @override
+  void build(BuildContext context) {
+    fn.build(context);
+  }
 
   @override
   List<Object?> get props => [fn];
@@ -164,7 +169,14 @@ class StructStmt extends Stmt {
   final StructTy ty;
 
   @override
-  void build(BuildContext context) {}
+  void build(BuildContext context) {
+    ty.build(context);
+  }
+
+  @override
+  String toString() {
+    return '$ty';
+  }
 
   @override
   List<Object?> get props => [ty];

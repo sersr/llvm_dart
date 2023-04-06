@@ -279,11 +279,15 @@ class Modules {
   }
 
   Fn? parseFn(TokenIterator it) {
+    var ident = Identifier.none;
     if (!it.moveNext()) {
       return null;
     }
-    final ident = getIdent(it);
-    it.moveNext(); // '('
+    eatLfIfNeed(it);
+    if (getToken(it).kind != TokenKind.openParen) {
+      ident = getIdent(it);
+      it.moveNext(); // '('
+    }
 
     final fnSign = FnSign(true, parseFnDecl(it, ident));
 
@@ -358,6 +362,11 @@ class Modules {
         if (fn != null) {
           stmt = FnStmt(fn);
         }
+      } else if (key == Key.struct) {
+        final struct = parseStruct(it);
+        if (struct != null) {
+          stmt = StructStmt(struct);
+        }
       } else if (key == Key.kRet) {
         final ident = getIdent(it);
         Expr? expr;
@@ -418,7 +427,6 @@ class Modules {
   }
 
   Stmt parseStmtBase(TokenIterator it) {
-    final ident = getIdent(it);
     final t = getToken(it);
     if (t.kind == TokenKind.semi) {
       it.moveNext();
@@ -440,9 +448,9 @@ class Modules {
       if (e.kind == TokenKind.eq) {
         final rhs = parseExpr(it);
         if (key != null) {
-          return ExprStmt(AssignOpExpr(key, lhs, ident, rhs));
+          return ExprStmt(AssignOpExpr(key, lhs, rhs));
         } else {
-          return ExprStmt(AssignExpr(lhs, ident, rhs));
+          return ExprStmt(AssignExpr(lhs, rhs));
         }
       } else if (e.kind != TokenKind.lf) {
         it.moveBack();
@@ -557,8 +565,9 @@ class Modules {
   Stmt? parseLetStmt(TokenIterator it) {
     final key = getKey(it);
     final isLet = key == Key.let;
+    final isFinal = key == Key.kFinal;
     final isStatic = key == Key.kStatic;
-    if (!isLet && !isStatic) return null;
+    if (!isLet && !isStatic && !isFinal) return null;
     final ident = getIdent(it);
     eatLfIfNeed(it);
     it.moveNext();
@@ -574,8 +583,14 @@ class Modules {
     if (c.kind == TokenKind.colon) {
       eatLfIfNeed(it);
       it.moveNext();
-      final tyy = getToken(it);
-      ty = PathTy(Identifier.fromToken(tyy));
+      if (getKey(it) == Key.fn) {
+        it.moveNext();
+        final decl = parseFnDecl(it, Identifier.none);
+        ty = PathTy.ty(FnTy(decl));
+      } else {
+        final tyy = getToken(it);
+        ty = PathTy(Identifier.fromToken(tyy));
+      }
       eatLfIfNeed(it);
 
       it.moveNext();
@@ -587,15 +602,13 @@ class Modules {
       if (isStatic) {
         return StaticStmt(ident, l, r, ty);
       }
-      return LetStmt(ident, l, r, ty);
+      return LetStmt(isFinal, ident, l, r, ty);
     } else {
-      return LetStmt(ident, l, null, ty);
+      return LetStmt(isFinal, ident, l, null, ty);
     }
   }
 
-  Expr parseExpr(TokenIterator it,
-      {bool runOp = false, bool runOpInner = false}) {
-    eatLfIfNeed(it);
+  List<PointerKind> getAllKind(TokenIterator it, {bool runOp = false}) {
     var pointerKind = <PointerKind>[];
     if (it.curentIsValid && !runOp) {
       final t = getToken(it).kind;
@@ -616,6 +629,13 @@ class Modules {
       it.moveBack();
       return true;
     });
+    return pointerKind;
+  }
+
+  Expr parseExpr(TokenIterator it,
+      {bool runOp = false, bool runOpInner = false}) {
+    eatLfIfNeed(it);
+    final pointerKind = getAllKind(it, runOp: runOp);
 
     if (it.moveNext()) {
       final t = getToken(it);
@@ -661,6 +681,15 @@ class Modules {
           } else if (key == Key.kContinue) {
             eatLine(it);
             return ContinueExpr(ident);
+          } else if (key == Key.fn) {
+            final state = it.cursor;
+
+            final fn = parseFn(it);
+            if (fn != null) {
+              return FnExpr(fn);
+            } else {
+              state.restore();
+            }
           }
           eatLfIfNeed(it);
 
@@ -674,8 +703,8 @@ class Modules {
               } else {
                 lhs = struct;
               }
-            } else if (t.kind == TokenKind.openParen) {
-              lhs = parseCallExpr(it, ident);
+              // } else if (t.kind == TokenKind.openParen) {
+              //   lhs = parseCallExpr(it, ident);
             } else {
               cursor.restore();
             }
@@ -686,14 +715,20 @@ class Modules {
       }
       if (lhs != null) {
         eatLfIfNeed(it);
-        CursorState state = it.cursor;
-        if (it.moveNext()) {
-          if (getToken(it).kind == TokenKind.dot) {
-            lhs = parseMethodCallExpr(it, [], lhs);
-          } else {
-            state.restore();
+        Expr lhsss = lhs;
+        loop(it, () {
+          final t = getToken(it);
+          if (t.kind == TokenKind.dot) {
+            lhsss = parseMethodCallExpr(it, [], lhsss);
+            return false;
+          } else if (t.kind == TokenKind.openParen) {
+            lhsss = parseCallExpr(it, lhsss);
+            return false;
           }
-        }
+          it.moveBack();
+          return true;
+        });
+        lhs = lhsss;
         lhs = RefExpr(lhs, pointerKind);
         eatLfIfNeed(it);
         // 遇到`)`结束本次表达式解析
@@ -791,8 +826,8 @@ class Modules {
     return exprs.last;
   }
 
-  FnCallExpr parseCallExpr(TokenIterator it, Identifier ident) {
-    return FnCallExpr(ident, parseFieldExpr(it));
+  FnCallExpr parseCallExpr(TokenIterator it, Expr expr) {
+    return FnCallExpr(expr, parseFieldExpr(it));
   }
 
   List<FieldExpr> parseFieldExpr(TokenIterator it) {
@@ -968,17 +1003,25 @@ class Modules {
 
         eatLfIfNeed(it);
         it.moveNext(); // :
+        List<PointerKind> kinds = [];
+        kinds = getAllKind(it);
         if (it.moveNext()) {
           final t = getToken(it);
-
+          final ident = getIdent(it);
           final k = t.kind;
           PathTy? ty;
           if (k == TokenKind.ident) {
-            ty = PathTy(Identifier.fromToken(t));
+            if (getKey(it) == Key.fn) {
+              it.moveNext();
+              final decl = parseFnDecl(it, Identifier.none);
+              ty = PathTy.ty(FnTy(decl));
+            } else {
+              ty = PathTy(ident);
+            }
           } else {
             ty = UnknownTy(ident);
           }
-          fields.add(FieldDef(name, ty));
+          fields.add(FieldDef(name, ty, kinds));
         }
       }
       return false;
@@ -1032,11 +1075,15 @@ class Modules {
       if (t.kind == TokenKind.lf) return false;
       if (t.kind == TokenKind.closeParen) return true;
 
-      // ,
-      if (t.kind == TokenKind.ident) {
-        final ident = getIdent(it);
-        final f = FieldDef(ident, PathTy(ident));
-        fields.add(f);
+      final kinds = getAllKind(it);
+      if (kinds.isNotEmpty) {
+        eatLfIfNeed(it);
+        it.moveNext();
+        if (t.kind == TokenKind.ident) {
+          final ident = getIdent(it);
+          final f = FieldDef(ident, PathTy(ident), kinds);
+          fields.add(f);
+        }
       }
       return false;
     });
@@ -1081,6 +1128,7 @@ enum Key {
   kComponent('com'),
   kRet('return'),
   kExtern('extern'),
+  kFinal('final'),
 
   kFor('for'),
   kIf('if'),

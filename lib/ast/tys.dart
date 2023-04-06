@@ -37,13 +37,21 @@ mixin Tys<T extends Tys<T>> on BuildMethods {
   T? get parent;
 
   final variables = <Identifier, List<Variable>>{};
+  Variable? _getVariable(Identifier ident) {
+    final list = variables[ident];
+    if (list != null) {
+      return list.last;
+    }
+    return parent?._getVariable(ident);
+  }
 
   Variable? getVariable(Identifier ident) {
     final list = variables[ident];
     if (list != null) {
       return list.last;
     }
-    return parent?.getVariable(ident);
+    fnValue;
+    return parent?._getVariable(ident);
   }
 
   void pushVariable(Identifier ident, Variable variable) {

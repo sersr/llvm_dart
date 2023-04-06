@@ -201,16 +201,16 @@ enum Lang {
   /// cc ./base.c ./out.o -o main
   /// ./main
   test("control flow", () {
-    var src = '''
+    var srxc = '''
 // extern fn printxx(y: int);
 
 struct Gen {
-  y: int,
+  y: &int,
 };
 
-fn prxx(y: u64) {
-  let x = y + 10u64;
-};
+// fn prxx(y: u64) {
+//   // let x = y + 10u64;
+// };
 
 fn main() int {
   // let hx = (10 + y().call((2 + 3).callIn())).call2()
@@ -227,12 +227,28 @@ fn main() int {
   // printxx(z)
   // Gen {y: 11, x: pinfs(y: 22)}
   // let unn = 10 * (10 * (-20 * (30 + yy.call() + Gen {y: 10, 2424}) + 50) + 50)
-  // printxx(y: 110u64);
+  // printxx(y: 110);
   // let y = -10.;
+  // final yy = y;
 
-  let x = 12u8 + 22_u8;
-  let y = 10.000e+1_double;
+  // let x = 12u8 + 22_u8;
+  // let y = 10.000e+1_double;
+  // let yusize = 111usize
+  // let gg = Gen {y: &11}
+  // final yyy = 10i16
+  // let yyRef = &120;
+  struct My {x: fn()}
+  let my = My {x: hell}
+  let y = my.x;
+  y();
+  let yy:fn() = hell;
+  yy();
+  my.x();
+  printxx(11)
   0;
+}
+
+fn hell() {
 }
 ''';
 
@@ -243,7 +259,7 @@ fn main() int {
         // return;
         llvm.initLLVM();
         final root = BuildContext.root();
-        // root.initMathO();
+        // BuildContext.mem2reg = true;
         root.pushAllTy(m.globalTy);
         root.pushFn(sizeOfFn.ident, sizeOfFn);
 
