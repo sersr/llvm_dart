@@ -1,4 +1,4 @@
-// #define STR
+#define STR
 #ifndef STR
 
 #include <stdio.h>

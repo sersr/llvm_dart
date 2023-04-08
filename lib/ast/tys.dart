@@ -1,5 +1,3 @@
-import 'package:llvm_dart/ast/build_methods.dart';
-
 import '../llvm_core.dart';
 import '../parsers/lexers/token_kind.dart';
 import 'ast.dart';
@@ -32,12 +30,11 @@ abstract class StoreVariable extends Variable {
   // }
 }
 
-mixin Tys<T extends Tys<T>> on BuildMethods {
-  @override
+mixin Tys<T extends Tys<T, V>, V> {
   T? get parent;
 
-  final variables = <Identifier, List<Variable>>{};
-  Variable? _getVariable(Identifier ident) {
+  final variables = <Identifier, List<V>>{};
+  V? _getVariable(Identifier ident) {
     final list = variables[ident];
     if (list != null) {
       return list.last;
@@ -45,16 +42,15 @@ mixin Tys<T extends Tys<T>> on BuildMethods {
     return parent?._getVariable(ident);
   }
 
-  Variable? getVariable(Identifier ident) {
+  V? getVariable(Identifier ident) {
     final list = variables[ident];
     if (list != null) {
       return list.last;
     }
-    fnValue;
     return parent?._getVariable(ident);
   }
 
-  void pushVariable(Identifier ident, Variable variable) {
+  void pushVariable(Identifier ident, V variable) {
     final list = variables.putIfAbsent(ident, () => []);
     if (!list.contains(variable)) {
       list.add(variable);
@@ -138,7 +134,7 @@ mixin Tys<T extends Tys<T>> on BuildMethods {
     return parent?.getComponent(ident);
   }
 
-  void pushCOmponent(Identifier ident, ComponentTy com) {
+  void pushComponent(Identifier ident, ComponentTy com) {
     final list = components.putIfAbsent(ident, () => []);
     if (!list.contains(com)) {
       list.add(com);
@@ -187,7 +183,7 @@ mixin Tys<T extends Tys<T>> on BuildMethods {
       } else if (ty is EnumTy) {
         pushEnum(ty.ident, ty);
       } else if (ty is ComponentTy) {
-        pushCOmponent(ty.ident, ty);
+        pushComponent(ty.ident, ty);
       } else if (ty is ImplTy) {
         pushImpl(ty.ident, ty);
       } else {

@@ -9,8 +9,10 @@ import 'package:llvm_dart/ast/expr.dart';
 import 'package:llvm_dart/ast/tys.dart';
 import 'package:llvm_dart/ast/variables.dart';
 import 'package:meta/meta.dart';
+import 'package:nop/nop.dart';
 
 import '../parsers/lexers/token_kind.dart';
+import 'analysis_context.dart';
 import 'llvm_types.dart';
 
 String getWhiteSpace(int level, int pad) {
@@ -104,10 +106,11 @@ class Identifier with EquatableMixin {
 
 // foo( ... ), Gen{ ... }
 class GenericParam with EquatableMixin {
-  GenericParam(this.ident, this.ty, this.isRef);
+  GenericParam(this.ident, this.ty);
   final Identifier ident;
   final PathTy ty;
-  final bool isRef;
+
+  bool get isRef => ty.isRef;
 
   @override
   String toString() {
@@ -118,7 +121,7 @@ class GenericParam with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [ident, isRef, ty];
+  List<Object?> get props => [ident, ty];
 }
 
 class ExprTempValue {
@@ -136,6 +139,11 @@ abstract class Expr extends BuildMixin {
     return _ty ??= buildExpr(context);
   }
 
+  Expr clone();
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context);
+
   ExprTempValue? _ty;
   ExprTempValue? get currentTy => _ty;
 
@@ -149,6 +157,11 @@ class UnknownExpr extends Expr {
   final String message;
 
   @override
+  Expr clone() {
+    return this;
+  }
+
+  @override
   String toString() {
     return 'UnknownExpr $ident($message)';
   }
@@ -156,6 +169,11 @@ class UnknownExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     context.errorExpr(this);
+    return null;
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
     return null;
   }
 }
@@ -169,6 +187,8 @@ abstract class BuildMixin {
 
   void build(BuildContext context);
 
+  void analysis(AnalysisContext context);
+
   static int padSize = 2;
 
   String get pad => getWhiteSpace(level, padSize);
@@ -178,7 +198,9 @@ abstract class BuildMixin {
   }
 }
 
-abstract class Stmt with BuildMixin, EquatableMixin {}
+abstract class Stmt with BuildMixin, EquatableMixin {
+  Stmt clone();
+}
 
 enum LitKind {
   kFloat('float'),
@@ -263,6 +285,10 @@ class Block extends BuildMixin with EquatableMixin {
     }
   }
 
+  Block clone() {
+    return Block(stmts.map((e) => e.clone()).toList(), ident);
+  }
+
   @override
   String toString() {
     final p = getWhiteSpace(level, BuildMixin.padSize);
@@ -279,6 +305,13 @@ class Block extends BuildMixin with EquatableMixin {
 
   @override
   List<Object?> get props => [stmts];
+
+  @override
+  void analysis(AnalysisContext context) {
+    for (var stmt in stmts) {
+      stmt.analysis(context);
+    }
+  }
 }
 
 // 函数声明
@@ -343,6 +376,8 @@ class RefTy extends Ty {
 
   @override
   void build(BuildContext context) {}
+  @override
+  void analysis(AnalysisContext context) {}
 
   @override
   LLVMRefType get llvmType => LLVMRefType(this);
@@ -384,14 +419,21 @@ class BuiltInTy extends Ty {
 
   @override
   void build(BuildContext context) {}
+  @override
+  void analysis(AnalysisContext context) {}
 }
 
 /// [PathTy] 只用于声明
 class PathTy with EquatableMixin {
-  PathTy(this.ident) : ty = null;
-  PathTy.ty(Ty this.ty) : ident = Identifier.none;
+  PathTy(this.ident, [this.kind = const []]) : ty = null;
+  PathTy.ty(Ty this.ty, [this.kind = const []]) : ident = Identifier.none;
   final Identifier ident;
   final Ty? ty;
+  final List<PointerKind> kind;
+
+  bool? _isRef;
+  bool get isRef => _isRef ??= kind.isRef;
+
   @override
   String toString() {
     if (ty != null) return ty!.toString();
@@ -412,7 +454,7 @@ class PathTy with EquatableMixin {
     }
   }
 
-  Ty grt(BuildContext c) {
+  Ty grt(Tys c) {
     if (ty != null) return ty!;
 
     final tySrc = ident.src;
@@ -430,7 +472,7 @@ class PathTy with EquatableMixin {
 }
 
 class UnknownTy extends PathTy {
-  UnknownTy(super.ident);
+  UnknownTy(Identifier ident) : super(ident, []);
   @override
   String toString() {
     return '{Unknown}';
@@ -440,8 +482,20 @@ class UnknownTy extends PathTy {
 class FnTy extends Fn {
   FnTy(FnDecl fnDecl) : super(FnSign(false, fnDecl), null);
 
+  FnTy clone(Set<AnalysisVariable> extra) {
+    final rawDecl = fnSign.fnDecl;
+    final cache = rawDecl.params.toList();
+    for (var e in extra) {
+      cache.add(GenericParam(e.ident, PathTy.ty(e.ty, [PointerKind.ref])));
+    }
+    final decl = FnDecl(rawDecl.ident, cache, rawDecl.returnTy);
+    return FnTy(decl);
+  }
+
   @override
-  LLVMConstVariable? build(BuildContext context) {
+  LLVMConstVariable? build(BuildContext context,
+      [Set<AnalysisVariable>? variables,
+      Map<Identifier, Set<AnalysisVariable>>? map]) {
     return null;
   }
 }
@@ -473,15 +527,40 @@ class Fn extends Ty {
   @override
   List<Object?> get props => [fnSign, block];
 
-  LLVMConstVariable? _fnV;
+  final _cache = <ListKey, LLVMConstVariable>{};
   @override
-  LLVMConstVariable? build(BuildContext context) {
-    if (_fnV != null) return _fnV!;
+  LLVMConstVariable? build(BuildContext context,
+      [Set<AnalysisVariable>? variables,
+      Map<Identifier, Set<AnalysisVariable>>? map]) {
     context.pushFn(fnSign.fnDecl.ident, this);
-    // final fn = context.buildFn(fnSign);
-    // // final blockBB =
-    // block.build(context);
-    return _fnV = context.buildFnBB(this);
+    return customBuild(context, variables, map);
+  }
+
+  LLVMConstVariable? customBuild(BuildContext context,
+      [Set<AnalysisVariable>? variables,
+      Map<Identifier, Set<AnalysisVariable>>? map]) {
+    final key = ListKey(variables?.toList() ?? []);
+    return _cache.putIfAbsent(key, () {
+      // final fn = context.buildFn(fnSign);
+      // // final blockBB =
+      // block.build(context);
+      return context.buildFnBB(this, variables, map ?? const {});
+    });
+  }
+
+  Set<AnalysisVariable> variables = {};
+  Set<AnalysisVariable> selfVariables = {};
+
+  bool isInner = false;
+  @override
+  void analysis(AnalysisContext context) {
+    context.pushFn(fnSign.fnDecl.ident, this);
+    final child = context.childContext();
+    child.setFnContext(child);
+    block?.analysis(child);
+    selfVariables = child.catchVariables;
+    variables.addAll(selfVariables);
+    variables.addAll(child.childrenVariables);
   }
 
   @override
@@ -494,28 +573,17 @@ class ImplFn extends Fn {
 }
 
 class FieldDef with EquatableMixin {
-  FieldDef(this.ident, this.ty, this.kinds);
+  FieldDef(this.ident, this.ty);
   final Identifier ident;
   final PathTy ty;
-  final List<PointerKind> kinds;
+  List<PointerKind> get kinds => ty.kind;
   @override
   String toString() {
     return '$ident: ${kinds.join('')}$ty';
   }
 
   bool? _isRef;
-  bool get isRef {
-    if (_isRef != null) return _isRef!;
-    var refCount = 0;
-    for (var k in kinds.reversed) {
-      if (k == PointerKind.ref) {
-        refCount += 1;
-      } else {
-        refCount -= 1;
-      }
-    }
-    return _isRef = refCount > 0;
-  }
+  bool get isRef => _isRef ??= kinds.isRef;
 
   @override
   List<Object?> get props => [ident, ty];
@@ -536,6 +604,11 @@ class StructTy extends Ty with EquatableMixin {
 
   @override
   void build(BuildContext context) {
+    context.pushStruct(ident, this);
+  }
+
+  @override
+  void analysis(AnalysisContext context) {
     context.pushStruct(ident, this);
   }
 
@@ -567,6 +640,11 @@ class EnumTy extends Ty {
 
   @override
   LLVMType get llvmType => throw UnimplementedError();
+
+  @override
+  void analysis(AnalysisContext context) {
+    context.pushEnum(ident, this);
+  }
 }
 
 /// 与 `struct` 类似
@@ -594,7 +672,12 @@ class ComponentTy extends Ty {
 
   @override
   void build(BuildContext context) {
-    context.pushCOmponent(ident, this);
+    context.pushComponent(ident, this);
+  }
+
+  @override
+  void analysis(AnalysisContext context) {
+    context.pushComponent(ident, this);
   }
 
   @override
@@ -670,12 +753,12 @@ class ImplTy extends Ty {
     }
 
     for (var fn in staticFns) {
-      context.buildFnBB(fn);
+      fn.customBuild(context);
     }
     final ifns =
         _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty)).toList();
     for (var fn in ifns) {
-      context.buildFnBB(fn);
+      fn.customBuild(context);
     }
   }
 
@@ -701,4 +784,17 @@ class ImplTy extends Ty {
 
   @override
   LLVMType get llvmType => throw UnimplementedError();
+
+  @override
+  void analysis(AnalysisContext context) {
+    context.pushImpl(ident, this);
+    final structTy = context.getStruct(ident);
+    if (structTy == null) return;
+    context.pushImplForStruct(structTy, this);
+    final ty = context.getStruct(ident);
+    if (ty == null) {
+      //error
+      return;
+    }
+  }
 }

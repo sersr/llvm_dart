@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:llvm_dart/ast/analysis_context.dart';
 import 'package:llvm_dart/ast/buildin.dart';
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/memory.dart';
@@ -18,6 +19,10 @@ class LiteralExpr extends Expr {
   LiteralExpr(this.ident, this.ty);
   final Identifier ident;
   final BuiltInTy ty;
+  @override
+  Expr clone() {
+    return LiteralExpr(ident, ty);
+  }
 
   @override
   String toString() {
@@ -42,6 +47,11 @@ class LiteralExpr extends Expr {
 
     return ExprTempValue(v, ty);
   }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    return AnalysisVariable(realTy, ident);
+  }
 }
 
 class IfExprBlock {
@@ -52,6 +62,10 @@ class IfExprBlock {
   IfExprBlock? child;
   Block? elseBlock;
 
+  IfExprBlock clone() {
+    return IfExprBlock(expr.clone(), block.clone());
+  }
+
   void incLvel([int count = 1]) {
     block.incLevel(count);
   }
@@ -59,6 +73,12 @@ class IfExprBlock {
   @override
   String toString() {
     return '$expr$block';
+  }
+
+  AnalysisVariable? analysis(AnalysisContext context) {
+    expr.analysis(context);
+    block.analysis(context);
+    return null;
   }
 }
 
@@ -72,6 +92,12 @@ class IfExpr extends Expr {
       }
     }
     last.elseBlock = elseBlock;
+  }
+
+  @override
+  Expr clone() {
+    return IfExpr(ifExpr.clone(), elseIfExpr?.map((e) => e.clone()).toList(),
+        elseBlock?.clone());
   }
 
   @override
@@ -103,10 +129,27 @@ class IfExpr extends Expr {
     if (v == null) return null;
     return ExprTempValue(v, v.ty);
   }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    ifExpr.analysis(context.childContext());
+    if (elseIfExpr != null) {
+      for (var e in elseIfExpr!) {
+        e.analysis(context.childContext());
+      }
+    }
+    elseBlock?.analysis(context.childContext());
+    return null;
+  }
 }
 
 class BreakExpr extends Expr {
   BreakExpr(this.ident, this.label);
+  @override
+  Expr clone() {
+    return BreakExpr(ident, label);
+  }
+
   final Identifier ident;
   final Identifier? label;
 
@@ -123,11 +166,20 @@ class BreakExpr extends Expr {
     context.brLoop();
     return null;
   }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    return null;
+  }
 }
 
 class ContinueExpr extends Expr {
   ContinueExpr(this.ident);
   final Identifier ident;
+  @override
+  Expr clone() {
+    return ContinueExpr(ident);
+  }
 
   @override
   String toString() {
@@ -139,6 +191,11 @@ class ContinueExpr extends Expr {
     context.contine();
     return null;
   }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    return null;
+  }
 }
 
 /// label: loop { block }
@@ -146,6 +203,10 @@ class LoopExpr extends Expr {
   LoopExpr(this.ident, this.block);
   final Identifier ident; // label
   final Block block;
+  @override
+  Expr clone() {
+    return LoopExpr(ident, block.clone());
+  }
 
   @override
   void incLevel([int count = 1]) {
@@ -164,11 +225,21 @@ class LoopExpr extends Expr {
     // todo: phi
     return null;
   }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    block.analysis(context.childContext());
+    return null;
+  }
 }
 
 /// label: while expr { block }
 class WhileExpr extends Expr {
   WhileExpr(this.ident, this.expr, this.block);
+  @override
+  Expr clone() {
+    return WhileExpr(ident, expr.clone(), block.clone());
+  }
 
   final Identifier ident;
   final Expr expr;
@@ -190,12 +261,24 @@ class WhileExpr extends Expr {
     context.forLoop(block, null, expr);
     return null;
   }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final child = context.childContext();
+    expr.analysis(child);
+    block.analysis(child.childContext());
+    return null;
+  }
 }
 
 class RetExpr extends Expr {
   RetExpr(this.expr, this.ident);
   final Identifier ident;
   final Expr? expr;
+  @override
+  Expr clone() {
+    return RetExpr(expr?.clone(), ident);
+  }
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
@@ -203,6 +286,12 @@ class RetExpr extends Expr {
 
     context.ret(e?.variable);
     return e;
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    expr?.analysis(context);
+    return null;
   }
 
   @override
@@ -216,6 +305,10 @@ class StructExpr extends Expr {
   StructExpr(this.ident, this.fields);
   final Identifier ident;
   final List<StructExprField> fields;
+  @override
+  Expr clone() {
+    return StructExpr(ident, fields.map((e) => e.clone()).toList());
+  }
 
   @override
   String toString() {
@@ -246,12 +339,22 @@ class StructExpr extends Expr {
     }
     return ExprTempValue(value, value.ty);
   }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final struct = context.getStruct(ident);
+    if (struct == null) return null;
+    return AnalysisVariable(struct, ident);
+  }
 }
 
 class StructExprField {
   StructExprField(this.ident, this.expr);
   final Identifier? ident;
   final Expr expr;
+  StructExprField clone() {
+    return StructExprField(ident, expr.clone());
+  }
 
   @override
   String toString() {
@@ -267,6 +370,10 @@ class AssignExpr extends Expr {
   AssignExpr(this.ref, this.expr);
   final Expr ref;
   final Expr expr;
+  @override
+  Expr clone() {
+    return AssignExpr(ref.clone(), expr.clone());
+  }
 
   @override
   String toString() {
@@ -283,6 +390,16 @@ class AssignExpr extends Expr {
       lVariable.store(context, rVariable.load(context));
     }
 
+    return null;
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final lhs = ref.analysis(context);
+    expr.analysis(context);
+    if (lhs != null) {
+      return lhs;
+    }
     return null;
   }
 }
@@ -317,6 +434,10 @@ class FieldExpr extends Expr {
   FieldExpr(this.expr, this.ident);
   final Identifier? ident;
   final Expr expr;
+  @override
+  FieldExpr clone() {
+    return FieldExpr(expr.clone(), ident);
+  }
 
   @override
   String toString() {
@@ -329,6 +450,11 @@ class FieldExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     return expr.build(context);
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    return expr.analysis(context);
   }
 }
 
@@ -374,6 +500,16 @@ List<F> alignParam<F>(List<F> src, int Function(F) test) {
 class FnExpr extends Expr {
   FnExpr(this.fn);
   final Fn fn;
+  @override
+  Expr clone() {
+    return FnExpr(fn);
+  }
+
+  @override
+  void incLevel([int count = 1]) {
+    super.incLevel(count);
+    fn.incLevel(count);
+  }
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
@@ -382,12 +518,30 @@ class FnExpr extends Expr {
     alloca.store(context, fnV!.value);
     return ExprTempValue(alloca, fn);
   }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    fn.analysis(context);
+    return AnalysisVariable(fn, fn.fnSign.fnDecl.ident);
+  }
+
+  @override
+  String toString() {
+    return '$fn';
+  }
 }
 
 class FnCallExpr extends Expr {
   FnCallExpr(this.expr, this.params);
   final Expr expr;
   final List<FieldExpr> params;
+  @override
+  Expr clone() {
+    final f = FnCallExpr(expr.clone(), params.map((e) => e.clone()).toList());
+    f.catchVariables.addAll(catchVariables);
+    f.childrenVariables.addAll(childrenVariables);
+    return f;
+  }
 
   @override
   String toString() {
@@ -417,27 +571,26 @@ class FnCallExpr extends Expr {
       }
       if (ty == null) return null;
 
-      final v = fn.llvmType.createFunction(context, ty: ty);
+      final v = fn.llvmType.createFunction(context, null, ty);
       return ExprTempValue(v, BuiltInTy.int);
     }
     // LLVMValueRef? fnValue;
     // if (variable is StoreVariable) {
     //   fnValue = variable.alloca;
     // }
-    return fnCall(context, fn, params, variable, null);
+    return fnCall(
+        context, fn, params, variable, null, catchVariables, childrenVariables);
   }
 
-  static ExprTempValue? fnCall(BuildContext context, Fn fn,
-      List<FieldExpr> params, Variable? fnVariable, LLVMValueRef? struct) {
-    final fnType = fn.llvmType.createFnType(context);
+  static ExprTempValue? fnCall(
+      BuildContext context,
+      Fn fn,
+      List<FieldExpr> params,
+      Variable? fnVariable,
+      LLVMValueRef? struct,
+      Set<AnalysisVariable>? extra,
+      Map<Identifier, Set<AnalysisVariable>>? map) {
     final isExtern = fn.extern;
-    LLVMValueRef fnValue;
-    if (fnVariable != null) {
-      fnValue = fnVariable.load(context);
-    } else {
-      final value = fn.llvmType.createFunction(context);
-      fnValue = value.load(context);
-    }
 
     final fnParams = fn.fnSign.fnDecl.params;
     final args = <LLVMValueRef>[];
@@ -467,11 +620,102 @@ class FnCallExpr extends Expr {
       }
     }
 
+    void addArg(Variable? v) {
+      if (v != null) {
+        LLVMValueRef value;
+        if (isExtern && v is LLVMStructAllocaVariable) {
+          value = v.load2(context, isExtern);
+        } else if (v is StoreVariable) {
+          value = v.alloca;
+        } else {
+          final ref = LLVMRefAllocaVariable(v, v.load(context));
+          value = ref.alloca;
+        }
+        args.add(value);
+      }
+    }
+
+    for (var variable in fn.variables) {
+      var v = context.getVariable(variable.ident);
+      addArg(v);
+    }
+
+    if (extra != null) {
+      for (var variable in extra) {
+        var v = context.getVariable(variable.ident);
+        if (v != null) {
+          LLVMValueRef value;
+          if (isExtern && v is LLVMStructAllocaVariable) {
+            value = v.load2(context, isExtern);
+          } else if (v is StoreVariable) {
+            value = v.alloca;
+          } else {
+            final ref = LLVMRefAllocaVariable(v, v.load(context));
+            value = ref.load(context);
+          }
+          args.add(value);
+        }
+      }
+    }
+
+    if (fn is FnTy) {
+      final params = fn.fnSign.fnDecl.params;
+      for (var p in params) {
+        var v = context.getVariable(p.ident);
+        addArg(v);
+      }
+    }
+
+    final fnType = fn.llvmType.createFnType(context, extra);
+
+    final fnAlloca = fn.build(context, extra, map);
+    final fnValue = fnAlloca?.load(context) ?? fnVariable?.load(context);
+    if (fnValue == null) return null;
+    llvm.LLVMDumpType(fnType);
+
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 
     final retTy = fn.fnSign.fnDecl.returnTy.grt(context);
     return ExprTempValue(LLVMTempVariable(ret, retTy), retTy);
+  }
+
+  late final catchVariables = <AnalysisVariable>{};
+  Map<Identifier, Set<AnalysisVariable>> childrenVariables = {};
+
+  void addChild(Identifier ident, Set<AnalysisVariable> child) {
+    childrenVariables[ident] = child;
+    catchVariables.addAll(child);
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final fn = expr.analysis(context);
+    if (fn == null) return null;
+    if (fn.ty is SizeofFn) {
+      return AnalysisVariable(BuiltInTy.int, Identifier.none);
+    }
+    final fnty = fn.ty;
+    if (fnty is! Fn) return null;
+    final fields = fnty.fnSign.fnDecl.params;
+    final sortFields =
+        alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
+
+    for (var f in sortFields) {
+      final rf = fields[sortFields.indexOf(f)];
+      final v = f.analysis(context);
+      final vty = v?.ty;
+      if (vty is Fn) {
+        addChild(rf.ident, vty.variables);
+        // final fnContext = context.getLastFnContext();
+        // fnContext?.addChild(fnty.fnSign.fnDecl.ident, fnty.variables);
+      }
+    }
+
+    // final fnContext = context.getLastFnContext();
+    // fnContext?.addChild(fnty.fnSign.fnDecl.ident, fnty.variables);
+    return AnalysisVariable(
+        fnty.fnSign.fnDecl.returnTy.grt(context), Identifier.none);
   }
 }
 
@@ -480,6 +724,11 @@ class MethodCallExpr extends Expr {
   final Identifier ident;
   final Expr receiver;
   final List<FieldExpr> params;
+  @override
+  Expr clone() {
+    return MethodCallExpr(
+        ident, receiver.clone(), params.map((e) => e.clone()).toList());
+  }
 
   @override
   String toString() {
@@ -532,7 +781,30 @@ class MethodCallExpr extends Expr {
     }
 
     if (fn == null) return null;
-    return FnCallExpr.fnCall(context, fn, params, fnVariable, st);
+    return FnCallExpr.fnCall(context, fn, params, fnVariable, st, null, null);
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    var variable = receiver.analysis(context);
+    if (variable == null) return null;
+    final structTy = variable.ty;
+    if (structTy is! StructTy) return null;
+    final impl = context.getImplForStruct(structTy);
+    var fn = impl?.getFn(ident);
+    if (fn == null) {
+      final field =
+          structTy.fields.firstWhereOrNull((element) => element.ident == ident);
+      final ty = field?.ty.grt(context);
+      if (ty is FnTy) {
+        fn = ty;
+      }
+    }
+    if (fn == null) return null;
+    // final fnContext = context.getLastFnContext();
+    // fnContext?.addChild(fn.fnSign.fnDecl.ident, fn.variables);
+    return AnalysisVariable(
+        fn.fnSign.fnDecl.returnTy.grt(context), Identifier.none);
   }
 }
 
@@ -542,6 +814,11 @@ class StructDotFieldExpr extends Expr {
   final Expr struct;
 
   final List<PointerKind> kind;
+
+  @override
+  Expr clone() {
+    return StructDotFieldExpr(struct.clone(), kind, ident);
+  }
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
@@ -572,6 +849,21 @@ class StructDotFieldExpr extends Expr {
       }
     }
     return '${kind.join('')}$struct.$ident';
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    var variable = struct.analysis(context);
+    if (variable == null) return null;
+    final structTy = variable.ty;
+    if (structTy is! StructTy) return null;
+
+    final v =
+        structTy.fields.firstWhereOrNull((element) => element.ident == ident);
+    if (v == null) {
+      return null;
+    }
+    return AnalysisVariable(v.ty.grt(context), ident);
   }
 }
 
@@ -714,6 +1006,10 @@ class OpExpr extends Expr {
   final OpKind op;
   final Expr lhs;
   final Expr rhs;
+  @override
+  Expr clone() {
+    return OpExpr(op, lhs.clone(), rhs.clone());
+  }
 
   @override
   String toString() {
@@ -787,6 +1083,18 @@ class OpExpr extends Expr {
     }, op, isFloat, signed: signed);
     return ExprTempValue(v, v.ty);
   }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final l = lhs.analysis(context);
+    // final r = lhs.analysis(context);
+    if (l == null) return null;
+    if (op.index >= OpKind.Eq.index && op.index <= OpKind.Gt.index ||
+        op.index >= OpKind.And.index && op.index <= OpKind.Or.index) {
+      return AnalysisVariable(BuiltInTy.kBool, Identifier.none);
+    }
+    return AnalysisVariable(l.ty, Identifier.none);
+  }
 }
 
 enum PointerKind {
@@ -813,7 +1121,7 @@ enum PointerKind {
     if (this == PointerKind.none) return val;
     Variable? inst;
     if (val != null) {
-      if (val is LLVMRefAllocaVariable && this == PointerKind.deref) {
+      if (val is Dref && this == PointerKind.deref) {
         inst = val.getDeref(c);
       } else if (this == PointerKind.ref) {
         inst = val.getRef(c);
@@ -850,23 +1158,57 @@ enum PointerKind {
   String toString() => char == '' ? '$runtimeType' : char;
 }
 
-class VariableIdentExpr extends Expr {
-  VariableIdentExpr(this.ident, List<PointerKind>? pointerKind)
-      : pointerKind = pointerKind ?? [];
-  final Identifier ident;
+extension ListPointerKind on List<PointerKind> {
+  bool get isRef {
+    var refCount = 0;
+    for (var k in reversed) {
+      if (k == PointerKind.ref) {
+        refCount += 1;
+      } else {
+        refCount -= 1;
+      }
+    }
+    return refCount > 0;
+  }
 
-  final List<PointerKind> pointerKind;
+  Ty resolveTy(Ty baseTy) {
+    for (var kind in this) {
+      if (kind == PointerKind.ref) {
+        baseTy = RefTy(baseTy);
+      } else {
+        if (baseTy is RefTy) {
+          baseTy = baseTy.parent;
+        }
+      }
+    }
+    return baseTy;
+  }
+}
+
+class VariableIdentExpr extends Expr {
+  VariableIdentExpr(this.ident);
+  final Identifier ident;
   @override
   String toString() {
     return '$ident';
   }
 
   @override
+  Expr clone() {
+    return VariableIdentExpr(ident).._isCatch = _isCatch;
+  }
+
+  @override
   ExprTempValue? buildExpr(BuildContext context) {
     final val = context.getVariable(ident);
+
     if (val != null) {
-      final newVal = PointerKind.refDerefs(val, context, pointerKind);
-      return ExprTempValue(newVal, val.ty);
+      // Log.w('b... $_isCatch $ident ${val.runtimeType}');
+      if (_isCatch && val is Dref) {
+        final newVal = val.getDeref(context, mut: false);
+        return ExprTempValue(newVal, newVal.ty);
+      }
+      return ExprTempValue(val, val.ty);
     }
     final fn = context.getFn(ident);
     if (fn != null) {
@@ -877,12 +1219,40 @@ class VariableIdentExpr extends Expr {
     }
     return null;
   }
+
+  bool _isCatch = false;
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final v = context.getVariable(ident);
+    final fnContext = context.getLastFnContext();
+    if (fnContext != null) {
+      _isCatch = fnContext.catchVariables.contains(v);
+      // Log.w('...$_isCatch $ident');
+    }
+    if (v != null) return v;
+    final fn = context.getFn(ident);
+    if (fn != null) {
+      fn.analysis(context);
+      final fnContext = context.getLastFnContext();
+      fnContext?.addChild(fn.variables);
+      fn.isInner = true;
+      return AnalysisVariable(fn, ident);
+    }
+
+    return null;
+  }
 }
 
 class RefExpr extends Expr {
   RefExpr(this.current, this.kind);
   final Expr current;
   final List<PointerKind> kind;
+
+  @override
+  Expr clone() {
+    return RefExpr(current.clone(), kind);
+  }
+
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final val = current.build(context);
@@ -906,5 +1276,12 @@ class RefExpr extends Expr {
       }
     }
     return '$s$current';
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final vv = current.analysis(context);
+    if (vv == null) return null;
+    return AnalysisVariable(vv.ty, vv.ident, kind);
   }
 }

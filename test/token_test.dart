@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ffi';
 
+import 'package:llvm_dart/ast/analysis_context.dart';
 import 'package:llvm_dart/ast/buildin.dart';
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/llvm_context.dart';
@@ -276,6 +277,126 @@ fn hell() {
         llvm.LLVMDumpModule(root.module);
         llvm.writeOutput(root.kModule);
         root.dispose();
+      },
+      zoneValues: {'astSrc': src},
+      zoneSpecification: ZoneSpecification(print: (self, parent, zone, line) {
+        Zone.root.print(line.replaceAll('(package:llvm_dart/', '(./lib/'));
+      }),
+    );
+  });
+
+  test('analysis', () {
+    final src = '''
+extern fn printxx(y: int);
+
+fn main() int {
+  let xx = 11;
+  let yy = xx;
+  let xa = &1221;
+  let hhhxx = xa;
+  fn second() {
+    // let xhh = xx;
+    // let xafa = yy;
+    // printxx(yy);
+    // printxx(*xa);
+    // let yy = xa;
+    // let haf = *xa;
+    // printxx(haf);
+    // let hh = *xa;
+    // printxx(xafa);
+    // let hhhe = xa;
+    // let eq = xx;
+    // printxx(eq);
+    // let hhhv = *hhhe;
+    // printxx(hhhv);
+    // printxx(*xa);
+    // let yyx = *hhhe;
+    // printxx(yyx);
+    // printxx(*hhhe);
+    // *xa = 111;
+    // let hyyx = *xa;
+    // printxx(*xa);
+    let a = xa;
+    printxx(*a);
+    // *xa = 111;
+    // let ab = *xa;
+    // printxx(ab);
+    // let y = *xa;
+  }
+  // second();
+  // printxx(*xa);
+  // *xa = 5554;
+  // second();
+  fn hell() {
+    let yyys = xx;
+    // xx = 223131;
+    // printxx(43434);
+    printxx(yyys);
+    second();
+  }
+  // let hh = 1002;
+  // // fn outer() {
+  // //   second();
+  // //   let o_hh = hh;
+  // // }
+  // // hell();
+  inner(hell); // hell: main scope
+  // // inner(outer);
+  *xa = 5555;
+  inner(hell);
+  hell();
+  0
+}
+
+// main::inner
+// fn main::inner(f: fn()) {
+//   // f: life time: main::inner
+// }
+//
+//
+
+fn inner(f: fn()) {
+  // f: life time: inner
+  printxx(111);
+  let yyx = 4343;
+  printxx(yyx);
+  f();
+}
+''';
+    runZoned(
+      () {
+        final m = parseTopItem(src);
+        print(m.globalTy.values.join('\n'));
+        // return;
+        final root = AnalysisContext.root();
+        root.pushAllTy(m.globalTy);
+        for (var fns in root.fns.values) {
+          for (var fn in fns) {
+            fn.analysis(root);
+          }
+        }
+        {
+          llvm.initLLVM();
+          final root = BuildContext.root();
+          // BuildContext.mem2reg = true;
+          root.pushAllTy(m.globalTy);
+          root.pushFn(sizeOfFn.ident, sizeOfFn);
+
+          for (var fns in root.fns.values) {
+            for (var fn in fns) {
+              fn.build(root);
+            }
+          }
+          for (var impls in root.impls.values) {
+            for (var impl in impls) {
+              impl.build(root);
+            }
+          }
+
+          llvm.LLVMDumpModule(root.module);
+          llvm.writeOutput(root.kModule);
+          root.dispose();
+        }
       },
       zoneValues: {'astSrc': src},
       zoneSpecification: ZoneSpecification(print: (self, parent, zone, line) {

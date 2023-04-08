@@ -70,7 +70,7 @@ fn main() int {
   struct MyG {
     x: fn (),
   }
-  let yyx = MyG{fn () {
+  let yyx = MyG{fn zz() {
     printxx(444);
   }}
     // let hh = yyx.x;
@@ -107,6 +107,7 @@ fn main() i32 {
   }
 }
 
+// 生命周期检测由分析器完成
 
 fn life(y: &int) &int {
   let x = &11;

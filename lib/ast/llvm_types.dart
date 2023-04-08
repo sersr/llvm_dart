@@ -1,6 +1,8 @@
+import 'package:llvm_dart/ast/analysis_context.dart';
 import 'package:llvm_dart/ast/expr.dart';
 import 'package:llvm_dart/ast/tys.dart';
 import 'package:meta/meta.dart';
+import 'package:nop/nop.dart';
 
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
@@ -170,7 +172,7 @@ class LLVMFnType extends LLVMType {
     return c.pointer();
   }
 
-  LLVMTypeRef createFnType(BuildContext c) {
+  LLVMTypeRef createFnType(BuildContext c, [Set<AnalysisVariable>? variables]) {
     final params = fn.fnSign.fnDecl.params;
     final list = <LLVMTypeRef>[];
 
@@ -193,6 +195,24 @@ class LLVMFnType extends LLVMType {
       list.add(ty);
       // }
     }
+    final vv = [...fn.variables, ...?variables];
+    for (var variable in vv) {
+      final v = c.getVariable(variable.ident);
+      if (v != null) {
+        final dty = v.ty;
+        LLVMTypeRef ty = dty.llvmType.createType(c);
+        // if (v.isRef) {
+        ty = c.typePointer(ty);
+        // } else {
+        //   if (dty is StructTy && fn.extern) {
+        //     final size = dty.llvmType.getBytes(c);
+        //     ty = c.getStructExternType(size);
+        //   }
+        // }
+        list.add(ty);
+      }
+    }
+
     LLVMTypeRef ret;
     var retTy = fn.fnSign.fnDecl.returnTy.grt(c);
     if (fn.extern && retTy is StructTy) {
@@ -206,15 +226,19 @@ class LLVMFnType extends LLVMType {
     return c.typeFn(list, ret);
   }
 
-  LLVMConstVariable? _value;
+  late final _cacheFns = <ListKey, LLVMConstVariable>{};
 
-  LLVMConstVariable createFunction(BuildContext c) {
-    if (_value != null) return _value!;
-    final ty = createFnType(c);
-    final ident = fn.fnSign.fnDecl.ident.src;
-    final v = llvm.LLVMAddFunction(c.module, ident.toChar(), ty);
-    llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
-    return _value = LLVMConstVariable(v, fn);
+  LLVMConstVariable createFunction(BuildContext c,
+      [Set<AnalysisVariable>? variables]) {
+    final key = ListKey(variables?.toList() ?? []);
+
+    return _cacheFns.putIfAbsent(key, () {
+      final ty = createFnType(c, variables);
+      final ident = fn.fnSign.fnDecl.ident.src;
+      final v = llvm.LLVMAddFunction(c.module, ident.toChar(), ty);
+      llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
+      return LLVMConstVariable(v, fn);
+    });
   }
 
   @override
@@ -325,6 +349,34 @@ class LLVMStructType extends LLVMType {
     return size;
   }
 }
+
+// class PointerTy extends Ty {
+//   @override
+//   void analysis(AnalysisContext context) {}
+
+//   @override
+//   void build(BuildContext context) {}
+
+//   @override
+//   LLVMType get llvmType => LLVMPointerType(this);
+
+//   @override
+//   List<Object?> get props => throw UnimplementedError();
+// }
+
+// class LLVMPointerType extends LLVMType {
+//   LLVMPointerType(this.ty);
+//   final PointerTy ty;
+//   @override
+//   LLVMTypeRef createType(BuildContext c) {
+//     throw UnimplementedError();
+//   }
+
+//   @override
+//   int getBytes(BuildContext c) {
+//     throw UnimplementedError();
+//   }
+// }
 
 class LLVMRefType extends LLVMType {
   LLVMRefType(this.ty);

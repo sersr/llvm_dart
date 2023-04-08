@@ -1,6 +1,7 @@
 import 'dart:ffi';
 
 import 'package:collection/collection.dart';
+import 'package:llvm_dart/ast/analysis_context.dart';
 import 'package:llvm_dart/ast/expr.dart';
 import 'package:llvm_dart/ast/stmt.dart';
 import 'package:llvm_dart/ast/tys.dart';
@@ -41,7 +42,8 @@ class LLVMBasicBlock {
   bool inserted = false;
 }
 
-class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
+class BuildContext
+    with BuildMethods, Tys<BuildContext, Variable>, Consts, OverflowMath {
   BuildContext._(BuildContext this.parent) {
     kModule = parent!.kModule;
     _init();
@@ -121,9 +123,12 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
     bb.inserted = true;
   }
 
-  void _build(LLVMValueRef fn, FnDecl decl, Fn fnty) {
+  void _build(
+      LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
+      {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
     final params = decl.params;
     var self = 0;
+
     if (fnty is ImplFn) {
       self = 1;
       final p = fnty.ty;
@@ -136,39 +141,95 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
       alloca.store(this, selfParam);
       pushVariable(ident, aa);
     }
+
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
-      final isRef = p.isRef;
+      // var isRef = p.isRef;
 
       final fnParam = llvm.LLVMGetParam(fn, i + self);
-      Variable aa;
-      final realTy = p.ty.grt(this);
-      if (!isRef) {
-        StoreVariable alloca;
-        if (realTy is StructTy) {
-          alloca = realTy.llvmType
-              .createAllocaFromParam(this, fnParam, p.ident, fnty.extern);
-        } else {
-          alloca = realTy.llvmType.createAlloca(this, p.ident);
+      var realTy = p.ty.grt(this);
+      if (realTy is FnTy) {
+        final extra = map[p.ident];
+        if (extra != null) {
+          realTy = realTy.clone(extra);
         }
-        alloca.store(this, fnParam);
-        alloca.isTemp = false;
-        aa = alloca;
       } else {
-        final llty = RefTy(realTy).llvmType;
-        final alloca = llty.createAlloca(this, p.ident);
-        alloca.store(this, fnParam);
-        alloca.isTemp = false;
-        aa = alloca;
+        realTy = p.ty.kind.resolveTy(realTy);
       }
 
-      pushVariable(p.ident, aa);
+      _resolveParam(realTy, fnParam, p.ident, fnty.extern);
+    }
+
+    var index = params.length - 1 + self;
+
+    for (var variable in fnty.variables) {
+      index += 1;
+      final fnParam = llvm.LLVMGetParam(fn, index);
+      final ident = variable.ident;
+      final val = getVariable(ident);
+      if (val == null) {
+        continue;
+      }
+      var vty = variable.kind.resolveTy(val.ty);
+
+      Variable alloca;
+
+      if (fnty.selfVariables.contains(variable)) {
+        final llty = RefTy(vty).llvmType;
+        final aa = llty.createAlloca(this, ident);
+        aa.store(this, fnParam);
+        alloca = aa;
+        aa.isTemp = false;
+      } else {
+        alloca = LLVMAllocaVariable(val.ty, fnParam, pointer());
+      }
+      pushVariable(ident, alloca);
+    }
+    if (extra != null) {
+      for (var variable in extra) {
+        index += 1;
+        final fnParam = llvm.LLVMGetParam(fn, index);
+        final ident = variable.ident;
+        final val = getVariable(ident);
+        if (val == null) {
+          continue;
+        }
+        final aa = LLVMAllocaVariable(val.ty, fnParam, pointer());
+        pushVariable(ident, aa);
+      }
     }
   }
 
-  LLVMConstVariable buildFnBB(Fn fn) {
-    final fv = fn.llvmType.createFunction(this);
-    final block = fn.block;
+  void _resolveParam(
+      Ty ty, LLVMValueRef fnParam, Identifier ident, bool extern) {
+    Variable aa;
+    if (ty is! RefTy) {
+      StoreVariable alloca;
+      if (ty is StructTy) {
+        alloca =
+            ty.llvmType.createAllocaFromParam(this, fnParam, ident, extern);
+      } else {
+        alloca = ty.llvmType.createAlloca(this, ident);
+        alloca.store(this, fnParam);
+      }
+      alloca.isTemp = false;
+      aa = alloca;
+    } else {
+      final llty = ty.llvmType;
+      final alloca = llty.createAlloca(this, ident);
+      alloca.store(this, fnParam);
+      alloca.isTemp = false;
+      aa = alloca;
+    }
+
+    pushVariable(ident, aa);
+  }
+
+  LLVMConstVariable buildFnBB(Fn fn,
+      [Set<AnalysisVariable>? extra,
+      Map<Identifier, Set<AnalysisVariable>> map = const {}]) {
+    final fv = fn.llvmType.createFunction(this, extra);
+    final block = fn.block?.clone();
     final isDecl = block == null;
 
     if (isDecl) return fv;
@@ -176,7 +237,7 @@ class BuildContext with BuildMethods, Tys<BuildContext>, Consts, OverflowMath {
     bbContext.fn = fv;
     bbContext.isFnBBContext = true;
     bbContext.createAndInsertBB(fv);
-    bbContext._build(fv.value, fn.fnSign.fnDecl, fn);
+    bbContext._build(fv.value, fn.fnSign.fnDecl, fn, extra, map: map);
     block.build(bbContext);
 
     bool hasRet = false;

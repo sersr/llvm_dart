@@ -145,7 +145,7 @@ class Modules {
       return null;
     }
 
-    final ty = PathTy(ident);
+    final ty = parsePathTy(it) ?? PathTy(ident);
 
     eatLfIfNeed(it);
     checkBlock(it);
@@ -233,18 +233,9 @@ class Modules {
         eatLfIfNeed(it);
         if (it.moveNext()) {
           assert(it.current.token.kind == TokenKind.colon);
-          eatLfIfNeed(it);
-          if (it.moveNext()) {
-            final t = getToken(it);
-            bool isRef = false;
-            if (t.kind == TokenKind.and) {
-              isRef = true;
-              eatLfIfNeed(it);
-              it.moveNext();
-            }
-            final name = it.current;
-            final ty = PathTy(Identifier.fromToken(name.token));
-            final param = GenericParam(ident, ty, isRef);
+          final ty = parsePathTy(it);
+          if (ty != null) {
+            final param = GenericParam(ident, ty);
             params.add(param);
           }
         }
@@ -259,18 +250,19 @@ class Modules {
     PathTy? retTy;
 
     eatLfIfNeed(it);
+    final state = it.cursor;
     if (it.moveNext()) {
       final c = it.current;
       if (c.token.kind == TokenKind.ident) {
         final key = getKey(it);
         if (key == null) {
-          retTy = PathTy(Identifier.fromToken(c.token));
-        } else {
-          it.moveBack();
+          state.restore();
+          retTy = parsePathTy(it);
         }
-      } else {
-        it.moveBack();
       }
+    }
+    if (retTy == null) {
+      state.restore();
     }
 
     retTy ??= PathTy.ty(BuiltInTy.kVoid);
@@ -309,6 +301,39 @@ class Modules {
       }
     }
     return Fn(fnSign, null);
+  }
+
+  PathTy? parsePathTy(TokenIterator it) {
+    eatLfIfNeed(it);
+
+    final pointerKind = getAllKind(it);
+    PathTy? ty;
+    final state = it.cursor;
+
+    // if (k == TokenKind.ident) {
+    //       if (getKey(it) == Key.fn) {
+    //         it.moveNext();
+    //         final decl = parseFnDecl(it, Identifier.none);
+    //         ty = PathTy.ty(FnTy(decl));
+    //       } else {
+    //         ty = PathTy(ident);
+    //       }
+    //     } else {
+    //       ty = UnknownTy(ident);
+    //     }
+    if (it.moveNext()) {
+      if (getKey(it) == Key.fn) {
+        it.moveNext();
+        final decl = parseFnDecl(it, Identifier.none);
+        ty = PathTy.ty(FnTy(decl), pointerKind);
+      } else if (getToken(it).kind == TokenKind.ident) {
+        ty = PathTy(getIdent(it), pointerKind);
+      }
+    }
+    if (ty == null) {
+      state.restore();
+    }
+    return ty;
   }
 
   bool isBlockStart(TokenIterator it) {
@@ -350,38 +375,37 @@ class Modules {
   }
 
   Stmt? parseStmt(TokenIterator it) {
-    Stmt? stmt = parseLetStmt(it);
+    Stmt? stmt;
+
+    final key = getKey(it);
+    if (key == Key.fn) {
+      final fn = parseFn(it);
+      if (fn != null) {
+        stmt = ExprStmt(FnExpr(fn));
+      }
+    } else if (key == Key.struct) {
+      final struct = parseStruct(it);
+      if (struct != null) {
+        stmt = StructStmt(struct);
+      }
+    } else if (key == Key.kRet) {
+      final ident = getIdent(it);
+      Expr? expr;
+      if (it.moveNext()) {
+        final t = getToken(it);
+        if (t.kind != TokenKind.lf) {
+          it.moveBack();
+          expr = parseExpr(it);
+        } else {
+          it.moveBack();
+        }
+      }
+      stmt = ExprStmt(RetExpr(expr, ident));
+    }
+    stmt ??= parseLetStmt(it);
     stmt ??= parseIfExpr(it);
     stmt ??= parseLoopExpr(it);
     stmt ??= parseWhileExpr(it);
-
-    final key = getKey(it);
-    if (stmt == null) {
-      if (key == Key.fn) {
-        final fn = parseFn(it);
-        if (fn != null) {
-          stmt = FnStmt(fn);
-        }
-      } else if (key == Key.struct) {
-        final struct = parseStruct(it);
-        if (struct != null) {
-          stmt = StructStmt(struct);
-        }
-      } else if (key == Key.kRet) {
-        final ident = getIdent(it);
-        Expr? expr;
-        if (it.moveNext()) {
-          final t = getToken(it);
-          if (t.kind != TokenKind.lf) {
-            it.moveBack();
-            expr = parseExpr(it);
-          } else {
-            it.moveBack();
-          }
-        }
-        stmt = ExprStmt(RetExpr(expr, ident));
-      }
-    }
     stmt ??= parseStmtBase(it);
 
     return stmt;
@@ -582,15 +606,8 @@ class Modules {
 
     if (c.kind == TokenKind.colon) {
       eatLfIfNeed(it);
-      it.moveNext();
-      if (getKey(it) == Key.fn) {
-        it.moveNext();
-        final decl = parseFnDecl(it, Identifier.none);
-        ty = PathTy.ty(FnTy(decl));
-      } else {
-        final tyy = getToken(it);
-        ty = PathTy(Identifier.fromToken(tyy));
-      }
+      ty = parsePathTy(it);
+
       eatLfIfNeed(it);
 
       it.moveNext();
@@ -710,7 +727,7 @@ class Modules {
             }
           }
 
-          lhs ??= VariableIdentExpr(ident, null);
+          lhs ??= VariableIdentExpr(ident);
         }
       }
       if (lhs != null) {
@@ -1003,26 +1020,9 @@ class Modules {
 
         eatLfIfNeed(it);
         it.moveNext(); // :
-        List<PointerKind> kinds = [];
-        kinds = getAllKind(it);
-        if (it.moveNext()) {
-          final t = getToken(it);
-          final ident = getIdent(it);
-          final k = t.kind;
-          PathTy? ty;
-          if (k == TokenKind.ident) {
-            if (getKey(it) == Key.fn) {
-              it.moveNext();
-              final decl = parseFnDecl(it, Identifier.none);
-              ty = PathTy.ty(FnTy(decl));
-            } else {
-              ty = PathTy(ident);
-            }
-          } else {
-            ty = UnknownTy(ident);
-          }
-          fields.add(FieldDef(name, ty, kinds));
-        }
+
+        final ty = parsePathTy(it) ?? UnknownTy(ident);
+        fields.add(FieldDef(name, ty));
       }
       return false;
     });
@@ -1074,17 +1074,12 @@ class Modules {
       final t = getToken(it);
       if (t.kind == TokenKind.lf) return false;
       if (t.kind == TokenKind.closeParen) return true;
-
-      final kinds = getAllKind(it);
-      if (kinds.isNotEmpty) {
-        eatLfIfNeed(it);
-        it.moveNext();
-        if (t.kind == TokenKind.ident) {
-          final ident = getIdent(it);
-          final f = FieldDef(ident, PathTy(ident), kinds);
-          fields.add(f);
-        }
+      final ty = parsePathTy(it);
+      if (ty != null) {
+        final f = FieldDef(Identifier.none, ty);
+        fields.add(f);
       }
+
       return false;
     });
 

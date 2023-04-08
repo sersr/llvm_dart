@@ -1,6 +1,8 @@
+import 'package:llvm_dart/ast/analysis_context.dart';
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/expr.dart';
 import 'package:llvm_dart/ast/tys.dart';
+import 'package:llvm_dart/llvm_core.dart';
 import 'package:nop/nop.dart';
 
 import 'ast.dart';
@@ -13,6 +15,11 @@ class LetStmt extends Stmt {
   final Expr? rExpr;
   final PathTy? ty;
   final bool isFinal;
+
+  @override
+  Stmt clone() {
+    return LetStmt(isFinal, ident, nameIdent, rExpr?.clone(), ty);
+  }
 
   @override
   String toString() {
@@ -45,31 +52,49 @@ class LetStmt extends Stmt {
         context.pushVariable(nameIdent, variable);
         return;
       }
+
+      LLVMValueRef? rValue;
       if (variable != null) {
-        final rValue = variable.load(context);
+        rValue = variable.load(context);
         if (variable is LLVMRefAllocaVariable) {
           final s = LLVMRefAllocaVariable.create(context, variable.parent);
           s.store(context, rValue);
           s.isTemp = false;
           context.setName(s.alloca, nameIdent.src);
           context.pushVariable(nameIdent, s);
-        } else {
-          final alloca = tty.llvmType.createAlloca(context, nameIdent);
-          alloca.store(context, rValue);
-          alloca.isTemp = false;
-          context.pushVariable(nameIdent, alloca);
+          return;
         }
       }
+      final alloca = tty.llvmType.createAlloca(context, nameIdent);
+      if (rValue != null) {
+        alloca.store(context, rValue);
+      }
+      alloca.isTemp = false;
+      context.pushVariable(nameIdent, alloca);
     }
   }
 
   @override
   List<Object?> get props => [ident, nameIdent, ty, rExpr];
+
+  @override
+  void analysis(AnalysisContext context) {
+    final realTy = ty?.grt(context);
+    final v = LiteralExpr.run(() => rExpr?.analysis(context), realTy);
+
+    if (v == null) return;
+    context.pushVariable(
+        nameIdent, AnalysisVariable(v.ty, nameIdent, ty?.kind ?? v.kind));
+  }
 }
 
 class ExprStmt extends Stmt {
   ExprStmt(this.expr);
   final Expr expr;
+  @override
+  Stmt clone() {
+    return ExprStmt(expr.clone());
+  }
 
   @override
   void incLevel([int count = 1]) {
@@ -79,6 +104,7 @@ class ExprStmt extends Stmt {
 
   @override
   String toString() {
+    if (expr is FnExpr) return '$expr';
     return '$pad$expr';
   }
 
@@ -89,10 +115,19 @@ class ExprStmt extends Stmt {
 
   @override
   List<Object?> get props => [expr];
+
+  @override
+  void analysis(AnalysisContext context) {
+    expr.analysis(context);
+  }
 }
 
 class StaticStmt extends Stmt {
   StaticStmt(this.ident, this.variable, this.expr, this.ty);
+  @override
+  Stmt clone() {
+    return StaticStmt(ident, variable, expr.clone(), ty);
+  }
 
   final Identifier variable;
   final PathTy? ty;
@@ -107,8 +142,10 @@ class StaticStmt extends Stmt {
 
   @override
   void build(BuildContext context) {
-    final e = expr.build(context);
-    final rty = ty?.grt(context);
+    final realTy = ty?.grt(context);
+    final e = LiteralExpr.run(() => expr.build(context), realTy);
+
+    final rty = realTy ?? e?.ty;
     if (e == null) return;
     if (rty != null && e.ty != rty) {
       Log.e('$ty = ${e.ty}');
@@ -121,45 +158,71 @@ class StaticStmt extends Stmt {
 
   @override
   List<Object?> get props => [ident, variable, ty, expr];
+
+  @override
+  void analysis(AnalysisContext context) {
+    final realTy = ty?.grt(context);
+    final val = LiteralExpr.run(() => expr.analysis(context), realTy);
+    final vTy = realTy ?? val?.ty;
+    if (vTy == null) return;
+    context.pushVariable(ident, AnalysisVariable(vTy, ident, ty?.kind ?? []));
+  }
 }
 
 class TyStmt extends Stmt {
   TyStmt(this.ty);
   final Ty ty;
+  @override
+  Stmt clone() {
+    return TyStmt(ty);
+  }
 
   @override
   void build(BuildContext context) {}
 
   @override
   List<Object?> get props => [ty];
+
+  @override
+  void analysis(AnalysisContext context) {}
 }
 
-class FnStmt extends Stmt {
-  FnStmt(this.fn);
-  final Fn fn;
+// class FnStmt extends Stmt {
+//   FnStmt(this.fn);
+//   final Fn fn;
 
-  @override
-  void incLevel([int count = 1]) {
-    super.incLevel(count);
-    fn.incLevel(count);
-  }
+//   @override
+//   void incLevel([int count = 1]) {
+//     super.incLevel(count);
+//     fn.incLevel(count);
+//   }
 
-  @override
-  String toString() {
-    return '$fn';
-  }
+//   @override
+//   String toString() {
+//     return '$fn';
+//   }
 
-  @override
-  void build(BuildContext context) {
-    fn.build(context);
-  }
+//   @override
+//   void build(BuildContext context) {
+//     fn.build(context);
+//   }
 
-  @override
-  List<Object?> get props => [fn];
-}
+//   @override
+//   List<Object?> get props => [fn];
+
+//   @override
+//   void analysis(AnalysisContext context) {
+//     fn.analysis(context);
+//   }
+// }
 
 class StructStmt extends Stmt {
   StructStmt(this.ty);
+  @override
+  Stmt clone() {
+    return StructStmt(ty);
+  }
+
   @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
@@ -180,10 +243,20 @@ class StructStmt extends Stmt {
 
   @override
   List<Object?> get props => [ty];
+
+  @override
+  void analysis(AnalysisContext context) {
+    ty.analysis(context);
+  }
 }
 
 class EnumStmt extends Stmt {
   EnumStmt(this.ty);
+  @override
+  Stmt clone() {
+    return EnumStmt(ty);
+  }
+
   @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
@@ -197,4 +270,7 @@ class EnumStmt extends Stmt {
 
   @override
   List<Object?> get props => [ty];
+
+  @override
+  void analysis(AnalysisContext context) {}
 }

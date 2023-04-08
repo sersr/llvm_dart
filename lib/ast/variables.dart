@@ -58,18 +58,13 @@ class LLVMAllocaVariable extends StoreVariable {
   Variable getRef(BuildContext c) {
     return LLVMRefAllocaVariable.create(c, this)..store(c, alloca);
   }
-
-  // @override
-  // LLVMRefAllocaVariable getRef(BuildContext c) {
-  //   final v = c.createAlloca(type, null, name: 'ref');
-  //   final parentType = ty.llvmType.createType(c);
-  //   final parentV = LLVMAllocaVariable(ty, v, parentType);
-  //   return LLVMRefAllocaVariable(parentV, v);
-  //   // return LLVMRefAllocaVariable.create(c, this);
-  // }
 }
 
-class LLVMRefAllocaVariable extends StoreVariable {
+abstract class Dref with Variable {
+  Variable getDeref(BuildContext c, {bool mut = true});
+}
+
+class LLVMRefAllocaVariable extends StoreVariable implements Dref {
   LLVMRefAllocaVariable(this.parent, this.alloca);
   final Variable parent;
   @override
@@ -96,29 +91,36 @@ class LLVMRefAllocaVariable extends StoreVariable {
   @override
   Ty get ty => parent.ty;
 
+  @override
   Variable getDeref(BuildContext c, {bool mut = true}) {
-    final v = load(c);
     final type = parent.getDerefType(c);
-
+    final pTy = ty;
+    if (pTy is RefTy) {
+      final sv =
+          (ty as RefTy).llvmType.createAlloca(c, Identifier.builtIn('_deref'));
+      final v = load(c);
+      final vv = llvm.LLVMBuildLoad2(c.builder, type, v, unname);
+      sv.store(c, vv);
+      return sv;
+    }
     // 不可变会少一次分配
     if (!mut) {
       if (parent is LLVMRefAllocaVariable) {
-        return LLVMRefAllocaVariable(
-            (parent as LLVMRefAllocaVariable).parent, v);
+        return parent;
       }
-      return LLVMAllocaVariable(ty, v, type);
+
+      final v = load(c);
+      return LLVMAllocaVariable(ty, v, type)..isTemp = false;
     }
 
-    final vv = llvm.LLVMBuildLoad2(c.builder, type, v, unname);
-    final alloca = c.createAlloca(type, name: 'deref');
     StoreVariable sv;
     if (parent is LLVMRefAllocaVariable) {
       sv = LLVMRefAllocaVariable(
           (parent as LLVMRefAllocaVariable).parent, alloca);
     } else {
-      sv = LLVMAllocaVariable(ty, alloca, type);
+      final v = load(c);
+      sv = LLVMAllocaVariable(ty, v, type)..isTemp = false;
     }
-    sv.store(c, vv);
     return sv;
   }
 
@@ -133,54 +135,12 @@ class LLVMRefAllocaVariable extends StoreVariable {
   }
 }
 
-// class LLVMRefAndVariable extends StoreVariable
-//     implements LLVMRefAllocaVariable {
-//   LLVMRefAndVariable(this.parent);
-//   @override
-//   final LLVMAllocaVariable parent;
-
-//   LLVMValueRef? _alloca;
-//   @override
-//   LLVMValueRef get alloca => _alloca ?? parent.alloca;
-//   @override
-//   Ty get ty => parent.ty;
-
-//   @override
-//   LLVMValueRef load(BuildContext c) {
-//     return alloca;
-//   }
-
-//   @override
-//   Variable getDeref(BuildContext c, {bool mut = true}) {
-//     return parent;
-//   }
-
-//   @override
-//   LLVMTypeRef getDerefType(BuildContext c) {
-//     return parent.type;
-//   }
-
-//   @override
-//   void store(BuildContext c, LLVMValueRef val) {
-//     _alloca = val;
-//   }
-
-//   @override
-//   Variable getRef(BuildContext c) {
-//     return this;
-//   }
-// }
-
 class LLVMStructAllocaVariable extends LLVMAllocaVariable {
   LLVMStructAllocaVariable(super.ty, super.alloca, super.type, this.loadTy);
   final LLVMTypeRef loadTy;
 
   LLVMValueRef load2(BuildContext c, bool extern) {
     if (extern) {
-      // final ss = llvm.LLVMBuildBitCast(
-      //     c.builder, alloca, c.typePointer(type), '.s.s.'.toChar());
-      // final ss = llvm.LLVMBuildPointerCast(
-      //     c.builder, alloca, c.typePointer(type), 'ssaxx'.toChar());
       final arr = c.createAlloca(loadTy, name: 'struct_arr');
       llvm.LLVMBuildMemCpy(
           c.builder, arr, 4, alloca, 4, c.constI64(ty.llvmType.getBytes(c)));
