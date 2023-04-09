@@ -83,6 +83,7 @@ class LetStmt extends Stmt {
     final v = LiteralExpr.run(() => rExpr?.analysis(context), realTy);
 
     if (v == null) return;
+
     context.pushVariable(
         nameIdent, AnalysisVariable(v.ty, nameIdent, ty?.kind ?? v.kind));
   }

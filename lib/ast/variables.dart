@@ -60,11 +60,11 @@ class LLVMAllocaVariable extends StoreVariable {
   }
 }
 
-abstract class Dref with Variable {
+abstract class Deref with Variable {
   Variable getDeref(BuildContext c, {bool mut = true});
 }
 
-class LLVMRefAllocaVariable extends StoreVariable implements Dref {
+class LLVMRefAllocaVariable extends StoreVariable implements Deref {
   LLVMRefAllocaVariable(this.parent, this.alloca);
   final Variable parent;
   @override

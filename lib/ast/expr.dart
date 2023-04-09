@@ -514,8 +514,14 @@ class FnExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final fnV = fn.build(context);
+    if (fnV == null) return null;
+
     final alloca = fn.llvmType.createAlloca(context, Identifier.builtIn('_fn'));
-    alloca.store(context, fnV!.value);
+    alloca.store(context, fnV.value);
+    final fnName = fn.fnSign.fnDecl.ident;
+    if (fnName.src.isNotEmpty) {
+      context.pushVariable(fnName, fnV);
+    }
     return ExprTempValue(alloca, fn);
   }
 
@@ -540,6 +546,7 @@ class FnCallExpr extends Expr {
     final f = FnCallExpr(expr.clone(), params.map((e) => e.clone()).toList());
     f.catchVariables.addAll(catchVariables);
     f.childrenVariables.addAll(childrenVariables);
+    f.currentFn = currentFn;
     return f;
   }
 
@@ -578,13 +585,14 @@ class FnCallExpr extends Expr {
     // if (variable is StoreVariable) {
     //   fnValue = variable.alloca;
     // }
-    return fnCall(
-        context, fn, params, variable, null, catchVariables, childrenVariables);
+    return fnCall(context, fn, currentFn, params, variable, null,
+        catchVariables, childrenVariables);
   }
 
   static ExprTempValue? fnCall(
       BuildContext context,
       Fn fn,
+      Fn? parentFn,
       List<FieldExpr> params,
       Variable? fnVariable,
       LLVMValueRef? struct,
@@ -635,26 +643,22 @@ class FnCallExpr extends Expr {
       }
     }
 
+    final hasParent = parentFn != null;
+
     for (var variable in fn.variables) {
       var v = context.getVariable(variable.ident);
+      if (hasParent && parentFn.selfVariables.contains(variable)) {
+        if (v is Deref) {
+          v = v.getDeref(context);
+        }
+      }
       addArg(v);
     }
 
     if (extra != null) {
       for (var variable in extra) {
         var v = context.getVariable(variable.ident);
-        if (v != null) {
-          LLVMValueRef value;
-          if (isExtern && v is LLVMStructAllocaVariable) {
-            value = v.load2(context, isExtern);
-          } else if (v is StoreVariable) {
-            value = v.alloca;
-          } else {
-            final ref = LLVMRefAllocaVariable(v, v.load(context));
-            value = ref.load(context);
-          }
-          args.add(value);
-        }
+        addArg(v);
       }
     }
 
@@ -671,7 +675,9 @@ class FnCallExpr extends Expr {
     final fnAlloca = fn.build(context, extra, map);
     final fnValue = fnAlloca?.load(context) ?? fnVariable?.load(context);
     if (fnValue == null) return null;
-    llvm.LLVMDumpType(fnType);
+
+    // Log.w(
+    //     'call: ${fn.fnSign.fnDecl.ident} ${args.length} | ${fn.variables.length}');
 
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
@@ -688,6 +694,8 @@ class FnCallExpr extends Expr {
     catchVariables.addAll(child);
   }
 
+  Fn? currentFn;
+
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     final fn = expr.analysis(context);
@@ -700,7 +708,7 @@ class FnCallExpr extends Expr {
     final fields = fnty.fnSign.fnDecl.params;
     final sortFields =
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
-
+    currentFn = context.getLastFnContext()?.currentFn;
     for (var f in sortFields) {
       final rf = fields[sortFields.indexOf(f)];
       final v = f.analysis(context);
@@ -781,7 +789,8 @@ class MethodCallExpr extends Expr {
     }
 
     if (fn == null) return null;
-    return FnCallExpr.fnCall(context, fn, params, fnVariable, st, null, null);
+    return FnCallExpr.fnCall(
+        context, fn, null, params, fnVariable, st, null, null);
   }
 
   @override
@@ -1121,7 +1130,7 @@ enum PointerKind {
     if (this == PointerKind.none) return val;
     Variable? inst;
     if (val != null) {
-      if (val is Dref && this == PointerKind.deref) {
+      if (val is Deref && this == PointerKind.deref) {
         inst = val.getDeref(c);
       } else if (this == PointerKind.ref) {
         inst = val.getRef(c);
@@ -1201,10 +1210,9 @@ class VariableIdentExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final val = context.getVariable(ident);
-
     if (val != null) {
       // Log.w('b... $_isCatch $ident ${val.runtimeType}');
-      if (_isCatch && val is Dref) {
+      if (_isCatch && val is Deref) {
         final newVal = val.getDeref(context, mut: false);
         return ExprTempValue(newVal, newVal.ty);
       }
@@ -1227,14 +1235,18 @@ class VariableIdentExpr extends Expr {
     final fnContext = context.getLastFnContext();
     if (fnContext != null) {
       _isCatch = fnContext.catchVariables.contains(v);
-      // Log.w('...$_isCatch $ident');
     }
+
     if (v != null) return v;
     final fn = context.getFn(ident);
     if (fn != null) {
       fn.analysis(context);
-      final fnContext = context.getLastFnContext();
-      fnContext?.addChild(fn.variables);
+      // final fnContext = context.getLastFnContext();
+      // final cfn = fnContext?.currentFn;
+      // Log.e(
+      //     '_____ $ident ${fn.variables.join(',')} || ${cfn?.fnSign.fnDecl.ident} || ${cfn?.variables}');
+      context.addChild(fn.variables);
+
       fn.isInner = true;
       return AnalysisVariable(fn, ident);
     }
@@ -1282,6 +1294,6 @@ class RefExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     final vv = current.analysis(context);
     if (vv == null) return null;
-    return AnalysisVariable(vv.ty, vv.ident, kind);
+    return AnalysisVariable(vv.ty, vv.ident, [...kind, ...vv.kind]);
   }
 }

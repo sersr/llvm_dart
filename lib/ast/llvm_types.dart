@@ -145,7 +145,8 @@ class LLVMTypeLit extends LLVMType {
       case LitKind.i128:
         return 16;
       case LitKind.kString:
-        return 1;
+      case LitKind.usize:
+        return c.pointerSize();
       case LitKind.kVoid:
       default:
         return 0;

@@ -287,80 +287,16 @@ fn hell() {
 
   test('analysis', () {
     final src = '''
-extern fn printxx(y: int);
-
+extern fn printstr(str: string);
 fn main() int {
-  let xx = 11;
-  let yy = xx;
-  let xa = &1221;
-  let hhhxx = xa;
-  fn second() {
-    // let xhh = xx;
-    // let xafa = yy;
-    // printxx(yy);
-    // printxx(*xa);
-    // let yy = xa;
-    // let haf = *xa;
-    // printxx(haf);
-    // let hh = *xa;
-    // printxx(xafa);
-    // let hhhe = xa;
-    // let eq = xx;
-    // printxx(eq);
-    // let hhhv = *hhhe;
-    // printxx(hhhv);
-    // printxx(*xa);
-    // let yyx = *hhhe;
-    // printxx(yyx);
-    // printxx(*hhhe);
-    // *xa = 111;
-    // let hyyx = *xa;
-    // printxx(*xa);
-    let a = xa;
-    printxx(*a);
-    // *xa = 111;
-    // let ab = *xa;
-    // printxx(ab);
-    // let y = *xa;
-  }
-  // second();
-  // printxx(*xa);
-  // *xa = 5554;
-  // second();
-  fn hell() {
-    let yyys = xx;
-    // xx = 223131;
-    // printxx(43434);
-    printxx(yyys);
-    second();
-  }
-  // let hh = 1002;
-  // // fn outer() {
-  // //   second();
-  // //   let o_hh = hh;
-  // // }
-  // // hell();
-  inner(hell); // hell: main scope
-  // // inner(outer);
-  *xa = 5555;
-  inner(hell);
-  hell();
-  0
-}
+  let y = "24242nihao"
+  let hh = true;
+  let xa = 102;
 
-// main::inner
-// fn main::inner(f: fn()) {
-//   // f: life time: main::inner
-// }
-//
-//
-
-fn inner(f: fn()) {
-  // f: life time: inner
-  printxx(111);
-  let yyx = 4343;
-  printxx(yyx);
-  f();
+  if hh {
+    printstr(&y);
+  }
+  0;
 }
 ''';
     runZoned(
@@ -416,3 +352,99 @@ void forE(TokenTree tree, String src, {int padWidth = 0, bool isMain = false}) {
 
   print('${' ' * padWidth}$str  ->  $token');
 }
+
+final srxc = '''
+extern fn printxx(y: int);
+
+fn main() int {
+  let xx = 11;
+  let yy = xx;
+  let xa = &1221;
+  let hhhxx = xa;
+  fn second() {
+    // let xhh = xx;
+    // let xafa = yy;
+    // printxx(yy);
+    // printxx(*xa);
+    // let yy = xa;
+    // let haf = *xa;
+    // printxx(haf);
+    // let hh = *xa;
+    // printxx(xafa);
+    // let hhhe = xa;
+    // let eq = xx;
+    // printxx(eq);
+    // let hhhv = *hhhe;
+    // printxx(hhhv);
+    // printxx(*xa);
+    // let yyx = *hhhe;
+    // printxx(yyx);
+    // printxx(*hhhe);
+    // *xa = 111;
+    // let hyyx = *xa;
+    // printxx(*xa);
+    let a = xa;
+    printxx(*a);
+    // *xa = 111;
+    // let ab = *xa;
+    // printxx(ab);
+    // let y = *xa;
+
+    fn hhhxx() {
+      let hhh = a;
+      printxx(*hhh);
+      printxx(8888888);
+    }
+    hhhxx();
+  }
+  // second();
+  // printxx(*xa);
+  // *xa = 5554;
+  // second();
+  fn hell() {
+    let yyys = 1144441;
+    // // xx = 223131;
+    // // printxx(43434);
+    // printxx(yyys);
+    second();
+    // printxx(*xa);
+
+    fn hellInner() {
+      let hhin = yyys;
+      yyys = 5555;
+      printxx(hhin);
+      printxx(yyys);
+    }
+
+    hellInner();
+  }
+  // let hh = 1002;
+  // // fn outer() {
+  // //   second();
+  // //   let o_hh = hh;
+  // // }
+  hell();
+  inner(hell, &666); // hell: main scope
+  // // // inner(outer);
+  // *xa = 5555;
+  inner(hell, &1144);
+  // hell();
+  0
+}
+
+// main::inner
+// fn main::inner(f: fn()) {
+//   // f: life time: main::inner
+// }
+//
+//
+
+fn inner(f: fn(), y: &int) {
+  // f: life time: inner
+  printxx(111);
+  let yyx = 4343;
+  printxx(yyx);
+  f();
+  printxx(*y);
+}
+''';

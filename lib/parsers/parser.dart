@@ -488,16 +488,7 @@ class Modules {
     final isIfExpr = getKey(it) == Key.kIf;
     if (!isIfExpr) return null;
     eatLfIfNeed(it);
-
-    final expr = parseExpr(it);
-    Block block;
-    checkBlock(it);
-
-    if (getToken(it).kind == TokenKind.openBrace) {
-      block = parseBlock(it);
-    } else {
-      block = Block([], getIdent(it));
-    }
+    final ifBlock = parseIfBlock(it);
 
     List<IfExprBlock>? elseIfExprs = parseElseIfExpr(it);
     Block? kElse;
@@ -514,9 +505,48 @@ class Modules {
       kElse = parseBlock(it);
     }
 
-    final ifExpr = IfExpr(IfExprBlock(expr, block), elseIfExprs, kElse);
+    final ifExpr = IfExpr(ifBlock, elseIfExprs, kElse);
 
     return ExprStmt(ifExpr);
+  }
+
+  IfExprBlock parseIfBlock(TokenIterator it) {
+    final expr = runZoned(() => parseExpr(it), zoneValues: {#ifExpr: true});
+
+    Block block;
+    checkBlock(it);
+    if (getToken(it).kind == TokenKind.openBrace) {
+      block = parseBlock(it);
+    } else {
+      block = Block([], getIdent(it));
+    }
+    return IfExprBlock(expr, block);
+  }
+
+  bool hasIfBlock(TokenIterator it) {
+    final isIfExpr = Zone.current[#ifExpr] == true;
+
+    if (!isIfExpr) return true;
+    final state = it.cursor;
+
+    eatLfIfNeed(it);
+    // 如果紧接着是关键字，不可无视
+    if (it.moveNext()) {
+      if (getKey(it) == null) {
+        if (getToken(it).kind != TokenKind.openBrace) {
+          loop(it, () {
+            final t = getToken(it);
+            if (getKey(it) != null) return true;
+            if (t.kind == TokenKind.openBrace) return true;
+            return false;
+          });
+        }
+      }
+    }
+
+    final result = getToken(it).kind == TokenKind.openBrace;
+    state.restore();
+    return result;
   }
 
   List<IfExprBlock>? parseElseIfExpr(TokenIterator it) {
@@ -537,20 +567,8 @@ class Modules {
           hasElseIf = getKey(it) == Key.kIf;
         }
         if (hasElseIf) {
-          final expr = parseExpr(it);
-
-          eatLfIfNeed(it);
-          // it.moveNext(); // {
-          Block block;
-          checkBlock(it);
-
-          if (getToken(it).kind == TokenKind.openBrace) {
-            block = parseBlock(it);
-          } else {
-            block = Block([], getIdent(it));
-          }
+          final elf = parseIfBlock(it);
           final b = elseIf ??= [];
-          final elf = IfExprBlock(expr, block);
           b.add(elf);
           return false;
         }
@@ -579,6 +597,7 @@ class Modules {
         final t = getToken(it);
         if (t.kind == TokenKind.lf) return true;
         if (t.kind == TokenKind.openBrace) return true;
+        if (getKey(it) != null) return true;
         return false;
       });
     }
@@ -667,23 +686,16 @@ class Modules {
           final ty = BuiltInTy.lit(lkd);
           lhs = LiteralExpr(getIdent(it), ty);
         }
-        // if (lit == LiteralKind.kString) {
-        //   ty = BuiltInTy.string;
-        // } else if (lit == LiteralKind.kInt) {
-        //   ty = BuiltInTy.int;
-        // } else if (lit == LiteralKind.kFloat) {
-        //   ty = BuiltInTy.float;
-        // } else if (lit == LiteralKind.kDouble) {
-        //   ty = BuiltInTy.double;
-        // }
       }
 
       if (lhs == null) {
         if (t.kind == TokenKind.ident) {
           final ident = getIdent(it);
           final key = getKey(it);
-
-          if (key == Key.kBreak) {
+          if (key?.isBool == true) {
+            final ty = BuiltInTy.lit(LitKind.kBool);
+            lhs = LiteralExpr(getIdent(it), ty);
+          } else if (key == Key.kBreak) {
             Identifier? label;
             if (it.moveNext()) {
               final t = getToken(it);
@@ -714,14 +726,16 @@ class Modules {
           if (it.moveNext()) {
             final t = getToken(it);
             if (t.kind == TokenKind.openBrace) {
-              final struct = parseStructExpr(it, ident);
-              if (struct.fields.any((e) => e.expr is UnknownExpr)) {
-                cursor.restore();
+              if (hasIfBlock(it)) {
+                final struct = parseStructExpr(it, ident);
+                if (struct.fields.any((e) => e.expr is UnknownExpr)) {
+                  cursor.restore();
+                } else {
+                  lhs = struct;
+                }
               } else {
-                lhs = struct;
+                cursor.restore();
               }
-              // } else if (t.kind == TokenKind.openParen) {
-              //   lhs = parseCallExpr(it, ident);
             } else {
               cursor.restore();
             }
@@ -807,6 +821,11 @@ class Modules {
 
     while (true) {
       // `/n` 意味着结束
+      final t = getToken(it);
+      if (t.kind == TokenKind.closeBrace) {
+        it.moveNext();
+        continue;
+      }
       final op = resolveOp(it);
       if (op != null) {
         final expr = parseExpr(it, runOp: true);
@@ -827,6 +846,7 @@ class Modules {
             ops.clear();
             exprs.clear();
             exprs.add(expr);
+            it.moveNext();
           }
         }
         continue;
@@ -930,6 +950,7 @@ class Modules {
 
     loop(it, () {
       final t = getToken(it);
+      if (t.kind == TokenKind.lf) return false;
       if (t.kind == TokenKind.closeBrace || t.kind == TokenKind.semi) {
         return true;
       }
@@ -969,7 +990,7 @@ class Modules {
 
   OpKind? resolveOp(TokenIterator it) {
     final current = it.current;
-    final firstOp = current.token.kind.char;
+    var chars = current.token.kind.char;
     OpKind? lastOp;
     loop(it, () {
       final t = getToken(it);
@@ -977,10 +998,11 @@ class Modules {
         it.moveBack();
         return true;
       }
-      final text = firstOp + t.kind.char;
+      final text = chars + t.kind.char;
       final newOp = OpKind.from(text);
       if (newOp != null) {
         lastOp = newOp;
+        chars = text;
       } else {
         it.moveBack();
         return true;
@@ -997,7 +1019,7 @@ class Modules {
       return true;
     });
 
-    return lastOp ?? OpKind.from(firstOp);
+    return lastOp ?? OpKind.from(chars);
   }
 
   StructTy? parseStruct(TokenIterator it) {
@@ -1125,6 +1147,9 @@ enum Key {
   kExtern('extern'),
   kFinal('final'),
 
+  kFalse('false'),
+  kTrue('true'),
+
   kFor('for'),
   kIf('if'),
   kElse('else'),
@@ -1133,6 +1158,10 @@ enum Key {
   kBreak('break'),
   kContinue('continue'),
   ;
+
+  bool get isBool {
+    return this == kFalse || this == kTrue;
+  }
 
   final String key;
   const Key(this.key);

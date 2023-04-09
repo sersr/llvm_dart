@@ -22,6 +22,7 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
     final fnContext = getLastFnContext();
     if (list != null) {
       final val = list.last;
+
       if (fnContext != currentFn) {
         currentFn?.catchVariables.add(val);
       }
@@ -31,12 +32,27 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
     return parent?._getVariable(ident, currentFn);
   }
 
+  bool isCurrentFn(AnalysisVariable variable, AnalysisContext? current) {
+    if (getLastFnContext() != current) return false;
+    if (variables.containsKey(variable.ident)) {
+      return true;
+    }
+    return parent?.isCurrentFn(variable, current) ?? false;
+  }
+
   // 匿名函数自动捕捉的变量集合
   late final catchVariables = <AnalysisVariable>{};
   Set<AnalysisVariable> childrenVariables = {};
 
   void addChild(Set<AnalysisVariable> child) {
-    childrenVariables.addAll(child);
+    final fn = getLastFnContext();
+    if (fn == null) return;
+    for (var v in child) {
+      if (isCurrentFn(v, fn)) {
+        continue;
+      }
+      fn.childrenVariables.add(v);
+    }
   }
 
   @override
@@ -49,14 +65,41 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
     return _getVariable(ident, fnContext);
   }
 
-  AnalysisContext? fnContext;
+  AnalysisVariable? getVariableOrFn(
+      Identifier ident,
+      void Function(AnalysisVariable variable) mVar,
+      void Function(Fn fn) getFn) {
+    final list = variables[ident];
+    if (list != null) {
+      return list.last;
+    }
+    final fnContext = getLastFnContext();
+    return _getVariable(ident, fnContext);
+  }
 
-  void setFnContext(AnalysisContext fn) {
-    fnContext = fn;
+  AnalysisContext? fnContext;
+  Fn? currentFn;
+  void setFnContext(AnalysisContext fnC, Fn fn) {
+    fnContext = fnC;
+    fnC.currentFn = fn;
+    currentFn = fn;
   }
 
   @override
   final AnalysisContext? parent;
+
+  String tree() {
+    final buf = StringBuffer();
+    AnalysisContext? p = this;
+    int l = 0;
+    while (p != null) {
+      buf.write(' ' * l);
+      buf.write('_${p.currentFn?.fnSign.fnDecl.ident}\n');
+      l += 4;
+      p = p.parent;
+    }
+    return buf.toString();
+  }
 }
 
 class AnalysisVariable with EquatableMixin {

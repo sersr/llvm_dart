@@ -62,4 +62,8 @@ void hhhx(Gen g) {
 void printxx(int y) {
     printf("y: %d\n",y);
 }
+
+void printstr(char* str) {
+  printf("str: %s\n", str);
+}
 #endif

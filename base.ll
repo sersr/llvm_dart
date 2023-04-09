@@ -3,105 +3,31 @@ source_filename = "./base.c"
 target datalayout = "e-m:o-i64:64-i128:128-n32:64-S128"
 target triple = "arm64-apple-macosx13.0.0"
 
-%struct.Gen = type { i32, i32, i32 }
-%union.Ms = type { i32 }
-
-@__const.getGen.g = private unnamed_addr constant %struct.Gen { i32 10, i32 555, i32 224 }, align 4
 @.str = private unnamed_addr constant [7 x i8] c"y: %d\0A\00", align 1
-@.str.1 = private unnamed_addr constant [14 x i8] c"xxa: y_p: %d\0A\00", align 1
-@__const.stra.ss = private unnamed_addr constant %struct.Gen { i32 301, i32 544442, i32 553 }, align 4
-@.str.2 = private unnamed_addr constant [12 x i8] c"... end %d\0A\00", align 1
-@__const.hhhx.u = private unnamed_addr constant %union.Ms { i32 10 }, align 4
+@.str.1 = private unnamed_addr constant [9 x i8] c"str: %s\0A\00", align 1
 
 ; Function Attrs: noinline nounwind optnone ssp uwtable
-define [2 x i64] @getGen() #0 {
-  %1 = alloca %struct.Gen, align 4
-  %2 = alloca [2 x i64], align 8
-  %3 = bitcast %struct.Gen* %1 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 4 %3, i8* align 4 bitcast (%struct.Gen* @__const.getGen.g to i8*), i64 12, i1 false)
-  %4 = bitcast [2 x i64]* %2 to i8*
-  %5 = bitcast %struct.Gen* %1 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 8 %4, i8* align 4 %5, i64 12, i1 false)
-  %6 = load [2 x i64], [2 x i64]* %2, align 8
-  ret [2 x i64] %6
-}
-
-; Function Attrs: argmemonly nofree nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #1
-
-; Function Attrs: noinline nounwind optnone ssp uwtable
-define i32 @printxx(i32 %0) #0 {
+define void @printxx(i32 %0) #0 {
   %2 = alloca i32, align 4
   store i32 %0, i32* %2, align 4
   %3 = load i32, i32* %2, align 4
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str, i64 0, i64 0), i32 %3)
-  ret i32 11
-}
-
-declare i32 @printf(i8*, ...) #2
-
-; Function Attrs: noinline nounwind optnone ssp uwtable
-define i32 @printxxa(i32* %0) #0 {
-  %2 = alloca i32*, align 8
-  store i32* %0, i32** %2, align 8
-  %3 = load i32*, i32** %2, align 8
-  %4 = load i32, i32* %3, align 4
-  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.1, i64 0, i64 0), i32 %4)
-  %6 = load i32*, i32** %2, align 8
-  store i32 50505, i32* %6, align 4
-  ret i32 1
-}
-
-; Function Attrs: noinline nounwind optnone ssp uwtable
-define void @strx(%struct.Gen* %0) #0 {
-  %2 = alloca %struct.Gen*, align 8
-  store %struct.Gen* %0, %struct.Gen** %2, align 8
   ret void
 }
 
-; Function Attrs: noinline nounwind optnone ssp uwtable
-define void @stra() #0 {
-  %1 = alloca %struct.Gen, align 4
-  %2 = alloca [2 x i64], align 8
-  %3 = alloca %struct.Gen, align 4
-  %4 = alloca [2 x i64], align 8
-  %5 = alloca i32, align 4
-  %6 = bitcast %struct.Gen* %1 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 4 %6, i8* align 4 bitcast (%struct.Gen* @__const.stra.ss to i8*), i64 12, i1 false)
-  %7 = bitcast [2 x i64]* %2 to i8*
-  %8 = bitcast %struct.Gen* %1 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 8 %7, i8* align 4 %8, i64 12, i1 false)
-  %9 = load [2 x i64], [2 x i64]* %2, align 8
-  %10 = call [2 x i64] @yy(i32 12, [2 x i64] %9)
-  store [2 x i64] %10, [2 x i64]* %4, align 8
-  %11 = bitcast %struct.Gen* %3 to i8*
-  %12 = bitcast [2 x i64]* %4 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 4 %11, i8* align 8 %12, i64 12, i1 false)
-  store i32 100022, i32* %5, align 4
-  %13 = load i32, i32* %5, align 4
-  %14 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.2, i64 0, i64 0), i32 %13)
-  ret void
-}
-
-declare [2 x i64] @yy(i32, [2 x i64]) #2
+declare i32 @printf(i8*, ...) #1
 
 ; Function Attrs: noinline nounwind optnone ssp uwtable
-define void @hhhx([2 x i64] %0) #0 {
-  %2 = alloca %struct.Gen, align 4
-  %3 = alloca [2 x i64], align 8
-  %4 = alloca %union.Ms, align 4
-  store [2 x i64] %0, [2 x i64]* %3, align 8
-  %5 = bitcast %struct.Gen* %2 to i8*
-  %6 = bitcast [2 x i64]* %3 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 4 %5, i8* align 8 %6, i64 12, i1 false)
-  %7 = bitcast %union.Ms* %4 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 4 %7, i8* align 4 bitcast (%union.Ms* @__const.hhhx.u to i8*), i64 4, i1 false)
+define void @prinstr(i8* %0) #0 {
+  %2 = alloca i8*, align 8
+  store i8* %0, i8** %2, align 8
+  %3 = load i8*, i8** %2, align 8
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.1, i64 0, i64 0), i8* %3)
   ret void
 }
 
 attributes #0 = { noinline nounwind optnone ssp uwtable "frame-pointer"="non-leaf" "min-legal-vector-width"="0" "no-trapping-math"="true" "probe-stack"="__chkstk_darwin" "stack-protector-buffer-size"="8" "target-cpu"="apple-m1" "target-features"="+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.5a,+zcm,+zcz" }
-attributes #1 = { argmemonly nofree nounwind willreturn }
-attributes #2 = { "frame-pointer"="non-leaf" "no-trapping-math"="true" "probe-stack"="__chkstk_darwin" "stack-protector-buffer-size"="8" "target-cpu"="apple-m1" "target-features"="+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.5a,+zcm,+zcz" }
+attributes #1 = { "frame-pointer"="non-leaf" "no-trapping-math"="true" "probe-stack"="__chkstk_darwin" "stack-protector-buffer-size"="8" "target-cpu"="apple-m1" "target-features"="+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.5a,+zcm,+zcz" }
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4, !5, !6, !7, !8}
 !llvm.ident = !{!9}

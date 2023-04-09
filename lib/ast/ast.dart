@@ -556,7 +556,7 @@ class Fn extends Ty {
   void analysis(AnalysisContext context) {
     context.pushFn(fnSign.fnDecl.ident, this);
     final child = context.childContext();
-    child.setFnContext(child);
+    child.setFnContext(child, this);
     block?.analysis(child);
     selfVariables = child.catchVariables;
     variables.addAll(selfVariables);

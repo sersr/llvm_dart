@@ -181,7 +181,7 @@ class BuildContext
         alloca = aa;
         aa.isTemp = false;
       } else {
-        alloca = LLVMAllocaVariable(val.ty, fnParam, pointer());
+        alloca = LLVMAllocaVariable(vty, fnParam, pointer());
       }
       pushVariable(ident, alloca);
     }
