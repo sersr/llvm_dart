@@ -1,3 +1,4 @@
+import 'package:characters/characters.dart';
 import 'package:llvm_dart/ast/ast.dart';
 import 'package:llvm_dart/ast/memory.dart';
 
@@ -182,8 +183,32 @@ mixin Consts on BuildMethods {
   }
 
   LLVMValueRef constStr(String str) {
+    final buf = StringBuffer();
+    var lastChar = '';
+    final isSingle = str.characters.first == "'";
+    final src = str.substring(1, str.length - 1);
+    for (var char in src.characters) {
+      // 两个反义符号
+      if (lastChar == '\\') {
+        if (isSingle && char == '"') {
+          buf.write('\\"');
+        } else if (!isSingle && char == "'") {
+          buf.write("\\'");
+        } else if (char == 'n') {
+          buf.write('\n');
+        } else {
+          // \
+          buf.write('\\');
+        }
+        lastChar = '';
+        continue;
+      }
+      lastChar = char;
+      if (lastChar != '\\') buf.write(char);
+    }
+    final regStr = buf.toString();
     return llvm.LLVMConstStringInContext(
-        llvmContext, str.toChar(), str.length, LLVMFalse);
+        llvmContext, regStr.toChar(), regStr.length, LLVMFalse);
   }
 
   LLVMValueRef constArray(LLVMTypeRef ty, int size) {

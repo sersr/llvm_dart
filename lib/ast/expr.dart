@@ -407,6 +407,10 @@ class AssignExpr extends Expr {
 class AssignOpExpr extends AssignExpr {
   AssignOpExpr(this.op, super.ref, super.expr);
   final OpKind op;
+  @override
+  Expr clone() {
+    return AssignOpExpr(op, ref.clone(), expr.clone());
+  }
 
   @override
   String toString() {
@@ -1295,5 +1299,41 @@ class RefExpr extends Expr {
     final vv = current.analysis(context);
     if (vv == null) return null;
     return AnalysisVariable(vv.ty, vv.ident, [...kind, ...vv.kind]);
+  }
+}
+
+class BlockExpr extends Expr {
+  BlockExpr(this.block);
+
+  final Block block;
+
+  @override
+  void incLevel([int count = 1]) {
+    super.incLevel(count);
+    block.incLevel(count);
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final child = context.childContext();
+    block.analysis(child);
+    return null;
+  }
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context) {
+    final child = context.clone();
+    block.build(child);
+    return null;
+  }
+
+  @override
+  Expr clone() {
+    return BlockExpr(block.clone());
+  }
+
+  @override
+  String toString() {
+    return '$block'.replaceFirst(' ', '');
   }
 }

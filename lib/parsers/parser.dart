@@ -351,7 +351,7 @@ class Modules {
       final k = t.kind;
       if (k == TokenKind.lf) return false;
       if (k == TokenKind.semi) return false;
-
+      if (k == TokenKind.closeBrace) return false;
       final stmt = parseStmt(it);
       if (stmt != null) {
         stmts.add(stmt);
@@ -451,11 +451,18 @@ class Modules {
   }
 
   Stmt parseStmtBase(TokenIterator it) {
-    final t = getToken(it);
-    if (t.kind == TokenKind.semi) {
-      it.moveNext();
+    // final t = getToken(it);
+    // if (t.kind == TokenKind.semi) {
+    //   it.moveNext();
+    // }
+    print(getIdent(it).light);
+    if (getToken(it).kind == TokenKind.openBrace) {
+      final block = parseBlock(it);
+      return ExprStmt(BlockExpr(block));
     }
     it.moveBack();
+    final i = getIdent(it);
+    print('${i.light}   | pre -----');
     final lhs = parseExpr(it, runOp: true);
     eatLfIfNeed(it);
     OpKind? key;
@@ -495,6 +502,7 @@ class Modules {
 
     eatLfIfNeed(it);
 
+    final state = it.cursor;
     if (getToken(it).kind == TokenKind.closeBrace) {
       it.moveNext();
       eatLfIfNeed(it);
@@ -503,6 +511,8 @@ class Modules {
     if (hasElse) {
       checkBlock(it);
       kElse = parseBlock(it);
+    } else {
+      state.restore();
     }
 
     final ifExpr = IfExpr(ifBlock, elseIfExprs, kElse);
@@ -528,6 +538,18 @@ class Modules {
 
     if (!isIfExpr) return true;
     final state = it.cursor;
+    if (getToken(it).kind == TokenKind.openBrace) {
+      if (it.moveNext()) /** `}` */ {
+        if (it.moveNext()) {
+          final k = getToken(it).kind;
+          if (k == TokenKind.lf || k == TokenKind.ident) {
+            state.restore();
+            return false;
+          }
+        }
+      }
+    }
+    state.restore();
 
     eatLfIfNeed(it);
     // 如果紧接着是关键字，不可无视
@@ -536,8 +558,9 @@ class Modules {
         if (getToken(it).kind != TokenKind.openBrace) {
           loop(it, () {
             final t = getToken(it);
-            if (getKey(it) != null) return true;
+            if (t.kind == TokenKind.semi) return true;
             if (t.kind == TokenKind.openBrace) return true;
+            if (getKey(it) != null) return true;
             return false;
           });
         }

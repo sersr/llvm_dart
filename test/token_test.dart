@@ -286,15 +286,26 @@ fn hell() {
   });
 
   test('analysis', () {
-    final src = '''
+    final src = r'''
 extern fn printstr(str: string);
 fn main() int {
-  let y = "24242nihao"
+  let y = '1\"\\'
   let hh = true;
+  let yy = &y;
+  let yyy = &yy;
+  let yyyy = &yyy;
+  let hyyy = *yyyy;
   let xa = 102;
 
   if hh {
-    printstr(&y);
+    printstr(y);
+    printstr(*yy);
+    printstr(**yyy);
+    printstr(***yyyy);
+    printstr(**hyyy);
+  } xa += 1
+  {
+    let yy = 11312;
   }
   0;
 }

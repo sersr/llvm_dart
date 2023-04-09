@@ -48,6 +48,14 @@ class BuildContext
     kModule = parent!.kModule;
     _init();
   }
+  BuildContext._clone(BuildContext this.parent) {
+    kModule = parent!.kModule;
+    module = parent!.module;
+    llvmContext = parent!.llvmContext;
+    fpm = parent!.fpm;
+    builder = parent!.builder;
+    fn = parent!.fn;
+  }
 
   BuildContext.root([String name = 'root']) : parent = null {
     kModule = llvm.createKModule(name.toChar());
@@ -94,6 +102,10 @@ class BuildContext
     final child = BuildContext._(this);
     children.add(child);
     return child;
+  }
+
+  BuildContext clone() {
+    return BuildContext._clone(this);
   }
 
   LLVMBasicBlock createAndInsertBB(LLVMConstVariable val,

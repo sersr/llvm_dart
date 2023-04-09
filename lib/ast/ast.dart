@@ -87,6 +87,38 @@ class Identifier with EquatableMixin {
     return '';
   }
 
+  /// 指示当前的位置
+  String get light {
+    final src = Zone.current['astSrc'];
+    if (src is String) {
+      return lightSrc(src, start, end);
+    }
+    return '';
+  }
+
+  static String lightSrc(String src, int start, int end) {
+    var lineStart = start;
+    if (start > 0) {
+      lineStart = src.substring(0, start).lastIndexOf('\n');
+      if (lineStart != -1) {
+        lineStart += 1;
+      }
+    }
+    var lineEnd = src.substring(start).indexOf('\n');
+    if (lineEnd == -1) {
+      lineEnd = end;
+    } else {
+      lineEnd += start;
+    }
+    if (lineStart != -1) {
+      final vs = src.substring(lineStart, lineEnd);
+      final s = ' ' * (start - lineStart);
+      final v = '^' * (end - start);
+      return '$vs\n$s$v';
+    }
+    return src.substring(start, end);
+  }
+
   @override
   String toString() {
     if (identical(this, none)) {
@@ -374,6 +406,13 @@ class RefTy extends Ty {
   RefTy(this.parent);
   final Ty parent;
 
+  Ty get baseTy {
+    if (parent is RefTy) {
+      return (parent as RefTy).baseTy;
+    }
+    return parent;
+  }
+
   @override
   void build(BuildContext context) {}
   @override
@@ -408,7 +447,7 @@ class BuiltInTy extends Ty {
 
   @override
   String toString() {
-    return _ty.name;
+    return _ty.lit;
   }
 
   @override

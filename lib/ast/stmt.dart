@@ -37,10 +37,11 @@ class LetStmt extends Stmt {
     final tty = realTy ?? val?.ty;
     if (tty != null) {
       final variable = val?.variable;
-      if (realTy != null && variable is LLVMLitVariable) {
+      if (variable is LLVMLitVariable) {
         if (tty is BuiltInTy) {
           final alloca = variable.createAlloca(context, tty);
           alloca.isTemp = false;
+          context.setName(alloca.alloca, nameIdent.src);
           context.pushVariable(nameIdent, alloca);
           return;
         }
@@ -187,35 +188,6 @@ class TyStmt extends Stmt {
   @override
   void analysis(AnalysisContext context) {}
 }
-
-// class FnStmt extends Stmt {
-//   FnStmt(this.fn);
-//   final Fn fn;
-
-//   @override
-//   void incLevel([int count = 1]) {
-//     super.incLevel(count);
-//     fn.incLevel(count);
-//   }
-
-//   @override
-//   String toString() {
-//     return '$fn';
-//   }
-
-//   @override
-//   void build(BuildContext context) {
-//     fn.build(context);
-//   }
-
-//   @override
-//   List<Object?> get props => [fn];
-
-//   @override
-//   void analysis(AnalysisContext context) {
-//     fn.analysis(context);
-//   }
-// }
 
 class StructStmt extends Stmt {
   StructStmt(this.ty);
