@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:ffi';
 
 import 'package:llvm_dart/ast/context.dart';
@@ -6,47 +5,13 @@ import 'package:llvm_dart/ast/llvm_context.dart';
 import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/llvm_core.dart';
 import 'package:llvm_dart/llvm_dart.dart';
-import 'package:llvm_dart/parsers/lexers/token_kind.dart';
-import 'package:llvm_dart/parsers/parser.dart';
 import 'package:llvm_dart/run.dart';
-import 'package:nop/nop.dart';
 import 'package:test/test.dart';
 
 // ignore: unused_import
 import 'str.dart';
 
 void main() {
-  test('token', /* ffsfsfsd */ () {
-    final s = '''
-fn main() int {
-  let x: string = 1
-}
-
-啊发发发
-"helloss 你啊"
-struct Gen<T> {
-  name: string,
-  value: int,
-}
-
-''';
-    final cursor = Cursor(s);
-    final tokens = <Token>[];
-    while (true) {
-      final token = cursor.advanceToken();
-      tokens.add(token);
-      print(token);
-      if (token.kind == TokenKind.eof) {
-        break;
-      }
-    }
-    for (var t in tokens) {
-      if (t.kind == TokenKind.eof) continue;
-      if (t.kind != TokenKind.unknown) continue;
-      print('unknown:${s.substring(t.start, t.end)}');
-    }
-  });
-
   test('token reader', () {
     final src = r'''
 
@@ -65,19 +30,9 @@ impl Indd for Gen {
   fn build2(name: string, )  {}
 }
 
-fn main(vv: string,) int {
-  let yx = 1 * (120 - 10)
-  g.fxx(name: 1010)
-  y += 102
-  y >= 10
-  let ss = ( 1 + 2) * 64
-  let x: string = "10122"
-  let ss = ( 1 + 2) * 64
+fn main() int {
   let y = 101
-  if 10 < 10 {
-    
-  }
-
+  let x = 55;
   loop {
     let lox = 101
     if x > 1001 {
@@ -85,10 +40,16 @@ fn main(vv: string,) int {
         let yxx = 101010
       }
       break
-      break ccs
     }
   }
+  let rrry = 4433;
 
+  loop {
+    if x > 110 {
+      break;
+    }
+    continue;
+  }
   while x > 10 {
     let haha: string = "while test"
     if y > 10 {
@@ -97,22 +58,7 @@ fn main(vv: string,) int {
     break
   }
 
-  fn innerFn() {
-    let innerY = 5501
-  }
-  if y > 10 {
-    y = x + 1
-  } else if y <=x 11 {
-    y = Gen {name: "hello"}
-    Gen {name: 'davia'}
-    g.fxx(name: 1010)
-    g.fyx()
-    fyy()
-  } else if h > 0 {
-  } else {
-    y = foo("sfs")
-    foo(name: "nihao")
-  }
+  0
 }
 
 fn foo() {
@@ -135,21 +81,7 @@ enum Lang {
 }
 ''';
     // LevelMixin.padSize = 2;
-    final m = parseTopItem(src);
-    runZoned(() {
-      print(m.globalVar.values.join('\n'));
-      print(m.globalTy.values.join('\n'));
-      final analys = BuildContext.root();
-
-      analys.pushAllTy(m.globalTy);
-
-      Log.w('-' * 60, showPath: false, showTag: false);
-      print(analys.fns);
-      print(analys.components);
-      print(analys.impls);
-      print(analys.structs);
-      print(analys.enums);
-    }, zoneValues: {'astSrc': src});
+    testRun(src);
   });
 
   test('test name', () async {

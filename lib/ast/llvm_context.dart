@@ -132,6 +132,7 @@ class BuildContext
     assert(!bb.inserted);
     llvm.LLVMAppendExistingBasicBlock(fn.value, bb.bb);
     llvm.LLVMPositionBuilderAtEnd(builder, bb.bb);
+    _breaked = false;
     bb.inserted = true;
   }
 
