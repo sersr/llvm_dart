@@ -28,7 +28,7 @@ class Modules {
         if (token.kind == TokenKind.lf) return false;
         if (token.kind == TokenKind.semi) return false;
 
-        print('token : ${Identifier.fromToken(token)}');
+        print('item:\n${getIdent(it).light}');
         if (token.kind == TokenKind.ident) {
           parseIdent(it, global: true);
         }
@@ -451,18 +451,11 @@ class Modules {
   }
 
   Stmt parseStmtBase(TokenIterator it) {
-    // final t = getToken(it);
-    // if (t.kind == TokenKind.semi) {
-    //   it.moveNext();
-    // }
-    print(getIdent(it).light);
     if (getToken(it).kind == TokenKind.openBrace) {
       final block = parseBlock(it);
       return ExprStmt(BlockExpr(block));
     }
     it.moveBack();
-    final i = getIdent(it);
-    print('${i.light}   | pre -----');
     final lhs = parseExpr(it, runOp: true);
     eatLfIfNeed(it);
     OpKind? key;

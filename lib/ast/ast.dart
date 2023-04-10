@@ -146,14 +146,16 @@ class GenericParam with EquatableMixin {
 
   @override
   String toString() {
-    if (isRef) {
-      return '$ident: &$ty';
-    }
     return '$ident: $ty';
   }
 
   @override
   List<Object?> get props => [ident, ty];
+
+  void analysis(AnalysisContext context) {
+    context.pushVariable(
+        ident, AnalysisVariable(ty.grt(context), ident, ty.kind));
+  }
 }
 
 class ExprTempValue {
@@ -365,6 +367,12 @@ class FnDecl with EquatableMixin {
 
   @override
   List<Object?> get props => [ident, params, returnTy];
+
+  void analysis(AnalysisContext context) {
+    for (var p in params) {
+      p.analysis(context);
+    }
+  }
 }
 
 // 函数签名
@@ -377,6 +385,10 @@ class FnSign with EquatableMixin {
   @override
   String toString() {
     return fnDecl.toString();
+  }
+
+  void analysis(AnalysisContext context) {
+    fnDecl.analysis(context);
   }
 
   @override
@@ -476,7 +488,7 @@ class PathTy with EquatableMixin {
   @override
   String toString() {
     if (ty != null) return ty!.toString();
-    return '$ident';
+    return '${kind.join('')}$ident';
   }
 
   @override
@@ -596,6 +608,7 @@ class Fn extends Ty {
     context.pushFn(fnSign.fnDecl.ident, this);
     final child = context.childContext();
     child.setFnContext(child, this);
+    fnSign.fnDecl.analysis(child);
     block?.analysis(child);
     selfVariables = child.catchVariables;
     variables.addAll(selfVariables);

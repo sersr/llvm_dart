@@ -1216,9 +1216,11 @@ class VariableIdentExpr extends Expr {
     final val = context.getVariable(ident);
     if (val != null) {
       // Log.w('b... $_isCatch $ident ${val.runtimeType}');
-      if (_isCatch && val is Deref) {
-        final newVal = val.getDeref(context, mut: false);
-        return ExprTempValue(newVal, newVal.ty);
+      if (val is Deref) {
+        if (_isCatch || ident.src == 'self') {
+          final newVal = val.getDeref(context);
+          return ExprTempValue(newVal, newVal.ty);
+        }
       }
       return ExprTempValue(val, val.ty);
     }

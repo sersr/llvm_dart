@@ -61,7 +61,7 @@ class LLVMAllocaVariable extends StoreVariable {
 }
 
 abstract class Deref with Variable {
-  Variable getDeref(BuildContext c, {bool mut = true});
+  Variable getDeref(BuildContext c);
 }
 
 class LLVMRefAllocaVariable extends StoreVariable implements Deref {
@@ -89,38 +89,22 @@ class LLVMRefAllocaVariable extends StoreVariable implements Deref {
   }
 
   @override
-  Ty get ty => parent.ty;
+  late final Ty ty = parent.ty;
 
   @override
-  Variable getDeref(BuildContext c, {bool mut = true}) {
+  Variable getDeref(BuildContext c) {
     final type = parent.getDerefType(c);
-    final pTy = ty;
-    if (pTy is RefTy) {
-      final sv =
-          (ty as RefTy).llvmType.createAlloca(c, Identifier.builtIn('_deref'));
-      final v = load(c);
-      final vv = llvm.LLVMBuildLoad2(c.builder, type, v, unname);
-      sv.store(c, vv);
-      return sv;
-    }
-    // 不可变会少一次分配
-    if (!mut) {
-      if (parent is LLVMRefAllocaVariable) {
-        return parent;
-      }
-
-      final v = load(c);
-      return LLVMAllocaVariable(ty, v, type)..isTemp = false;
-    }
-
-    StoreVariable sv;
     final v = load(c);
-    if (parent is LLVMRefAllocaVariable) {
-      sv = LLVMRefAllocaVariable((parent as LLVMRefAllocaVariable).parent, v);
+    final parentTy = parent.ty;
+    StoreVariable val;
+    if (parentTy is RefTy) {
+      val = parentTy.llvmType.createAlloca(c, Identifier.builtIn('_deref'));
+      final vv = llvm.LLVMBuildLoad2(c.builder, type, v, unname);
+      val.store(c, vv);
     } else {
-      sv = LLVMAllocaVariable(ty, v, type)..isTemp = false;
+      val = LLVMAllocaVariable(parentTy, v, type)..isTemp = false;
     }
-    return sv;
+    return val;
   }
 
   @override

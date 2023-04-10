@@ -1,16 +1,14 @@
 import 'dart:async';
 import 'dart:ffi';
 
-import 'package:llvm_dart/ast/analysis_context.dart';
-import 'package:llvm_dart/ast/buildin.dart';
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/llvm_context.dart';
 import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/llvm_core.dart';
 import 'package:llvm_dart/llvm_dart.dart';
 import 'package:llvm_dart/parsers/lexers/token_kind.dart';
-import 'package:llvm_dart/parsers/lexers/token_stream.dart';
 import 'package:llvm_dart/parsers/parser.dart';
+import 'package:llvm_dart/run.dart';
 import 'package:nop/nop.dart';
 import 'package:test/test.dart';
 
@@ -199,10 +197,14 @@ enum Lang {
     llvm.destory(context.kModule);
   });
 
+  test('test src', () {
+    testRun(src);
+  });
+
   /// cc ./base.c ./out.o -o main
   /// ./main
   test("control flow", () {
-    var srxc = '''
+    var src = '''
 // extern fn printxx(y: int);
 
 struct Gen {
@@ -253,209 +255,114 @@ fn hell() {
 }
 ''';
 
-    return runZoned(
-      () {
-        final m = parseTopItem(src);
-        print(m.globalTy.values.join('\n'));
-        // return;
-        llvm.initLLVM();
-        final root = BuildContext.root();
-        // BuildContext.mem2reg = true;
-        root.pushAllTy(m.globalTy);
-        root.pushFn(sizeOfFn.ident, sizeOfFn);
-
-        for (var fns in root.fns.values) {
-          for (var fn in fns) {
-            fn.build(root);
-          }
-        }
-        for (var impls in root.impls.values) {
-          for (var impl in impls) {
-            impl.build(root);
-          }
-        }
-        llvm.LLVMDumpModule(root.module);
-        llvm.writeOutput(root.kModule);
-        root.dispose();
-      },
-      zoneValues: {'astSrc': src},
-      zoneSpecification: ZoneSpecification(print: (self, parent, zone, line) {
-        Zone.root.print(line.replaceAll('(package:llvm_dart/', '(./lib/'));
-      }),
-    );
+    testRun(src);
   });
 
   test('analysis', () {
+    var mem2reg = true;
+    var build = true;
+
     final src = r'''
 extern fn printstr(str: string);
+extern fn printxx(y: int);
 fn main() int {
-  let y = '1\"\\'
-  let hh = true;
-  let yy = &y;
-  let yyy = &yy;
-  let yyyy = &yyy;
-  let hyyy = *yyyy;
-  let xa = 102;
+  // let y = '1\"\\'
+  // let hh = true;
+  // let yy = &y;
+  // let yyy = &yy;
+  // let yyyy = &yyy;
+  // let hyyy = *yyyy;
+  // let xa = 102;
 
-  if hh {
-    printstr(y);
-    printstr(*yy);
-    printstr(**yyy);
-    printstr(***yyyy);
-    printstr(**hyyy);
-  } xa += 1
-  {
-    let yy = 11312;
+  // if hh {
+  //   printstr(y);
+  //   printstr(*yy);
+  //   printstr(**yyy);
+  //   printstr(***yyyy);
+  //   printstr(**hyyy);
+  //   let xx = 1044;
+  //   hhx(&&xx);
+  //   let xyy = &xx;
+  //   let xy = *xyy;
+  //   printxx(xx);
+  //   printxx(*xyy);
+  // } xa += 1
+  // {
+  //   let yy = 11312;
+  // }
+  0
   }
+
+// fn hhx(y: &&int) {
+//   let yy = *y;
+//   printxx(*yy);
+//   *yy = 55555;
+//   printxx(*yy);
+//   printxx(**y);
+//   // let nxyy = *yy;
+//   // let xx  = **y;
+//   // printxx(*yy);
+//   // printxx(**y);
+// }
+''';
+    testRun(src, mem2reg: mem2reg, build: build);
+  });
+
+  test('impl', () {
+    final src = '''
+extern fn printxx(y: int);
+extern fn printstr(y: string);
+struct Gen {
+  y: int,
+  h: int,
+}
+
+impl Gen {
+  fn hello() {
+    let hh = (*self).y;
+    printxx(hh);
+  }
+}
+
+fn main() int {
+  let g = Gen {10, 11};
+  g.hello();
   0;
 }
 ''';
-    runZoned(
-      () {
-        final m = parseTopItem(src);
-        print(m.globalTy.values.join('\n'));
-        // return;
-        final root = AnalysisContext.root();
-        root.pushAllTy(m.globalTy);
-        for (var fns in root.fns.values) {
-          for (var fn in fns) {
-            fn.analysis(root);
-          }
-        }
-        {
-          llvm.initLLVM();
-          final root = BuildContext.root();
-          // BuildContext.mem2reg = true;
-          root.pushAllTy(m.globalTy);
-          root.pushFn(sizeOfFn.ident, sizeOfFn);
-
-          for (var fns in root.fns.values) {
-            for (var fn in fns) {
-              fn.build(root);
-            }
-          }
-          for (var impls in root.impls.values) {
-            for (var impl in impls) {
-              impl.build(root);
-            }
-          }
-
-          llvm.LLVMDumpModule(root.module);
-          llvm.writeOutput(root.kModule);
-          root.dispose();
-        }
-      },
-      zoneValues: {'astSrc': src},
-      zoneSpecification: ZoneSpecification(print: (self, parent, zone, line) {
-        Zone.root.print(line.replaceAll('(package:llvm_dart/', '(./lib/'));
-      }),
-    );
+    testRun(src);
   });
-}
 
-void forE(TokenTree tree, String src, {int padWidth = 0, bool isMain = false}) {
-  final token = tree.token;
-  for (var token in tree.child) {
-    forE(token, src, padWidth: padWidth + 2);
-  }
-
-  final str = src.substring(token.start, token.end);
-
-  print('${' ' * padWidth}$str  ->  $token');
-}
-
-final srxc = '''
+  test('fn', () {
+    final src = '''
 extern fn printxx(y: int);
 
 fn main() int {
-  let xx = 11;
-  let yy = xx;
-  let xa = &1221;
-  let hhhxx = xa;
-  fn second() {
-    // let xhh = xx;
-    // let xafa = yy;
-    // printxx(yy);
-    // printxx(*xa);
-    // let yy = xa;
-    // let haf = *xa;
-    // printxx(haf);
-    // let hh = *xa;
-    // printxx(xafa);
-    // let hhhe = xa;
-    // let eq = xx;
-    // printxx(eq);
-    // let hhhv = *hhhe;
-    // printxx(hhhv);
-    // printxx(*xa);
-    // let yyx = *hhhe;
-    // printxx(yyx);
-    // printxx(*hhhe);
-    // *xa = 111;
-    // let hyyx = *xa;
-    // printxx(*xa);
-    let a = xa;
-    printxx(*a);
-    // *xa = 111;
-    // let ab = *xa;
-    // printxx(ab);
-    // let y = *xa;
-
-    fn hhhxx() {
-      let hhh = a;
-      printxx(*hhh);
-      printxx(8888888);
-    }
-    hhhxx();
+  let xa = 44343;
+  let yya = 4422;
+  let xya = &444;
+  let xxya = &xya;
+  fn hha() {
+    // let xxa = xa;
+    let hh = xya;
+    let hhx = *hh;
+    printxx(*hh);
+    printxx(**xxya);
   }
-  // second();
-  // printxx(*xa);
-  // *xa = 5554;
-  // second();
-  fn hell() {
-    let yyys = 1144441;
-    // // xx = 223131;
-    // // printxx(43434);
-    // printxx(yyys);
-    second();
-    // printxx(*xa);
 
-    fn hellInner() {
-      let hhin = yyys;
-      yyys = 5555;
-      printxx(hhin);
-      printxx(yyys);
-    }
-
-    hellInner();
+  fn sec() {
+    let yy = yya;
+    hha();
+    printxx(yy);
   }
-  // let hh = 1002;
-  // // fn outer() {
-  // //   second();
-  // //   let o_hh = hh;
-  // // }
-  hell();
-  inner(hell, &666); // hell: main scope
-  // // // inner(outer);
-  // *xa = 5555;
-  inner(hell, &1144);
-  // hell();
-  0
+  hhxa(sec);
+  0;
 }
 
-// main::inner
-// fn main::inner(f: fn()) {
-//   // f: life time: main::inner
-// }
-//
-//
-
-fn inner(f: fn(), y: &int) {
-  // f: life time: inner
-  printxx(111);
-  let yyx = 4343;
-  printxx(yyx);
+fn hhxa(f: fn()) {
   f();
-  printxx(*y);
 }
 ''';
+    testRun(src);
+  });
+}

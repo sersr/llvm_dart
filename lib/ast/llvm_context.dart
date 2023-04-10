@@ -156,7 +156,6 @@ class BuildContext
 
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
-      // var isRef = p.isRef;
 
       final fnParam = llvm.LLVMGetParam(fn, i + self);
       var realTy = p.ty.grt(this);
@@ -187,13 +186,16 @@ class BuildContext
       Variable alloca;
 
       if (fnty.selfVariables.contains(variable)) {
+        // _resolveParam(RefTy(vty), fnParam, ident, fnty.extern);
         final llty = RefTy(vty).llvmType;
         final aa = llty.createAlloca(this, ident);
         aa.store(this, fnParam);
         alloca = aa;
         aa.isTemp = false;
       } else {
-        alloca = LLVMAllocaVariable(vty, fnParam, pointer());
+        final aa = LLVMAllocaVariable(vty, fnParam, pointer());
+        setName(aa.alloca, ident.src);
+        alloca = aa;
       }
       pushVariable(ident, alloca);
     }
