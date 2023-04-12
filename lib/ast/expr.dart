@@ -551,12 +551,6 @@ class FnExpr extends Expr {
     final fnV = fn.build(context);
     if (fnV == null) return null;
 
-    // final alloca = fn.llvmType.createAlloca(context, Identifier.builtIn('_fn'));
-    // alloca.store(context, fnV.value);
-    // final fnName = fn.fnSign.fnDecl.ident;
-    // if (fnName.src.isNotEmpty) {
-    //   context.pushVariable(fnName, fnV);
-    // }
     return ExprTempValue(fnV, fn);
   }
 
@@ -656,13 +650,13 @@ mixin FnCallMixin {
     }
 
     for (var variable in fn.variables) {
-      var v = context.getVariable(variable.ident, variable.index);
+      var v = context.getVariable(variable.ident);
       addArg(v);
     }
 
     if (extra != null) {
       for (var variable in extra) {
-        var v = context.getVariable(variable.ident, variable.index);
+        var v = context.getVariable(variable.ident);
         addArg(v);
       }
     }
@@ -670,7 +664,7 @@ mixin FnCallMixin {
     if (fn is FnTy) {
       final params = fn.fnSign.fnDecl.params;
       for (var p in params) {
-        var v = context.getVariable(p.ident, p.index);
+        var v = context.getVariable(p.ident);
         addArg(v);
       }
     }
@@ -1273,6 +1267,7 @@ class VariableIdentExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final val = context.getVariable(ident);
+
     if (val != null) {
       if (val is Deref) {
         if (_isCatch || ident.src == 'self') {

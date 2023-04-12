@@ -184,7 +184,8 @@ class BuildContext
     void fnCatchVariable(AnalysisVariable variable, int index) {
       final value = llvm.LLVMGetParam(fn, index);
       final ident = variable.ident;
-      final val = getVariable(ident, variable.index);
+      final val = getVariable(ident);
+
       if (val == null) {
         return;
       }

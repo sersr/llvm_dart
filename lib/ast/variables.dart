@@ -60,7 +60,7 @@ class LLVMAllocaVariable extends StoreVariable {
   }
 }
 
-abstract class Deref with Variable {
+abstract class Deref extends Variable {
   Variable getDeref(BuildContext c);
 }
 

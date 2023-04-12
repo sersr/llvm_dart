@@ -414,26 +414,32 @@ fn main() int {
 
   let hh = 1111; // mainInner
 
+  fn hhFn() {
+    printxx(hh);
+  }
+
+
   let hh = 99999; // after
   
   fn wrapper() {
-    printxx(hh); // cc
     mainInner();
+    printxx(hh); // cc
+    hhFn();
   }
 
-  printxx(yy);
-  printxx(hh);
+  // printxx(yy);
+  // printxx(hh);
   outer(mainInner);
   outer(wrapper);
-  //  fn dd() {
-  //   // printxx(hh);
-  //   hhFn();
-  //   printxx(66666);
-  // }
+   fn dd() {
+    hhFn();
+    printxx(hh);
+    printxx(66666);
+  }
 
-  // struct My {y: int, f: fn()}
-  // let my = My {11,dd}
-  // my.f();
+  struct My {y: int, f: fn()}
+  let my = My {11,dd}
+  my.f();
   0;
 }
 

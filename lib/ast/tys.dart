@@ -3,19 +3,17 @@ import '../parsers/lexers/token_kind.dart';
 import 'ast.dart';
 import 'llvm_context.dart';
 
-abstract class Variable {
+abstract class IdentVariable {
+  Identifier? ident;
+}
+
+abstract class Variable with IdentVariable {
   bool get isRef => false;
   LLVMValueRef load(BuildContext c);
   LLVMTypeRef getDerefType(BuildContext c);
   Variable getRef(BuildContext c);
 
   Ty get ty;
-  // LLVMTypeRef get type;
-
-  // Variable getRef(BuildContext c);
-  // Variable getDreref(BuildContext c);
-
-  // Variable clone(BuildContext c, LLVMValueRef value);
 }
 
 abstract class StoreVariable extends Variable {
@@ -23,42 +21,46 @@ abstract class StoreVariable extends Variable {
   bool isTemp = true;
   LLVMValueRef get alloca;
   void store(BuildContext c, LLVMValueRef val);
-
-  // @override
-  // LLVMValueRef getRef(BuildContext c) {
-  //   return alloca;
-  // }
 }
 
-mixin Tys<T extends Tys<T, V>, V> {
+mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
   T? get parent;
 
   final variables = <Identifier, List<V>>{};
-  V? _getVariable(Identifier ident, int index) {
+
+  V? getVariable(Identifier ident) {
     final list = variables[ident];
     if (list != null) {
-      assert(list.length > index);
-      if (index == -1) return list.last;
-
-      return list[index];
+      var last = list.last;
+      for (var val in list) {
+        final valIdent = val.ident!;
+        if (valIdent.start > ident.start) {
+          break;
+        }
+        if (valIdent.start == ident.start) {
+          return val;
+        }
+        last = val;
+      }
+      return last;
     }
-    return parent?._getVariable(ident, index);
-  }
-
-  V? getVariable(Identifier ident, [int index = -1]) {
-    final list = variables[ident];
-    if (list != null) {
-      assert(list.length > index);
-      if (index == -1) return list.last;
-      return list[index];
-    }
-    return parent?._getVariable(ident, index);
+    return parent?.getVariable(ident);
   }
 
   void pushVariable(Identifier ident, V variable) {
     final list = variables.putIfAbsent(ident, () => []);
     if (!list.contains(variable)) {
-      list.add(variable);
+      variable.ident = ident;
+      if (list.isEmpty) {
+        list.add(variable);
+      } else {
+        final index = list.indexWhere((e) => e.ident!.start > ident.start);
+        if (index == -1) {
+          list.add(variable);
+        } else {
+          list.insert(index, variable);
+        }
+      }
     }
   }
 

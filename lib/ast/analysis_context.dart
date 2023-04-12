@@ -1,8 +1,6 @@
-import 'package:equatable/equatable.dart';
 import 'package:llvm_dart/ast/ast.dart';
 import 'package:llvm_dart/ast/expr.dart';
 import 'package:llvm_dart/ast/tys.dart';
-import 'package:nop/nop.dart';
 
 class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   AnalysisContext.root() : parent = null;
@@ -38,20 +36,15 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
     final fnContext = getLastFnContext();
     if (list != null) {
       var last = list.last;
-      var index = list.length;
       for (var val in list.reversed) {
-        index -= 1;
-        // Log.w('...${val.ident.start} ${ident.start} $ident');
         last = val;
         if (val.ident.start > ident.start) continue;
-        Log.w('${val.ident.light}\n${ident.light}',
-            showTag: false, showPath: false);
         break;
       }
       if (fnContext != currentFn) {
         currentFn?.catchVariables.add(last);
       }
-      return last..index = index;
+      return last;
     }
 
     return parent?._getVariable(ident, currentFn);
@@ -93,18 +86,16 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   }
 
   @override
-  AnalysisVariable? getVariable(Identifier ident, [int index = -1]) {
+  AnalysisVariable? getVariable(Identifier ident, {bool prin = false}) {
     final list = variables[ident];
     if (list != null) {
       var last = list.last;
-      var index = list.length;
       for (var val in list.reversed) {
         last = list.last;
-        index -= 1;
         if (val.ident.start > ident.start) continue;
         return val;
       }
-      return last..index = index;
+      return last;
     }
     final fnContext = getLastFnContext();
     return _getVariable(ident, fnContext);
@@ -113,10 +104,7 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   @override
   void pushVariable(Identifier ident, AnalysisVariable variable) {
     variable.lifeCycle.fnContext = getLastFnContext();
-    Log.e('${ident.light}\n${variable.ident.light}', showTag: false);
-    Log.i(tree(), showTag: false);
     super.pushVariable(ident, variable);
-    Log.w('${variables[ident]}');
   }
 
   AnalysisContext? getFnContext(Identifier ident) {
@@ -171,13 +159,14 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   }
 }
 
-class AnalysisVariable {
-  AnalysisVariable._(this.ty, this.ident, this.kind);
+class AnalysisVariable with IdentVariable {
+  AnalysisVariable._(this.ty, this._ident, this.kind);
   final Ty ty;
   final List<PointerKind> kind;
-  final Identifier ident;
+  final Identifier _ident;
 
-  int index = -1;
+  @override
+  Identifier get ident => _ident;
 
   AnalysisVariable copy({Ty? ty, Identifier? ident, List<PointerKind>? kind}) {
     return AnalysisVariable._(
