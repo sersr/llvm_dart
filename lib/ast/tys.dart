@@ -34,20 +34,25 @@ mixin Tys<T extends Tys<T, V>, V> {
   T? get parent;
 
   final variables = <Identifier, List<V>>{};
-  V? _getVariable(Identifier ident) {
+  V? _getVariable(Identifier ident, int index) {
     final list = variables[ident];
     if (list != null) {
-      return list.last;
+      assert(list.length > index);
+      if (index == -1) return list.last;
+
+      return list[index];
     }
-    return parent?._getVariable(ident);
+    return parent?._getVariable(ident, index);
   }
 
-  V? getVariable(Identifier ident) {
+  V? getVariable(Identifier ident, [int index = -1]) {
     final list = variables[ident];
     if (list != null) {
-      return list.last;
+      assert(list.length > index);
+      if (index == -1) return list.last;
+      return list[index];
     }
-    return parent?._getVariable(ident);
+    return parent?._getVariable(ident, index);
   }
 
   void pushVariable(Identifier ident, V variable) {

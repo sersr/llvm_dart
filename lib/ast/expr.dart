@@ -656,13 +656,13 @@ mixin FnCallMixin {
     }
 
     for (var variable in fn.variables) {
-      var v = context.getVariable(variable.ident);
+      var v = context.getVariable(variable.ident, variable.index);
       addArg(v);
     }
 
     if (extra != null) {
       for (var variable in extra) {
-        var v = context.getVariable(variable.ident);
+        var v = context.getVariable(variable.ident, variable.index);
         addArg(v);
       }
     }
@@ -670,7 +670,7 @@ mixin FnCallMixin {
     if (fn is FnTy) {
       final params = fn.fnSign.fnDecl.params;
       for (var p in params) {
-        var v = context.getVariable(p.ident);
+        var v = context.getVariable(p.ident, p.index);
         addArg(v);
       }
     }

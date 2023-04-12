@@ -142,6 +142,7 @@ class GenericParam with EquatableMixin {
   GenericParam(this.ident, this.ty);
   final Identifier ident;
   final PathTy ty;
+  int index = -1;
 
   bool get isRef => ty.isRef;
 
@@ -580,7 +581,8 @@ class FnTy extends Fn {
     final rawDecl = fnSign.fnDecl;
     final cache = rawDecl.params.toList();
     for (var e in extra) {
-      cache.add(GenericParam(e.ident, PathTy.ty(e.ty, [PointerKind.ref])));
+      cache.add(GenericParam(e.ident, PathTy.ty(e.ty, [PointerKind.ref]))
+        ..index = e.index);
     }
     final decl = FnDecl(rawDecl.ident, cache, rawDecl.returnTy);
     return FnTy(decl);
@@ -657,6 +659,8 @@ class Fn extends Ty {
 
   @override
   void analysis(AnalysisContext context) {
+    Log.i(fnSign.fnDecl.ident.light, showTag: false);
+
     if (_anaysised) return;
     _anaysised = true;
     context.pushFn(fnSign.fnDecl.ident, this);

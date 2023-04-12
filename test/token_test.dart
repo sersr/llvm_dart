@@ -406,37 +406,34 @@ extern fn printxx(y: int);
 
 fn main() int {
   let yy = 5550;
-  // fn mainInner() {
-  //   printxx(yy);
-  //   printxx(hh);
-  //   // hhFn();
-  // }
-
-
-  let hh = 1111;
-  fn hhFn() {
-    printxx(hh);
-    printxx(yy);
+  fn mainInner() {
+    printxx(yy); // main
+    printxx(hh); // print y: 1111
   }
+
+
+  let hh = 1111; // mainInner
+
+  let hh = 99999; // after
   
-  // fn wrapper() {
-  //   printxx(hh);
-  //   mainInner();
-  // }
-
-  // printxx(yy);
-  // printxx(hh);
-  // outer(mainInner);
-  // outer(wrapper);
-   fn dd() {
-    printxx(hh);
-    hhFn();
-    printxx(66666);
+  fn wrapper() {
+    printxx(hh); // cc
+    mainInner();
   }
 
-  struct My {y: int, f: fn()}
-  let my = My {11,dd}
-  my.f();
+  printxx(yy);
+  printxx(hh);
+  outer(mainInner);
+  outer(wrapper);
+  //  fn dd() {
+  //   // printxx(hh);
+  //   hhFn();
+  //   printxx(66666);
+  // }
+
+  // struct My {y: int, f: fn()}
+  // let my = My {11,dd}
+  // my.f();
   0;
 }
 
