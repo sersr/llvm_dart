@@ -10,6 +10,7 @@ import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/ast/tys.dart';
 import 'package:llvm_dart/llvm_core.dart';
 import 'package:llvm_dart/parsers/lexers/token_kind.dart';
+import 'package:nop/nop.dart';
 
 import '../llvm_dart.dart';
 import 'ast.dart';
@@ -50,7 +51,7 @@ class LiteralExpr extends Expr {
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    return AnalysisVariable(realTy, ident);
+    return context.createVal(realTy, ident);
   }
 }
 
@@ -290,7 +291,18 @@ class RetExpr extends Expr {
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    expr?.analysis(context);
+    final val = expr?.analysis(context);
+    final current = context.getLastFnContext();
+    if (val != null && current != null) {
+      final valLife = val.lifeCycle.fnContext;
+      if (valLife != null) {
+        if (val.kind.isRef) {
+          if (val.lifeCycle.isInner && current.isChildOrCurrent(valLife)) {
+            Log.e('lifeCycle Error: ${val.ident}');
+          }
+        }
+      }
+    }
     return null;
   }
 
@@ -344,7 +356,18 @@ class StructExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     final struct = context.getStruct(ident);
     if (struct == null) return null;
-    return AnalysisVariable(struct, ident);
+    final sortFields = alignParam(
+        fields, (p) => struct.fields.indexWhere((e) => e.ident == p.ident));
+
+    final all = <Identifier, AnalysisVariable>{};
+    for (var i = 0; i < sortFields.length; i++) {
+      final f = sortFields[i];
+      final structF = struct.fields[i];
+      final v = f.expr.analysis(context);
+      if (v == null) continue;
+      all[structF.ident] = v;
+    }
+    return context.createStructVal(struct, ident, all);
   }
 }
 
@@ -386,7 +409,7 @@ class AssignExpr extends Expr {
     final rhs = expr.build(context);
     final lVariable = lhs?.variable;
     final rVariable = rhs?.variable;
-    if (lVariable is LLVMAllocaVariable && rVariable != null) {
+    if (lVariable is StoreVariable && rVariable != null) {
       lVariable.store(context, rVariable.load(context));
     }
 
@@ -396,8 +419,16 @@ class AssignExpr extends Expr {
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     final lhs = ref.analysis(context);
-    expr.analysis(context);
+    final rhs = expr.analysis(context);
     if (lhs != null) {
+      if (rhs != null) {
+        if (rhs.kind.isRef) {
+          if (rhs.lifeCycle.isInner && lhs.lifeCycle.isOut) {
+            Log.e('lifeCycle Error: ${rhs.ident}');
+          }
+        }
+      }
+
       return lhs;
     }
     return null;
@@ -520,19 +551,19 @@ class FnExpr extends Expr {
     final fnV = fn.build(context);
     if (fnV == null) return null;
 
-    final alloca = fn.llvmType.createAlloca(context, Identifier.builtIn('_fn'));
-    alloca.store(context, fnV.value);
-    final fnName = fn.fnSign.fnDecl.ident;
-    if (fnName.src.isNotEmpty) {
-      context.pushVariable(fnName, fnV);
-    }
-    return ExprTempValue(alloca, fn);
+    // final alloca = fn.llvmType.createAlloca(context, Identifier.builtIn('_fn'));
+    // alloca.store(context, fnV.value);
+    // final fnName = fn.fnSign.fnDecl.ident;
+    // if (fnName.src.isNotEmpty) {
+    //   context.pushVariable(fnName, fnV);
+    // }
+    return ExprTempValue(fnV, fn);
   }
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     fn.analysis(context);
-    return AnalysisVariable(fn, fn.fnSign.fnDecl.ident);
+    return context.createVal(fn, fn.fnSign.fnDecl.ident);
   }
 
   @override
@@ -541,16 +572,145 @@ class FnExpr extends Expr {
   }
 }
 
-class FnCallExpr extends Expr {
+mixin FnCallMixin {
+  Map<Identifier, Set<AnalysisVariable>> get childrenVariables {
+    return _catchMapFns.map((key, value) => MapEntry(key, value()));
+  }
+
+  Set<AnalysisVariable> get catchVariables {
+    final cache = <AnalysisVariable>{};
+    for (var v in _catchFns) {
+      cache.addAll(v());
+    }
+    return cache;
+  }
+
+  final _catchFns = <Set<AnalysisVariable> Function()>[];
+  final _catchMapFns = <Identifier, Set<AnalysisVariable> Function()>{};
+
+  void addChild(Identifier ident, Fn fnty) {
+    ff() => fnty.variables;
+    _catchFns.add(ff);
+    _catchMapFns[ident] = ff;
+  }
+
+  void autoAddChild(Fn fn, List<FieldExpr> params, AnalysisContext context) {
+    final fields = fn.fnSign.fnDecl.params;
+    final sortFields =
+        alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
+
+    for (var f in sortFields) {
+      final rf = fields[sortFields.indexOf(f)];
+      final v = f.analysis(context);
+      final vty = v?.ty;
+      if (vty is Fn) {
+        addChild(rf.ident, vty);
+      }
+    }
+  }
+
+  static ExprTempValue? _fnCall(
+      BuildContext context,
+      Fn fn,
+      List<FieldExpr> params,
+      Variable? fnVariable,
+      LLVMValueRef? struct,
+      Set<AnalysisVariable>? extra,
+      Map<Identifier, Set<AnalysisVariable>>? map) {
+    final fnParams = fn.fnSign.fnDecl.params;
+    final args = <LLVMValueRef>[];
+    if (struct != null) {
+      args.add(struct);
+    }
+    final sortFields = alignParam(
+        params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
+
+    for (var i = 0; i < sortFields.length; i++) {
+      final p = sortFields[i];
+      final c = fnParams[i].ty.grt(context);
+      final v = LiteralExpr.run(() {
+        return p.build(context)?.variable;
+      }, c);
+      if (v != null) {
+        LLVMValueRef value;
+        if (v is LLVMRefAllocaVariable) {
+          value = v.load(context);
+        } else {
+          value = v.load(context);
+        }
+
+        args.add(value);
+      }
+    }
+
+    void addArg(Variable? v) {
+      if (v != null) {
+        LLVMValueRef value;
+        if (v is StoreVariable) {
+          value = v.alloca;
+        } else {
+          value = v.load(context);
+        }
+        args.add(value);
+      }
+    }
+
+    for (var variable in fn.variables) {
+      var v = context.getVariable(variable.ident);
+      addArg(v);
+    }
+
+    if (extra != null) {
+      for (var variable in extra) {
+        var v = context.getVariable(variable.ident);
+        addArg(v);
+      }
+    }
+
+    if (fn is FnTy) {
+      final params = fn.fnSign.fnDecl.params;
+      for (var p in params) {
+        var v = context.getVariable(p.ident);
+        addArg(v);
+      }
+    }
+
+    final fnType = fn.llvmType.createFnType(context, extra);
+
+    final fnAlloca = fn.build(context, extra, map);
+    final fnValue = fnAlloca?.load(context) ?? fnVariable?.load(context);
+    if (fnValue == null) return null;
+
+    final ret = llvm.LLVMBuildCall2(
+        context.builder, fnType, fnValue, args.toNative(), args.length, unname);
+
+    final rty = fn.fnSign.fnDecl.returnTy;
+    var retTy = rty.getRty(context);
+
+    if (retTy is BuiltInTy) {
+      if (retTy.ty == LitKind.kVoid) {
+        return null;
+      }
+    }
+    return ExprTempValue(LLVMTempVariable(ret, retTy), retTy);
+  }
+
+  ExprTempValue? fnCall(BuildContext context, Fn fn, List<FieldExpr> params,
+      Variable? fnVariable, LLVMValueRef? struct) {
+    return _fnCall(context, fn, params, fnVariable, struct, catchVariables,
+        childrenVariables);
+  }
+}
+
+class FnCallExpr extends Expr with FnCallMixin {
   FnCallExpr(this.expr, this.params);
   final Expr expr;
   final List<FieldExpr> params;
   @override
   Expr clone() {
     final f = FnCallExpr(expr.clone(), params.map((e) => e.clone()).toList());
-    f.catchVariables.addAll(catchVariables);
-    f.childrenVariables.addAll(childrenVariables);
-    f.currentFn = currentFn;
+    f._catchFns.addAll(_catchFns);
+    f._catchMapFns.addAll(_catchMapFns);
     return f;
   }
 
@@ -585,153 +745,27 @@ class FnCallExpr extends Expr {
       final v = fn.llvmType.createFunction(context, null, ty);
       return ExprTempValue(v, BuiltInTy.int);
     }
-    // LLVMValueRef? fnValue;
-    // if (variable is StoreVariable) {
-    //   fnValue = variable.alloca;
-    // }
-    return fnCall(context, fn, currentFn, params, variable, null,
-        catchVariables, childrenVariables);
+
+    return fnCall(context, fn, params, variable, null);
   }
-
-  static ExprTempValue? fnCall(
-      BuildContext context,
-      Fn fn,
-      Fn? parentFn,
-      List<FieldExpr> params,
-      Variable? fnVariable,
-      LLVMValueRef? struct,
-      Set<AnalysisVariable>? extra,
-      Map<Identifier, Set<AnalysisVariable>>? map) {
-    final isExtern = fn.extern;
-
-    final fnParams = fn.fnSign.fnDecl.params;
-    final args = <LLVMValueRef>[];
-    if (struct != null) {
-      args.add(struct);
-    }
-    final sortFields = alignParam(
-        params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
-
-    for (var i = 0; i < sortFields.length; i++) {
-      final p = sortFields[i];
-      final c = fnParams[i].ty.grt(context);
-      final v = LiteralExpr.run(() {
-        return p.build(context)?.variable;
-      }, c);
-      if (v != null) {
-        LLVMValueRef value;
-        if (isExtern && v is LLVMStructAllocaVariable) {
-          value = v.load2(context, isExtern);
-        } else if (v is LLVMRefAllocaVariable) {
-          value = v.load(context);
-        } else {
-          value = v.load(context);
-        }
-
-        args.add(value);
-      }
-    }
-
-    void addArg(Variable? v) {
-      if (v != null) {
-        LLVMValueRef value;
-        if (isExtern && v is LLVMStructAllocaVariable) {
-          value = v.load2(context, isExtern);
-        } else if (v is StoreVariable) {
-          value = v.alloca;
-        } else {
-          final ref = LLVMRefAllocaVariable(v, v.load(context));
-          value = ref.alloca;
-        }
-        args.add(value);
-      }
-    }
-
-    final hasParent = parentFn != null;
-
-    for (var variable in fn.variables) {
-      var v = context.getVariable(variable.ident);
-      if (hasParent && parentFn.selfVariables.contains(variable)) {
-        if (v is Deref) {
-          v = v.getDeref(context);
-        }
-      }
-      addArg(v);
-    }
-
-    if (extra != null) {
-      for (var variable in extra) {
-        var v = context.getVariable(variable.ident);
-        addArg(v);
-      }
-    }
-
-    if (fn is FnTy) {
-      final params = fn.fnSign.fnDecl.params;
-      for (var p in params) {
-        var v = context.getVariable(p.ident);
-        addArg(v);
-      }
-    }
-
-    final fnType = fn.llvmType.createFnType(context, extra);
-
-    final fnAlloca = fn.build(context, extra, map);
-    final fnValue = fnAlloca?.load(context) ?? fnVariable?.load(context);
-    if (fnValue == null) return null;
-
-    // Log.w(
-    //     'call: ${fn.fnSign.fnDecl.ident} ${args.length} | ${fn.variables.length}');
-
-    final ret = llvm.LLVMBuildCall2(
-        context.builder, fnType, fnValue, args.toNative(), args.length, unname);
-
-    final retTy = fn.fnSign.fnDecl.returnTy.grt(context);
-    return ExprTempValue(LLVMTempVariable(ret, retTy), retTy);
-  }
-
-  late final catchVariables = <AnalysisVariable>{};
-  Map<Identifier, Set<AnalysisVariable>> childrenVariables = {};
-
-  void addChild(Identifier ident, Set<AnalysisVariable> child) {
-    childrenVariables[ident] = child;
-    catchVariables.addAll(child);
-  }
-
-  Fn? currentFn;
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     final fn = expr.analysis(context);
     if (fn == null) return null;
     if (fn.ty is SizeofFn) {
-      return AnalysisVariable(BuiltInTy.int, Identifier.none);
+      return context.createVal(BuiltInTy.int, Identifier.none);
     }
     final fnty = fn.ty;
     if (fnty is! Fn) return null;
-    final fields = fnty.fnSign.fnDecl.params;
-    final sortFields =
-        alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
-    currentFn = context.getLastFnContext()?.currentFn;
-    for (var f in sortFields) {
-      final rf = fields[sortFields.indexOf(f)];
-      final v = f.analysis(context);
-      final vty = v?.ty;
-      if (vty is Fn) {
-        addChild(rf.ident, vty.variables);
-        // final fnContext = context.getLastFnContext();
-        // fnContext?.addChild(fnty.fnSign.fnDecl.ident, fnty.variables);
-      }
-    }
+    autoAddChild(fnty, params, context);
 
-    // final fnContext = context.getLastFnContext();
-    // fnContext?.addChild(fnty.fnSign.fnDecl.ident, fnty.variables);
-    return AnalysisVariable(
+    return context.createVal(
         fnty.fnSign.fnDecl.returnTy.grt(context), Identifier.none);
   }
 }
 
-class MethodCallExpr extends Expr {
+class MethodCallExpr extends Expr with FnCallMixin {
   MethodCallExpr(this.ident, this.receiver, this.params);
   final Identifier ident;
   final Expr receiver;
@@ -739,7 +773,10 @@ class MethodCallExpr extends Expr {
   @override
   Expr clone() {
     return MethodCallExpr(
-        ident, receiver.clone(), params.map((e) => e.clone()).toList());
+        ident, receiver.clone(), params.map((e) => e.clone()).toList())
+      .._catchFns.addAll(_catchFns)
+      .._paramFn = _paramFn
+      .._catchMapFns.addAll(_catchMapFns);
   }
 
   @override
@@ -776,10 +813,12 @@ class MethodCallExpr extends Expr {
       if (val is StoreVariable) {
         final field = structTy.llvmType.getField(val, context, ident);
         if (field != null) {
+          // 匿名函数作为参数要处理捕捉的变量
           if (field.ty is FnTy) {
+            assert(_paramFn is Fn, 'ty: ${field.ty}, _paramFn: $_paramFn');
             st = null;
             fnVariable = field;
-            fn = field.ty as FnTy;
+            fn = _paramFn ?? field.ty as FnTy;
           }
         }
       }
@@ -793,9 +832,10 @@ class MethodCallExpr extends Expr {
     }
 
     if (fn == null) return null;
-    return FnCallExpr.fnCall(
-        context, fn, null, params, fnVariable, st, null, null);
+    return fnCall(context, fn, params, fnVariable, st);
   }
+
+  Fn? _paramFn;
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
@@ -803,6 +843,16 @@ class MethodCallExpr extends Expr {
     if (variable == null) return null;
     final structTy = variable.ty;
     if (structTy is! StructTy) return null;
+    if (variable is AnalysisStructVariable) {
+      final p = variable.getParam(ident);
+      final pp = p?.ty;
+      if (pp is Fn) {
+        _paramFn = pp;
+        autoAddChild(pp, params, context);
+      }
+      return p;
+    }
+
     final impl = context.getImplForStruct(structTy);
     var fn = impl?.getFn(ident);
     if (fn == null) {
@@ -811,12 +861,13 @@ class MethodCallExpr extends Expr {
       final ty = field?.ty.grt(context);
       if (ty is FnTy) {
         fn = ty;
+        autoAddChild(fn, params, context);
       }
     }
     if (fn == null) return null;
     // final fnContext = context.getLastFnContext();
     // fnContext?.addChild(fn.fnSign.fnDecl.ident, fn.variables);
-    return AnalysisVariable(
+    return context.createVal(
         fn.fnSign.fnDecl.returnTy.grt(context), Identifier.none);
   }
 }
@@ -870,13 +921,21 @@ class StructDotFieldExpr extends Expr {
     if (variable == null) return null;
     final structTy = variable.ty;
     if (structTy is! StructTy) return null;
+    if (variable is AnalysisStructVariable) {
+      final p = variable.getParam(ident);
+      return p;
+    }
+    // error
 
     final v =
         structTy.fields.firstWhereOrNull((element) => element.ident == ident);
     if (v == null) {
       return null;
     }
-    return AnalysisVariable(v.ty.grt(context), ident);
+
+    final vv = context.createVal(v.ty.grt(context), ident);
+    vv.lifeCycle.fnContext = variable.lifeCycle.fnContext;
+    return vv;
   }
 }
 
@@ -1104,9 +1163,9 @@ class OpExpr extends Expr {
     if (l == null) return null;
     if (op.index >= OpKind.Eq.index && op.index <= OpKind.Gt.index ||
         op.index >= OpKind.And.index && op.index <= OpKind.Or.index) {
-      return AnalysisVariable(BuiltInTy.kBool, Identifier.none);
+      return context.createVal(BuiltInTy.kBool, Identifier.none);
     }
-    return AnalysisVariable(l.ty, Identifier.none);
+    return context.createVal(l.ty, Identifier.none);
   }
 }
 
@@ -1154,7 +1213,7 @@ enum PointerKind {
         return LLVMTempVariable(llvmValue, val.ty);
       }
     }
-    return inst;
+    return inst ?? val;
   }
 
   static Variable? refDerefs(
@@ -1215,7 +1274,6 @@ class VariableIdentExpr extends Expr {
   ExprTempValue? buildExpr(BuildContext context) {
     final val = context.getVariable(ident);
     if (val != null) {
-      // Log.w('b... $_isCatch $ident ${val.runtimeType}');
       if (val is Deref) {
         if (_isCatch || ident.src == 'self') {
           final newVal = val.getDeref(context);
@@ -1226,7 +1284,8 @@ class VariableIdentExpr extends Expr {
     }
     final fn = context.getFn(ident);
     if (fn != null) {
-      final value = fn.build(context);
+      final fnContext = context.getFnContext(ident);
+      final value = fn.build(fnContext!);
       if (value != null) {
         return ExprTempValue(value, value.ty);
       }
@@ -1246,15 +1305,9 @@ class VariableIdentExpr extends Expr {
     if (v != null) return v;
     final fn = context.getFn(ident);
     if (fn != null) {
-      fn.analysis(context);
-      // final fnContext = context.getLastFnContext();
-      // final cfn = fnContext?.currentFn;
-      // Log.e(
-      //     '_____ $ident ${fn.variables.join(',')} || ${cfn?.fnSign.fnDecl.ident} || ${cfn?.variables}');
-      context.addChild(fn.variables);
+      context.addChild(fn);
 
-      fn.isInner = true;
-      return AnalysisVariable(fn, ident);
+      return context.createVal(fn, ident);
     }
 
     return null;
@@ -1276,7 +1329,7 @@ class RefExpr extends Expr {
     final val = current.build(context);
     var vv = PointerKind.refDerefs(val?.variable, context, kind);
     if (vv != null) {
-      return ExprTempValue(vv, val!.variable!.ty);
+      return ExprTempValue(vv, vv.ty);
     }
     return val;
   }
@@ -1300,7 +1353,9 @@ class RefExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     final vv = current.analysis(context);
     if (vv == null) return null;
-    return AnalysisVariable(vv.ty, vv.ident, [...kind, ...vv.kind]);
+    final newV = vv.copy()..kind.insertAll(0, kind);
+    return newV;
+    // return AnalysisVariable(vv.ty, vv.ident, [...kind, ...vv.kind]);
   }
 }
 

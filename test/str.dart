@@ -16,6 +16,7 @@ impl Gen {
   }
   fn selfM(y: int) {
     let yy = self
+    printxx(555666);
     let ss = (*self)
     printxx(yy.z)
     self.hhhxxx();
@@ -26,6 +27,9 @@ impl Gen {
 }
 
 extern fn yy(y: int, g: Gen) {
+  printxx(3443);
+  printxx(y);
+  ysys(g);
   let gg = g
   let hss = gg.z
   let haxs = y + (123  + 1313) * 22;
@@ -33,8 +37,10 @@ extern fn yy(y: int, g: Gen) {
   gg.y = 102
   gg.x = 6556
   gg.z = 6772
+  printxx(11111);
   gg.selfM(22)
   printxx(hss)
+  y;
   printxx(y)
   hss = y
   printxx(hss)
@@ -46,9 +52,7 @@ extern fn yy(y: int, g: Gen) {
 }
 
 fn ysys(g: Gen) {
-  fn hh() {
-    let yy = 10;
-  }
+  printxx(g.z);
 }
 
 
@@ -66,6 +70,7 @@ fn de() {
 }
 
 fn main() int {
+  printxx(1133);
   stra()
   struct MyG {
     x: fn (),
@@ -73,7 +78,7 @@ fn main() int {
   let yyx = MyG{fn zz() {
     printxx(444);
   }}
-    // let hh = yyx.x;
+  let hh = yyx.x;
   yyx.x();
   let y = 1;
   y += 2 + 111102 - 5550 / 11;

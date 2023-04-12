@@ -9,16 +9,40 @@ target triple = "arm64-apple-macosx13.0.0"
 ; Function Attrs: noinline nounwind optnone ssp uwtable
 define void @printxx(i32 %0) #0 {
   %2 = alloca i32, align 4
+  %3 = alloca i32, align 4
   store i32 %0, i32* %2, align 4
-  %3 = load i32, i32* %2, align 4
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str, i64 0, i64 0), i32 %3)
+  %4 = load i32, i32* %2, align 4
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str, i64 0, i64 0), i32 %4)
+  br label %6
+
+6:                                                ; preds = %15, %1
+  %7 = load i32, i32* %2, align 4
+  %8 = icmp sgt i32 %7, 20
+  br i1 %8, label %9, label %16
+
+9:                                                ; preds = %6
+  store i32 10, i32* %3, align 4
+  %10 = load i32, i32* %2, align 4
+  %11 = add nsw i32 %10, 2
+  store i32 %11, i32* %2, align 4
+  %12 = load i32, i32* %2, align 4
+  %13 = icmp sgt i32 %12, 50
+  br i1 %13, label %14, label %15
+
+14:                                               ; preds = %9
+  br label %16
+
+15:                                               ; preds = %9
+  br label %6, !llvm.loop !10
+
+16:                                               ; preds = %14, %6
   ret void
 }
 
 declare i32 @printf(i8*, ...) #1
 
 ; Function Attrs: noinline nounwind optnone ssp uwtable
-define void @prinstr(i8* %0) #0 {
+define void @printstr(i8* %0) #0 {
   %2 = alloca i8*, align 8
   store i8* %0, i8** %2, align 8
   %3 = load i8*, i8** %2, align 8
@@ -42,3 +66,5 @@ attributes #1 = { "frame-pointer"="non-leaf" "no-trapping-math"="true" "probe-st
 !7 = !{i32 7, !"uwtable", i32 1}
 !8 = !{i32 7, !"frame-pointer", i32 1}
 !9 = !{!"Apple clang version 14.0.0 (clang-1400.0.29.202)"}
+!10 = distinct !{!10, !11}
+!11 = !{!"llvm.loop.mustprogress"}

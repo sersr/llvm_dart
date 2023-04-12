@@ -98,6 +98,14 @@ class BuildContext
     }
   }
 
+  BuildContext? getFnContext(Identifier ident) {
+    final list = fns[ident];
+    if (list != null) {
+      return this;
+    }
+    return parent?.getFnContext(ident);
+  }
+
   BuildContext createChildContext() {
     final child = BuildContext._(this);
     children.add(child);
@@ -145,14 +153,13 @@ class BuildContext
     if (fnty is ImplFn) {
       self = 1;
       final p = fnty.ty;
-      Variable aa;
       final selfParam = llvm.LLVMGetParam(fn, 0);
       final ident = Identifier.builtIn('self');
-      final llty = RefTy(p).llvmType;
-      final alloca = aa = llty.createAlloca(this, ident);
-      alloca.isTemp = false;
+      final alloca = RefTy(p).llvmType.createAlloca(this, ident);
       alloca.store(this, selfParam);
-      pushVariable(ident, aa);
+      setName(alloca.alloca, 'self');
+      alloca.isTemp = false;
+      pushVariable(ident, alloca);
     }
 
     for (var i = 0; i < params.length; i++) {
@@ -174,70 +181,47 @@ class BuildContext
 
     var index = params.length - 1 + self;
 
-    for (var variable in fnty.variables) {
-      index += 1;
-      final fnParam = llvm.LLVMGetParam(fn, index);
+    void fnCatchVariable(AnalysisVariable variable, int index) {
+      final value = llvm.LLVMGetParam(fn, index);
       final ident = variable.ident;
       final val = getVariable(ident);
       if (val == null) {
-        continue;
+        return;
       }
-      var vty = variable.kind.resolveTy(val.ty);
 
-      Variable alloca;
-
-      if (fnty.selfVariables.contains(variable)) {
-        // _resolveParam(RefTy(vty), fnParam, ident, fnty.extern);
-        final llty = RefTy(vty).llvmType;
-        final aa = llty.createAlloca(this, ident);
-        aa.store(this, fnParam);
-        alloca = aa;
-        aa.isTemp = false;
-      } else {
-        final aa = LLVMAllocaVariable(vty, fnParam, pointer());
-        setName(aa.alloca, ident.src);
-        alloca = aa;
-      }
+      final alloca = LLVMRefAllocaVariable.from(value, val.ty, this);
+      alloca.isTemp = false;
+      setName(alloca.alloca, ident.src);
       pushVariable(ident, alloca);
     }
+
+    for (var variable in fnty.variables) {
+      index += 1;
+      fnCatchVariable(variable, index);
+    }
+
     if (extra != null) {
       for (var variable in extra) {
         index += 1;
-        final fnParam = llvm.LLVMGetParam(fn, index);
-        final ident = variable.ident;
-        final val = getVariable(ident);
-        if (val == null) {
-          continue;
-        }
-        final aa = LLVMAllocaVariable(val.ty, fnParam, pointer());
-        pushVariable(ident, aa);
+        fnCatchVariable(variable, index);
       }
     }
   }
 
   void _resolveParam(
       Ty ty, LLVMValueRef fnParam, Identifier ident, bool extern) {
-    Variable aa;
-    if (ty is! RefTy) {
-      StoreVariable alloca;
-      if (ty is StructTy) {
-        alloca =
-            ty.llvmType.createAllocaFromParam(this, fnParam, ident, extern);
-      } else {
-        alloca = ty.llvmType.createAlloca(this, ident);
-        alloca.store(this, fnParam);
-      }
-      alloca.isTemp = false;
-      aa = alloca;
+    Variable alloca;
+    if (ty is StructTy) {
+      alloca = ty.llvmType.createAllocaFromParam(this, fnParam, ident, extern)
+        ..isTemp = false;
     } else {
-      final llty = ty.llvmType;
-      final alloca = llty.createAlloca(this, ident);
-      alloca.store(this, fnParam);
-      alloca.isTemp = false;
-      aa = alloca;
+      final tyValue = ty.llvmType.createAlloca(this, ident);
+      tyValue.store(this, fnParam);
+      tyValue.isTemp = false;
+      alloca = tyValue;
     }
 
-    pushVariable(ident, aa);
+    pushVariable(ident, alloca);
   }
 
   LLVMConstVariable buildFnBB(Fn fn,
@@ -313,13 +297,7 @@ class BuildContext
     if (val == null) {
       llvm.LLVMBuildRetVoid(builder);
     } else {
-      LLVMValueRef v;
-      val.ty;
-      if (val is LLVMStructAllocaVariable) {
-        v = val.load2(this, fn.ty.extern);
-      } else {
-        v = val.load(this);
-      }
+      final v = val.load(this);
       llvm.LLVMBuildRet(builder, v);
     }
   }

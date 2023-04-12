@@ -9,12 +9,26 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   AnalysisContext._(AnalysisContext this.parent);
 
   AnalysisContext childContext() {
-    return AnalysisContext._(this);
+    final c = AnalysisContext._(this);
+    children.add(c);
+    return c;
   }
 
+  final children = <AnalysisContext>[];
+
   AnalysisContext? getLastFnContext() {
-    if (fnContext != null) return fnContext;
+    if (currentFn != null) return this;
     return parent?.getLastFnContext();
+  }
+
+  bool isChildOrCurrent(AnalysisContext other) {
+    if (this == other) return true;
+    AnalysisContext? c = other;
+    while (true) {
+      if (c == this) return true;
+      if (c == null) return false;
+      c = c.parent?.getLastFnContext();
+    }
   }
 
   AnalysisVariable? _getVariable(Identifier ident, AnalysisContext? currentFn) {
@@ -42,17 +56,29 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
 
   // 匿名函数自动捕捉的变量集合
   late final catchVariables = <AnalysisVariable>{};
-  Set<AnalysisVariable> childrenVariables = {};
+  Set<AnalysisVariable> get childrenVariables {
+    final cache = <AnalysisVariable>{};
+    for (var v in _catchFns) {
+      cache.addAll(v());
+    }
+    return cache;
+  }
 
-  void addChild(Set<AnalysisVariable> child) {
+  final _catchFns = <Set<AnalysisVariable> Function()>[];
+
+  void addChild(Fn target) {
     final fn = getLastFnContext();
     if (fn == null) return;
-    for (var v in child) {
-      if (isCurrentFn(v, fn)) {
-        continue;
+    fn._catchFns.add(() {
+      final c = <AnalysisVariable>{};
+      for (var v in target.variables) {
+        if (isCurrentFn(v, fn)) {
+          continue;
+        }
+        c.add(v);
       }
-      fn.childrenVariables.add(v);
-    }
+      return c;
+    });
   }
 
   @override
@@ -77,12 +103,30 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
     return _getVariable(ident, fnContext);
   }
 
-  AnalysisContext? fnContext;
-  Fn? currentFn;
-  void setFnContext(AnalysisContext fnC, Fn fn) {
-    fnContext = fnC;
-    fnC.currentFn = fn;
-    currentFn = fn;
+  @override
+  void pushVariable(Identifier ident, AnalysisVariable variable) {
+    variable.lifeCycle.fnContext = getLastFnContext();
+    super.pushVariable(ident, variable);
+  }
+
+  AnalysisContext? getFnContext(Identifier ident) {
+    final list = fns[ident];
+    if (list != null) {
+      return this;
+    }
+    return parent?.getFnContext(ident);
+  }
+
+  AnalysisContext getRootContext() {
+    if (parent != null) return parent!.getRootContext();
+    return this;
+  }
+
+  Fn? _currentFn;
+  Fn? get currentFn => _currentFn;
+
+  void setFnContext(Fn fn) {
+    _currentFn = fn;
   }
 
   @override
@@ -100,13 +144,36 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
     }
     return buf.toString();
   }
+
+  AnalysisVariable createVal(Ty ty, Identifier ident,
+      [List<PointerKind> kind = const []]) {
+    final val = AnalysisVariable._(ty, ident, kind);
+    val.lifeCycle.fnContext = getLastFnContext();
+    return val;
+  }
+
+  AnalysisStructVariable createStructVal(
+      Ty ty, Identifier ident, Map<Identifier, AnalysisVariable> map,
+      [List<PointerKind> kind = const []]) {
+    final val = AnalysisStructVariable._(ty, ident, map, kind);
+    val.lifeCycle.fnContext = getLastFnContext();
+    return val;
+  }
 }
 
 class AnalysisVariable with EquatableMixin {
-  AnalysisVariable(this.ty, this.ident, [this.kind = const []]);
+  AnalysisVariable._(this.ty, this.ident, this.kind);
   final Ty ty;
   final List<PointerKind> kind;
   final Identifier ident;
+
+  AnalysisVariable copy({Ty? ty, Identifier? ident, List<PointerKind>? kind}) {
+    return AnalysisVariable._(
+        ty ?? this.ty, ident ?? this.ident, kind ?? this.kind.toList())
+      ..lifeCycle.from(lifeCycle);
+  }
+
+  late final LifeCycle lifeCycle = LifeCycle();
 
   @override
   String toString() {
@@ -115,4 +182,45 @@ class AnalysisVariable with EquatableMixin {
 
   @override
   List<Object?> get props => [ident, ty];
+}
+
+class AnalysisStructVariable extends AnalysisVariable {
+  AnalysisStructVariable._(
+      Ty ty, Identifier ident, Map<Identifier, AnalysisVariable> map,
+      [List<PointerKind> kind = const []])
+      : _params = map,
+        super._(ty, ident, kind);
+
+  @override
+  AnalysisStructVariable copy(
+      {Ty? ty,
+      Identifier? ident,
+      Map<Identifier, AnalysisVariable>? map,
+      List<PointerKind>? kind}) {
+    return AnalysisStructVariable._(ty ?? this.ty, ident ?? this.ident,
+        map ?? _params, kind ?? this.kind.toList())
+      ..lifeCycle.from(lifeCycle);
+  }
+
+  final Map<Identifier, AnalysisVariable> _params;
+
+  AnalysisVariable? getParam(Identifier ident) {
+    return _params[ident];
+  }
+
+  @override
+  List<Object?> get props => [ident, ty, _params];
+}
+
+class LifeCycle {
+  LifeCycle();
+  AnalysisContext? fnContext;
+
+  void from(LifeCycle other) {
+    fnContext = other.fnContext;
+    isOut = other.isOut;
+  }
+
+  bool isOut = false;
+  bool get isInner => !isOut;
 }

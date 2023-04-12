@@ -55,16 +55,9 @@ class LetStmt extends Stmt {
       }
 
       LLVMValueRef? rValue;
+
       if (variable != null) {
         rValue = variable.load(context);
-        if (variable is LLVMRefAllocaVariable) {
-          final s = LLVMRefAllocaVariable.create(context, variable.parent);
-          s.store(context, rValue);
-          s.isTemp = false;
-          context.setName(s.alloca, nameIdent.src);
-          context.pushVariable(nameIdent, s);
-          return;
-        }
       }
       final alloca = tty.llvmType.createAlloca(context, nameIdent);
       if (rValue != null) {
@@ -85,8 +78,7 @@ class LetStmt extends Stmt {
 
     if (v == null) return;
 
-    context.pushVariable(
-        nameIdent, AnalysisVariable(v.ty, nameIdent, ty?.kind ?? v.kind));
+    context.pushVariable(nameIdent, v.copy(ty: realTy, ident: nameIdent));
   }
 }
 
@@ -166,8 +158,8 @@ class StaticStmt extends Stmt {
     final realTy = ty?.grt(context);
     final val = LiteralExpr.run(() => expr.analysis(context), realTy);
     final vTy = realTy ?? val?.ty;
-    if (vTy == null) return;
-    context.pushVariable(ident, AnalysisVariable(vTy, ident, ty?.kind ?? []));
+    if (vTy == null || val == null) return;
+    context.pushVariable(ident, val.copy(ty: vTy, ident: ident));
   }
 }
 

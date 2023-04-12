@@ -6,12 +6,21 @@ import 'ast/llvm_context.dart';
 import 'llvm_dart.dart';
 import 'parsers/parser.dart';
 
-void testRun(String src, {bool mem2reg = false, bool build = true}) {
-  runZoned(
+T runZonedSrc<T>(T Function() body, String src) {
+  return runZoned(
+    body,
+    zoneValues: {'astSrc': src},
+    zoneSpecification: ZoneSpecification(print: (self, parent, zone, line) {
+      Zone.root.print(line.replaceAll('(package:llvm_dart/', '(./lib/'));
+    }),
+  );
+}
+
+AnalysisContext testRun(String src, {bool mem2reg = false, bool build = true}) {
+  return runZoned(
     () {
       final m = parseTopItem(src);
       print(m.globalTy.values.join('\n'));
-      if (!build) return;
       final root = AnalysisContext.root();
       root.pushAllTy(m.globalTy);
       for (var fns in root.fns.values) {
@@ -19,6 +28,7 @@ void testRun(String src, {bool mem2reg = false, bool build = true}) {
           fn.analysis(root);
         }
       }
+      if (!build) return root;
       {
         llvm.initLLVM();
         final root = BuildContext.root();
@@ -41,6 +51,7 @@ void testRun(String src, {bool mem2reg = false, bool build = true}) {
         llvm.writeOutput(root.kModule);
         root.dispose();
       }
+      return root;
     },
     zoneValues: {'astSrc': src},
     zoneSpecification: ZoneSpecification(print: (self, parent, zone, line) {

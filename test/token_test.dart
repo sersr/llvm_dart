@@ -270,17 +270,28 @@ fn main() int {
 extern fn printxx(y: int);
 
 fn main() int {
-  let xa = 44343;
+
   let yya = 4422;
   let xya = &444;
-  let xxya = &xya;
+  let rrr = &xya;
+
   fn hha() {
-    // let xxa = xa;
     let hh = xya;
-    let hhx = *hh;
+    let yyy = *hh;
     printxx(*hh);
-    printxx(**xxya);
+    printxx(yyy);
+    *hh = 55555;
+    let hhx = rrr;
+    let hhh = **rrr;
+    printxx(hhh);
+    final rr = *hhx;
+    final qr = **hhx;
+    printxx(4444444);
+    printxx(*rr);
+    printxx(qr);
   }
+  hha();
+  printxx(*xya);
 
   fn sec() {
     let yy = yya;
@@ -292,6 +303,145 @@ fn main() int {
 }
 
 fn hhxa(f: fn()) {
+  f();
+}
+''';
+    testRun(src);
+  });
+
+  test('life cycle', () {
+    final src = '''
+extern fn printxx(y: int);
+fn main() int {
+  // let yy = 111;
+  let xx = 444;
+  let hxxx = 5500;
+  let hyx = &&hxxx;
+  printxx(**hyx);
+  let ret = outerFn(&xx, hyx);
+  // printxx(*ret);
+  // let xx = *ret;
+  let hha = *hyx;
+  let hh = *hha;
+  printxx(**hyx);
+  printxx(hh);
+  printxx(*hha);
+  // let hax = **hyx;
+  0;
+}
+
+fn outerFn(hh: &int, hyy: &&int) &int {
+  let y = &20;
+  *hyy = y; // error
+  printxx(**hyy);
+  let aa = *hyy;
+  let aaa = **hyy;
+  final yaa = *aa;
+  let xa = **hyy;
+  printxx(**hyy);
+  return hh;
+}
+''';
+
+    testRun(src, build: true);
+    // runZonedSrc(() {
+    //   void p(AnalysisContext r) {
+    //     for (var val in r.variables.keys) {
+    //       for (var v in r.variables[val]!) {
+    //         final s = v.lifeCycle.fnContext?.tree();
+    //         if (s != null) {
+    //           Log.w('$val $s', showTag: false);
+    //         }
+    //       }
+    //     }
+    //     for (var rr in r.children) {
+    //       p(rr);
+    //     }
+    //   }
+
+    //   p(root);
+    // }, src);
+  });
+
+  test('test struct', () {
+    final src = '''
+struct Gen {
+  y: int,
+  x: &int,
+  z: &&int,
+}
+extern fn printxx(y: int);
+
+fn main() int {
+  final g = Gen { 10, &2244, &&66444};
+  printxx(*g.x);
+  let hh = g.x;
+  printxx(*hh);
+  printxx(**g.z);
+  0;
+}
+''';
+    testRun(src);
+  });
+
+  test('test builtin', () {
+    final src = '''
+ fn main() int {
+  let yy = 0;
+  0;
+}
+
+extern fn yy(y: int) {
+  let yy = 344;
+  y = yy;
+}
+
+''';
+    testRun(src);
+  });
+
+  test('test fn(fn())', () {
+    final src = '''
+extern fn printxx(y: int);
+
+fn main() int {
+  let yy = 5550;
+  // fn mainInner() {
+  //   printxx(yy);
+  //   printxx(hh);
+  //   // hhFn();
+  // }
+
+
+  let hh = 1111;
+  fn hhFn() {
+    printxx(hh);
+    printxx(yy);
+  }
+  
+  // fn wrapper() {
+  //   printxx(hh);
+  //   mainInner();
+  // }
+
+  // printxx(yy);
+  // printxx(hh);
+  // outer(mainInner);
+  // outer(wrapper);
+   fn dd() {
+    printxx(hh);
+    hhFn();
+    printxx(66666);
+  }
+
+  struct My {y: int, f: fn()}
+  let my = My {11,dd}
+  my.f();
+  0;
+}
+
+fn outer(f: fn()) {
+
   f();
 }
 ''';

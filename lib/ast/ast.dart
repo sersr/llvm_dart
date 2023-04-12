@@ -6,6 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:llvm_dart/ast/context.dart';
 import 'package:llvm_dart/ast/expr.dart';
+import 'package:llvm_dart/ast/stmt.dart';
 import 'package:llvm_dart/ast/tys.dart';
 import 'package:llvm_dart/ast/variables.dart';
 import 'package:meta/meta.dart';
@@ -154,7 +155,10 @@ class GenericParam with EquatableMixin {
 
   void analysis(AnalysisContext context) {
     context.pushVariable(
-        ident, AnalysisVariable(ty.grt(context), ident, ty.kind));
+      ident,
+      context.createVal(ty.grt(context), ident, ty.kind)
+        ..lifeCycle.isOut = true,
+    );
   }
 }
 
@@ -332,8 +336,28 @@ class Block extends BuildMixin with EquatableMixin {
 
   @override
   void build(BuildContext context) {
+    final fnStmt = <Stmt>[];
+
+    // 函数声明前置
     for (var stmt in stmts) {
+      if (stmt is ExprStmt) {
+        final expr = stmt.expr;
+        if (expr is FnExpr) {
+          expr.fn.pushFn(context);
+          fnStmt.add(stmt);
+          continue;
+        }
+      }
+    }
+
+    // 先处理普通语句，在内部函数中可能会引用到变量等
+    for (var stmt in stmts) {
+      if (fnStmt.contains(stmt)) continue;
       stmt.build(context);
+    }
+
+    for (var fn in fnStmt) {
+      fn.build(context);
     }
   }
 
@@ -342,8 +366,24 @@ class Block extends BuildMixin with EquatableMixin {
 
   @override
   void analysis(AnalysisContext context) {
+    final fnStmt = <Stmt>[];
     for (var stmt in stmts) {
+      if (stmt is ExprStmt) {
+        final expr = stmt.expr;
+        if (expr is FnExpr) {
+          expr.fn.pushFn(context);
+          fnStmt.add(stmt);
+          continue;
+        }
+      }
+    }
+
+    for (var stmt in stmts) {
+      if (fnStmt.contains(stmt)) continue;
       stmt.analysis(context);
+    }
+    for (var fn in fnStmt) {
+      fn.analysis(context);
     }
   }
 }
@@ -505,20 +545,23 @@ class PathTy with EquatableMixin {
     }
   }
 
+  Ty getRty(Tys c) {
+    return kind.resolveTy(grt(c));
+  }
+
   Ty grt(Tys c) {
-    if (ty != null) return ty!;
+    var rty = ty;
+    // if (ty != null) return ty!;
 
     final tySrc = ident.src;
-    Ty? tty = BuiltInTy.from(tySrc);
-    if (tty != null) {
-      return tty;
-    }
+    rty ??= BuiltInTy.from(tySrc);
 
-    tty = c.getTy(ident);
-    if (tty != null) {
+    rty ??= c.getTy(ident);
+    if (rty == null) {
       // error
     }
-    return tty!;
+
+    return rty!;
   }
 }
 
@@ -579,6 +622,11 @@ class Fn extends Ty {
   List<Object?> get props => [fnSign, block];
 
   final _cache = <ListKey, LLVMConstVariable>{};
+
+  void pushFn(Tys context) {
+    context.pushFn(fnSign.fnDecl.ident, this);
+  }
+
   @override
   LLVMConstVariable? build(BuildContext context,
       [Set<AnalysisVariable>? variables,
@@ -590,29 +638,34 @@ class Fn extends Ty {
   LLVMConstVariable? customBuild(BuildContext context,
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
-    final key = ListKey(variables?.toList() ?? []);
+    final key = ListKey(variables?.map((e) => e.ty).toList() ?? []);
     return _cache.putIfAbsent(key, () {
-      // final fn = context.buildFn(fnSign);
-      // // final blockBB =
-      // block.build(context);
       return context.buildFnBB(this, variables, map ?? const {});
     });
   }
 
-  Set<AnalysisVariable> variables = {};
   Set<AnalysisVariable> selfVariables = {};
+  Set<AnalysisVariable> get variables {
+    final v = _get?.call();
+    if (v == null) return selfVariables;
+    return {...selfVariables, ...v};
+  }
 
-  bool isInner = false;
+  Set<AnalysisVariable> Function()? _get;
+
+  bool _anaysised = false;
+
   @override
   void analysis(AnalysisContext context) {
+    if (_anaysised) return;
+    _anaysised = true;
     context.pushFn(fnSign.fnDecl.ident, this);
     final child = context.childContext();
-    child.setFnContext(child, this);
+    child.setFnContext(this);
     fnSign.fnDecl.analysis(child);
     block?.analysis(child);
     selfVariables = child.catchVariables;
-    variables.addAll(selfVariables);
-    variables.addAll(child.childrenVariables);
+    _get = () => child.childrenVariables;
   }
 
   @override

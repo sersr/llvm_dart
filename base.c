@@ -26,44 +26,48 @@ int printxx(int32_t y)
   return 11;
 }
 
-int printxxa(int32_t* y) {
+int printxxa(int32_t *y)
+{
   printf("xxa: y_p: %d\n", *y);
   *y = 50505;
   return 1;
 }
 
-void strx( Gen *g)
+void strx(Gen *g)
 {
 }
 
 void stra()
 {
   Gen ss = {301, 544442, 553};
- yy(12,  ss);
- int y = 100022;
- printf("... end %d\n", y);
+  printf("hellor");
+  yy(12, ss);
+  int y = 100022;
+  printf("... end %d\n", y);
   // printf("gen y: %d x: %d z: %d \n", xa.y, xa.x, xa.z);
-
 }
 
-typedef union {
+typedef union
+{
   int32_t y;
   int32_t xx;
 } Ms;
 
-
-void hhhx(Gen g) {
+void hhhx(Gen g)
+{
   Ms u = {10};
 }
 
 #else
 #include <stdio.h>
 
-void printxx(int y) {
-    printf("y: %d\n",y);
+void printxx(int y)
+{
+  printf("y: %d\n", y);
 }
 
-void printstr(char* str) {
+void printstr(char *str)
+{
   printf("str: %s\n", str);
 }
 #endif

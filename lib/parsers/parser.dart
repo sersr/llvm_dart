@@ -252,13 +252,10 @@ class Modules {
     eatLfIfNeed(it);
     final state = it.cursor;
     if (it.moveNext()) {
-      final c = it.current;
-      if (c.token.kind == TokenKind.ident) {
-        final key = getKey(it);
-        if (key == null) {
-          state.restore();
-          retTy = parsePathTy(it);
-        }
+      final key = getKey(it);
+      if (key == null) {
+        state.restore();
+        retTy = parsePathTy(it);
       }
     }
     if (retTy == null) {
