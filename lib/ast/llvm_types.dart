@@ -199,7 +199,6 @@ class LLVMFnType extends LLVMType {
         }
       }
       list.add(ty);
-      // }
     }
     final vv = [...fn.variables, ...?variables];
     for (var variable in vv) {
@@ -207,14 +206,8 @@ class LLVMFnType extends LLVMType {
       if (v != null) {
         final dty = v.ty;
         LLVMTypeRef ty = dty.llvmType.createType(c);
-        // if (v.isRef) {
         ty = c.typePointer(ty);
-        // } else {
-        //   if (dty is StructTy && fn.extern) {
-        //     final size = dty.llvmType.getBytes(c);
-        //     ty = c.getStructExternType(size);
-        //   }
-        // }
+
         list.add(ty);
       }
     }
@@ -243,7 +236,13 @@ class LLVMFnType extends LLVMType {
       if (ident.isEmpty) {
         ident = '_fn';
       }
-      final v = llvm.LLVMAddFunction(c.module, ident.toChar(), ty);
+      final extern = fn.extern || ident == 'main';
+      final v = llvm.getOrInsertFunction(ident.toChar(), c.module, ty);
+      llvm.LLVMSetLinkage(
+          v,
+          extern
+              ? LLVMLinkage.LLVMExternalLinkage
+              : LLVMLinkage.LLVMInternalLinkage);
       llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
       return LLVMConstVariable(v, fn);
     });
@@ -267,9 +266,10 @@ class LLVMStructType extends LLVMType {
 
   FieldsSize getFieldsSize(BuildContext c) => _size ??= alignType(c, ty.fields);
   @override
-  LLVMTypeRef createType(BuildContext c, {bool extern = false}) {
+  LLVMTypeRef createType(BuildContext c) {
     final struct = ty;
     final size = getFieldsSize(c);
+    final extern = struct.extern;
     if (extern && _externType != null) return _externType!;
     if (!extern && _type != null) return _type!;
 
@@ -299,8 +299,8 @@ class LLVMStructType extends LLVMType {
 
   Variable? getField(
       StoreVariable alloca, BuildContext context, Identifier ident) {
-    final extern = context.getLastFnContext()?.fn.ty.extern == true;
-    LLVMTypeRef type = createType(context, extern: extern);
+    final extern = ty.extern;
+    LLVMTypeRef type = createType(context);
 
     final fields = !extern ? _size!.map.keys.toList() : ty.fields;
     final index = fields.indexWhere((element) => element.ident == ident);
@@ -322,16 +322,6 @@ class LLVMStructType extends LLVMType {
     return val;
   }
 
-  // LLVMStructAllocaVariable createValue(BuildContext c) {
-  //   final type = createType(c);
-
-  //   final size = getBytes(c);
-  //   final loadTy = c.getStructExternType(size);
-
-  //   final alloca = c.alloctor(type, '_');
-  //   return LLVMStructAllocaVariable(ty, alloca, type, loadTy);
-  // }
-
   @override
   LLVMStructAllocaVariable createAlloca(BuildContext c, Identifier ident) {
     final type = createType(c);
@@ -343,7 +333,7 @@ class LLVMStructType extends LLVMType {
 
   LLVMStructAllocaVariable _createExternAlloca(
       BuildContext c, Identifier ident) {
-    final type = createType(c, extern: true);
+    final type = createType(c);
     final size = getBytes(c);
     final loadTy = c.getStructExternType(size);
     final alloca = c.alloctor(type, ident.src);
@@ -351,15 +341,15 @@ class LLVMStructType extends LLVMType {
   }
 
   LLVMStructAllocaVariable createAllocaFromParam(
-      BuildContext c, LLVMValueRef value, Identifier ident, bool extern) {
+      BuildContext c, LLVMValueRef value, Identifier ident) {
+    final extern = ty.extern;
     if (!extern) {
       final alloca = createAlloca(c, ident);
       alloca.store(c, value);
-      alloca.extern = false;
       return alloca;
     }
+
     final alloca = _createExternAlloca(c, ident);
-    alloca.extern = true;
 
     /// extern "C"
     final size = getBytes(c);
@@ -376,12 +366,6 @@ class LLVMStructType extends LLVMType {
   @override
   int getBytes(BuildContext c) {
     return c.typeSize(createType(c));
-    // var size = 0;
-    // for (var field in ty.fields) {
-    //   final tsize = field.ty.grt(c).llvmType.getBytes(c);
-    //   size += tsize;
-    // }
-    // return size;
   }
 
   static FieldsSize alignType(BuildContext c, List<FieldDef> fields,
@@ -755,7 +739,7 @@ class LLVMEnumItemType extends LLVMStructType {
           c.builder, type, value, indices.toNative(), indices.length, unname);
       final v = llvm.LLVMBuildLoad2(
           c.builder, t.llvmType.createType(c), llValue, unname);
-      c.resolveParam(t, v, ident, false);
+      c.resolveParam(t, v, ident);
     }
     return ty.parent.variants.indexOf(ty);
   }

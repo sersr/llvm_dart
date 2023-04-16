@@ -337,8 +337,7 @@ class StructExpr extends Expr {
 
   static ExprTempValue? buildTupeOrStruct(StructTy struct, BuildContext context,
       Identifier ident, List<FieldExpr> params) {
-    final extern = context.getLastFnContext()?.fn.ty.extern == true;
-    final structType = struct.llvmType.createType(context, extern: extern);
+    final structType = struct.llvmType.createType(context);
     final value = struct.llvmType.createAlloca(context, ident);
     final m = struct.llvmType.getFieldsSize(context).map;
 

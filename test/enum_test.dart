@@ -6,6 +6,7 @@ void main() {
     final src = '''
 extern fn printxx(y: i32);
 extern fn printfp(x: f32);
+extern fn print64(x: i64);
 
 fn main() int {
   final yy = Some(15, 2);
@@ -24,7 +25,20 @@ fn main() int {
       printxx(x as i32);
     }
   }
+
   0;
+}
+
+extern fn gn(g: Gen) {
+  printxx(g.x);
+  printxx(g.y as i32);
+  print64(g.y);
+}
+
+extern
+struct Gen {
+  x: i32,
+  y: i64,
 }
 
 enum Option {
@@ -32,6 +46,10 @@ enum Option {
   Other(i32, i32),
   None(i32,i32,i32),
   Hello(i32, i64,i32, i32),
+}
+
+fn hello() {
+  printxx(44);
 }
 ''';
     testRun(src, build: true);

@@ -159,7 +159,6 @@ class LLVMStructAllocaVariable extends LLVMAllocaVariable {
   LLVMStructAllocaVariable(super.ty, super.alloca, super.type, this.loadTy,
       {this.isCurrent = false});
   final LLVMTypeRef loadTy;
-  bool extern = false;
 
   final bool isCurrent;
   @override

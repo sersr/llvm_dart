@@ -61,13 +61,28 @@ void hhhx(Gen g)
 #else
 #include <stdio.h>
 
+typedef struct
+{
+  int32_t x;
+  int64_t y;
+
+} Gen;
+
+extern void gn(Gen g);
+
 void printxx(int y)
 {
   printf("y: %d\n", y);
 }
+void print64(int64_t x) {
+  printf("64: %lld\n", x);
+}
 
-void printfp(float x) {
+void printfp(float x)
+{
   printf("x: %f\n", x);
+  Gen g = {10, 5555};
+  gn(g);
 }
 
 void printstr(char *str)

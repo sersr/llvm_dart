@@ -93,13 +93,17 @@ mixin BuildMethods {
 
   LLVMTypeRef getStructExternType(int count) {
     LLVMTypeRef loadTy;
-    final size = pointerSize();
+    var size = pointerSize();
     if (count > size) {
       final d = count / size;
       count = d.ceil();
       loadTy = arrayType(i64, count);
     } else {
-      loadTy = i64;
+      if (size > 4) {
+        loadTy = i64;
+      } else {
+        loadTy = i32;
+      }
     }
     return loadTy;
   }
