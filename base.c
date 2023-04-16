@@ -75,7 +75,9 @@ void printxx(int y)
   printf("y: %d\n", y);
 }
 void print64(int64_t x) {
-  printf("64: %lld\n", x);
+  float aa = 3.0;
+  const char* cc = "64: %ld x %f\n";
+  printf(cc, 55, 55.0);
 }
 
 void printfp(float x)

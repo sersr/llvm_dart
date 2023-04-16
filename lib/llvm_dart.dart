@@ -8,6 +8,12 @@ import 'package:llvm_dart/llvm_core.dart';
 const LLVMTrue = 1;
 const LLVMFalse = 0;
 
+extension LLVMBool on bool {
+  int get llvmBool {
+    return this ? LLVMTrue : LLVMFalse;
+  }
+}
+
 LLVMCore get llvm => LLVMInstance.getInstance();
 
 class LLVMInstance {

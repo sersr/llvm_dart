@@ -103,7 +103,7 @@ class LLVMTypeLit extends LLVMType {
         case LitKind.kDouble:
           return c.constF64(raw.value);
         case LitKind.kString:
-          return c.constStr(raw.raw);
+          return c.getString(raw.raw);
         case LitKind.kBool:
           return c.constI1(raw.raw == 'true' ? 1 : 0);
         case LitKind.i8:
@@ -221,7 +221,7 @@ class LLVMFnType extends LLVMType {
       ret = retTy.llvmType.createType(c);
     }
 
-    return c.typeFn(list, ret);
+    return c.typeFn(list, ret, fn.fnSign.fnDecl.isVar);
   }
 
   late final _cacheFns = <ListKey, LLVMConstVariable>{};
@@ -302,7 +302,7 @@ class LLVMStructType extends LLVMType {
     final extern = ty.extern;
     LLVMTypeRef type = createType(context);
 
-    final fields = !extern ? _size!.map.keys.toList() : ty.fields;
+    final fields = ty.fields;
     final index = fields.indexWhere((element) => element.ident == ident);
     if (index == -1) return null;
     final indics = <LLVMValueRef>[];
@@ -323,24 +323,19 @@ class LLVMStructType extends LLVMType {
   }
 
   @override
-  LLVMStructAllocaVariable createAlloca(BuildContext c, Identifier ident) {
+  LLVMAllocaVariable createAlloca(BuildContext c, Identifier ident) {
     final type = createType(c);
-    final size = getBytes(c);
-    final loadTy = c.getStructExternType(size);
     final alloca = c.alloctor(type, ident.src);
-    return LLVMStructAllocaVariable(ty, alloca, type, loadTy);
+    return LLVMAllocaVariable(ty, alloca, type);
   }
 
-  LLVMStructAllocaVariable _createExternAlloca(
-      BuildContext c, Identifier ident) {
+  LLVMAllocaVariable _createExternAlloca(BuildContext c, Identifier ident) {
     final type = createType(c);
-    final size = getBytes(c);
-    final loadTy = c.getStructExternType(size);
     final alloca = c.alloctor(type, ident.src);
-    return LLVMStructAllocaVariable(ty, alloca, type, loadTy);
+    return LLVMAllocaVariable(ty, alloca, type);
   }
 
-  LLVMStructAllocaVariable createAllocaFromParam(
+  LLVMAllocaVariable createAllocaFromParam(
       BuildContext c, LLVMValueRef value, Identifier ident) {
     final extern = ty.extern;
     if (!extern) {
@@ -689,17 +684,15 @@ class LLVMEnumItemType extends LLVMStructType {
     return FieldsSize(map, count, alignSize);
   }
 
-  LLVMStructAllocaVariable _createAlloca(BuildContext c, Identifier ident) {
+  LLVMAllocaVariable _createAlloca(BuildContext c, Identifier ident) {
     final type = pTy.createType(c);
     final ctype = createType(c);
-    final size = getBytes(c);
-    final loadTy = c.getStructExternType(size);
     final alloca = c.alloctor(type, ident.src);
-    return LLVMStructAllocaVariable(ty, alloca, ctype, loadTy);
+    return LLVMAllocaVariable(ty, alloca, ctype);
   }
 
   @override
-  LLVMStructAllocaVariable createAlloca(BuildContext c, Identifier ident) {
+  LLVMAllocaVariable createAlloca(BuildContext c, Identifier ident) {
     final alloca = _createAlloca(c, ident);
     final indices = [c.constI32(0), c.constI32(0)];
     final first = llvm.LLVMBuildInBoundsGEP2(c.builder, alloca.type,

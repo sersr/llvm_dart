@@ -9,7 +9,7 @@ import 'variables.dart';
 
 class SizeOfFn extends Fn {
   SizeOfFn()
-      : super(FnSign(true, FnDecl(Identifier.none, [], Ty.unknown)),
+      : super(FnSign(true, FnDecl(Identifier.none, [], Ty.unknown, false)),
             Block([], null));
   static final ident = Identifier.builtIn('sizeOf');
   @override

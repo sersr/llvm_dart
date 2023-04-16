@@ -390,10 +390,11 @@ class Block extends BuildMixin with EquatableMixin {
 
 // 函数声明
 class FnDecl with EquatableMixin {
-  FnDecl(this.ident, this.params, this.returnTy);
+  FnDecl(this.ident, this.params, this.returnTy, this.isVar);
   final Identifier ident;
   final List<GenericParam> params;
   final PathTy returnTy;
+  final bool isVar;
 
   bool eq(FnDecl other) {
     return const DeepCollectionEquality().equals(params, other.params) &&
@@ -402,7 +403,8 @@ class FnDecl with EquatableMixin {
 
   @override
   String toString() {
-    return '$ident(${params.join(',')}) -> $returnTy';
+    final isVals = isVar ? ', ...' : '';
+    return '$ident(${params.join(',')}$isVals) -> $returnTy';
   }
 
   @override
@@ -582,7 +584,7 @@ class FnTy extends Fn {
     for (var e in extra) {
       cache.add(GenericParam(e.ident, PathTy.ty(e.ty, [PointerKind.ref])));
     }
-    final decl = FnDecl(rawDecl.ident, cache, rawDecl.returnTy);
+    final decl = FnDecl(rawDecl.ident, cache, rawDecl.returnTy, rawDecl.isVar);
     return FnTy(decl);
   }
 

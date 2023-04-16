@@ -55,9 +55,9 @@ mixin BuildMethods {
     return llvm.LLVMVectorType(type, count);
   }
 
-  LLVMTypeRef typeFn(List<LLVMTypeRef> params, LLVMTypeRef ret) {
-    final type =
-        llvm.LLVMFunctionType(ret, params.toNative(), params.length, LLVMFalse);
+  LLVMTypeRef typeFn(List<LLVMTypeRef> params, LLVMTypeRef ret, bool isVar) {
+    final type = llvm.LLVMFunctionType(
+        ret, params.toNative(), params.length, isVar.llvmBool);
     return type;
   }
 
@@ -192,12 +192,36 @@ mixin Consts on BuildMethods {
     return llvm.LLVMConstReal(f64, v);
   }
 
-  LLVMValueRef constStr(String str) {
+  final _globalString = <String, LLVMValueRef>{};
+
+  Consts? _root;
+  Consts get root {
+    if (_root != null) return _root!;
+    Consts? c = this;
+    while (c != null) {
+      final parent = c.parent as Consts?;
+      if (parent == null) {
+        break;
+      }
+      c = parent;
+    }
+    return _root = c ?? this;
+  }
+
+  LLVMValueRef getString(String v) {
+    return root._globalString.putIfAbsent(v, () {
+      final str = regSrc(v);
+      return llvm.LLVMBuildGlobalStringPtr(
+          builder, str.toChar(), 'str'.toChar());
+    });
+  }
+
+  static String regSrc(String str) {
     final buf = StringBuffer();
     var lastChar = '';
     final isSingle = str.characters.first == "'";
-    final src = str.substring(1, str.length - 1);
-    for (var char in src.characters) {
+    final slice = str.substring(1, str.length - 1);
+    for (var char in slice.characters) {
       // 两个反义符号
       if (lastChar == '\\') {
         if (isSingle && char == '"') {
@@ -216,9 +240,13 @@ mixin Consts on BuildMethods {
       lastChar = char;
       if (lastChar != '\\') buf.write(char);
     }
-    final regStr = buf.toString();
+    return buf.toString();
+  }
+
+  LLVMValueRef constStr(String str) {
+    final ss = regSrc(str);
     return llvm.LLVMConstStringInContext(
-        llvmContext, regStr.toChar(), regStr.length, LLVMFalse);
+        llvmContext, ss.toChar(), ss.length, LLVMFalse);
   }
 
   LLVMValueRef constArray(LLVMTypeRef ty, int size) {

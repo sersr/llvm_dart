@@ -6,9 +6,10 @@ target triple = "arm64-apple-macosx13.0.0"
 %struct.Gen = type { i32, i64 }
 
 @.str = private unnamed_addr constant [7 x i8] c"y: %d\0A\00", align 1
-@.str.1 = private unnamed_addr constant [7 x i8] c"x: %f\0A\00", align 1
-@__const.printfp.g = private unnamed_addr constant %struct.Gen { i32 10, i64 0 }, align 8
-@.str.2 = private unnamed_addr constant [9 x i8] c"str: %s\0A\00", align 1
+@.str.1 = private unnamed_addr constant [14 x i8] c"64: %ld x %f\0A\00", align 1
+@.str.2 = private unnamed_addr constant [7 x i8] c"x: %f\0A\00", align 1
+@__const.printfp.g = private unnamed_addr constant %struct.Gen { i32 10, i64 5555 }, align 8
+@.str.3 = private unnamed_addr constant [9 x i8] c"str: %s\0A\00", align 1
 
 ; Function Attrs: noinline nounwind optnone ssp uwtable
 define void @printxx(i32 %0) #0 {
@@ -22,13 +23,26 @@ define void @printxx(i32 %0) #0 {
 declare i32 @printf(i8*, ...) #1
 
 ; Function Attrs: noinline nounwind optnone ssp uwtable
+define void @print64(i64 %0) #0 {
+  %2 = alloca i64, align 8
+  %3 = alloca float, align 4
+  %4 = alloca i8*, align 8
+  store i64 %0, i64* %2, align 8
+  store float 3.000000e+00, float* %3, align 4
+  store i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.1, i64 0, i64 0), i8** %4, align 8
+  %5 = load i8*, i8** %4, align 8
+  %6 = call i32 (i8*, ...) @printf(i8* %5, i32 55, double 5.500000e+01)
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone ssp uwtable
 define void @printfp(float %0) #0 {
   %2 = alloca float, align 4
   %3 = alloca %struct.Gen, align 8
   store float %0, float* %2, align 4
   %4 = load float, float* %2, align 4
   %5 = fpext float %4 to double
-  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.1, i64 0, i64 0), double %5)
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), double %5)
   %7 = bitcast %struct.Gen* %3 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 8 %7, i8* align 8 bitcast (%struct.Gen* @__const.printfp.g to i8*), i64 16, i1 false)
   %8 = bitcast %struct.Gen* %3 to [2 x i64]*
@@ -47,7 +61,7 @@ define void @printstr(i8* %0) #0 {
   %2 = alloca i8*, align 8
   store i8* %0, i8** %2, align 8
   %3 = load i8*, i8** %2, align 8
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.2, i64 0, i64 0), i8* %3)
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.3, i64 0, i64 0), i8* %3)
   ret void
 }
 

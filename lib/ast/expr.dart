@@ -611,11 +611,21 @@ mixin FnCallMixin {
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
     for (var f in sortFields) {
-      final rf = fields[sortFields.indexOf(f)];
-      final v = f.analysis(context);
-      final vty = v?.ty;
-      if (vty is Fn) {
-        addChild(rf.ident, vty);
+      Ty? vty;
+      Identifier? ident;
+      final index = sortFields.indexOf(f);
+      if (index < fields.length) {
+        final rf = fields[index];
+        ident = rf.ident;
+        final v = f.analysis(context);
+        vty = v?.ty;
+      } else {
+        final fpv = f.analysis(context);
+        vty = fpv?.ty;
+        ident = fpv?.ident;
+      }
+      if (vty is Fn && ident != null) {
+        addChild(ident, vty);
       }
     }
   }
@@ -638,7 +648,10 @@ mixin FnCallMixin {
 
     for (var i = 0; i < sortFields.length; i++) {
       final p = sortFields[i];
-      final c = fnParams[i].ty.grt(context);
+      Ty? c;
+      if (i < fnParams.length) {
+        c = fnParams[i].ty.grt(context);
+      }
       final v = LiteralExpr.run(() {
         return p.build(context)?.variable;
       }, c);

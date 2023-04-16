@@ -223,7 +223,7 @@ class Modules {
 
   FnDecl parseFnDecl(TokenIterator it, Identifier ident) {
     final params = <GenericParam>[];
-
+    bool isVar = false;
     loop(it, () {
       final token = getToken(it);
       final kind = token.kind;
@@ -240,6 +240,16 @@ class Modules {
           }
         }
       } else {
+        if (getToken(it).kind.char == '.') {
+          isVar = true;
+          loop(it, () {
+            if (getToken(it).kind.char == '.') {
+              return false;
+            }
+            it.moveBack();
+            return true;
+          });
+        }
         if (kind == TokenKind.closeParen || kind == TokenKind.closeBrace) {
           return true;
         }
@@ -264,7 +274,7 @@ class Modules {
 
     retTy ??= PathTy.ty(BuiltInTy.kVoid);
 
-    return FnDecl(ident, params, retTy);
+    return FnDecl(ident, params, retTy, isVar);
   }
 
   Fn? parseFn(TokenIterator it) {

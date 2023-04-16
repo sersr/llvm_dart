@@ -1,13 +1,13 @@
 import 'package:llvm_dart/run.dart';
 import 'package:test/test.dart';
 
-void main() {
+void main() async {
   test('test', () {
     final src = '''
 extern fn printxx(y: i32);
 extern fn printfp(x: f32);
 extern fn print64(x: i64);
-
+extern fn printf(str: string, ...) i32;
 fn main() int {
   final yy = Some(15, 2);
   final xx = None();
@@ -16,7 +16,11 @@ fn main() int {
   let y = sizeOf(xx);
   printxx(y as i32);
   printxx(sizeOf(yy) as i32)
-
+  let hxx = 33;
+  printxx(sizeOf(hxx as i64) as i32)
+  let yc = "hello %d x %f world\n";
+  let pr = printf(yc,33, 664422.0);
+  printf("ret %d\n", pr);
   match yy {
     Other(y,x) => printxx(y),
     Some(y,x) => {
@@ -53,5 +57,18 @@ fn hello() {
 }
 ''';
     testRun(src, build: true);
+  });
+
+  test('test printf', () async {
+    final src = '''
+extern fn printf(str: string, ...) i32;
+
+fn main() i32 {
+  printf('hello world code %d \n', 55);
+  0;
+}
+''';
+    testRun(src);
+    await runCode();
   });
 }

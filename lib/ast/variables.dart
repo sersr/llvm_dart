@@ -155,19 +155,6 @@ class LLVMRefAllocaVariable extends StoreVariable implements Deref {
   }
 }
 
-class LLVMStructAllocaVariable extends LLVMAllocaVariable {
-  LLVMStructAllocaVariable(super.ty, super.alloca, super.type, this.loadTy,
-      {this.isCurrent = false});
-  final LLVMTypeRef loadTy;
-
-  final bool isCurrent;
-  @override
-  LLVMValueRef load(BuildContext c) {
-    if (isCurrent) return alloca;
-    return super.load(c);
-  }
-}
-
 class LLVMTempVariable extends Variable {
   LLVMTempVariable(this.value, this.ty);
   final LLVMValueRef value;
@@ -214,15 +201,15 @@ class LLVMLitVariable extends Variable {
 
   StoreVariable createAlloca(BuildContext c, [BuiltInTy? tty]) {
     // 需要分配内存地址
-    final rty = tty ?? ty;
+    // final rty = tty ?? ty;
     final rValue = load(c, ty: tty);
     final alloca = ty.llvmType.createAlloca(c, Identifier.builtIn('_ref'));
     alloca.store(c, rValue);
 
     // string 以指针形式存在，访问一次[load]会加载指针，以引用作为基本形式
-    if (rty.ty == LitKind.kString) {
-      return LLVMRefAllocaVariable.create(c, alloca)..store(c, alloca.alloca);
-    }
+    // if (rty.ty == LitKind.kString) {
+    //   return LLVMRefAllocaVariable.create(c, alloca)..store(c, alloca.load(c));
+    // }
 
     return alloca;
   }
