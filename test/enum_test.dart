@@ -9,21 +9,19 @@ extern fn printfp(x: f32);
 
 fn main() int {
   final yy = Some(15, 2);
-  // final xx = None();
+  final xx = None();
   // final yxa = Hello();
   let other = Other(10, 11);
-  let y = sizeof(xx);
-  printxx(y);
-  printxx(sizeof(yy) as i32)
+  let y = sizeOf(xx);
+  printxx(y as i32);
+  printxx(sizeOf(yy) as i32)
 
   match yy {
-    Other(y,x) => {
-      printxx(y);
-    },
+    Other(y,x) => printxx(y),
     Some(y,x) => {
       printxx(y as i32);
       printfp(y);
-      printxx(x);
+      printxx(x as i32);
     }
   }
   0;

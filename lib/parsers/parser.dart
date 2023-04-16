@@ -432,22 +432,29 @@ class Modules {
         it.moveBack();
         final expr = parseExpr(it);
         eatLfIfNeed(it);
-        final state = it.cursor;
 
         if (it.moveNext()) {
           if (getToken(it).kind == TokenKind.eq) {
+            eatLfIfNeed(it);
             if (it.moveNext()) {
+              eatLfIfNeed(it);
               if (getToken(it).kind == TokenKind.gt) {
                 it.moveNext();
               }
             }
           }
         }
+
+        eatLfIfNeed(it);
         if (getToken(it).kind == TokenKind.openBrace) {
           final block = parseBlock(it);
           items.add(MatchItemExpr(expr, block));
         } else {
-          state.restore();
+          final stmt = parseStmt(it);
+          if (stmt != null) {
+            final block = Block([stmt], null);
+            items.add(MatchItemExpr(expr, block));
+          }
         }
       }
       return false;

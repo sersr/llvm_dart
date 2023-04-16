@@ -740,7 +740,7 @@ class FnCallExpr extends Expr with FnCallMixin {
       return StructExpr.buildTupeOrStruct(fn, context, Identifier.none, params);
     }
 
-    if (fn is SizeofFn) {
+    if (fn is SizeOfFn) {
       if (params.isEmpty) {
         return null;
       }
@@ -768,8 +768,8 @@ class FnCallExpr extends Expr with FnCallMixin {
   AnalysisVariable? analysis(AnalysisContext context) {
     final fn = expr.analysis(context);
     if (fn == null) return null;
-    if (fn.ty is SizeofFn) {
-      return context.createVal(BuiltInTy.int, Identifier.none);
+    if (fn.ty is SizeOfFn) {
+      return context.createVal(BuiltInTy.lit(LitKind.usize), Identifier.none);
     }
     final fnty = fn.ty;
     if (fnty is! Fn) return null;
@@ -1300,7 +1300,7 @@ class VariableIdentExpr extends Expr {
     }
     final fn = context.getFn(ident);
     if (fn != null) {
-      if (fn is SizeofFn) {
+      if (fn is SizeOfFn) {
         return ExprTempValue(null, fn);
       }
       final fnContext = context.getFnContext(ident);

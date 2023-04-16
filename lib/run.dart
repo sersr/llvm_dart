@@ -34,7 +34,7 @@ AnalysisContext testRun(String src, {bool mem2reg = false, bool build = true}) {
         final root = BuildContext.root();
         BuildContext.mem2reg = mem2reg;
         root.pushAllTy(m.globalTy);
-        root.pushFn(sizeOfFn.ident, sizeOfFn);
+        root.pushFn(SizeOfFn.ident, sizeOfFn);
         for (var es in root.enums.values) {
           for (var e in es) {
             e.build(root);
