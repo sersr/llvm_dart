@@ -86,10 +86,16 @@ mixin BuildMethods {
     return llvm.LLVMPointerSize(td);
   }
 
+  int typeSize(LLVMTypeRef type) {
+    final td = llvm.LLVMGetModuleDataLayout(module);
+    return llvm.LLVMABISizeOfType(td, type);
+  }
+
   LLVMTypeRef getStructExternType(int count) {
     LLVMTypeRef loadTy;
-    if (count > 8) {
-      final d = count / 8;
+    final size = pointerSize();
+    if (count > size) {
+      final d = count / size;
       count = d.ceil();
       loadTy = arrayType(i64, count);
     } else {
@@ -215,5 +221,38 @@ mixin Consts on BuildMethods {
     final alloca =
         llvm.LLVMBuildArrayAlloca(builder, ty, constI64(size, false), unname);
     return alloca;
+  }
+}
+
+mixin Cast on BuildMethods {
+  LLVMValueRef castLit(LitKind src, LLVMValueRef value, LitKind dest) {
+    final ty = BuiltInTy.from(dest.lit)!;
+    final llty = ty.llvmType.litType(this);
+    if (src.isInt != dest.isInt) {
+      final op = getCastOp(src, dest)!;
+      return llvm.LLVMBuildCast(builder, op, value, llty, unname);
+    }
+    if (dest.isInt) {
+      return llvm.LLVMBuildIntCast2(
+          builder, value, llty, dest.signed ? LLVMTrue : LLVMFalse, unname);
+    }
+
+    return llvm.LLVMBuildFPCast(builder, value, llty, unname);
+  }
+
+  static int? getCastOp(LitKind src, LitKind dest) {
+    if (src.isInt && dest.isFp) {
+      if (src.signed) {
+        return LLVMOpcode.LLVMSIToFP;
+      } else {
+        return LLVMOpcode.LLVMUIToFP;
+      }
+    } else if (src.isFp && dest.isInt) {
+      if (dest.signed) {
+        return LLVMOpcode.LLVMFPToSI;
+      }
+      return LLVMOpcode.LLVMFPToUI;
+    }
+    return null;
   }
 }

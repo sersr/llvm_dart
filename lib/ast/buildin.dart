@@ -34,9 +34,14 @@ class SizeOfType extends LLVMFnType {
   @override
   LLVMConstVariable createFunction(BuildContext c,
       [Set<AnalysisVariable>? variables, Ty? ty]) {
+    if (ty is EnumItem) {
+      ty = ty.parent;
+    }
     final tyy = ty!.llvmType.createType(c);
     final size = llvm.LLVMSizeOf(tyy);
-    return LLVMConstVariable(size, ty);
+
+    final t = BuiltInTy.lit(c.pointerSize() == 8 ? LitKind.i64 : LitKind.i32);
+    return LLVMConstVariable(size, t);
   }
 }
 

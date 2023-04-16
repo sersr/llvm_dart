@@ -5,12 +5,42 @@ import 'context.dart';
 import 'memory.dart';
 import 'tys.dart';
 
+class EnumItemVariable extends Variable {
+  EnumItemVariable(this.ty);
+  @override
+  final EnumItem ty;
+  @override
+  LLVMTypeRef getDerefType(BuildContext c) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Variable getRef(BuildContext c) {
+    throw UnimplementedError();
+  }
+
+  @override
+  LLVMValueRef load(BuildContext c) {
+    throw UnimplementedError();
+  }
+
+  @override
+  LLVMValueRef getBaseValue(BuildContext c) {
+    throw UnimplementedError();
+  }
+}
+
 class LLVMConstVariable extends Variable {
   LLVMConstVariable(this.value, this.ty);
   @override
   final Ty ty;
 
   final LLVMValueRef value;
+
+  @override
+  LLVMValueRef getBaseValue(BuildContext c) {
+    return value;
+  }
 
   @override
   LLVMValueRef load(BuildContext c) {
@@ -129,6 +159,7 @@ class LLVMStructAllocaVariable extends LLVMAllocaVariable {
   LLVMStructAllocaVariable(super.ty, super.alloca, super.type, this.loadTy,
       {this.isCurrent = false});
   final LLVMTypeRef loadTy;
+  bool extern = false;
 
   final bool isCurrent;
   @override
@@ -136,17 +167,6 @@ class LLVMStructAllocaVariable extends LLVMAllocaVariable {
     if (isCurrent) return alloca;
     return super.load(c);
   }
-
-  // LLVMValueRef load2(BuildContext c, bool extern) {
-  //   // if (extern) {
-  //   //   final arr = c.createAlloca(loadTy, name: 'struct_arr');
-  //   //   llvm.LLVMBuildMemCpy(
-  //   //       c.builder, arr, 4, alloca, 4, c.constI64(ty.llvmType.getBytes(c)));
-  //   //   final v = llvm.LLVMBuildLoad2(c.builder, loadTy, arr, unname);
-  //   //   return v;
-  //   // }
-  //   return load(c);
-  // }
 }
 
 class LLVMTempVariable extends Variable {
@@ -169,6 +189,11 @@ class LLVMTempVariable extends Variable {
   @override
   Variable getRef(BuildContext c) {
     return LLVMRefAllocaVariable.create(c, this)..store(c, value);
+  }
+
+  @override
+  LLVMValueRef getBaseValue(BuildContext c) {
+    return value;
   }
 }
 
@@ -231,5 +256,10 @@ class LLVMTempOpVariable extends Variable {
   @override
   Variable getRef(BuildContext c) {
     return LLVMRefAllocaVariable.create(c, this)..store(c, value);
+  }
+
+  @override
+  LLVMValueRef getBaseValue(BuildContext c) {
+    return value;
   }
 }

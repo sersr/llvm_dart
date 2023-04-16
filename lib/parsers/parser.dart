@@ -403,9 +403,56 @@ class Modules {
     stmt ??= parseIfExpr(it);
     stmt ??= parseLoopExpr(it);
     stmt ??= parseWhileExpr(it);
+    stmt ??= parseMatchExpr(it);
     stmt ??= parseStmtBase(it);
 
     return stmt;
+  }
+
+  Stmt? parseMatchExpr(TokenIterator it) {
+    final isMatch = getKey(it) == Key.kMatch;
+    if (!isMatch) return null;
+    final expr = parseExpr(it);
+    checkBlock(it);
+    if (getToken(it).kind == TokenKind.openBrace) {
+      final items = parseMatchItem(it);
+      return ExprStmt(MatchExpr(expr, items));
+    }
+    return null;
+  }
+
+  List<MatchItemExpr> parseMatchItem(TokenIterator it) {
+    assert(it.current.token.kind == TokenKind.openBrace, getToken(it).kind.str);
+    if (!it.moveNext()) return [];
+    it = it.current.child.tokenIt;
+    final items = <MatchItemExpr>[];
+    loop(it, () {
+      final t = getToken(it);
+      if (t.kind == TokenKind.ident) {
+        it.moveBack();
+        final expr = parseExpr(it);
+        eatLfIfNeed(it);
+        final state = it.cursor;
+
+        if (it.moveNext()) {
+          if (getToken(it).kind == TokenKind.eq) {
+            if (it.moveNext()) {
+              if (getToken(it).kind == TokenKind.gt) {
+                it.moveNext();
+              }
+            }
+          }
+        }
+        if (getToken(it).kind == TokenKind.openBrace) {
+          final block = parseBlock(it);
+          items.add(MatchItemExpr(expr, block));
+        } else {
+          state.restore();
+        }
+      }
+      return false;
+    });
+    return items;
   }
 
   Stmt? parseStaticExpr(TokenIterator it) {
@@ -759,6 +806,7 @@ class Modules {
       }
       if (lhs != null) {
         eatLfIfNeed(it);
+
         Expr lhsss = lhs;
         loop(it, () {
           final t = getToken(it);
@@ -773,6 +821,21 @@ class Modules {
           return true;
         });
         lhs = lhsss;
+
+        final state = it.cursor;
+        if (it.moveNext()) {
+          if (getKey(it) == Key.kAs) {
+            final asExpr = parsePathTy(it);
+            if (asExpr != null) {
+              lhs = AsExpr(lhs, asExpr);
+            }
+          }
+        }
+
+        if (lhs is! AsExpr) {
+          state.restore();
+        }
+
         lhs = RefExpr(lhs, pointerKind);
         eatLfIfNeed(it);
         // 遇到`)`结束本次表达式解析
@@ -957,7 +1020,7 @@ class Modules {
   /// { }: 由于这个token会回解析到`child`中
   /// 和[parseCallExpr]有点区别
   StructExpr parseStructExpr(TokenIterator it, Identifier ident) {
-    final fields = <StructExprField>[];
+    final fields = <FieldExpr>[];
     it.moveNext(); // `}`
     it = it.current.child.tokenIt;
 
@@ -973,7 +1036,7 @@ class Modules {
       void parseCommon() {
         it.moveBack();
         final expr = parseExpr(it);
-        final f = StructExprField(null, expr);
+        final f = FieldExpr(expr, null);
         fields.add(f);
       }
 
@@ -985,7 +1048,7 @@ class Modules {
           final t = getToken(it); // :
           if (t.kind == TokenKind.colon) {
             final expr = parseExpr(it);
-            final f = StructExprField(ident, expr);
+            final f = FieldExpr(expr, ident);
             fields.add(f);
           } else {
             state.restore();
@@ -1101,7 +1164,7 @@ class Modules {
     eatLfIfNeed(it);
 
     it.moveNext(); // (
-    if (getToken(it).kind != TokenKind.openParen) return EnumItem(ident, null);
+    if (getToken(it).kind != TokenKind.openParen) return EnumItem(ident, []);
 
     final fields = <FieldDef>[];
 
@@ -1109,10 +1172,14 @@ class Modules {
       final t = getToken(it);
       if (t.kind == TokenKind.lf) return false;
       if (t.kind == TokenKind.closeParen) return true;
+      final state = it.cursor;
+      it.moveBack();
       final ty = parsePathTy(it);
       if (ty != null) {
         final f = FieldDef(Identifier.none, ty);
         fields.add(f);
+      } else {
+        state.restore();
       }
 
       return false;
@@ -1170,6 +1237,8 @@ enum Key {
   kLoop('loop'),
   kBreak('break'),
   kContinue('continue'),
+  kMatch('match'),
+  kAs('as'),
   ;
 
   bool get isBool {

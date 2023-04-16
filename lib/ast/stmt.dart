@@ -231,11 +231,15 @@ class EnumStmt extends Stmt {
   final EnumTy ty;
 
   @override
-  void build(BuildContext context) {}
+  void build(BuildContext context) {
+    ty.build(context);
+  }
 
   @override
   List<Object?> get props => [ty];
 
   @override
-  void analysis(AnalysisContext context) {}
+  void analysis(AnalysisContext context) {
+    ty.analysis(context);
+  }
 }

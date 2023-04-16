@@ -13,6 +13,7 @@ abstract class Variable with IdentVariable {
   LLVMTypeRef getDerefType(BuildContext c);
   Variable getRef(BuildContext c);
 
+  LLVMValueRef getBaseValue(BuildContext c) => load(c);
   Ty get ty;
 }
 
@@ -21,6 +22,11 @@ abstract class StoreVariable extends Variable {
   bool isTemp = true;
   LLVMValueRef get alloca;
   void store(BuildContext c, LLVMValueRef val);
+
+  @override
+  LLVMValueRef getBaseValue(BuildContext c) {
+    return alloca;
+  }
 }
 
 mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {

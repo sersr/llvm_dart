@@ -43,7 +43,7 @@ class LLVMBasicBlock {
 }
 
 class BuildContext
-    with BuildMethods, Tys<BuildContext, Variable>, Consts, OverflowMath {
+    with BuildMethods, Tys<BuildContext, Variable>, Consts, OverflowMath, Cast {
   BuildContext._(BuildContext this.parent) {
     kModule = parent!.kModule;
     _init();
@@ -105,6 +105,9 @@ class BuildContext
     }
     return parent?.getFnContext(ident);
   }
+
+  @override
+  BuildContext? getLastFnContext() => super.getLastFnContext() as BuildContext?;
 
   BuildContext createChildContext() {
     final child = BuildContext._(this);
@@ -176,7 +179,7 @@ class BuildContext
         realTy = p.ty.kind.resolveTy(realTy);
       }
 
-      _resolveParam(realTy, fnParam, p.ident, fnty.extern);
+      resolveParam(realTy, fnParam, p.ident, fnty.extern);
     }
 
     var index = params.length - 1 + self;
@@ -209,7 +212,7 @@ class BuildContext
     }
   }
 
-  void _resolveParam(
+  void resolveParam(
       Ty ty, LLVMValueRef fnParam, Identifier ident, bool extern) {
     Variable alloca;
     if (ty is StructTy) {

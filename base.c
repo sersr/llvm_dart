@@ -66,6 +66,10 @@ void printxx(int y)
   printf("y: %d\n", y);
 }
 
+void printfp(float x) {
+  printf("x: %f\n", x);
+}
+
 void printstr(char *str)
 {
   printf("str: %s\n", str);

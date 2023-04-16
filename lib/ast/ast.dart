@@ -677,7 +677,7 @@ class ImplFn extends Fn {
   final StructTy ty;
 }
 
-class FieldDef with EquatableMixin {
+class FieldDef {
   FieldDef(this.ident, this.ty);
   final Identifier ident;
   final PathTy ty;
@@ -689,9 +689,6 @@ class FieldDef with EquatableMixin {
 
   bool? _isRef;
   bool get isRef => _isRef ??= kinds.isRef;
-
-  @override
-  List<Object?> get props => [ident, ty];
 }
 
 class StructTy extends Ty with EquatableMixin {
@@ -726,7 +723,11 @@ class UnionTy extends StructTy {
 }
 
 class EnumTy extends Ty {
-  EnumTy(this.ident, this.variants);
+  EnumTy(this.ident, this.variants) {
+    for (var v in variants) {
+      v.parent = this;
+    }
+  }
   final Identifier ident;
   final List<EnumItem> variants;
 
@@ -741,32 +742,43 @@ class EnumTy extends Ty {
   @override
   void build(BuildContext context) {
     context.pushEnum(ident, this);
+    for (var v in variants) {
+      v.build(context);
+    }
   }
 
   @override
-  LLVMType get llvmType => throw UnimplementedError();
+  late LLVMEnumType llvmType = LLVMEnumType(this);
 
   @override
   void analysis(AnalysisContext context) {
     context.pushEnum(ident, this);
+    for (var v in variants) {
+      v.analysis(context);
+    }
   }
 }
 
 /// 与 `struct` 类似
-class EnumItem with EquatableMixin {
-  EnumItem(this.ident, this.fields);
-  final Identifier ident;
-  final List<FieldDef>? fields;
-
+class EnumItem extends StructTy {
+  EnumItem(super.ident, super.fields);
+  late EnumTy parent;
   @override
   String toString() {
-    final f = fields?.map((e) => e.ident).join(',');
-    final fy = f == null ? '' : '($f)';
+    final f = fields.map((e) => e.ty).join(',');
+    final fy = f.isEmpty ? '' : '($f)';
     return '$ident$fy';
   }
 
   @override
-  List<Object?> get props => [ident, fields];
+  void build(BuildContext context) {
+    super.build(context);
+    context.pushVariable(ident, EnumItemVariable(this));
+  }
+
+  @override
+  // ignore: overridden_fields
+  late final LLVMEnumItemType llvmType = LLVMEnumItemType(this);
 }
 
 class ComponentTy extends Ty {

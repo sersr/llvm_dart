@@ -316,7 +316,7 @@ class RetExpr extends Expr {
 class StructExpr extends Expr {
   StructExpr(this.ident, this.fields);
   final Identifier ident;
-  final List<StructExprField> fields;
+  final List<FieldExpr> fields;
   @override
   Expr clone() {
     return StructExpr(ident, fields.map((e) => e.clone()).toList());
@@ -331,19 +331,37 @@ class StructExpr extends Expr {
   ExprTempValue? buildExpr(BuildContext context) {
     final struct = context.getStruct(ident);
     if (struct == null) return null;
-    final structType = struct.llvmType.createType(context);
-    final value = struct.llvmType.createValue(context);
-    final sortFields = alignParam(
-        fields, (p) => struct.fields.indexWhere((e) => e.ident == p.ident));
+
+    return buildTupeOrStruct(struct, context, ident, fields);
+  }
+
+  static ExprTempValue? buildTupeOrStruct(StructTy struct, BuildContext context,
+      Identifier ident, List<FieldExpr> params) {
+    final extern = context.getLastFnContext()?.fn.ty.extern == true;
+    final structType = struct.llvmType.createType(context, extern: extern);
+    final value = struct.llvmType.createAlloca(context, ident);
+    final m = struct.llvmType.getFieldsSize(context).map;
+
+    var fields = struct.fields;
+
+    bool isEnum = struct is EnumItem;
+
+    final sortFields =
+        alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
     for (var i = 0; i < sortFields.length; i++) {
       final f = sortFields[i];
-
-      final v = f.build(context)?.variable;
+      var index = i;
+      final fd = fields[i];
+      if (isEnum) {
+        index = m[fd]!.index;
+      }
+      final v =
+          LiteralExpr.run(() => f.build(context)?.variable, fd.ty.grt(context));
       if (v == null) continue;
       final indics = <LLVMValueRef>[];
       indics.add(context.constI32(0));
-      indics.add(context.constI32(i));
+      indics.add(context.constI32(index));
       final c = llvm.LLVMBuildInBoundsGEP2(context.builder, structType,
           value.alloca, indics.toNative(), indics.length, unname);
 
@@ -371,23 +389,23 @@ class StructExpr extends Expr {
   }
 }
 
-class StructExprField {
-  StructExprField(this.ident, this.expr);
-  final Identifier? ident;
-  final Expr expr;
-  StructExprField clone() {
-    return StructExprField(ident, expr.clone());
-  }
+// class StructExprField {
+//   StructExprField(this.ident, this.expr);
+//   final Identifier? ident;
+//   final Expr expr;
+//   StructExprField clone() {
+//     return StructExprField(ident, expr.clone());
+//   }
 
-  @override
-  String toString() {
-    return '$ident: $expr';
-  }
+//   @override
+//   String toString() {
+//     return '$ident: $expr';
+//   }
 
-  ExprTempValue? build(BuildContext context) {
-    return expr.build(context);
-  }
-}
+//   ExprTempValue? build(BuildContext context) {
+//     return expr.build(context);
+//   }
+// }
 
 class AssignExpr extends Expr {
   AssignExpr(this.ref, this.expr);
@@ -717,8 +735,10 @@ class FnCallExpr extends Expr with FnCallMixin {
   ExprTempValue? buildExpr(BuildContext context) {
     final fnV = expr.build(context);
     final variable = fnV?.variable;
-    final fn = variable?.ty;
-    if (variable == null || fn is! Fn) return null;
+    final fn = variable?.ty ?? fnV?.ty;
+    if (fn is EnumItem) {
+      return StructExpr.buildTupeOrStruct(fn, context, Identifier.none, params);
+    }
 
     if (fn is SizeofFn) {
       if (params.isEmpty) {
@@ -739,6 +759,7 @@ class FnCallExpr extends Expr with FnCallMixin {
       final v = fn.llvmType.createFunction(context, null, ty);
       return ExprTempValue(v, BuiltInTy.int);
     }
+    if (fn is! Fn) return null;
 
     return fnCall(context, fn, params, variable, null);
   }
@@ -1279,6 +1300,9 @@ class VariableIdentExpr extends Expr {
     }
     final fn = context.getFn(ident);
     if (fn != null) {
+      if (fn is SizeofFn) {
+        return ExprTempValue(null, fn);
+      }
       final fnContext = context.getFnContext(ident);
       final value = fn.build(fnContext!);
       if (value != null) {
@@ -1387,5 +1411,187 @@ class BlockExpr extends Expr {
   @override
   String toString() {
     return '$block'.replaceFirst(' ', '');
+  }
+}
+
+class MatchItemExpr with BuildMixin {
+  MatchItemExpr(this.expr, this.block);
+  final Expr expr;
+  final Block block;
+  @override
+  void incLevel([int count = 1]) {
+    super.incLevel(count);
+    block.incLevel(count);
+  }
+
+  @override
+  void build(BuildContext context) {}
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final child = context.childContext();
+    final e = expr;
+    if (e is FnCallExpr) {
+      final enumVariable = e.expr.analysis(child);
+      final params = e.params;
+      final enumTy = enumVariable?.ty;
+      if (enumTy is EnumItem) {
+        for (var i = 0; i < params.length; i++) {
+          final p = params[i];
+          if (i >= enumTy.fields.length) {
+            break;
+          }
+          final f = enumTy.fields[i];
+          final ident = p.ident ?? Identifier.none;
+          child.pushVariable(ident, child.createVal(f.ty.grt(child), ident));
+        }
+      }
+    } else {
+      expr.analysis(child);
+    }
+    block.analysis(child);
+    return null;
+  }
+
+  int? build2(BuildContext context, ExprTempValue pattern) {
+    final child = context;
+    var e = expr;
+    int? value;
+    if (e is RefExpr) {
+      e = e.current;
+    }
+    if (e is FnCallExpr) {
+      final enumVariable = e.expr.build(child);
+      final params = e.params;
+      final enumTy = enumVariable?.ty;
+      final val = pattern.variable;
+      if (val != null) {
+        if (enumTy is EnumItem) {
+          value = enumTy.llvmType.load(child, val, params);
+        }
+      }
+    } else {
+      expr.build(child)?.variable;
+    }
+    block.build(child);
+    return value;
+  }
+
+  MatchItemExpr clone() {
+    return MatchItemExpr(expr.clone(), block.clone());
+  }
+
+  @override
+  String toString() {
+    return '$pad$expr =>$block';
+  }
+}
+
+class MatchExpr extends Expr {
+  MatchExpr(this.expr, this.items) {
+    for (var item in items) {
+      item.incLevel();
+    }
+  }
+
+  final Expr expr;
+  final List<MatchItemExpr> items;
+
+  @override
+  void incLevel([int count = 1]) {
+    super.incLevel(count);
+    for (var item in items) {
+      item.incLevel(count);
+    }
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    expr.analysis(context);
+    for (var item in items) {
+      item.analysis(context);
+    }
+    return null;
+  }
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context) {
+    final variable = expr.build(context);
+    if (variable == null) return null;
+    final ty = variable.ty;
+    if (ty is! EnumItem) return null;
+
+    final parent = variable.variable;
+    if (parent == null) return null;
+
+    var indexValue = ty.llvmType.loadIndex(context, parent);
+    // indexValue = llvm.LLVMBuildIntCast2(
+    // context.builder, indexValue, context.i64, LLVMFalse, unname);
+    final elseBb = context.buildSubBB(name: 'match_else');
+    final ss = llvm.LLVMBuildSwitch(
+        context.builder, indexValue, elseBb.bb, items.length);
+    var index = 0;
+    final llPty = ty.parent.llvmType;
+    for (var item in items) {
+      final childBb = context.buildSubBB(name: 'bb_$index');
+      context.appendBB(childBb);
+      final v = item.build2(childBb.context, variable);
+      if (v != null) {
+        llvm.LLVMAddCase(ss, llPty.getIndexValue(context, v), childBb.bb);
+      }
+      childBb.context.br(elseBb.context);
+      index += 1;
+    }
+    context.insertPointBB(elseBb);
+    return null;
+  }
+
+  @override
+  Expr clone() {
+    return MatchExpr(expr.clone(), items.map((e) => e.clone()).toList());
+  }
+
+  @override
+  String toString() {
+    return 'match $expr {\n${items.join(',\n')}\n$pad}';
+  }
+}
+
+class AsExpr extends Expr {
+  AsExpr(this.lhs, this.rhs);
+  final Expr lhs;
+  final PathTy rhs;
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final r = rhs.grt(context);
+    final l = lhs.analysis(context);
+
+    if (l == null) return l;
+    return context.createVal(r, l.ident);
+  }
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context) {
+    final r = rhs.grt(context);
+    final l = lhs.build(context);
+    final lv = l?.variable;
+    final lty = l?.ty;
+    if (lv == null) return l;
+    if (r is BuiltInTy && lty is BuiltInTy) {
+      final val = context.castLit(lty.ty, lv.load(context), r.ty);
+      return ExprTempValue(LLVMTempVariable(val, r), r);
+    }
+    return l;
+  }
+
+  @override
+  Expr clone() {
+    return AsExpr(lhs.clone(), rhs);
+  }
+
+  @override
+  String toString() {
+    return '$lhs as $rhs';
   }
 }
