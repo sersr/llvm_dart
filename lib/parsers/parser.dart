@@ -1224,12 +1224,6 @@ class Modules {
       return k == TokenKind.semi || k == TokenKind.lf;
     });
   }
-
-  void loop(Iterator<TokenTree> it, bool Function() action) {
-    while (it.moveNext()) {
-      if (action()) return;
-    }
-  }
 }
 
 enum Key {

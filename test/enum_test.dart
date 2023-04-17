@@ -60,11 +60,14 @@ fn hello() {
   });
 
   test('test printf', () async {
-    final src = '''
+    final src = r'''
 extern fn printf(str: string, ...) i32;
 
 fn main() i32 {
-  printf('hello world code %d \n', 55);
+  let str  = "hello world \\\\ code \
+  line
+  line\n";
+  printf(str);
   0;
 }
 ''';

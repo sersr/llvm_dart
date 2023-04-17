@@ -1,6 +1,7 @@
 import 'package:characters/characters.dart';
 import 'package:llvm_dart/ast/ast.dart';
 import 'package:llvm_dart/ast/memory.dart';
+import 'package:llvm_dart/parsers/token_it.dart';
 
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
@@ -209,7 +210,8 @@ mixin Consts on BuildMethods {
   }
 
   LLVMValueRef getString(String v) {
-    return root._globalString.putIfAbsent(v, () {
+    final ss = v.substring(1, v.length - 1);
+    return root._globalString.putIfAbsent(ss, () {
       final str = regSrc(v);
       return llvm.LLVMBuildGlobalStringPtr(
           builder, str.toChar(), 'str'.toChar());
@@ -221,7 +223,22 @@ mixin Consts on BuildMethods {
     var lastChar = '';
     final isSingle = str.characters.first == "'";
     final slice = str.substring(1, str.length - 1);
-    for (var char in slice.characters) {
+    final it = slice.characters.toList().tokenIt;
+    bool? eatLn;
+
+    void eatLine() {
+      loop(it, () {
+        final char = it.current;
+        if (char == ' ') {
+          return false;
+        }
+        it.moveBack();
+        return true;
+      });
+    }
+
+    loop(it, () {
+      final char = it.current;
       // 两个反义符号
       if (lastChar == '\\') {
         if (isSingle && char == '"') {
@@ -230,16 +247,34 @@ mixin Consts on BuildMethods {
           buf.write("\\'");
         } else if (char == 'n') {
           buf.write('\n');
-        } else {
-          // \
+        } else if (char == '\n') {
+          if (eatLn != false) {
+            eatLn = true;
+            eatLine();
+          }
+        } else if (char == '\\') {
           buf.write('\\');
         }
         lastChar = '';
-        continue;
+        return false;
       }
-      lastChar = char;
-      if (lastChar != '\\') buf.write(char);
-    }
+
+      if (eatLn == null) {
+        if (char == '\n') {
+          eatLn = false;
+        }
+      }
+
+      if (eatLn == true && char == '\n') {
+        eatLine();
+        lastChar = '';
+      } else {
+        lastChar = char;
+        if (lastChar != '\\') buf.write(char);
+      }
+
+      return false;
+    });
     return buf.toString();
   }
 

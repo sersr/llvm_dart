@@ -27,7 +27,11 @@ class LiteralExpr extends Expr {
 
   @override
   String toString() {
-    return '$ident[:$ty]';
+    final isStr = ty.ty == LitKind.kString;
+    var v = isStr
+        ? ident.src.replaceAll('\\\\', '\\').replaceAll('\n', '\\n')
+        : ident.src;
+    return '$v[:$ty]';
   }
 
   static T run<T>(T Function() body, Ty? ty) {

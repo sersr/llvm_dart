@@ -48,3 +48,9 @@ class BackIterator<T> extends Iterator<T> {
     return true;
   }
 }
+
+void loop<T>(Iterator<T> it, bool Function() action) {
+  while (it.moveNext()) {
+    if (action()) return;
+  }
+}
