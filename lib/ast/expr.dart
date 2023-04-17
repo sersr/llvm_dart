@@ -347,8 +347,6 @@ class StructExpr extends Expr {
 
     var fields = struct.fields;
 
-    bool isEnum = struct is EnumItem;
-
     final sortFields =
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
@@ -356,9 +354,8 @@ class StructExpr extends Expr {
       final f = sortFields[i];
       var index = i;
       final fd = fields[i];
-      if (isEnum) {
-        index = m[fd]!.index;
-      }
+      index = m[fd]!.index;
+
       final v =
           LiteralExpr.run(() => f.build(context)?.variable, fd.ty.grt(context));
       if (v == null) continue;
@@ -643,6 +640,7 @@ mixin FnCallMixin {
       Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>>? map) {
     final fnParams = fn.fnSign.fnDecl.params;
+    final fnExtern = fn.extern;
     final args = <LLVMValueRef>[];
     if (struct != null) {
       args.add(struct);
@@ -661,8 +659,12 @@ mixin FnCallMixin {
       }, c);
       if (v != null) {
         LLVMValueRef value;
-        if (v is LLVMRefAllocaVariable) {
-          value = v.load(context);
+        final vty = v.ty;
+        if (vty is StructTy) {
+          value = vty.llvmType.load2(context, v, fnExtern);
+          // }
+          // if (v is LLVMRefAllocaVariable) {
+          //   value = v.load(context);
         } else {
           value = v.load(context);
         }
@@ -930,7 +932,7 @@ class StructDotFieldExpr extends Expr {
       newVal = newVal.getDeref(context);
     }
 
-    final v = ty.llvmType.getField(newVal as StoreVariable, context, ident);
+    final v = ty.llvmType.getField(newVal!, context, ident);
     if (v == null) return null;
     return ExprTempValue(v, v.ty);
   }

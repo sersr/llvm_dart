@@ -3,13 +3,14 @@ source_filename = "./base.c"
 target datalayout = "e-m:o-i64:64-i128:128-n32:64-S128"
 target triple = "arm64-apple-macosx13.0.0"
 
-%struct.Gen = type { i32, i64 }
+%struct.Gen = type { i32 }
 
 @.str = private unnamed_addr constant [7 x i8] c"y: %d\0A\00", align 1
 @.str.1 = private unnamed_addr constant [14 x i8] c"64: %ld x %f\0A\00", align 1
 @.str.2 = private unnamed_addr constant [7 x i8] c"x: %f\0A\00", align 1
-@__const.printfp.g = private unnamed_addr constant %struct.Gen { i32 10, i64 5555 }, align 8
 @.str.3 = private unnamed_addr constant [9 x i8] c"str: %s\0A\00", align 1
+@.str.4 = private unnamed_addr constant [10 x i8] c"c: y: %d\0A\00", align 1
+@__const.printG.ha = private unnamed_addr constant %struct.Gen { i32 22 }, align 4
 
 ; Function Attrs: noinline nounwind optnone ssp uwtable
 define void @printxx(i32 %0) #0 {
@@ -38,23 +39,12 @@ define void @print64(i64 %0) #0 {
 ; Function Attrs: noinline nounwind optnone ssp uwtable
 define void @printfp(float %0) #0 {
   %2 = alloca float, align 4
-  %3 = alloca %struct.Gen, align 8
   store float %0, float* %2, align 4
-  %4 = load float, float* %2, align 4
-  %5 = fpext float %4 to double
-  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), double %5)
-  %7 = bitcast %struct.Gen* %3 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 8 %7, i8* align 8 bitcast (%struct.Gen* @__const.printfp.g to i8*), i64 16, i1 false)
-  %8 = bitcast %struct.Gen* %3 to [2 x i64]*
-  %9 = load [2 x i64], [2 x i64]* %8, align 8
-  call void @gn([2 x i64] %9)
+  %3 = load float, float* %2, align 4
+  %4 = fpext float %3 to double
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), double %4)
   ret void
 }
-
-; Function Attrs: argmemonly nofree nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #2
-
-declare void @gn([2 x i64]) #1
 
 ; Function Attrs: noinline nounwind optnone ssp uwtable
 define void @printstr(i8* %0) #0 {
@@ -64,6 +54,32 @@ define void @printstr(i8* %0) #0 {
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.3, i64 0, i64 0), i8* %3)
   ret void
 }
+
+; Function Attrs: noinline nounwind optnone ssp uwtable
+define void @printG(i64 %0) #0 {
+  %2 = alloca %struct.Gen, align 4
+  %3 = alloca %struct.Gen, align 4
+  %4 = getelementptr inbounds %struct.Gen, %struct.Gen* %2, i32 0, i32 0
+  %5 = trunc i64 %0 to i32
+  store i32 %5, i32* %4, align 4
+  %6 = getelementptr inbounds %struct.Gen, %struct.Gen* %2, i32 0, i32 0
+  store i32 333, i32* %6, align 4
+  %7 = getelementptr inbounds %struct.Gen, %struct.Gen* %2, i32 0, i32 0
+  %8 = load i32, i32* %7, align 4
+  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.4, i64 0, i64 0), i32 %8)
+  %10 = bitcast %struct.Gen* %3 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 4 %10, i8* align 4 bitcast (%struct.Gen* @__const.printG.ha to i8*), i64 4, i1 false)
+  %11 = getelementptr inbounds %struct.Gen, %struct.Gen* %3, i32 0, i32 0
+  %12 = load i32, i32* %11, align 4
+  %13 = zext i32 %12 to i64
+  call void @printC(i64 %13)
+  ret void
+}
+
+; Function Attrs: argmemonly nofree nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #2
+
+declare void @printC(i64) #1
 
 attributes #0 = { noinline nounwind optnone ssp uwtable "frame-pointer"="non-leaf" "min-legal-vector-width"="0" "no-trapping-math"="true" "probe-stack"="__chkstk_darwin" "stack-protector-buffer-size"="8" "target-cpu"="apple-m1" "target-features"="+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.5a,+zcm,+zcz" }
 attributes #1 = { "frame-pointer"="non-leaf" "no-trapping-math"="true" "probe-stack"="__chkstk_darwin" "stack-protector-buffer-size"="8" "target-cpu"="apple-m1" "target-features"="+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.5a,+zcm,+zcz" }

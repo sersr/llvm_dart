@@ -179,7 +179,7 @@ class BuildContext
         realTy = p.ty.kind.resolveTy(realTy);
       }
 
-      resolveParam(realTy, fnParam, p.ident);
+      resolveParam(realTy, fnParam, p.ident, fnty.extern);
     }
 
     var index = params.length - 1 + self;
@@ -212,10 +212,11 @@ class BuildContext
     }
   }
 
-  void resolveParam(Ty ty, LLVMValueRef fnParam, Identifier ident) {
+  void resolveParam(
+      Ty ty, LLVMValueRef fnParam, Identifier ident, bool extern) {
     Variable alloca;
     if (ty is StructTy) {
-      alloca = ty.llvmType.createAllocaFromParam(this, fnParam, ident)
+      alloca = ty.llvmType.createAllocaFromParam(this, fnParam, ident, extern)
         ..isTemp = false;
     } else {
       final tyValue = ty.llvmType.createAlloca(this, ident);

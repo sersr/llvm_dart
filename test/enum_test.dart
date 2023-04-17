@@ -64,11 +64,37 @@ fn hello() {
 extern fn printf(str: string, ...) i32;
 
 fn main() i32 {
-  let str  = "hello world \\\\ code \
-  line
-  line\n";
-  printf(str);
+  // let str  = "hello world \\\\ code\n";
+  // printf(str);
+  let yx = Some(555, Gen{y: 33,h: 5222, x: 5555});
+  let g = Gen{y: 122, x: 666, h: 4444};
+  printG(g)
+  match yx {
+    Some(y, g) => {
+      printf("y: %d, g.y: %d g.x: %d, \
+      g.h: %d\n", y, g.y, g.x, g.h);
+    },
+    None() => {
+      printf("none\n");
+    }
+  }
   0;
+}
+
+extern fn printC(g: Gen) {
+  printf("printC: g.y: %d, g.x: %d\
+  , g.h: %d\n", g.y, g.x, g.h);
+}
+extern fn printG(g: Gen);
+
+struct Gen {
+  y: i32,
+  x: i64,
+  h: i32,
+}
+enum Option {
+  Some(i32,Gen),
+  None(),
 }
 ''';
     testRun(src);

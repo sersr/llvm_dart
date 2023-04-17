@@ -71,7 +71,7 @@ Future<void> runCode() async {
   final p = currentDir.path;
 
   final process = await Process.start(
-      'sh', ['-c', 'cc $p/out.o -o main && ./main'],
+      'sh', ['-c', 'cc  $p/base.c $p/out.o -o main && ./main'],
       workingDirectory: p);
   stdout.addStream(process.stdout);
   stderr.addStream(process.stderr);

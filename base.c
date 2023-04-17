@@ -1,5 +1,5 @@
-#define STR
-#ifndef STR
+#define STRxxxxx
+#ifndef STRxxxxx
 
 #include <stdio.h>
 
@@ -61,34 +61,46 @@ void hhhx(Gen g)
 #else
 #include <stdio.h>
 
+
 typedef struct
 {
-  int32_t x;
-  int64_t y;
-
+  int32_t y;
+  int64_t x;
+  int32_t h;
 } Gen;
-
-extern void gn(Gen g);
 
 void printxx(int y)
 {
   printf("y: %d\n", y);
 }
-void print64(int64_t x) {
+void print64(int64_t x)
+{
   float aa = 3.0;
-  const char* cc = "64: %ld x %f\n";
+  const char *cc = "64: %ld x %f\n";
   printf(cc, 55, 55.0);
 }
+
+// extern Gen yy(int32_t y, Gen g);
 
 void printfp(float x)
 {
   printf("x: %f\n", x);
-  Gen g = {10, 5555};
-  gn(g);
 }
 
 void printstr(char *str)
 {
   printf("str: %s\n", str);
 }
+
+extern void printC(Gen g);
+
+void printG(Gen g)
+{
+  g.y = 333;
+  printf("c: y: %d, x: %lld, h: %d\n", g.y, g.x, g.h);
+  Gen ha = {22, 55, 7788};
+  // yy(22, ha);
+  printC(ha);
+}
+
 #endif
