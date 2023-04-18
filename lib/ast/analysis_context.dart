@@ -171,7 +171,20 @@ class AnalysisVariable with IdentVariable {
   AnalysisVariable copy({Ty? ty, Identifier? ident, List<PointerKind>? kind}) {
     return AnalysisVariable._(
         ty ?? this.ty, ident ?? this.ident, kind ?? this.kind.toList())
-      ..lifeCycle.from(lifeCycle);
+      ..lifeCycle.from(lifeCycle)
+      ..parent = this;
+  }
+
+  AnalysisVariable? parent;
+
+  List<AnalysisVariable> get allParent {
+    final l = <AnalysisVariable>[];
+    var p = parent;
+    while (p != null) {
+      l.add(p);
+      p = p.parent;
+    }
+    return l;
   }
 
   late final LifeCycle lifeCycle = LifeCycle();
@@ -197,7 +210,8 @@ class AnalysisStructVariable extends AnalysisVariable {
       List<PointerKind>? kind}) {
     return AnalysisStructVariable._(ty ?? this.ty, ident ?? this.ident,
         map ?? _params, kind ?? this.kind.toList())
-      ..lifeCycle.from(lifeCycle);
+      ..lifeCycle.from(lifeCycle)
+      ..parent = this;
   }
 
   final Map<Identifier, AnalysisVariable> _params;

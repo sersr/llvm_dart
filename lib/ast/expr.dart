@@ -307,6 +307,15 @@ class RetExpr extends Expr {
         }
       }
     }
+
+    if (val != null) {
+      final all = val.allParent;
+      all.insert(0, val);
+      for (var val in all) {
+        final ident = val.ident.toRawIdent;
+        current?.currentFn?.sretVariables.add(ident);
+      }
+    }
     return null;
   }
 
@@ -342,31 +351,43 @@ class StructExpr extends Expr {
   static ExprTempValue? buildTupeOrStruct(StructTy struct, BuildContext context,
       Identifier ident, List<FieldExpr> params) {
     final structType = struct.llvmType.createType(context);
-    final value = struct.llvmType.createAlloca(context, ident);
-    final m = struct.llvmType.getFieldsSize(context).map;
+    LLVMValueRef create([StoreVariable? alloca]) {
+      final value = alloca ?? struct.llvmType.createAlloca(context, ident);
+      // final m = struct.llvmType.getFieldsSize(context).map;
 
-    var fields = struct.fields;
+      var fields = struct.fields;
+      final min = struct.llvmType.getMaxSize(context);
+      final size = min > 4 ? 8 : 4;
+      final sortFields = alignParam(
+          params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
-    final sortFields =
-        alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
+      for (var i = 0; i < sortFields.length; i++) {
+        final f = sortFields[i];
+        // var index = i;
+        final fd = fields[i];
+        // index = m[fd]!.index;
 
-    for (var i = 0; i < sortFields.length; i++) {
-      final f = sortFields[i];
-      var index = i;
-      final fd = fields[i];
-      index = m[fd]!.index;
+        final v = LiteralExpr.run(
+            () => f.build(context)?.variable, fd.ty.grt(context));
+        if (v == null) continue;
+        final vv = struct.llvmType.getField(value, context, fd.ident)!;
+        final store = vv.store(context, v.load(context));
+        llvm.LLVMSetAlignment(store, size);
 
-      final v =
-          LiteralExpr.run(() => f.build(context)?.variable, fd.ty.grt(context));
-      if (v == null) continue;
-      final indics = <LLVMValueRef>[];
-      indics.add(context.constI32(0));
-      indics.add(context.constI32(index));
-      final c = llvm.LLVMBuildInBoundsGEP2(context.builder, structType,
-          value.alloca, indics.toNative(), indics.length, unname);
+        // final indics = <LLVMValueRef>[];
+        // indics.add(context.constI32(0));
+        // indics.add(context.constI32(index));
+        // final c = llvm.LLVMBuildInBoundsGEP2(context.builder, structType,
+        //     value.alloca, indics.toNative(), indics.length, unname);
 
-      llvm.LLVMBuildStore(context.builder, v.load(context), c);
+        // llvm.LLVMBuildStore(context.builder, v.load(context), c);
+      }
+      return value.alloca;
     }
+
+    final value = LLVMAllocaDelayVariable(struct, create, structType)
+      ..isTemp = false;
+
     return ExprTempValue(value, value.ty);
   }
 
@@ -642,6 +663,16 @@ mixin FnCallMixin {
     final fnParams = fn.fnSign.fnDecl.params;
     final fnExtern = fn.extern;
     final args = <LLVMValueRef>[];
+    final retTy = fn.fnSign.fnDecl.returnTy.grt(context);
+    final isSret = fn.llvmType.isSret(context);
+
+    StoreVariable? sret;
+    if (isSret) {
+      sret = retTy.llvmType.createAlloca(context, Identifier.builtIn('sret'));
+
+      args.add(sret.alloca);
+    }
+
     if (struct != null) {
       args.add(struct);
     }
@@ -714,9 +745,9 @@ mixin FnCallMixin {
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 
-    final rty = fn.fnSign.fnDecl.returnTy;
-    var retTy = rty.getRty(context);
-
+    if (sret != null) {
+      return ExprTempValue(sret, retTy);
+    }
     if (retTy is BuiltInTy) {
       if (retTy.ty == LitKind.kVoid) {
         return null;
@@ -921,17 +952,17 @@ class StructDotFieldExpr extends Expr {
   ExprTempValue? buildExpr(BuildContext context) {
     final structVal = struct.build(context);
     final val = structVal?.variable;
-    var ty = val?.ty.getRealTy(context);
-
-    if (ty is! StructTy) return null;
     var newVal = PointerKind.refDerefs(val, context, kind);
+
     while (true) {
-      if (newVal is! LLVMRefAllocaVariable) {
+      if (newVal is! Deref) {
         break;
       }
       newVal = newVal.getDeref(context);
     }
 
+    var ty = newVal?.ty.getRealTy(context);
+    if (ty is! StructTy) return null;
     final v = ty.llvmType.getField(newVal!, context, ident);
     if (v == null) return null;
     return ExprTempValue(v, v.ty);

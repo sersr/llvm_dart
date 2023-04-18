@@ -62,7 +62,7 @@ mixin BuildMethods {
     return type;
   }
 
-  LLVMTypeRef typeStruct(List<LLVMTypeRef> types, Identifier? ident) {
+  LLVMTypeRef typeStruct(List<LLVMTypeRef> types, String? ident) {
     if (ident == null) {
       return llvm.LLVMStructTypeInContext(
           llvmContext, types.toNative(), types.length, LLVMFalse);

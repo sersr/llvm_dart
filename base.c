@@ -80,7 +80,8 @@ void print64(int64_t x)
   printf(cc, 55, 55.0);
 }
 
-// extern Gen yy(int32_t y, Gen g);
+extern Gen yy(Gen * g);
+
 
 void printfp(float x)
 {
@@ -94,13 +95,24 @@ void printstr(char *str)
 
 extern void printC(Gen g);
 
-void printG(Gen g)
+void printG()
 {
-  g.y = 333;
-  printf("c: y: %d, x: %lld, h: %d\n", g.y, g.x, g.h);
+  // g.y = 333;
+  // printf("c: y: %d, x: %lld, h: %d\n", g.y, g.x, g.h);
   Gen ha = {22, 55, 7788};
-  // yy(22, ha);
+  Gen hxx = yy(&ha);
   printC(ha);
+  printC(hxx);
+  // printf("...cc : %d, %lld, %d\n", hxx.y, hxx.x, hxx.h);
+}
+
+Gen xxs(int y) {
+  if(y == 10) {
+    Gen xa = {1,2,3};
+    return xa;
+  }
+  Gen hh = {3,4,5};
+  return hh;
 }
 
 #endif

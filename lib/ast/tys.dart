@@ -21,7 +21,7 @@ abstract class StoreVariable extends Variable {
   /// 一般是未命名的，右表达式生成的
   bool isTemp = true;
   LLVMValueRef get alloca;
-  void store(BuildContext c, LLVMValueRef val);
+  LLVMValueRef store(BuildContext c, LLVMValueRef val);
 
   @override
   LLVMValueRef getBaseValue(BuildContext c) {

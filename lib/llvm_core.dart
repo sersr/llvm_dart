@@ -11853,22 +11853,22 @@ class LLVMCore {
   late final _getM =
       _getMPtr.asFunction<ffi.Pointer<ffi.Int> Function(KModuleRef)>();
 
-  void insertBBFunction(
-    LLVMBuilderRef ref,
-    LLVMBasicBlockRef bb,
+  LLVMAttributeRef LLVMCreateStructRetAttr(
+    LLVMContextRef C,
+    LLVMTypeRef Ty,
   ) {
-    return _insertBBFunction(
-      ref,
-      bb,
+    return _LLVMCreateStructRetAttr(
+      C,
+      Ty,
     );
   }
 
-  late final _insertBBFunctionPtr = _lookup<
+  late final _LLVMCreateStructRetAttrPtr = _lookup<
       ffi.NativeFunction<
-          ffi.Void Function(
-              LLVMBuilderRef, LLVMBasicBlockRef)>>('insertBBFunction');
-  late final _insertBBFunction = _insertBBFunctionPtr
-      .asFunction<void Function(LLVMBuilderRef, LLVMBasicBlockRef)>();
+          LLVMAttributeRef Function(
+              LLVMContextRef, LLVMTypeRef)>>('LLVMCreateStructRetAttr');
+  late final _LLVMCreateStructRetAttr = _LLVMCreateStructRetAttrPtr.asFunction<
+      LLVMAttributeRef Function(LLVMContextRef, LLVMTypeRef)>();
 
   LLVMTargetDataRef LLVMGetModuleDataLayout(
     LLVMModuleRef M,

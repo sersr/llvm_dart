@@ -20,6 +20,15 @@ String getWhiteSpace(int level, int pad) {
   return ' ' * level * pad;
 }
 
+class RawIdent with EquatableMixin {
+  RawIdent(this.start, this.end);
+  final int start;
+  final int end;
+
+  @override
+  List<Object?> get props => [start, end];
+}
+
 class Identifier with EquatableMixin {
   Identifier(this.name, this.start, int? end)
       : end = (end ?? start) + 1,
@@ -40,6 +49,10 @@ class Identifier with EquatableMixin {
   final int start;
   final int end;
   final String builtInName;
+
+  RawIdent get toRawIdent {
+    return RawIdent(start, end);
+  }
 
   static final Identifier none = Identifier('', 0, 0);
 
@@ -655,6 +668,8 @@ class Fn extends Ty {
 
   Set<AnalysisVariable> Function()? _get;
 
+  List<RawIdent> sretVariables = [];
+
   bool _anaysised = false;
 
   @override
@@ -668,6 +683,18 @@ class Fn extends Ty {
     block?.analysis(child);
     selfVariables = child.catchVariables;
     _get = () => child.childrenVariables;
+    if (block != null && block!.stmts.isNotEmpty) {
+      final lastStmt = block!.stmts.last;
+      if (lastStmt is ExprStmt) {
+        var expr = lastStmt.expr;
+        if (expr is! RetExpr) {
+          final val = expr.analysis(child);
+          if (val != null) {
+            sretVariables.add(val.ident.toRawIdent);
+          }
+        }
+      }
+    }
   }
 
   @override

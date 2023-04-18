@@ -58,6 +58,42 @@ class LLVMConstVariable extends Variable {
   }
 }
 
+/// 只要用于 [Struct] 作为右值时延时分配
+class LLVMAllocaDelayVariable extends StoreVariable {
+  LLVMAllocaDelayVariable(this.ty, this._create, this.type);
+  final LLVMValueRef Function([StoreVariable? alloca]) _create;
+  @override
+  final Ty ty;
+  LLVMValueRef? _alloca;
+
+  void create([StoreVariable? alloca]) {
+    _alloca ??= _create(alloca);
+  }
+
+  @override
+  LLVMValueRef get alloca => _alloca ??= _create();
+  final LLVMTypeRef type;
+  @override
+  LLVMTypeRef getDerefType(BuildContext c) {
+    return type;
+  }
+
+  @override
+  Variable getRef(BuildContext c) {
+    return LLVMRefAllocaVariable.create(c, this)..store(c, alloca);
+  }
+
+  @override
+  LLVMValueRef load(BuildContext c) {
+    return llvm.LLVMBuildLoad2(c.builder, type, alloca, unname);
+  }
+
+  @override
+  LLVMValueRef store(BuildContext c, LLVMValueRef val) {
+    return llvm.LLVMBuildStore(c.builder, val, alloca);
+  }
+}
+
 class LLVMAllocaVariable extends StoreVariable {
   LLVMAllocaVariable(this.ty, this.alloca, this.type);
   @override
@@ -75,8 +111,8 @@ class LLVMAllocaVariable extends StoreVariable {
   }
 
   @override
-  void store(BuildContext c, LLVMValueRef val) {
-    llvm.LLVMBuildStore(c.builder, val, alloca);
+  LLVMValueRef store(BuildContext c, LLVMValueRef val) {
+    return llvm.LLVMBuildStore(c.builder, val, alloca);
   }
 
   @override
@@ -121,8 +157,8 @@ class LLVMRefAllocaVariable extends StoreVariable implements Deref {
   }
 
   @override
-  void store(BuildContext c, LLVMValueRef val) {
-    llvm.LLVMBuildStore(c.builder, val, alloca);
+  LLVMValueRef store(BuildContext c, LLVMValueRef val) {
+    return llvm.LLVMBuildStore(c.builder, val, alloca);
   }
 
   @override

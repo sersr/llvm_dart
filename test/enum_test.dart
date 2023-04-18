@@ -64,40 +64,70 @@ fn hello() {
 extern fn printf(str: string, ...) i32;
 
 fn main() i32 {
-  // let str  = "hello world \\\\ code\n";
-  // printf(str);
-  let yx = Some(555, Gen{y: 33,h: 5222, x: 5555});
-  let g = Gen{y: 122, x: 666, h: 4444};
-  printG(g)
-  match yx {
-    Some(y, g) => {
-      printf("y: %d, g.y: %d g.x: %d, \
-      g.h: %d\n", y, g.y, g.x, g.h);
-    },
-    None() => {
-      printf("none\n");
-    }
+  // // let str  = "hello world \\\\ code\n";
+  // // printf(str);
+  // let yx = Some(555, Gen{y: 33,h: 5222, x: 5555});
+  // let g = Gen{y: 122, x: 666, h: 4444};
+  printG()
+  // match yx {
+  //   Some(y, g) => {
+  //     printf("y: %d, g.y: %d g.x: %d, \
+  //     g.h: %d\n", y, g.y, g.x, g.h);
+  //   },
+  //   None() => {
+  //     printf("none\n");
+  //   }
+  // }
+
+  final xy = ppx(33);
+  printf("ppx: %d, x: %d, h: %d\n", xy.y, xy.x, xy.h);
+  final xy = ppx(21);
+  printf("ppx: %d, x: %d, h: %d\n", xy.y, xy.x, xy.h);
+
+ return  0;
+}
+
+fn ppx(y: i32) Gen {
+  if y < 22 {
+  let y= Gen {1,2,3}
+  return y;
+  }else {
+    let xx = Gen {55, 66,77};
+    return xx;
   }
-  0;
+}
+
+extern fn yy(g: &Gen) Gen {
+  let gg = g;
+  printf("gg: %d\n", gg.y);
+  printf("g.y: %d, g.x: %lld, g.h: %d\n", g.y, g.x, g.h):
+  g.y = 66644;
+  printC(*g);
+  let y =  Gen {3,4 ,5}
+  // printC(y);
+  y
 }
 
 extern fn printC(g: Gen) {
+  let hh = g;
+  printf("hell o %d\n", hh.h);
   printf("printC: g.y: %d, g.x: %d\
   , g.h: %d\n", g.y, g.x, g.h);
 }
-extern fn printG(g: Gen);
+extern fn printG();
 
+extern
 struct Gen {
   y: i32,
   x: i64,
   h: i32,
 }
-enum Option {
-  Some(i32,Gen),
-  None(),
-}
+// enum Option {
+//   Some(i32,Gen),
+//   None(),
+// }
 ''';
-    testRun(src);
+    testRun(src, mem2reg: true);
     await runCode();
   });
 }

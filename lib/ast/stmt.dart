@@ -54,14 +54,18 @@ class LetStmt extends Stmt {
         return;
       }
 
-      LLVMValueRef? rValue;
+      StoreVariable? alloca = context.sretVariable(nameIdent, variable);
 
-      if (variable != null) {
-        rValue = variable.load(context);
-      }
-      final alloca = tty.llvmType.createAlloca(context, nameIdent);
-      if (rValue != null) {
-        alloca.store(context, rValue);
+      if (alloca == null) {
+        alloca = tty.llvmType.createAlloca(context, nameIdent);
+
+        LLVMValueRef? rValue;
+        if (variable != null) {
+          rValue = variable.load(context);
+        }
+        if (rValue != null) {
+          alloca.store(context, rValue);
+        }
       }
       alloca.isTemp = false;
       context.pushVariable(nameIdent, alloca);
