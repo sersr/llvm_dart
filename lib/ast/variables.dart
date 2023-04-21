@@ -5,31 +5,6 @@ import 'context.dart';
 import 'memory.dart';
 import 'tys.dart';
 
-class EnumItemVariable extends Variable {
-  EnumItemVariable(this.ty);
-  @override
-  final EnumItem ty;
-  @override
-  LLVMTypeRef getDerefType(BuildContext c) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Variable getRef(BuildContext c) {
-    throw UnimplementedError();
-  }
-
-  @override
-  LLVMValueRef load(BuildContext c) {
-    throw UnimplementedError();
-  }
-
-  @override
-  LLVMValueRef getBaseValue(BuildContext c) {
-    throw UnimplementedError();
-  }
-}
-
 class LLVMConstVariable extends Variable {
   LLVMConstVariable(this.value, this.ty);
   @override
@@ -284,4 +259,32 @@ class LLVMTempOpVariable extends Variable {
   LLVMValueRef getBaseValue(BuildContext c) {
     return value;
   }
+}
+
+abstract class UnimplVariable extends Variable {
+  @override
+  LLVMTypeRef getDerefType(BuildContext c) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Variable getRef(BuildContext c) {
+    throw UnimplementedError();
+  }
+
+  @override
+  LLVMValueRef load(BuildContext c) {
+    throw UnimplementedError();
+  }
+
+  @override
+  LLVMValueRef getBaseValue(BuildContext c) {
+    throw UnimplementedError();
+  }
+}
+
+class TyVariable extends UnimplVariable {
+  TyVariable(this.ty);
+  @override
+  final Ty ty;
 }

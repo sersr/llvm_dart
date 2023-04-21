@@ -19,7 +19,7 @@ class CursorState {
 
 typedef TokenIterator = BackIterator<TokenTree>;
 
-class BackIterator<T> extends Iterator<T> {
+class BackIterator<T> implements Iterator<T> {
   BackIterator(List<T> tree) : _current = List.of(tree);
   final List<T> _current;
   int get length => _current.length;

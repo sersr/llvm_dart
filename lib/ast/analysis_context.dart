@@ -159,7 +159,7 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   }
 }
 
-class AnalysisVariable with IdentVariable {
+class AnalysisVariable extends IdentVariable {
   AnalysisVariable._(this.ty, this._ident, this.kind);
   final Ty ty;
   final List<PointerKind> kind;

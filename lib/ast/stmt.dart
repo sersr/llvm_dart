@@ -47,14 +47,12 @@ class LetStmt extends Stmt {
         }
         // error
       }
-      if (variable is StoreVariable && variable.isTemp) {
-        variable.isTemp = false;
-        context.setName(variable.alloca, nameIdent.src);
-        context.pushVariable(nameIdent, variable);
-        return;
-      }
 
-      StoreVariable? alloca = context.sretVariable(nameIdent, variable);
+      StoreVariable? alloca;
+      final (_, delayAlloca) = context.sretVariable(nameIdent, variable);
+      if (delayAlloca != null) {
+        alloca = delayAlloca;
+      }
 
       if (alloca == null) {
         alloca = tty.llvmType.createAlloca(context, nameIdent);
@@ -65,6 +63,13 @@ class LetStmt extends Stmt {
         }
         if (rValue != null) {
           alloca.store(context, rValue);
+        }
+      } else {
+        if (variable is StoreVariable && variable.isTemp) {
+          variable.isTemp = false;
+          context.setName(variable.alloca, nameIdent.src);
+          context.pushVariable(nameIdent, variable);
+          return;
         }
       }
       alloca.isTemp = false;

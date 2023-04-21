@@ -7,7 +7,7 @@ abstract class IdentVariable {
   Identifier? ident;
 }
 
-abstract class Variable with IdentVariable {
+abstract class Variable extends IdentVariable {
   bool get isRef => false;
   LLVMValueRef load(BuildContext c);
   LLVMTypeRef getDerefType(BuildContext c);

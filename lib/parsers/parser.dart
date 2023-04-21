@@ -54,29 +54,22 @@ class Modules {
       switch (key) {
         case Key.fn:
           ty = parseFn(it);
-          break;
         case Key.struct:
           ty = parseStruct(it);
-          break;
         case Key.kEnum:
           ty = parseEnum(it);
-          break;
         case Key.kStatic:
           final token = getToken(it);
           final stmt = parseStaticExpr(it);
           if (stmt != null) {
             globalVar[token] = stmt;
           }
-          break;
         case Key.kComponent:
           ty = parseCom(it);
-          break;
         case Key.kImpl:
           ty = parseImpl(it);
-          break;
         case Key.kExtern:
           ty = parseExtern(it);
-          break;
         default:
       }
       if (ty != null && global) {

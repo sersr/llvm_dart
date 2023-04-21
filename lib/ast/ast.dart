@@ -249,7 +249,7 @@ abstract class BuildMixin {
   }
 }
 
-abstract class Stmt with BuildMixin, EquatableMixin {
+abstract class Stmt extends BuildMixin with EquatableMixin {
   Stmt clone();
 }
 
@@ -736,6 +736,7 @@ class StructTy extends Ty with EquatableMixin {
   @override
   void build(BuildContext context) {
     context.pushStruct(ident, this);
+    context.pushVariable(ident, TyVariable(this));
   }
 
   @override
@@ -797,12 +798,6 @@ class EnumItem extends StructTy {
     final f = fields.map((e) => e.ty).join(',');
     final fy = f.isEmpty ? '' : '($f)';
     return '$ident$fy';
-  }
-
-  @override
-  void build(BuildContext context) {
-    super.build(context);
-    context.pushVariable(ident, EnumItemVariable(this));
   }
 
   @override

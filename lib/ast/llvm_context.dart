@@ -5,7 +5,6 @@ import 'package:llvm_dart/ast/analysis_context.dart';
 import 'package:llvm_dart/ast/expr.dart';
 import 'package:llvm_dart/ast/stmt.dart';
 import 'package:llvm_dart/ast/tys.dart';
-import 'package:nop/nop.dart';
 
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
@@ -287,11 +286,7 @@ class BuildContext
               // error
             }
 
-            Variable? retVal = val;
-            if (val != null) {
-              bbContext.sretVariable(null, val);
-            }
-            bbContext.ret(retVal);
+            bbContext.ret(val);
           }
         }
       }
@@ -320,36 +315,52 @@ class BuildContext
     if (val == null) {
       llvm.LLVMBuildRetVoid(builder);
     } else {
-      final ret = getLastFnContext()?._sret;
+      final sret = getLastFnContext()?._sret;
+      final (sretV, _) = sretVariable(null, val);
 
-      if (ret != null) {
-        llvm.LLVMBuildRetVoid(builder);
-      } else {
+      if (sret == null) {
         final v = val.load(this);
         llvm.LLVMBuildRet(builder, v);
+      } else {
+        if (sretV == null) {
+          final v = val.load(this);
+          sret.store(this, v);
+        }
+        llvm.LLVMBuildRetVoid(builder);
       }
     }
   }
 
-  StoreVariable? sretVariable(Identifier? nameIdent, Variable? variable) {
+  /// [return]:
+  /// true  => alloca != null
+  /// false => alloca == null
+  /// null  => variable is! LLVMAllocaDelayVariable
+  ///
+  /// (sret,  variable)
+  (Variable?, StoreVariable?) sretVariable(
+      Identifier? nameIdent, Variable? variable) {
     final fnContext = getLastFnContext();
     final fnty = fnContext?.fn.ty as Fn?;
     StoreVariable? alloca;
 
     if (fnty != null) {
+      nameIdent ??= variable?.ident;
       if (nameIdent == null ||
           fnty.sretVariables.contains(nameIdent.toRawIdent)) {
         alloca = fnContext?.sret;
       }
     }
+
     if (variable is LLVMAllocaDelayVariable) {
       variable.create(alloca);
       if (alloca != null) {
         if (nameIdent != null) setName(alloca.alloca, nameIdent.src);
       }
-      return variable;
+
+      return (alloca, variable);
     }
-    return null;
+
+    return (alloca, null);
   }
 
   final loopBBs = <LLVMBasicBlock>[];

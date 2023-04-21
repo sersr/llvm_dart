@@ -309,11 +309,28 @@ class RetExpr extends Expr {
     }
 
     if (val != null) {
-      final all = val.allParent;
-      all.insert(0, val);
-      for (var val in all) {
-        final ident = val.ident.toRawIdent;
-        current?.currentFn?.sretVariables.add(ident);
+      final vals = current?.currentFn?.sretVariables;
+      if (vals != null) {
+        final all = val.allParent;
+        all.insert(0, val);
+
+        // 判断是否同源， 用于`sret`, struct ret
+        //
+        // let y = Foo { 1, 2}
+        // if condition {
+        //  return y;
+        // } else {
+        //  let x = y;
+        //  return x; // 与 `y` 同源
+        // }
+        final isSameRoot =
+            vals.isEmpty || all.any((e) => vals.contains(e.ident.toRawIdent));
+        if (isSameRoot) {
+          for (var val in all) {
+            final ident = val.ident.toRawIdent;
+            vals.add(ident);
+          }
+        }
       }
     }
     return null;
@@ -385,8 +402,7 @@ class StructExpr extends Expr {
       return value.alloca;
     }
 
-    final value = LLVMAllocaDelayVariable(struct, create, structType)
-      ..isTemp = false;
+    final value = LLVMAllocaDelayVariable(struct, create, structType);
 
     return ExprTempValue(value, value.ty);
   }
@@ -785,7 +801,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     final fnV = expr.build(context);
     final variable = fnV?.variable;
     final fn = variable?.ty ?? fnV?.ty;
-    if (fn is EnumItem) {
+    if (fn is StructTy) {
       return StructExpr.buildTupeOrStruct(fn, context, Identifier.none, params);
     }
 
@@ -1347,6 +1363,12 @@ class VariableIdentExpr extends Expr {
       }
       return ExprTempValue(val, val.ty);
     }
+
+    final struct = context.getStruct(ident);
+    if (struct != null) {
+      return ExprTempValue(TyVariable(struct), struct);
+    }
+
     final fn = context.getFn(ident);
     if (fn != null) {
       if (fn is SizeOfFn) {
@@ -1463,7 +1485,7 @@ class BlockExpr extends Expr {
   }
 }
 
-class MatchItemExpr with BuildMixin {
+class MatchItemExpr extends BuildMixin {
   MatchItemExpr(this.expr, this.block);
   final Expr expr;
   final Block block;
