@@ -1,32 +1,8 @@
-import '../llvm_core.dart';
 import '../parsers/lexers/token_kind.dart';
 import 'ast.dart';
-import 'llvm_context.dart';
 
 abstract class IdentVariable {
   Identifier? ident;
-}
-
-abstract class Variable extends IdentVariable {
-  bool get isRef => false;
-  LLVMValueRef load(BuildContext c);
-  LLVMTypeRef getDerefType(BuildContext c);
-  Variable getRef(BuildContext c);
-
-  LLVMValueRef getBaseValue(BuildContext c) => load(c);
-  Ty get ty;
-}
-
-abstract class StoreVariable extends Variable {
-  /// 一般是未命名的，右表达式生成的
-  bool isTemp = true;
-  LLVMValueRef get alloca;
-  LLVMValueRef store(BuildContext c, LLVMValueRef val);
-
-  @override
-  LLVMValueRef getBaseValue(BuildContext c) {
-    return alloca;
-  }
 }
 
 mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {

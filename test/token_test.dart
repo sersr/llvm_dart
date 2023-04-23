@@ -1,7 +1,7 @@
 import 'dart:ffi';
 
 import 'package:llvm_dart/ast/context.dart';
-import 'package:llvm_dart/ast/llvm_context.dart';
+import 'package:llvm_dart/ast/llvm/llvm_context.dart';
 import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/llvm_core.dart';
 import 'package:llvm_dart/llvm_dart.dart';
@@ -17,38 +17,41 @@ void main() {
 
 static hello = "world"
 static hhh: string = "nihao"
-com Indd {
-  fn build() int
-  fn build2(name: string) void
-}
+// com Indd {
+//   fn build() int
+//   fn build2(name: string) void
+// }
 
-impl Indd for Gen {
-  fn build() int {
-    let y = 1001
-  }
+// impl Indd for Gen {
+//   fn build() int {
+//     let y = 1001
+//     y
+//   }
 
-  fn build2(name: string, )  {}
-}
+//   fn build2(name: string, )  {}
+// }
 
 fn main() int {
   let y = 101
   let x = 55;
-  loop {
-    let lox = 101
-    if x > 1001 {
-      if y < 0001 {
-        let yxx = 101010
-      }
-      break
-    }
-  }
+  // loop {
+  //   // let lox = 101
+  //   // if x > 1001 {
+  //   //   break
+  //   // }
+  // }
   let rrry = 4433;
 
+  if x > 110 {
+    return 2;
+  } else if y < 22 {
+    return 1;
+  }
   loop {
     if x > 110 {
       break;
     }
-    continue;
+    // continue;
   }
   while x > 10 {
     let haha: string = "while test"
@@ -61,9 +64,9 @@ fn main() int {
   0
 }
 
-fn foo() {
+// fn foo() {
 
-}
+// }
 
 struct Gen {
   name: string,
@@ -265,9 +268,12 @@ fn main() int {
     testRun(src);
   });
 
-  test('fn', () {
+  test('fn', () async {
     final src = '''
-extern fn printxx(y: int);
+extern fn printf(str: string ,...) i32;
+fn printxx(y: int) {
+  printf("hello %d\n", y);
+}
 
 fn main() int {
 
@@ -276,7 +282,9 @@ fn main() int {
   let rrr = &xya;
 
   fn hha() {
+    let hax = yya;
     let hh = xya;
+    printxx(hax);
     let yyy = *hh;
     printxx(*hh);
     printxx(yyy);
@@ -298,7 +306,7 @@ fn main() int {
     hha();
     printxx(yy);
   }
-  hhxa(sec);
+  // hhxa(hha);
   0;
 }
 
@@ -307,6 +315,7 @@ fn hhxa(f: fn()) {
 }
 ''';
     testRun(src);
+    await runNativeCode();
   });
 
   test('life cycle', () {
@@ -400,9 +409,13 @@ extern fn yy(y: int) {
     testRun(src);
   });
 
-  test('test fn(fn())', () {
+  test('test fn(fn())', () async {
     final src = '''
-extern fn printxx(y: int);
+extern fn printf(str: string, ...);
+
+fn printxx(y: int) {
+  printf('str: %d\n', y);
+}
 
 fn main() int {
   let yy = 5550;
@@ -444,10 +457,12 @@ fn main() int {
 }
 
 fn outer(f: fn()) {
-
+  let otherf = f;
   f();
+  otherf();
 }
 ''';
     testRun(src);
+    await runNativeCode();
   });
 }

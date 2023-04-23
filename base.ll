@@ -100,7 +100,6 @@ define void @xxs(%struct.Gen* noalias sret(%struct.Gen) align 8 %0, i32 %1) #0 {
 9:                                                ; preds = %2
   %10 = bitcast %struct.Gen* %4 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 8 %10, i8* align 8 bitcast (%struct.Gen* @__const.xxs.hh to i8*), i64 24, i1 false)
-  call void bitcast (void (...)* @hlelo to void ()*)()
   %11 = bitcast %struct.Gen* %0 to i8*
   %12 = bitcast %struct.Gen* %4 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 8 %11, i8* align 8 %12, i64 24, i1 false)
@@ -109,8 +108,6 @@ define void @xxs(%struct.Gen* noalias sret(%struct.Gen) align 8 %0, i32 %1) #0 {
 13:                                               ; preds = %9, %7
   ret void
 }
-
-declare void @hlelo(...) #1
 
 attributes #0 = { noinline nounwind optnone ssp uwtable "frame-pointer"="non-leaf" "min-legal-vector-width"="0" "no-trapping-math"="true" "probe-stack"="__chkstk_darwin" "stack-protector-buffer-size"="8" "target-cpu"="apple-m1" "target-features"="+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.5a,+zcm,+zcz" }
 attributes #1 = { "frame-pointer"="non-leaf" "no-trapping-math"="true" "probe-stack"="__chkstk_darwin" "stack-protector-buffer-size"="8" "target-cpu"="apple-m1" "target-features"="+aes,+crc,+crypto,+dotprod,+fp-armv8,+fp16fml,+fullfp16,+lse,+neon,+ras,+rcpc,+rdm,+sha2,+sha3,+sm4,+v8.5a,+zcm,+zcz" }

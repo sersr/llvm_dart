@@ -1,9 +1,8 @@
-import 'package:llvm_dart/ast/build_methods.dart';
-import 'package:llvm_dart/ast/memory.dart';
-import 'package:llvm_dart/llvm_core.dart';
-import 'package:llvm_dart/llvm_dart.dart';
-
-import 'ast.dart';
+import '../../llvm_core.dart';
+import '../../llvm_dart.dart';
+import '../ast.dart';
+import '../memory.dart';
+import 'build_methods.dart';
 
 enum LLVMITy {
   i8,

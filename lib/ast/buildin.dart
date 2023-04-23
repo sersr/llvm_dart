@@ -1,11 +1,10 @@
-import 'package:llvm_dart/ast/ast.dart';
-import 'package:llvm_dart/ast/llvm_context.dart';
-import 'package:llvm_dart/llvm_core.dart';
-
+import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'analysis_context.dart';
-import 'llvm_types.dart';
-import 'variables.dart';
+import 'ast.dart';
+import 'llvm/llvm_context.dart';
+import 'llvm/llvm_types.dart';
+import 'llvm/variables.dart';
 
 class SizeOfFn extends Fn {
   SizeOfFn()

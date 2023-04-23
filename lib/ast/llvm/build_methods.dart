@@ -1,10 +1,10 @@
 import 'package:characters/characters.dart';
-import 'package:llvm_dart/ast/ast.dart';
-import 'package:llvm_dart/ast/memory.dart';
-import 'package:llvm_dart/parsers/token_it.dart';
 
-import '../llvm_core.dart';
-import '../llvm_dart.dart';
+import '../../llvm_core.dart';
+import '../../llvm_dart.dart';
+import '../../parsers/token_it.dart';
+import '../ast.dart';
+import '../memory.dart';
 
 mixin BuildMethods {
   LLVMModuleRef get module;

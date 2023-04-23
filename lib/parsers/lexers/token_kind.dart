@@ -1,6 +1,7 @@
 import 'package:characters/characters.dart';
 import 'package:collection/collection.dart';
-import 'package:llvm_dart/parsers/token_it.dart';
+
+import '../token_it.dart';
 
 enum TokenKind {
   /// "//"

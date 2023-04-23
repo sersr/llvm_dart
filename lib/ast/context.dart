@@ -2,7 +2,7 @@
 // import 'package:llvm_dart/ast/expr.dart';
 // import 'package:llvm_dart/ast/llvm_context.dart';
 // import 'package:llvm_dart/parsers/lexers/token_kind.dart';
-export 'llvm_context.dart';
+export 'llvm/llvm_context.dart';
 // abstract class BuildContext {
 //   BuildContextc(this.parent);
 //   final BuildContextc? parent;

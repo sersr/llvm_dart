@@ -1,9 +1,31 @@
-import '../llvm_core.dart';
-import '../llvm_dart.dart';
-import 'ast.dart';
-import 'context.dart';
-import 'memory.dart';
-import 'tys.dart';
+import '../../llvm_core.dart';
+import '../../llvm_dart.dart';
+import '../ast.dart';
+import '../context.dart';
+import '../memory.dart';
+import '../tys.dart';
+
+abstract class Variable extends IdentVariable {
+  bool isRef = false;
+  LLVMValueRef load(BuildContext c);
+  LLVMTypeRef getDerefType(BuildContext c);
+  Variable getRef(BuildContext c);
+
+  LLVMValueRef getBaseValue(BuildContext c) => load(c);
+  Ty get ty;
+}
+
+abstract class StoreVariable extends Variable {
+  /// 一般是未命名的，右表达式生成的
+  bool isTemp = true;
+  LLVMValueRef get alloca;
+  LLVMValueRef store(BuildContext c, LLVMValueRef val);
+
+  @override
+  LLVMValueRef getBaseValue(BuildContext c) {
+    return alloca;
+  }
+}
 
 class LLVMConstVariable extends Variable {
   LLVMConstVariable(this.value, this.ty);
@@ -69,6 +91,58 @@ class LLVMAllocaDelayVariable extends StoreVariable {
   }
 }
 
+class LLVMRefValue extends StoreVariable implements Deref {
+  LLVMRefValue(this.ty, this.alloca, this.type);
+  final LLVMTypeRef type;
+  @override
+  final Ty ty;
+  @override
+  final LLVMValueRef alloca;
+
+  @override
+  LLVMTypeRef getDerefType(BuildContext c) {
+    return ty.llvmType.createType(c);
+  }
+
+  @override
+  Variable getRef(BuildContext c) {
+    return LLVMRefAllocaVariable(RefTy(ty), alloca);
+  }
+
+  @override
+  LLVMValueRef load(BuildContext c) {
+    final ptr = llvm.LLVMBuildLoad2(c.builder, c.pointer(), alloca, unname);
+    return llvm.LLVMBuildLoad2(c.builder, type, ptr, unname);
+  }
+
+  @override
+  LLVMValueRef store(BuildContext c, LLVMValueRef val) {
+    return llvm.LLVMBuildStore(c.builder, val, alloca);
+  }
+
+  @override
+  Variable getDeref(BuildContext c) {
+    final cTy = ty;
+    final v = load(c);
+
+    StoreVariable val;
+    if (cTy is RefTy) {
+      final parent = cTy.parent;
+      if (parent is RefTy) {
+        val = LLVMRefAllocaVariable(parent, v);
+      } else {
+        final type = parent.llvmType.createType(c);
+        val = LLVMAllocaVariable(parent, v, type);
+      }
+    } else {
+      final type = cTy.llvmType.createType(c);
+      val = LLVMAllocaVariable(cTy, v, type);
+    }
+    val.isTemp = false;
+    return val;
+  }
+}
+
 class LLVMAllocaVariable extends StoreVariable {
   LLVMAllocaVariable(this.ty, this.alloca, this.type);
   @override
@@ -109,8 +183,6 @@ class LLVMRefAllocaVariable extends StoreVariable implements Deref {
   LLVMRefAllocaVariable(this.ty, this.alloca);
   @override
   final LLVMValueRef alloca;
-  @override
-  bool get isRef => true;
 
   static LLVMRefAllocaVariable create(BuildContext c, Variable parent) {
     final rr = RefTy(parent.ty);

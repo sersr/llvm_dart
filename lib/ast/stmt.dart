@@ -1,12 +1,11 @@
-import 'package:llvm_dart/ast/analysis_context.dart';
-import 'package:llvm_dart/ast/context.dart';
-import 'package:llvm_dart/ast/expr.dart';
-import 'package:llvm_dart/ast/tys.dart';
-import 'package:llvm_dart/llvm_core.dart';
 import 'package:nop/nop.dart';
 
+import '../llvm_core.dart';
+import 'analysis_context.dart';
 import 'ast.dart';
-import 'variables.dart';
+import 'context.dart';
+import 'expr.dart';
+import 'llvm/variables.dart';
 
 class LetStmt extends Stmt {
   LetStmt(this.isFinal, this.ident, this.nameIdent, this.rExpr, this.ty);
@@ -32,6 +31,9 @@ class LetStmt extends Stmt {
   @override
   void build(BuildContext context) {
     final realTy = ty?.grt(context);
+    if (nameIdent.src == 'hh') {
+      Log.w('');
+    }
     ExprTempValue? val = LiteralExpr.run(() => rExpr?.build(context), realTy);
 
     final tty = realTy ?? val?.ty;
@@ -55,11 +57,22 @@ class LetStmt extends Stmt {
       }
 
       if (alloca == null) {
-        alloca = tty.llvmType.createAlloca(context, nameIdent);
+        bool wrapRef = variable?.isRef == true;
+        if (wrapRef) {
+          alloca = RefTy(tty)
+              .llvmType
+              .createAlloca(context, nameIdent, isPointer: false);
+        } else {
+          alloca = tty.llvmType.createAlloca(context, nameIdent);
+        }
 
         LLVMValueRef? rValue;
         if (variable != null) {
-          rValue = variable.load(context);
+          if (wrapRef) {
+            rValue = variable.getBaseValue(context);
+          } else {
+            rValue = variable.load(context);
+          }
         }
         if (rValue != null) {
           alloca.store(context, rValue);

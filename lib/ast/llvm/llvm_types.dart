@@ -1,16 +1,36 @@
-import 'package:llvm_dart/ast/analysis_context.dart';
-import 'package:llvm_dart/ast/build_methods.dart';
-import 'package:llvm_dart/ast/expr.dart';
-import 'package:llvm_dart/ast/tys.dart';
+import 'dart:ffi';
+
 import 'package:meta/meta.dart';
 import 'package:nop/nop.dart';
 
-import '../llvm_core.dart';
-import '../llvm_dart.dart';
-import 'ast.dart';
+import '../../llvm_core.dart';
+import '../../llvm_dart.dart';
+import '../analysis_context.dart';
+import '../ast.dart';
+import '../expr.dart';
+import '../memory.dart';
+import 'build_methods.dart';
 import 'llvm_context.dart';
-import 'memory.dart';
 import 'variables.dart';
+
+class LLVMRawValue {
+  LLVMRawValue(this._raw);
+  final String _raw;
+
+  String get raw => _raw.replaceAll('_', '');
+
+  Pointer<Char> toChar() {
+    return raw.toChar();
+  }
+
+  double get value {
+    return double.parse(raw);
+  }
+
+  int get iValue {
+    return int.parse(raw);
+  }
+}
 
 abstract class LLVMType {
   Ty get ty;
@@ -172,6 +192,11 @@ class LLVMFnType extends LLVMType {
     return LLVMAllocaVariable(ty, v, type);
   }
 
+  Variable createAllocaParam(
+      BuildContext c, Identifier ident, LLVMValueRef val) {
+    return LLVMTempVariable(val, ty);
+  }
+
   @protected
   @override
   LLVMTypeRef createType(BuildContext c) {
@@ -210,16 +235,19 @@ class LLVMFnType extends LLVMType {
 
     for (var p in params) {
       final realTy = p.ty.grt(c);
-      final ty = cType(realTy);
-      // if (p.isRef) {
-      //   // ty = c.typePointer(ty);
-      // } else {
-      // }
+      LLVMTypeRef ty;
+      if (p.isRef) {
+        ty = c.typePointer(realTy.llvmType.createType(c));
+      } else {
+        ty = cType(realTy);
+      }
       list.add(ty);
     }
     final vv = [...fn.variables, ...?variables];
+
     for (var variable in vv) {
       final v = c.getVariable(variable.ident);
+
       if (v != null) {
         final dty = v.ty;
         LLVMTypeRef ty = dty.llvmType.createType(c);
@@ -231,12 +259,6 @@ class LLVMFnType extends LLVMType {
 
     LLVMTypeRef ret;
 
-    // if (fn.extern && retTy is StructTy) {
-    //   final size = retTy.llvmType.getBytes(c);
-    //   ret = c.getStructExternType(size);
-    // } else {
-    //   ret = retTy.llvmType.createType(c);
-    // }
     if (retIsRet) {
       ret = c.typeVoid;
     } else {
@@ -268,7 +290,11 @@ class LLVMFnType extends LLVMType {
         ident = '_fn';
       }
       final extern = fn.extern || ident == 'main';
-      final v = llvm.getOrInsertFunction(ident.toChar(), c.module, ty);
+
+      if (_cacheFns.isNotEmpty) {
+        ident = '${ident}_${_cacheFns.length}';
+      }
+      final v = llvm.LLVMAddFunction(c.module, ident.toChar(), ty);
       llvm.LLVMSetLinkage(
           v,
           extern
@@ -570,10 +596,15 @@ class LLVMRefType extends LLVMType {
   }
 
   @override
-  LLVMRefAllocaVariable createAlloca(BuildContext c, Identifier ident) {
+  StoreVariable createAlloca(BuildContext c, Identifier ident,
+      {bool isPointer = true}) {
     final type = createType(c);
     final v = c.createAlloca(type, name: ident.src);
-    return LLVMRefAllocaVariable(ty, v);
+    if (isPointer) {
+      return LLVMRefAllocaVariable(ty, v);
+    } else {
+      return LLVMRefValue(parent, v, parent.llvmType.createType(c));
+    }
   }
 
   @override

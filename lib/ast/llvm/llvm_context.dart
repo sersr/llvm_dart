@@ -1,37 +1,18 @@
 import 'dart:ffi';
 
 import 'package:collection/collection.dart';
-import 'package:llvm_dart/ast/analysis_context.dart';
-import 'package:llvm_dart/ast/expr.dart';
-import 'package:llvm_dart/ast/stmt.dart';
-import 'package:llvm_dart/ast/tys.dart';
 
-import '../llvm_core.dart';
-import '../llvm_dart.dart';
-import 'ast.dart';
+import '../../llvm_core.dart';
+import '../../llvm_dart.dart';
+import '../analysis_context.dart';
+import '../ast.dart';
+import '../expr.dart';
+import '../memory.dart';
+import '../stmt.dart';
+import '../tys.dart';
 import 'build_methods.dart';
 import 'intrinsics.dart';
-import 'memory.dart';
 import 'variables.dart';
-
-class LLVMRawValue {
-  LLVMRawValue(this._raw);
-  final String _raw;
-
-  String get raw => _raw.replaceAll('_', '');
-
-  Pointer<Char> toChar() {
-    return raw.toChar();
-  }
-
-  double get value {
-    return double.parse(raw);
-  }
-
-  int get iValue {
-    return int.parse(raw);
-  }
-}
 
 class LLVMBasicBlock {
   LLVMBasicBlock(this.bb, this.context, this.inserted);
@@ -154,14 +135,14 @@ class BuildContext
       LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
       {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
     final params = decl.params;
-    var self = 0;
+    var index = 0;
 
     var retTy = fnty.fnSign.fnDecl.returnTy.getRty(this);
     if (fnty.llvmType.isSret(this) && retTy is StructTy) {
-      final first = llvm.LLVMGetParam(fn, self);
+      final first = llvm.LLVMGetParam(fn, index);
       final alloca = LLVMRefAllocaVariable.from(first, retTy, this);
       alloca.isTemp = false;
-      self += 1;
+      index += 1;
       // final rawIdent = fnty.sretVariables.last;
       // final ident = Identifier('', rawIdent.start, rawIdent.end);
       // setName(first, ident.src);
@@ -170,20 +151,20 @@ class BuildContext
 
     if (fnty is ImplFn) {
       final p = fnty.ty;
-      final selfParam = llvm.LLVMGetParam(fn, self);
+      final selfParam = llvm.LLVMGetParam(fn, index);
       final ident = Identifier.builtIn('self');
       final alloca = RefTy(p).llvmType.createAlloca(this, ident);
       alloca.store(this, selfParam);
       setName(alloca.alloca, 'self');
       alloca.isTemp = false;
       pushVariable(ident, alloca);
-      self += 1;
+      index += 1;
     }
 
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
 
-      final fnParam = llvm.LLVMGetParam(fn, i + self);
+      final fnParam = llvm.LLVMGetParam(fn, i + index);
       var realTy = p.ty.grt(this);
       if (realTy is FnTy) {
         final extra = map[p.ident];
@@ -197,7 +178,7 @@ class BuildContext
       resolveParam(realTy, fnParam, p.ident, fnty.extern);
     }
 
-    var index = params.length - 1 + self;
+    index += params.length - 1;
 
     void fnCatchVariable(AnalysisVariable variable, int index) {
       final value = llvm.LLVMGetParam(fn, index);
@@ -210,7 +191,9 @@ class BuildContext
 
       final alloca = LLVMRefAllocaVariable.from(value, val.ty, this);
       alloca.isTemp = false;
-      setName(alloca.alloca, ident.src);
+      alloca.isRef = true;
+
+      setName(value, ident.src);
       pushVariable(ident, alloca);
     }
 
@@ -229,15 +212,16 @@ class BuildContext
 
   void resolveParam(
       Ty ty, LLVMValueRef fnParam, Identifier ident, bool extern) {
-    StoreVariable alloca;
+    Variable alloca;
     if (ty is StructTy) {
       alloca = ty.llvmType.createAllocaFromParam(this, fnParam, ident, extern);
+    } else if (ty is Fn) {
+      alloca = ty.llvmType.createAllocaParam(this, ident, fnParam);
     } else {
-      alloca = ty.llvmType.createAlloca(this, ident);
-      alloca.store(this, fnParam);
+      final a = alloca = ty.llvmType.createAlloca(this, ident);
+      a.store(this, fnParam);
     }
-
-    alloca.isTemp = false;
+    if (alloca is StoreVariable) alloca.isTemp = false;
     pushVariable(ident, alloca);
   }
 
@@ -431,44 +415,43 @@ class BuildContext
     final onlyIf = elseifBlock == null && elseBlock == null;
     assert(onlyIf || (elseBlock != null) != (elseifBlock != null));
     final then = buildSubBB(name: 'then');
-    final elseBB = buildSubBB(name: elseifBlock == null ? 'else' : 'elseIf');
-    LLVMBasicBlock? afterBB;
+    final afterBB = buildSubBB(name: 'after');
+    LLVMBasicBlock? elseBB;
 
     final con = ifEB.expr.build(this)?.variable;
     if (con == null) return null;
 
     appendBB(then);
+    ifEB.block.build(then.context);
     if (onlyIf) {
-      afterBB = buildSubBB(name: 'after');
       llvm.LLVMBuildCondBr(builder, con.load(this), then.bb, afterBB.bb);
     } else {
+      elseBB = buildSubBB(name: elseifBlock == null ? 'else' : 'elseIf');
       llvm.LLVMBuildCondBr(builder, con.load(this), then.bb, elseBB.bb);
-    }
-    ifEB.block.build(then.context);
-
-    if (elseifBlock != null) {
       appendBB(elseBB);
-      elseBB.context.buildIfExprBlock(elseifBlock);
-    } else if (elseBlock != null) {
-      appendBB(elseBB);
-      ifEB.elseBlock?.build(elseBB.context);
-    }
 
-    if (elseBB.context.canBr || then.context.canBr) {
-      afterBB ??= buildSubBB(name: 'after');
-      elseBB.context.br(afterBB.context);
+      if (elseifBlock != null) {
+        elseBB.context.buildIfExprBlock(elseifBlock);
+      } else if (elseBlock != null) {
+        elseBlock.build(elseBB.context);
+      }
+    }
+    var canBr = then.context.canBr;
+    if (canBr) {
       then.context.br(afterBB.context);
-      insertPointBB(afterBB);
-    } else {
-      _returned = true;
     }
 
-    // final ty = llvm.LLVMInt32Type();
-    // final tNull = llvm.LLVMConstNull(ty);
-    // final phi = llvm.LLVMBuildPhi(builder, ty, unname);
-    // final listT = [tNull, tNull].toNative();
-    // final bbs = [then.bb, elseBB.bb].toNative();
-    // llvm.LLVMAddIncoming(phi, listT.cast(), bbs.cast(), 2);
+    if (elseBB != null) {
+      final elseCanBr = elseBB.context.canBr;
+      // canBr |= elseCanBr;
+      if (elseCanBr) elseBB.context.br(afterBB.context);
+    }
+
+    // if (!canBr) {
+    // _returned = true;
+    // }
+    insertPointBB(afterBB);
+
     return null;
   }
 
@@ -476,8 +459,8 @@ class BuildContext
 
   bool get canBr => !_returned && !_breaked;
 
-  void br(BuildContext to) {
-    if (!canBr) return;
+  LLVMValueRef? br(BuildContext to) {
+    if (!canBr) return null;
     _breaked = true;
     llvm.LLVMBuildBr(builder, llvm.LLVMGetInsertBlock(to.builder));
   }

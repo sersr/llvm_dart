@@ -3,18 +3,17 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:llvm_dart/ast/analysis_context.dart';
-import 'package:llvm_dart/ast/buildin.dart';
-import 'package:llvm_dart/ast/context.dart';
-import 'package:llvm_dart/ast/memory.dart';
-import 'package:llvm_dart/ast/tys.dart';
-import 'package:llvm_dart/llvm_core.dart';
-import 'package:llvm_dart/parsers/lexers/token_kind.dart';
 import 'package:nop/nop.dart';
 
+import '../llvm_core.dart';
 import '../llvm_dart.dart';
+import '../parsers/lexers/token_kind.dart';
+import 'analysis_context.dart';
 import 'ast.dart';
-import 'variables.dart';
+import 'buildin.dart';
+import 'context.dart';
+import 'llvm/variables.dart';
+import 'memory.dart';
 
 class LiteralExpr extends Expr {
   LiteralExpr(this.ident, this.ty);
@@ -1356,7 +1355,7 @@ class VariableIdentExpr extends Expr {
 
     if (val != null) {
       if (val is Deref) {
-        if (_isCatch || ident.src == 'self') {
+        if (ident.src == 'self') {
           final newVal = val.getDeref(context);
           return ExprTempValue(newVal, newVal.ty);
         }

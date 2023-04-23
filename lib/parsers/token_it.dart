@@ -1,4 +1,4 @@
-import 'package:llvm_dart/parsers/lexers/token_stream.dart';
+import 'lexers/token_stream.dart';
 
 extension TokenItExt<T> on List<T> {
   BackIterator<T> get tokenIt {

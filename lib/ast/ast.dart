@@ -4,17 +4,17 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
-import 'package:llvm_dart/ast/context.dart';
-import 'package:llvm_dart/ast/expr.dart';
-import 'package:llvm_dart/ast/stmt.dart';
-import 'package:llvm_dart/ast/tys.dart';
-import 'package:llvm_dart/ast/variables.dart';
 import 'package:meta/meta.dart';
 import 'package:nop/nop.dart';
 
 import '../parsers/lexers/token_kind.dart';
 import 'analysis_context.dart';
-import 'llvm_types.dart';
+import 'context.dart';
+import 'expr.dart';
+import 'llvm/llvm_types.dart';
+import 'llvm/variables.dart';
+import 'stmt.dart';
+import 'tys.dart';
 
 String getWhiteSpace(int level, int pad) {
   return ' ' * level * pad;
@@ -235,6 +235,8 @@ abstract class BuildMixin {
   void incLevel([int count = 1]) {
     level += count;
   }
+
+  final extensions = <Object, dynamic>{};
 
   void build(BuildContext context);
 
@@ -490,6 +492,11 @@ class RefTy extends Ty {
 
   @override
   List<Object?> get props => [parent];
+
+  @override
+  String toString() {
+    return 'RefTy($parent)';
+  }
 }
 
 class BuiltInTy extends Ty {

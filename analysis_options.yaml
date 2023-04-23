@@ -15,8 +15,9 @@ include: package:lints/recommended.yaml
 
 # Uncomment the following section to specify additional rules.
 
-# linter:
-#   rules:
+linter:
+  rules:
+    prefer_relative_imports: true
 #     non_constant_identifier_names: false
 #     constant_identifier_names: false
 

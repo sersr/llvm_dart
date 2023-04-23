@@ -1,6 +1,6 @@
-import 'package:llvm_dart/ast/ast.dart';
-import 'package:llvm_dart/ast/expr.dart';
-import 'package:llvm_dart/ast/tys.dart';
+import 'ast.dart';
+import 'expr.dart';
+import 'tys.dart';
 
 class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   AnalysisContext.root() : parent = null;

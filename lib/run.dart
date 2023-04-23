@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'ast/analysis_context.dart';
 import 'ast/buildin.dart';
-import 'ast/llvm_context.dart';
+import 'ast/llvm/llvm_context.dart';
 import 'fs/fs.dart';
 import 'llvm_dart.dart';
 import 'parsers/parser.dart';
@@ -68,6 +68,17 @@ AnalysisContext testRun(String src, {bool mem2reg = false, bool build = true}) {
 }
 
 Future<void> runCode() async {
+  final p = currentDir.path;
+
+  final process = await Process.start(
+      'sh', ['-c', 'cc $p/out.o  $p/base.c -o main && ./main'],
+      workingDirectory: p);
+  stdout.addStream(process.stdout);
+  stderr.addStream(process.stderr);
+  await process.exitCode;
+}
+
+Future<void> runNativeCode() async {
   final p = currentDir.path;
 
   final process = await Process.start(

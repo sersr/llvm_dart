@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:llvm_dart/ast/expr.dart';
-import 'package:llvm_dart/parsers/lexers/token_kind.dart';
-import 'package:llvm_dart/parsers/lexers/token_stream.dart';
-import 'package:llvm_dart/parsers/token_it.dart';
 
 import '../ast/ast.dart';
+import '../ast/expr.dart';
 import '../ast/stmt.dart';
+import 'lexers/token_kind.dart';
+import 'lexers/token_stream.dart';
+import 'token_it.dart';
 
 Modules parseTopItem(String src) {
   final m = Modules(src);
