@@ -459,8 +459,8 @@ class BuildContext
 
   bool get canBr => !_returned && !_breaked;
 
-  LLVMValueRef? br(BuildContext to) {
-    if (!canBr) return null;
+  void br(BuildContext to) {
+    if (!canBr) return;
     _breaked = true;
     llvm.LLVMBuildBr(builder, llvm.LLVMGetInsertBlock(to.builder));
   }
