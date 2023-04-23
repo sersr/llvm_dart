@@ -16,6 +16,12 @@ class LetStmt extends Stmt {
   final bool isFinal;
 
   @override
+  void incLevel([int count = 1]) {
+    super.incLevel(count);
+    rExpr?.incLevel(count);
+  }
+
+  @override
   Stmt clone() {
     return LetStmt(isFinal, ident, nameIdent, rExpr?.clone(), ty);
   }
@@ -31,9 +37,6 @@ class LetStmt extends Stmt {
   @override
   void build(BuildContext context) {
     final realTy = ty?.grt(context);
-    if (nameIdent.src == 'hh') {
-      Log.w('');
-    }
     ExprTempValue? val = LiteralExpr.run(() => rExpr?.build(context), realTy);
 
     final tty = realTy ?? val?.ty;
@@ -56,6 +59,13 @@ class LetStmt extends Stmt {
         alloca = delayAlloca;
       }
 
+      if (variable is StoreVariable && variable.isTemp) {
+        variable.isTemp = false;
+        context.setName(variable.alloca, nameIdent.src);
+        context.pushVariable(nameIdent, variable);
+        return;
+      }
+
       if (alloca == null) {
         bool wrapRef = variable?.isRef == true;
         if (wrapRef) {
@@ -76,13 +86,6 @@ class LetStmt extends Stmt {
         }
         if (rValue != null) {
           alloca.store(context, rValue);
-        }
-      } else {
-        if (variable is StoreVariable && variable.isTemp) {
-          variable.isTemp = false;
-          context.setName(variable.alloca, nameIdent.src);
-          context.pushVariable(nameIdent, variable);
-          return;
         }
       }
       alloca.isTemp = false;

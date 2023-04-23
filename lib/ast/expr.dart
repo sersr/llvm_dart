@@ -14,6 +14,7 @@ import 'buildin.dart';
 import 'context.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
+import 'stmt.dart';
 
 class LiteralExpr extends Expr {
   LiteralExpr(this.ident, this.ty);
@@ -35,6 +36,14 @@ class LiteralExpr extends Expr {
 
   static T run<T>(T Function() body, Ty? ty) {
     return runZoned(body, zoneValues: {#ty: ty});
+  }
+
+  static Ty? get letTy {
+    final r = Zone.current[#ty];
+    if (r is Ty) {
+      return r;
+    }
+    return null;
   }
 
   BuiltInTy get realTy {
@@ -82,6 +91,15 @@ class IfExprBlock {
   AnalysisVariable? analysis(AnalysisContext context) {
     expr.analysis(context);
     block.analysis(context);
+    if (block.stmts.isNotEmpty) {
+      final last = block.stmts.last;
+      if (last is ExprStmt) {
+        final expr = last.expr;
+        if (expr is! RetExpr) {
+          return expr.analysis(context);
+        }
+      }
+    }
     return null;
   }
 }
@@ -101,14 +119,15 @@ class IfExpr extends Expr {
   @override
   Expr clone() {
     return IfExpr(ifExpr.clone(), elseIfExpr?.map((e) => e.clone()).toList(),
-        elseBlock?.clone());
+        elseBlock?.clone())
+      .._variable = _variable;
   }
 
   @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
     elseBlock?.incLevel(count);
-    ifExpr.incLvel();
+    ifExpr.incLvel(count);
     elseIfExpr?.forEach((element) {
       element.incLvel(count);
     });
@@ -129,21 +148,22 @@ class IfExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final v = context.createIfBlock(ifExpr);
+    final v = context.createIfBlock(ifExpr, _variable?.ty);
     if (v == null) return null;
     return ExprTempValue(v, v.ty);
   }
 
+  AnalysisVariable? _variable;
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    ifExpr.analysis(context.childContext());
+    _variable = ifExpr.analysis(context.childContext());
     if (elseIfExpr != null) {
       for (var e in elseIfExpr!) {
         e.analysis(context.childContext());
       }
     }
     elseBlock?.analysis(context.childContext());
-    return null;
+    return _variable;
   }
 }
 
@@ -1407,6 +1427,12 @@ class RefExpr extends Expr {
   RefExpr(this.current, this.kind);
   final Expr current;
   final List<PointerKind> kind;
+
+  @override
+  void incLevel([int count = 1]) {
+    super.incLevel(count);
+    current.incLevel(count);
+  }
 
   @override
   Expr clone() {

@@ -403,7 +403,7 @@ class Modules {
       stmt = ExprStmt(RetExpr(expr, ident));
     }
     stmt ??= parseLetStmt(it);
-    stmt ??= parseIfExpr(it);
+    stmt ??= parseIfStmt(it);
     stmt ??= parseLoopExpr(it);
     stmt ??= parseWhileExpr(it);
     stmt ??= parseMatchExpr(it);
@@ -538,7 +538,13 @@ class Modules {
     return ExprStmt(lhs);
   }
 
-  Stmt? parseIfExpr(TokenIterator it) {
+  Stmt? parseIfStmt(TokenIterator it) {
+    final expr = parseIfExpr(it);
+    if (expr != null) return ExprStmt(expr);
+    return null;
+  }
+
+  Expr? parseIfExpr(TokenIterator it) {
     final isIfExpr = getKey(it) == Key.kIf;
     if (!isIfExpr) return null;
     eatLfIfNeed(it);
@@ -562,9 +568,7 @@ class Modules {
       state.restore();
     }
 
-    final ifExpr = IfExpr(ifBlock, elseIfExprs, kElse);
-
-    return ExprStmt(ifExpr);
+    return IfExpr(ifBlock, elseIfExprs, kElse);
   }
 
   IfExprBlock parseIfBlock(TokenIterator it) {
@@ -759,7 +763,9 @@ class Modules {
       }
 
       if (lhs == null) {
-        if (t.kind == TokenKind.ident) {
+        if (getKey(it) == Key.kIf) {
+          lhs = parseIfExpr(it);
+        } else if (t.kind == TokenKind.ident) {
           final ident = getIdent(it);
           final key = getKey(it);
           if (key?.isBool == true) {

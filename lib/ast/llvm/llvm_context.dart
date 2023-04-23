@@ -402,14 +402,37 @@ class BuildContext
     loopBBs.remove(loopAfter);
   }
 
-  LLVMTempVariable? createIfBlock(IfExprBlock ifb) {
-    final v = buildIfExprBlock(ifb);
-    if (v == null) return null;
-    return null;
+  StoreVariable? createIfBlock(IfExprBlock ifb, Ty? ty) {
+    StoreVariable? variable;
+    if (ty != null) {
+      variable = ty.llvmType.createAlloca(this, Identifier.none);
+    }
+    buildIfExprBlock(ifb, variable);
+
+    return variable;
     // return LLVMTempVariable(v,v.ty);
   }
 
-  LLVMValueRef? buildIfExprBlock(IfExprBlock ifEB) {
+  void _ifRetValue(Block block, StoreVariable? variable) {
+    if (variable == null) return;
+    if (block.stmts.isNotEmpty) {
+      final lastStmt = block.stmts.last;
+      if (lastStmt is ExprStmt) {
+        final expr = lastStmt.expr;
+        if (expr is! RetExpr) {
+          // 获取缓存的value
+          final val = expr.build(this)?.variable?.load(this);
+          if (val == null) {
+            // error
+          } else {
+            variable.store(this, val);
+          }
+        }
+      }
+    }
+  }
+
+  void buildIfExprBlock(IfExprBlock ifEB, StoreVariable? variable) {
     final elseifBlock = ifEB.child;
     final elseBlock = ifEB.elseBlock;
     final onlyIf = elseifBlock == null && elseBlock == null;
@@ -419,7 +442,7 @@ class BuildContext
     LLVMBasicBlock? elseBB;
 
     final con = ifEB.expr.build(this)?.variable;
-    if (con == null) return null;
+    if (con == null) return;
 
     appendBB(then);
     ifEB.block.build(then.context);
@@ -431,20 +454,28 @@ class BuildContext
       appendBB(elseBB);
 
       if (elseifBlock != null) {
-        elseBB.context.buildIfExprBlock(elseifBlock);
+        elseBB.context.buildIfExprBlock(elseifBlock, variable);
       } else if (elseBlock != null) {
         elseBlock.build(elseBB.context);
       }
     }
     var canBr = then.context.canBr;
     if (canBr) {
+      then.context._ifRetValue(ifEB.block, variable);
       then.context.br(afterBB.context);
     }
 
     if (elseBB != null) {
       final elseCanBr = elseBB.context.canBr;
       // canBr |= elseCanBr;
-      if (elseCanBr) elseBB.context.br(afterBB.context);
+      if (elseCanBr) {
+        if (elseBlock != null) {
+          elseBB.context._ifRetValue(elseBlock, variable);
+        } else if (elseifBlock != null) {
+          elseBB.context._ifRetValue(elseifBlock.block, variable);
+        }
+        elseBB.context.br(afterBB.context);
+      }
     }
 
     // if (!canBr) {
@@ -452,7 +483,7 @@ class BuildContext
     // }
     insertPointBB(afterBB);
 
-    return null;
+    return;
   }
 
   bool _breaked = false;

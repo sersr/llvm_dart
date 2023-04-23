@@ -51,7 +51,9 @@ fn main() int {
     if x > 110 {
       break;
     }
-    // continue;
+    if x < 3333 {
+    continue;
+    }
   }
   while x > 10 {
     let haha: string = "while test"
@@ -453,7 +455,21 @@ fn main() int {
   struct My {y: int, f: fn()}
   let my = My {11,dd}
   my.f();
+
+  let y = 222;
+  let xx = if y < 33 { 
+    Gen{1, 2,3}; 
+  } else {
+    Gen{4,5,6};
+  }
+  printf("xx: %d\n", xx.z);
   0;
+}
+
+struct Gen {
+  x: i32,
+  y: i32,
+  z: i32,
 }
 
 fn outer(f: fn()) {
@@ -462,7 +478,7 @@ fn outer(f: fn()) {
   otherf();
 }
 ''';
-    testRun(src);
+    testRun(src, build: true);
     await runNativeCode();
   });
 }
