@@ -17,18 +17,19 @@ class LLVMRawValue {
   LLVMRawValue(this._raw);
   final String _raw;
 
-  String get raw => _raw.replaceAll('_', '');
+  String get raw => _raw;
+  String get rawNumber => _raw.replaceAll('_', '');
 
   Pointer<Char> toChar() {
     return raw.toChar();
   }
 
   double get value {
-    return double.parse(raw);
+    return double.parse(rawNumber);
   }
 
   int get iValue {
-    return int.parse(raw);
+    return int.parse(rawNumber);
   }
 }
 

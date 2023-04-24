@@ -91,6 +91,10 @@ class IfExprBlock {
   AnalysisVariable? analysis(AnalysisContext context) {
     expr.analysis(context);
     block.analysis(context);
+    return retFromBlock(block, context);
+  }
+
+  static AnalysisVariable? retFromBlock(Block block, AnalysisContext context) {
     if (block.stmts.isNotEmpty) {
       final last = block.stmts.last;
       if (last is ExprStmt) {
@@ -148,9 +152,98 @@ class IfExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final v = context.createIfBlock(ifExpr, _variable?.ty);
+    final v =
+        createIfBlock(ifExpr, context, LiteralExpr.letTy ?? _variable?.ty);
     if (v == null) return null;
     return ExprTempValue(v, v.ty);
+  }
+
+  StoreVariable? createIfBlock(IfExprBlock ifb, BuildContext context, Ty? ty) {
+    StoreVariable? variable;
+    if (ty != null) {
+      variable = ty.llvmType.createAlloca(context, Identifier.none);
+    }
+    buildIfExprBlock(ifb, context, variable);
+
+    return variable;
+  }
+
+  static void _blockRetValue(
+      Block block, BuildContext context, StoreVariable? variable) {
+    if (variable == null) return;
+    if (block.stmts.isNotEmpty) {
+      final lastStmt = block.stmts.last;
+      if (lastStmt is ExprStmt) {
+        final expr = lastStmt.expr;
+        if (expr is! RetExpr) {
+          // 获取缓存的value
+          final val = expr.build(context)?.variable;
+          if (val == null) {
+            // error
+          } else {
+            if (val is LLVMAllocaDelayVariable) {
+              val.create(variable);
+            } else {
+              final v = val.load(context);
+              llvm.LLVMDumpValue(v);
+              final vv = variable.getBaseValue(context);
+              llvm.LLVMDumpValue(vv);
+              variable.store(context, v);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void buildIfExprBlock(
+      IfExprBlock ifEB, BuildContext c, StoreVariable? variable) {
+    final elseifBlock = ifEB.child;
+    final elseBlock = ifEB.elseBlock;
+    final onlyIf = elseifBlock == null && elseBlock == null;
+    assert(onlyIf || (elseBlock != null) != (elseifBlock != null));
+    final then = c.buildSubBB(name: 'then');
+    final afterBB = c.buildSubBB(name: 'after');
+    LLVMBasicBlock? elseBB;
+
+    final con = ifEB.expr.build(c)?.variable;
+    if (con == null) return;
+
+    c.appendBB(then);
+    ifEB.block.build(then.context);
+    if (onlyIf) {
+      llvm.LLVMBuildCondBr(c.builder, con.load(c), then.bb, afterBB.bb);
+    } else {
+      elseBB = c.buildSubBB(name: elseifBlock == null ? 'else' : 'elseIf');
+      llvm.LLVMBuildCondBr(c.builder, con.load(c), then.bb, elseBB.bb);
+      c.appendBB(elseBB);
+
+      if (elseifBlock != null) {
+        buildIfExprBlock(elseifBlock, elseBB.context, variable);
+      } else if (elseBlock != null) {
+        elseBlock.build(elseBB.context);
+      }
+    }
+    var canBr = then.context.canBr;
+    if (canBr) {
+      _blockRetValue(ifEB.block, then.context, variable);
+      then.context.br(afterBB.context);
+    }
+
+    if (elseBB != null) {
+      final elseCanBr = elseBB.context.canBr;
+      // canBr |= elseCanBr;
+      if (elseCanBr) {
+        if (elseBlock != null) {
+          _blockRetValue(elseBlock, elseBB.context, variable);
+        } else if (elseifBlock != null) {
+          _blockRetValue(elseifBlock.block, elseBB.context, variable);
+        }
+        elseBB.context.br(afterBB.context);
+      }
+    }
+
+    c.insertPointBB(afterBB);
   }
 
   AnalysisVariable? _variable;
@@ -1514,6 +1607,9 @@ class MatchItemExpr extends BuildMixin {
   MatchItemExpr(this.expr, this.block);
   final Expr expr;
   final Block block;
+
+  MatchItemExpr? child;
+
   @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
@@ -1546,7 +1642,21 @@ class MatchItemExpr extends BuildMixin {
       expr.analysis(child);
     }
     block.analysis(child);
-    return null;
+
+    return IfExprBlock.retFromBlock(block, context);
+  }
+
+  bool get isOther {
+    var e = expr;
+    if (e is RefExpr) {
+      e = e.current;
+    }
+    if (e is VariableIdentExpr) {
+      if (e.ident.src == '_') {
+        return true;
+      }
+    }
+    return false;
   }
 
   int? build2(BuildContext context, ExprTempValue pattern) {
@@ -1601,11 +1711,12 @@ class MatchExpr extends Expr {
     }
   }
 
+  AnalysisVariable? _variable;
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     expr.analysis(context);
     for (var item in items) {
-      item.analysis(context);
+      _variable ??= item.analysis(context);
     }
     return null;
   }
@@ -1616,35 +1727,121 @@ class MatchExpr extends Expr {
     if (variable == null) return null;
     final ty = variable.ty;
     if (ty is! EnumItem) return null;
+    final allCount = ty.parent.variants.length;
 
     final parent = variable.variable;
     if (parent == null) return null;
 
-    var indexValue = ty.llvmType.loadIndex(context, parent);
-    // indexValue = llvm.LLVMBuildIntCast2(
-    // context.builder, indexValue, context.i64, LLVMFalse, unname);
-    final elseBb = context.buildSubBB(name: 'match_else');
-    final ss = llvm.LLVMBuildSwitch(
-        context.builder, indexValue, elseBb.bb, items.length);
-    var index = 0;
-    final llPty = ty.parent.llvmType;
-    for (var item in items) {
-      final childBb = context.buildSubBB(name: 'bb_$index');
-      context.appendBB(childBb);
-      final v = item.build2(childBb.context, variable);
-      if (v != null) {
-        llvm.LLVMAddCase(ss, llPty.getIndexValue(context, v), childBb.bb);
-      }
-      childBb.context.br(elseBb.context);
-      index += 1;
+    StoreVariable? retVariable;
+    final retTy = LiteralExpr.letTy ?? _variable?.ty;
+    if (retTy != null) {
+      retVariable = retTy.llvmType.createAlloca(context, Identifier.none);
     }
-    context.insertPointBB(elseBb);
-    return null;
+
+    var indexValue = ty.llvmType.loadIndex(context, parent);
+
+    final hasOther = items.any((e) => e.isOther);
+    var length = items.length;
+
+    if (length <= 2) {
+      void buildItem(MatchItemExpr item, BuildContext context) {
+        final then = context.buildSubBB(name: 'm_then');
+        final after = context.buildSubBB(name: 'm_after');
+        LLVMBasicBlock elseBB;
+        final child = item.child;
+        if (child != null) {
+          elseBB = context.buildSubBB(name: 'm_else');
+        } else {
+          elseBB = after;
+        }
+
+        context.appendBB(then);
+        final itemIndex = item.build2(then.context, variable);
+        IfExpr._blockRetValue(item.block, then.context, retVariable);
+        if (then.context.canBr) {
+          then.context.br(after.context);
+        }
+        if (itemIndex != null) {
+          final con = llvm.LLVMBuildICmp(
+              context.builder,
+              LLVMIntPredicate.LLVMIntEQ,
+              indexValue,
+              ty.parent.llvmType.getIndexValue(context, itemIndex),
+              unname);
+          llvm.LLVMBuildCondBr(context.builder, con, then.bb, elseBB.bb);
+        }
+
+        if (child != null) {
+          context.appendBB(elseBB);
+          if (child.isOther || allCount == 2) {
+            child.build2(elseBB.context, variable);
+            IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
+          } else {
+            buildItem(child, elseBB.context);
+          }
+          if (elseBB.context.canBr) {
+            elseBB.context.br(after.context);
+          }
+        }
+
+        context.insertPointBB(after);
+      }
+
+      MatchItemExpr? last;
+      for (var item in items) {
+        if (last == null) {
+          last = item;
+          continue;
+        }
+        last.child = item;
+        last = item;
+      }
+      buildItem(items.first, context);
+    } else {
+      final elseBb = context.buildSubBB(name: 'match_else');
+      LLVMBasicBlock after = elseBb;
+
+      if (hasOther) {
+        length -= 1;
+        context.appendBB(elseBb);
+        after = context.buildSubBB(name: 'match_after');
+      }
+
+      final ss =
+          llvm.LLVMBuildSwitch(context.builder, indexValue, elseBb.bb, length);
+      var index = 0;
+      final llPty = ty.parent.llvmType;
+      for (var item in items) {
+        LLVMBasicBlock childBb;
+        if (item.isOther) {
+          childBb = elseBb;
+        } else {
+          childBb = context.buildSubBB(name: 'match_bb_$index');
+          context.appendBB(childBb);
+        }
+        final v = item.build2(childBb.context, variable);
+        if (v != null) {
+          llvm.LLVMAddCase(ss, llPty.getIndexValue(context, v), childBb.bb);
+        }
+        IfExpr._blockRetValue(item.block, childBb.context, retVariable);
+        childBb.context.br(after.context);
+        index += 1;
+      }
+      if (after != elseBb) {
+        context.insertPointBB(after);
+      }
+    }
+
+    if (retVariable == null) {
+      return null;
+    }
+    return ExprTempValue(retVariable, retVariable.ty);
   }
 
   @override
   Expr clone() {
-    return MatchExpr(expr.clone(), items.map((e) => e.clone()).toList());
+    return MatchExpr(expr.clone(), items.map((e) => e.clone()).toList())
+      .._variable = _variable;
   }
 
   @override

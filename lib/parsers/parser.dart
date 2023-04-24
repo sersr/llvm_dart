@@ -406,20 +406,28 @@ class Modules {
     stmt ??= parseIfStmt(it);
     stmt ??= parseLoopExpr(it);
     stmt ??= parseWhileExpr(it);
-    stmt ??= parseMatchExpr(it);
+    stmt ??= parseMatchStmt(it);
     stmt ??= parseStmtBase(it);
 
     return stmt;
   }
 
-  Stmt? parseMatchExpr(TokenIterator it) {
+  Stmt? parseMatchStmt(TokenIterator it) {
+    final expr = parseMatchExpr(it);
+    if (expr != null) {
+      return ExprStmt(expr);
+    }
+    return null;
+  }
+
+  Expr? parseMatchExpr(TokenIterator it) {
     final isMatch = getKey(it) == Key.kMatch;
     if (!isMatch) return null;
     final expr = parseExpr(it);
     checkBlock(it);
     if (getToken(it).kind == TokenKind.openBrace) {
       final items = parseMatchItem(it);
-      return ExprStmt(MatchExpr(expr, items));
+      return MatchExpr(expr, items);
     }
     return null;
   }
@@ -510,7 +518,8 @@ class Modules {
       return ExprStmt(BlockExpr(block));
     }
     it.moveBack();
-    final lhs = parseExpr(it, runOp: true);
+    final state = it.cursor;
+    var lhs = parseExpr(it, runOp: true);
     eatLfIfNeed(it);
     OpKind? key;
     if (it.moveNext()) {
@@ -530,8 +539,11 @@ class Modules {
         } else {
           return ExprStmt(AssignExpr(lhs, rhs));
         }
-      } else if (e.kind != TokenKind.lf) {
-        it.moveBack();
+        // } else if (e.kind != TokenKind.lf) {
+        //   it.moveBack();
+      } else {
+        state.restore();
+        lhs = parseExpr(it);
       }
     }
 
@@ -762,10 +774,11 @@ class Modules {
         }
       }
 
+      lhs ??= parseIfExpr(it);
+      lhs ??= parseMatchExpr(it);
+
       if (lhs == null) {
-        if (getKey(it) == Key.kIf) {
-          lhs = parseIfExpr(it);
-        } else if (t.kind == TokenKind.ident) {
+        if (t.kind == TokenKind.ident) {
           final ident = getIdent(it);
           final key = getKey(it);
           if (key?.isBool == true) {

@@ -416,7 +416,7 @@ extern fn yy(y: int) {
 extern fn printf(str: string, ...);
 
 fn printxx(y: int) {
-  printf('str: %d\n', y);
+  printf('str: %d\\n', y);
 }
 
 fn main() int {
@@ -462,8 +462,22 @@ fn main() int {
   } else {
     Gen{4,5,6};
   }
-  printf("xx: %d\n", xx.z);
+  printf("xx: %d\\n", xx.z);
+
+  let op = Some(11);
+  let m_test = match op {
+    Some(y) => y + 2,
+    None() => 333,
+  }
+
+  printf("m_test:%d\\n", m_test);
   0;
+}
+
+enum Option {
+  Some(i32),
+  None(),
+  Third(),
 }
 
 struct Gen {
@@ -478,7 +492,33 @@ fn outer(f: fn()) {
   otherf();
 }
 ''';
-    testRun(src, build: true);
+    testRun(src, build: true, mem2reg: false);
+    await runNativeCode();
+  });
+
+  test('test match', () async {
+    final src = '''
+extern fn printf(str: string, ...) i32;
+
+fn main() i32 {
+  let op = Third();
+  let m_test = match op {
+    Some(y) => y + 2,
+    None() => 333,
+    _ => 555,
+  }
+
+  printf("m_test:%d\\n", m_test);
+  0;
+}
+
+enum Option {
+  Some(i32),
+  None(),
+  Third(),
+}
+''';
+    testRun(src);
     await runNativeCode();
   });
 }
