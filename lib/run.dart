@@ -4,7 +4,9 @@ import 'dart:io';
 import 'ast/analysis_context.dart';
 import 'ast/buildin.dart';
 import 'ast/llvm/llvm_context.dart';
+import 'ast/memory.dart';
 import 'fs/fs.dart';
+import 'llvm_core.dart';
 import 'llvm_dart.dart';
 import 'parsers/parser.dart';
 
@@ -18,7 +20,10 @@ T runZonedSrc<T>(T Function() body, String src) {
   );
 }
 
-AnalysisContext testRun(String src, {bool mem2reg = false, bool build = true}) {
+AnalysisContext testRun(String src,
+    {bool mem2reg = false,
+    bool build = true,
+    void Function(BuildContext context)? b}) {
   return runZoned(
     () {
       final m = parseTopItem(src);
@@ -55,7 +60,9 @@ AnalysisContext testRun(String src, {bool mem2reg = false, bool build = true}) {
         }
 
         llvm.LLVMDumpModule(root.module);
-        llvm.writeOutput(root.kModule);
+        llvm.writeOutput(
+            root.kModule, LLVMCodeGenFileType.LLVMObjectFile, 'out.o'.toChar());
+        b?.call(root);
         root.dispose();
       }
       return root;

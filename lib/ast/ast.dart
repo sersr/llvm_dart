@@ -50,6 +50,8 @@ class Identifier with EquatableMixin {
   final int end;
   final String builtInName;
 
+  bool get isValid => end != 0;
+
   RawIdent get toRawIdent {
     return RawIdent(start, end);
   }
@@ -538,11 +540,15 @@ class BuiltInTy extends Ty {
 
 /// [PathTy] 只用于声明
 class PathTy with EquatableMixin {
-  PathTy(this.ident, [this.kind = const []]) : ty = null;
-  PathTy.ty(Ty this.ty, [this.kind = const []]) : ident = Identifier.none;
+  PathTy(this.ident, this.generics, [this.kind = const []]) : ty = null;
+  PathTy.ty(Ty this.ty, [this.kind = const []])
+      : ident = Identifier.none,
+        generics = const [];
   final Identifier ident;
   final Ty? ty;
   final List<PointerKind> kind;
+
+  final List<PathTy> generics;
 
   bool? _isRef;
   bool get isRef => _isRef ??= kind.isRef;
@@ -550,7 +556,12 @@ class PathTy with EquatableMixin {
   @override
   String toString() {
     if (ty != null) return ty!.toString();
-    return '${kind.join('')}$ident';
+    var g = '';
+    if (generics.isNotEmpty) {
+      g = generics.join(',');
+      g = '<$g>';
+    }
+    return '${kind.join('')}$ident$g';
   }
 
   @override
@@ -571,16 +582,24 @@ class PathTy with EquatableMixin {
     return kind.resolveTy(grt(c));
   }
 
-  Ty grt(Tys c) {
+  Ty grt(Tys c, {Ty? Function(Identifier ident)? gen}) {
     var rty = ty;
     // if (ty != null) return ty!;
 
     final tySrc = ident.src;
     rty ??= BuiltInTy.from(tySrc);
 
+    rty ??= gen?.call(ident);
     rty ??= c.getTy(ident);
     if (rty == null) {
       // error
+    }
+    if (rty is StructTy && generics.isNotEmpty) {
+      final gMap = <Identifier, Ty>{};
+      for (var g in generics) {
+        gMap[g.ident] = g.grt(c, gen: gen);
+      }
+      rty = rty.newInst(gMap, c, gen: gen);
     }
 
     return rty!;
@@ -714,13 +733,29 @@ class ImplFn extends Fn {
 }
 
 class FieldDef {
-  FieldDef(this.ident, this.ty);
+  FieldDef(this.ident, this._ty);
   final Identifier ident;
-  final PathTy ty;
-  List<PointerKind> get kinds => ty.kind;
+  final PathTy _ty;
+  PathTy get rawTy => _ty;
+  Ty? _rty;
+  Ty grt(Tys c) {
+    if (_rty != null) return _rty!;
+    return _ty.grt(c);
+  }
+
+  Ty grts(Tys c, Ty? Function(Identifier ident) gen) {
+    if (_rty != null) return _rty!;
+    return _ty.grt(c, gen: gen);
+  }
+
+  FieldDef clone() {
+    return FieldDef(ident, _ty);
+  }
+
+  List<PointerKind> get kinds => _ty.kind;
   @override
   String toString() {
-    return '$ident: ${kinds.join('')}$ty';
+    return '$ident: ${kinds.join('')}$_ty';
   }
 
   bool? _isRef;
@@ -728,13 +763,53 @@ class FieldDef {
 }
 
 class StructTy extends Ty with EquatableMixin {
-  StructTy(this.ident, this.fields);
+  StructTy(this.ident, this.fields, this.generics);
   final Identifier ident;
   final List<FieldDef> fields;
 
+  final List<FieldDef> generics;
+
+  final _tyLists = <ListKey, StructTy>{};
+
+  Map<Identifier, Ty>? _tys;
+  Map<Identifier, Ty> get tys => _tys ?? const {};
+
+  StructTy? _parent;
+  StructTy newInst(Map<Identifier, Ty> tys, Tys c,
+      {Ty? Function(Identifier ident)? gen}) {
+    _parent ??= this;
+    if (tys.isEmpty) return _parent!;
+    final key = ListKey(tys);
+    return _parent!._tyLists.putIfAbsent(key, () {
+      final newFields = <FieldDef>[];
+      for (var f in fields) {
+        final nf = f.clone();
+        final g = f.grts(c, (ident) {
+          final data = tys[ident];
+          if (data != null) {
+            Log.w(data);
+            return data;
+          }
+          return gen?.call(ident);
+        });
+        nf._rty = g;
+        newFields.add(nf);
+      }
+
+      return StructTy(ident, newFields, generics)
+        .._parent = _parent
+        .._tys = tys;
+    });
+  }
+
   @override
   String toString() {
-    return '${pad}struct $ident {${fields.join(',')}}';
+    var g = '';
+    if (generics.isNotEmpty) {
+      g = generics.join(',');
+      g = '<$g>';
+    }
+    return '${pad}struct $ident$g {${fields.join(',')}}';
   }
 
   @override
@@ -756,7 +831,7 @@ class StructTy extends Ty with EquatableMixin {
 }
 
 class UnionTy extends StructTy {
-  UnionTy(super.ident, super.fields);
+  UnionTy(super.ident, super.fields, super.generics);
 }
 
 class EnumTy extends Ty {
@@ -798,11 +873,11 @@ class EnumTy extends Ty {
 
 /// 与 `struct` 类似
 class EnumItem extends StructTy {
-  EnumItem(super.ident, super.fields);
+  EnumItem(super.ident, super.fields, super.generics);
   late EnumTy parent;
   @override
   String toString() {
-    final f = fields.map((e) => e.ty).join(',');
+    final f = fields.map((e) => e._ty).join(',');
     final fy = f.isEmpty ? '' : '($f)';
     return '$ident$fy';
   }

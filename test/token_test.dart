@@ -1,7 +1,3 @@
-import 'dart:ffi';
-
-import 'package:llvm_dart/ast/context.dart';
-import 'package:llvm_dart/ast/llvm/llvm_context.dart';
 import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/llvm_core.dart';
 import 'package:llvm_dart/llvm_dart.dart';
@@ -87,51 +83,6 @@ enum Lang {
 ''';
     // LevelMixin.padSize = 2;
     testRun(src);
-  });
-
-  test('test name', () async {
-    llvm.initLLVM();
-    final context = BuildContext.root();
-
-    final builder = context.builder;
-    final C = context.llvmContext;
-    final retTy = llvm.LLVMDoubleType();
-    final fnty = llvm.LLVMFunctionType(retTy, <Pointer>[].toNative(), 0, 0);
-    final fn = llvm.getOrInsertFunction('main'.toChar(), context.module, fnty);
-    final bb = llvm.LLVMAppendBasicBlockInContext(C, fn, 'entry'.toChar());
-    llvm.LLVMPositionBuilderAtEnd(builder, bb);
-
-    final then = llvm.LLVMAppendBasicBlockInContext(C, fn, 'then'.toChar());
-    final elseF = llvm.LLVMAppendBasicBlockInContext(C, fn, 'else'.toChar());
-    final after = llvm.LLVMAppendBasicBlockInContext(C, fn, 'after'.toChar());
-
-    final t = llvm.LLVMInt32Type();
-    final t2 = llvm.LLVMInt32Type();
-    final l = llvm.LLVMConstInt(t, 10, 32);
-    final r = llvm.LLVMConstInt(t2, 101, 32);
-    final con = llvm.LLVMConstICmp(LLVMIntPredicate.LLVMIntULT, l, r);
-    llvm.LLVMBuildCondBr(builder, con, then, elseF);
-
-    llvm.LLVMPositionBuilderAtEnd(builder, then);
-    llvm.LLVMBuildBr(builder, after);
-    llvm.LLVMPositionBuilderAtEnd(builder, elseF);
-    llvm.LLVMBuildBr(builder, after);
-    llvm.LLVMPositionBuilderAtEnd(builder, after);
-
-    final dt = llvm.LLVMDoubleType();
-    final lr = llvm.LLVMConstReal(dt, 0);
-
-    llvm.LLVMBuildRet(builder, lr);
-    // llvm.LLVMBuildRetVoid(builder);
-    // llvmC.pushAllTy(m.globalTy);
-    // for (var fn in llvmC.fns.values) {
-    //   for (var f in fn) {
-    //     print(f);
-    //     f.build(llvmC);
-    //   }
-    // }
-    llvm.writeOutput(context.kModule);
-    llvm.destory(context.kModule);
   });
 
   test('test src', () {
@@ -500,16 +451,75 @@ fn outer(f: fn()) {
     final src = '''
 extern fn printf(str: string, ...) i32;
 
-fn main() i32 {
-  let op = Third();
-  let m_test = match op {
-    Some(y) => y + 2,
-    None() => 333,
-    _ => 555,
-  }
+fn main(x: usize) i32 {
 
-  printf("m_test:%d\\n", m_test);
+  // printf("x: %d\\n", x);
+
+  // let op = Third();
+  // let m_test = match op {
+  //   Some(y) => y + 2,
+  //   None() => 333,
+  //   _ => 555,
+  // }
+
+  // printf("m_test:%d\\n", m_test);
+
+  // let yy = new Gen {12, 33};
+
+  // printf('yy: %d\\n', yy.y);
+
+  // let b = Arc<Gen>();
+  // let y = Arc<Gen>{};
+
+  // let hh = Arc{ Gen {1,2}, 222}
+  // printf("ss: %d\\n", hh.data.x);
+  // let yy = Arc{ 555, 5335};
+  // printf("yy: %d\\n", yy.data);
+  // if x < y {
+
+  // }
+
+  let hhx = Arc {Bb{ Gen { 3, 22 }, 101}, 22}
+  printf("hhx: %d\\n",  hhx.data.x);
+
+  // let single = Arc { Gen { 66 ,55}, 3366}
+  // printf("single: %d\\n", single.data.x);
+
+  let base = Arc { Bb{ Base { 525, 33}, 55}, 33}
+  printf("base: %d\\n", base.data.dd.hh);
   0;
+}
+
+
+/// let hh = Arc { Bb { Gen { 1, 3 }, 5 }, 66}
+/// Arc<Bb<Gen>> : T => Gen
+struct Arc<T, S: Bb<T>> {
+  data: S, // Bb<Gen>
+  count: usize,
+}
+
+struct Bb<T> {
+  dd: T,
+  x: i32,
+}
+
+// struct Child<T: Gen> {
+// g: T,
+// }
+
+// struct Example<T: Ex<Gen>> {
+// 
+// }
+// f
+
+struct Gen {
+  y: i32,
+  x: i32,
+}
+
+struct Base {
+  hh: i32,
+  yy: i32,
 }
 
 enum Option {
@@ -518,7 +528,15 @@ enum Option {
   Third(),
 }
 ''';
-    testRun(src);
+    testRun(
+      src,
+      build: true,
+      b: (root) {
+        llvm.writeOutput(root.kModule, LLVMCodeGenFileType.LLVMAssemblyFile,
+            'out.s'.toChar());
+      },
+    );
+
     await runNativeCode();
   });
 }

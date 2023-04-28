@@ -46,6 +46,7 @@ class LetStmt extends Stmt {
         if (tty is BuiltInTy) {
           final alloca = variable.createAlloca(context, tty);
           alloca.isTemp = false;
+          alloca.ident = nameIdent;
           context.setName(alloca.alloca, nameIdent.src);
           context.pushVariable(nameIdent, alloca);
           return;
@@ -57,10 +58,12 @@ class LetStmt extends Stmt {
       final (_, delayAlloca) = context.sretVariable(nameIdent, variable);
       if (delayAlloca != null) {
         alloca = delayAlloca;
+        delayAlloca.ident = nameIdent;
       }
 
       if (variable is StoreVariable && variable.isTemp) {
         variable.isTemp = false;
+        variable.ident = nameIdent;
         context.setName(variable.alloca, nameIdent.src);
         context.pushVariable(nameIdent, variable);
         return;

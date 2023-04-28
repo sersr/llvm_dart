@@ -41,12 +41,16 @@ abstract class LLVMType {
   StoreVariable createAlloca(BuildContext c, Identifier ident) {
     final type = createType(c);
     final v = c.createAlloca(type, name: ident.src);
-    return LLVMAllocaVariable(ty, v, type);
+    final val = LLVMAllocaVariable(ty, v, type);
+    if (ident.isValid) {
+      val.ident = ident;
+    }
+    return val;
   }
 
   StoreVariable createMalloc(BuildContext c, Identifier ident) {
     final type = createType(c);
-    final v = c.createAlloca(type, name: ident.src);
+    final v = c.createMalloc(type, name: ident.src);
     return LLVMAllocaVariable(ty, v, type);
   }
 }
@@ -336,14 +340,14 @@ class LLVMStructType extends LLVMType {
 
   int getMinSize(BuildContext c) {
     return ty.fields.fold<int>(100, (p, e) {
-      final size = e.ty.grt(c).llvmType.getBytes(c);
+      final size = e.grt(c).llvmType.getBytes(c);
       return p > size ? size : p;
     });
   }
 
   int getMaxSize(BuildContext c) {
     return ty.fields.fold<int>(100, (p, e) {
-      final size = e.ty.grt(c).llvmType.getBytes(c);
+      final size = e.grt(c).llvmType.getBytes(c);
       return p < size ? size : p;
     });
   }
@@ -361,7 +365,7 @@ class LLVMStructType extends LLVMType {
     final fields = extern ? struct.fields : size.map.keys.toList();
 
     for (var field in fields) {
-      var rty = field.ty.grt(c);
+      var rty = field.grt(c);
       if (rty is FnTy) {
         vals.add(c.pointer());
       } else {
@@ -385,7 +389,7 @@ class LLVMStructType extends LLVMType {
     final vals = <LLVMTypeRef>[];
 
     for (var field in fields) {
-      var rty = field.ty.grt(c);
+      var rty = field.grt(c);
       if (rty is FnTy) {
         vals.add(c.pointer());
       } else {
@@ -409,10 +413,18 @@ class LLVMStructType extends LLVMType {
     final fields = ty.fields;
     final index = fields.indexWhere((element) => element.ident == ident);
     if (index == -1) return null;
-    final indics = <LLVMValueRef>[];
     final field = fields[index];
+    final rTy = field.grt(context);
+
+    // if (index == 0) {
+    //   final val = LLVMRefAllocaVariable.from(
+    //       alloca.getBaseValue(context), rTy, context);
+    //   val.isTemp = false;
+    //   return val;
+    // }
+
+    final indics = <LLVMValueRef>[];
     final rIndex = extern ? index : _size!.map[field]!.index;
-    final rTy = field.ty.getRty(context);
     LLVMValueRef v = alloca.getBaseValue(context);
 
     indics.add(context.constI32(0));
@@ -521,7 +533,7 @@ class LLVMStructType extends LLVMType {
   static FieldsSize alignType(BuildContext c, List<FieldDef> fields,
       {bool sort = false}) {
     var alignSize = fields.fold<int>(0, (previousValue, element) {
-      final size = element.ty.grt(c).llvmType.getBytes(c);
+      final size = element.grt(c).llvmType.getBytes(c);
       if (previousValue > size) return previousValue;
       return size;
     });
@@ -534,9 +546,9 @@ class LLVMStructType extends LLVMType {
     final newList = List.of(fields);
     if (sort) {
       newList.sort((p, n) {
-        final pre = p.ty.grt(c).llvmType.getBytes(c);
-        final next = n.ty.grt(c).llvmType.getBytes(c);
-        return pre > next ? 1 : -1;
+        final pre = p.grt(c).llvmType.getBytes(c);
+        final next = n.grt(c).llvmType.getBytes(c);
+        return pre < next ? 1 : -1;
       });
     }
 
@@ -544,7 +556,7 @@ class LLVMStructType extends LLVMType {
     final map = <FieldDef, FieldIndex>{};
     var index = 0;
     for (var field in newList) {
-      var rty = field.ty.grt(c);
+      var rty = field.grt(c);
       var currentSize = 0;
       if (rty is FnTy) {
         currentSize = c.pointerSize();
@@ -733,7 +745,7 @@ class LLVMEnumItemType extends LLVMStructType {
     vals.add(c.arrayType(pTy.getIndexType(c), 1));
 
     for (var field in fields) {
-      var rty = field.ty.grt(c);
+      var rty = field.grt(c);
       final space = size.map[field]!.space;
       if (space > 0) {
         if (space % 4 == 0) {
@@ -762,7 +774,7 @@ class LLVMEnumItemType extends LLVMStructType {
       {int initValue = 0, bool sort = false}) {
     final targetSize = c.pointerSize();
     var alignSize = fields.fold<int>(0, (previousValue, element) {
-      final size = element.ty.grt(c).llvmType.getBytes(c);
+      final size = element.grt(c).llvmType.getBytes(c);
       if (previousValue > size) return previousValue;
       return size;
     });
@@ -774,8 +786,8 @@ class LLVMEnumItemType extends LLVMStructType {
     final newList = List.of(fields);
     if (sort) {
       newList.sort((p, n) {
-        final pre = p.ty.grt(c).llvmType.getBytes(c);
-        final next = n.ty.grt(c).llvmType.getBytes(c);
+        final pre = p.grt(c).llvmType.getBytes(c);
+        final next = n.grt(c).llvmType.getBytes(c);
         return pre > next ? 1 : -1;
       });
     }
@@ -787,7 +799,7 @@ class LLVMEnumItemType extends LLVMStructType {
     }
     final map = <FieldDef, FieldIndex>{};
     for (var field in newList) {
-      var rty = field.ty.grt(c);
+      var rty = field.grt(c);
       var currentSize = 0;
       if (rty is FnTy) {
         currentSize = c.pointerSize();
@@ -880,7 +892,7 @@ class LLVMEnumItemType extends LLVMStructType {
       }
 
       final indices = [c.constI32(0), c.constI32(index)];
-      final t = f.ty.grt(c);
+      final t = f.grt(c);
       final llValue = llvm.LLVMBuildInBoundsGEP2(
           c.builder, type, value, indices.toNative(), indices.length, unname);
       final v = llvm.LLVMBuildLoad2(

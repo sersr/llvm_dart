@@ -456,17 +456,22 @@ class RetExpr extends Expr {
 
 // struct: CS{ name: "struct" }
 class StructExpr extends Expr {
-  StructExpr(this.ident, this.fields);
+  StructExpr(this.ident, this.fields, this.generics);
   final Identifier ident;
   final List<FieldExpr> fields;
+  final List<PathTy> generics;
+
+  bool isNew = false;
+
   @override
   Expr clone() {
-    return StructExpr(ident, fields.map((e) => e.clone()).toList());
+    return StructExpr(ident, fields.map((e) => e.clone()).toList(), generics)
+      ..isNew = isNew;
   }
 
   @override
   String toString() {
-    return '$ident{${fields.join(',')}}';
+    return '$ident${generics.str}{${fields.join(',')}}';
   }
 
   @override
@@ -474,42 +479,102 @@ class StructExpr extends Expr {
     final struct = context.getStruct(ident);
     if (struct == null) return null;
 
-    return buildTupeOrStruct(struct, context, ident, fields);
+    return buildTupeOrStruct(struct, context, ident, fields, generics, isNew);
   }
 
-  static ExprTempValue? buildTupeOrStruct(StructTy struct, BuildContext context,
-      Identifier ident, List<FieldExpr> params) {
-    final structType = struct.llvmType.createType(context);
-    LLVMValueRef create([StoreVariable? alloca]) {
-      final value = alloca ?? struct.llvmType.createAlloca(context, ident);
-      // final m = struct.llvmType.getFieldsSize(context).map;
+  static ExprTempValue? buildTupeOrStruct(
+      StructTy struct,
+      BuildContext context,
+      Identifier ident,
+      List<FieldExpr> params,
+      List<PathTy> genericsInst,
+      bool isNew) {
+    if (genericsInst.isNotEmpty) {
+      final gMap = <Identifier, Ty>{};
+      for (var g in genericsInst) {
+        gMap[g.ident] = g.grt(context);
+      }
+      struct = struct.newInst(gMap, context);
+    } else if (struct.generics.isNotEmpty) {
+      final gMap = <Identifier, Ty>{};
 
-      var fields = struct.fields;
-      final min = struct.llvmType.getMaxSize(context);
-      final size = min > 4 ? 8 : 4;
+      final fields = struct.fields;
+      final sg = struct.generics;
       final sortFields = alignParam(
           params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
+      // x: Arc<Gen<T>> => first fdTy => Arc<Gen<T>>
+      // child fdTy:  Gen<T> => T => real type
+      void fa(Ty ty, PathTy fdTy) {
+        final index = sg.indexWhere((e) => e.ident == fdTy.ident);
+        if (index != -1) {
+          final gen = sg[index];
+          if (gen.rawTy.generics.isNotEmpty && ty is StructTy) {
+            for (var f in gen.rawTy.generics) {
+              final tyg = ty.tys[f.ident];
+              fa(tyg!, f);
+            }
+          }
+          gMap.putIfAbsent(fdTy.ident, () => ty);
+        }
+
+        if (fdTy.generics.isNotEmpty && ty is StructTy) {
+          for (var i = 0; i < fdTy.generics.length; i += 1) {
+            final fdIdent = fdTy.generics[i];
+            final tyg = ty.tys[fdIdent.ident];
+            fa(tyg!, fdIdent);
+          }
+        }
+      }
+
+      for (var i = 0; i < sortFields.length; i += 1) {
+        final f = sortFields[i];
+        final ty = f.build(context)?.variable?.ty;
+        if (ty != null) {
+          final fd = fields[i];
+          fa(ty, fd.rawTy);
+        }
+      }
+
+      Log.w('${struct.ident}: $gMap');
+      struct = struct.newInst(gMap, context);
+    }
+    final structType = struct.llvmType.createType(context);
+    LLVMValueRef create([StoreVariable? alloca]) {
+      var value = alloca;
+      final min = struct.llvmType.getMaxSize(context);
+      var fields = struct.fields;
+      final sortFields = alignParam(
+          params, (p) => fields.indexWhere((e) => e.ident == p.ident));
+      final size = min > 4 ? 8 : 4;
+
+      if (value == null) {
+        if (isNew) {
+          value = struct.llvmType.createMalloc(context, ident);
+          final fnContext = context.getLastFnContext();
+          fnContext?.addFree(value);
+        } else {
+          value = struct.llvmType.createAlloca(context, ident);
+        }
+      }
+
       for (var i = 0; i < sortFields.length; i++) {
         final f = sortFields[i];
-        // var index = i;
         final fd = fields[i];
-        // index = m[fd]!.index;
 
-        final v = LiteralExpr.run(
-            () => f.build(context)?.variable, fd.ty.grt(context));
+        final v =
+            LiteralExpr.run(() => f.build(context)?.variable, fd.grt(context));
         if (v == null) continue;
         final vv = struct.llvmType.getField(value, context, fd.ident)!;
+        if (v is LLVMAllocaDelayVariable) {
+          final result = v.create(vv);
+          if (result) {
+            continue;
+          }
+        }
+
         final store = vv.store(context, v.load(context));
         llvm.LLVMSetAlignment(store, size);
-
-        // final indics = <LLVMValueRef>[];
-        // indics.add(context.constI32(0));
-        // indics.add(context.constI32(index));
-        // final c = llvm.LLVMBuildInBoundsGEP2(context.builder, structType,
-        //     value.alloca, indics.toNative(), indics.length, unname);
-
-        // llvm.LLVMBuildStore(context.builder, v.load(context), c);
       }
       return value.alloca;
     }
@@ -891,15 +956,25 @@ mixin FnCallMixin {
   }
 }
 
+extension GenericsPathTy on List<PathTy> {
+  String get str {
+    if (isEmpty) return '';
+    return '<${join(',')}>';
+  }
+}
+
 class FnCallExpr extends Expr with FnCallMixin {
   FnCallExpr(this.expr, this.params);
   final Expr expr;
   final List<FieldExpr> params;
+
+  bool isNew = false;
   @override
   Expr clone() {
     final f = FnCallExpr(expr.clone(), params.map((e) => e.clone()).toList());
     f._catchFns.addAll(_catchFns);
     f._catchMapFns.addAll(_catchMapFns);
+    f.isNew = isNew;
     return f;
   }
 
@@ -914,7 +989,8 @@ class FnCallExpr extends Expr with FnCallMixin {
     final variable = fnV?.variable;
     final fn = variable?.ty ?? fnV?.ty;
     if (fn is StructTy) {
-      return StructExpr.buildTupeOrStruct(fn, context, Identifier.none, params);
+      return StructExpr.buildTupeOrStruct(
+          fn, context, Identifier.none, params, const [], isNew);
     }
 
     if (fn is SizeOfFn) {
@@ -927,7 +1003,7 @@ class FnCallExpr extends Expr with FnCallMixin {
       if (ty == null) {
         final e = first.expr;
         if (e is VariableIdentExpr) {
-          final p = PathTy(e.ident);
+          final p = PathTy(e.ident, e.generics);
           ty = p.grt(context);
         }
       }
@@ -1050,7 +1126,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (fn == null) {
       final field =
           structTy.fields.firstWhereOrNull((element) => element.ident == ident);
-      final ty = field?.ty.grt(context);
+      final ty = field?.grt(context);
       if (ty is FnTy) {
         fn = ty;
         autoAddChild(fn, params, context);
@@ -1125,7 +1201,7 @@ class StructDotFieldExpr extends Expr {
       return null;
     }
 
-    final vv = context.createVal(v.ty.grt(context), ident);
+    final vv = context.createVal(v.grt(context), ident);
     vv.lifeCycle.fnContext = variable.lifeCycle.fnContext;
     return vv;
   }
@@ -1450,22 +1526,22 @@ extension ListPointerKind on List<PointerKind> {
 }
 
 class VariableIdentExpr extends Expr {
-  VariableIdentExpr(this.ident);
+  VariableIdentExpr(this.ident, this.generics);
   final Identifier ident;
+  final List<PathTy> generics;
   @override
   String toString() {
-    return '$ident';
+    return '$ident${generics.str}';
   }
 
   @override
   Expr clone() {
-    return VariableIdentExpr(ident).._isCatch = _isCatch;
+    return VariableIdentExpr(ident, generics).._isCatch = _isCatch;
   }
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final val = context.getVariable(ident);
-
     if (val != null) {
       if (val is Deref) {
         if (ident.src == 'self') {
@@ -1476,8 +1552,15 @@ class VariableIdentExpr extends Expr {
       return ExprTempValue(val, val.ty);
     }
 
-    final struct = context.getStruct(ident);
+    var struct = context.getStruct(ident);
     if (struct != null) {
+      if (generics.isNotEmpty) {
+        final gg = <Identifier, Ty>{};
+        for (var g in generics) {
+          gg[g.ident] = g.grt(context);
+        }
+        struct = struct.newInst(gg, context);
+      }
       return ExprTempValue(TyVariable(struct), struct);
     }
 
@@ -1635,7 +1718,7 @@ class MatchItemExpr extends BuildMixin {
           }
           final f = enumTy.fields[i];
           final ident = p.ident ?? Identifier.none;
-          child.pushVariable(ident, child.createVal(f.ty.grt(child), ident));
+          child.pushVariable(ident, child.createVal(f.grt(child), ident));
         }
       }
     } else {

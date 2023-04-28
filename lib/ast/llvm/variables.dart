@@ -63,8 +63,10 @@ class LLVMAllocaDelayVariable extends StoreVariable {
   final Ty ty;
   LLVMValueRef? _alloca;
 
-  void create([StoreVariable? alloca]) {
+  bool create([StoreVariable? alloca]) {
+    final result = _alloca == null;
     _alloca ??= _create(alloca);
+    return result;
   }
 
   @override

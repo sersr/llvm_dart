@@ -11787,16 +11787,22 @@ class LLVMCore {
 
   void writeOutput(
     KModuleRef module,
+    int index,
+    ffi.Pointer<ffi.Char> name,
   ) {
     return _writeOutput(
       module,
+      index,
+      name,
     );
   }
 
-  late final _writeOutputPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(KModuleRef)>>('writeOutput');
-  late final _writeOutput =
-      _writeOutputPtr.asFunction<void Function(KModuleRef)>();
+  late final _writeOutputPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              KModuleRef, ffi.Int, ffi.Pointer<ffi.Char>)>>('writeOutput');
+  late final _writeOutput = _writeOutputPtr
+      .asFunction<void Function(KModuleRef, int, ffi.Pointer<ffi.Char>)>();
 
   LLVMModuleRef getModule(
     KModuleRef ref,

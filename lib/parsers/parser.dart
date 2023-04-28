@@ -138,7 +138,7 @@ class Modules {
       return null;
     }
 
-    final ty = parsePathTy(it) ?? PathTy(ident);
+    final ty = parsePathTy(it) ?? PathTy(ident, parseGenericsInstance(it));
 
     eatLfIfNeed(it);
     checkBlock(it);
@@ -327,7 +327,7 @@ class Modules {
         final decl = parseFnDecl(it, Identifier.none);
         ty = PathTy.ty(FnTy(decl), pointerKind);
       } else if (getToken(it).kind == TokenKind.ident) {
-        ty = PathTy(getIdent(it), pointerKind);
+        ty = PathTy(getIdent(it), parseGenericsInstance(it), pointerKind);
       }
     }
     if (ty == null) {
@@ -754,6 +754,39 @@ class Modules {
     return pointerKind;
   }
 
+  List<PathTy> parseGenericsInstance(TokenIterator it) {
+    final idents = <PathTy>[];
+    final state = it.cursor;
+    if (it.moveNext()) {
+      final kind = getToken(it).kind;
+      if (kind != TokenKind.lt) {
+        it.moveBack();
+        return idents;
+      }
+    }
+    loop(it, () {
+      if (getToken(it).kind == TokenKind.gt) {
+        return true;
+      }
+
+      it.moveBack();
+      final ty = parsePathTy(it);
+      if (ty != null) {
+        idents.add(ty);
+      } else {
+        state.restore();
+        idents.clear();
+        return true;
+      }
+      if (getToken(it).kind == TokenKind.gt) {
+        return true;
+      }
+      return false;
+    });
+
+    return idents;
+  }
+
   Expr parseExpr(TokenIterator it,
       {bool runOp = false, bool runOpInner = false}) {
     eatLfIfNeed(it);
@@ -776,6 +809,13 @@ class Modules {
 
       lhs ??= parseIfExpr(it);
       lhs ??= parseMatchExpr(it);
+
+      var isNew = false;
+      if (getKey(it) == Key.kNew) {
+        isNew = true;
+        it.moveNext();
+        eatLfIfNeed(it);
+      }
 
       if (lhs == null) {
         if (t.kind == TokenKind.ident) {
@@ -812,15 +852,17 @@ class Modules {
           eatLfIfNeed(it);
 
           final cursor = it.cursor;
+          final generics = parseGenericsInstance(it);
           if (it.moveNext()) {
             final t = getToken(it);
             if (t.kind == TokenKind.openBrace) {
               if (hasIfBlock(it)) {
-                final struct = parseStructExpr(it, ident);
+                final struct = parseStructExpr(it, ident, generics);
                 if (struct.fields.any((e) => e.expr is UnknownExpr)) {
                   cursor.restore();
                 } else {
                   lhs = struct;
+                  struct.isNew = isNew;
                 }
               } else {
                 cursor.restore();
@@ -829,8 +871,10 @@ class Modules {
               cursor.restore();
             }
           }
-
-          lhs ??= VariableIdentExpr(ident);
+          if (lhs == null) {
+            final generics = parseGenericsInstance(it);
+            lhs = VariableIdentExpr(ident, generics);
+          }
         }
       }
       if (lhs != null) {
@@ -843,7 +887,7 @@ class Modules {
             lhsss = parseMethodCallExpr(it, [], lhsss);
             return false;
           } else if (t.kind == TokenKind.openParen) {
-            lhsss = parseCallExpr(it, lhsss);
+            lhsss = parseCallExpr(it, lhsss)..isNew = isNew;
             return false;
           }
           it.moveBack();
@@ -924,13 +968,10 @@ class Modules {
       return cache;
     }
 
-    while (true) {
+    loop(it, () {
       // `/n` 意味着结束
-      final t = getToken(it);
-      if (t.kind == TokenKind.closeBrace) {
-        it.moveNext();
-        continue;
-      }
+      it.moveBack();
+
       final op = resolveOp(it);
       if (op != null) {
         final expr = parseExpr(it, runOp: true);
@@ -941,7 +982,7 @@ class Modules {
           // 在一个运算解析中，结束循环并移到下一个token
           if (getToken(it).kind == TokenKind.closeParen) {
             it.moveNext();
-            break;
+            return true;
           }
         } else {
           // 如果上面移动到下一个token，这里就会解析错误
@@ -954,10 +995,10 @@ class Modules {
             it.moveNext();
           }
         }
-        continue;
+        return false;
       }
-      break;
-    }
+      return true;
+    });
 
     if (exprs.length > 2) {
       eIt = exprs.tokenIt;
@@ -1048,9 +1089,11 @@ class Modules {
 
   /// { }: 由于这个token会回解析到`child`中
   /// 和[parseCallExpr]有点区别
-  StructExpr parseStructExpr(TokenIterator it, Identifier ident) {
+  StructExpr parseStructExpr(
+      TokenIterator it, Identifier ident, List<PathTy> generics) {
     final fields = <FieldExpr>[];
     it.moveNext(); // `}`
+    final pIt = it;
     it = it.current.child.tokenIt;
 
     loop(it, () {
@@ -1090,7 +1133,13 @@ class Modules {
       parseCommon();
       return false;
     });
-    return StructExpr(ident, fields);
+
+    final t = getToken(pIt);
+    if (t.kind == TokenKind.closeBrace) {
+      pIt.moveNext();
+    }
+
+    return StructExpr(ident, fields, generics);
   }
 
   OpKind? resolveOp(TokenIterator it) {
@@ -1127,11 +1176,52 @@ class Modules {
     return lastOp ?? OpKind.from(chars);
   }
 
+  List<FieldDef> parseGenerics(TokenIterator it) {
+    final generics = <FieldDef>[];
+    if (it.moveNext()) {
+      final t = getToken(it);
+      if (t.kind != TokenKind.lt) {
+        it.moveBack();
+        return generics;
+      }
+    }
+    loop(it, () {
+      final t = getToken(it);
+      if (t.kind == TokenKind.gt) return true;
+      if (t.kind == TokenKind.ident) {
+        final ident = getIdent(it);
+        eatLfIfNeed(it);
+        if (it.moveNext()) {
+          if (getToken(it).kind == TokenKind.colon) {
+            final ty = parsePathTy(it);
+            if (ty != null) {
+              it.moveNext(); // `>`
+              generics.add(FieldDef(ident, ty));
+            }
+          } else {
+            generics.add(FieldDef(ident, PathTy(ident, [])));
+          }
+        }
+      }
+      if (getToken(it).kind == TokenKind.gt) {
+        return true;
+      }
+      return false;
+    });
+
+    return generics;
+  }
+
   StructTy? parseStruct(TokenIterator it) {
     eatLfIfNeed(it);
 
     if (!it.moveNext()) return null;
     final ident = getIdent(it);
+
+    eatLfIfNeed(it);
+
+    final types = parseGenerics(it);
+
     eatLfIfNeed(it);
 
     it.moveNext(); // {
@@ -1154,7 +1244,7 @@ class Modules {
       return false;
     });
 
-    return StructTy(ident, fields);
+    return StructTy(ident, fields, types);
   }
 
   EnumTy? parseEnum(TokenIterator it) {
@@ -1191,9 +1281,13 @@ class Modules {
   EnumItem parseEnumItem(TokenIterator it) {
     final ident = getIdent(it);
     eatLfIfNeed(it);
+    final types = parseGenerics(it);
+    eatLfIfNeed(it);
 
     it.moveNext(); // (
-    if (getToken(it).kind != TokenKind.openParen) return EnumItem(ident, []);
+    if (getToken(it).kind != TokenKind.openParen) {
+      return EnumItem(ident, [], types);
+    }
 
     final fields = <FieldDef>[];
 
@@ -1214,7 +1308,7 @@ class Modules {
       return false;
     });
 
-    return EnumItem(ident, fields);
+    return EnumItem(ident, fields, types);
   }
 
   /// 跳过换行符
@@ -1249,6 +1343,7 @@ enum Key {
   kRet('return'),
   kExtern('extern'),
   kFinal('final'),
+  kNew('new'),
 
   kFalse('false'),
   kTrue('true'),

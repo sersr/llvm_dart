@@ -56,11 +56,11 @@ enum TokenKind {
 
   /// "<"
   lt('<'),
-  shr('<<'),
+  // shr('<<'),
 
   /// ">"
   gt('>'),
-  shl('>>'),
+  // shl('>>'),
 
   /// "="
   eq('='),
@@ -310,17 +310,17 @@ class Cursor {
       return doubleQuotedString();
     }
 
-    if (char == '>' && nextCharRead == '>') {
-      final start = cursor;
-      nextChar;
-      return Token(kind: TokenKind.shl, start: start, end: cursor);
-    }
+    // if (char == '>' && nextCharRead == '>') {
+    //   final start = cursor;
+    //   nextChar;
+    //   return Token(kind: TokenKind.shl, start: start, end: cursor);
+    // }
 
-    if (char == '<' && nextCharRead == '<') {
-      final start = cursor;
-      nextChar;
-      return Token(kind: TokenKind.shr, start: start, end: cursor);
-    }
+    // if (char == '<' && nextCharRead == '<') {
+    //   final start = cursor;
+    //   nextChar;
+    //   return Token(kind: TokenKind.shr, start: start, end: cursor);
+    // }
     final tk = TokenKind.parse(char, cursor);
     if (tk != null) return tk;
 

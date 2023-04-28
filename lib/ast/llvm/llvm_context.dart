@@ -225,6 +225,19 @@ class BuildContext
     pushVariable(ident, alloca);
   }
 
+  final _freeVal = <StoreVariable>[];
+
+  void addFree(StoreVariable val) {
+    _freeVal.add(val);
+  }
+
+  void _freeAll() {
+    for (var val in _freeVal) {
+      final v = val.getBaseValue(this);
+      llvm.LLVMBuildFree(builder, v);
+    }
+  }
+
   LLVMConstVariable buildFnBB(Fn fn,
       [Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>> map = const {}]) {
@@ -295,6 +308,7 @@ class BuildContext
       // error
       return;
     }
+    _freeAll();
     _returned = true;
     if (val == null) {
       llvm.LLVMBuildRetVoid(builder);
