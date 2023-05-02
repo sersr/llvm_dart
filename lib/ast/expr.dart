@@ -15,6 +15,7 @@ import 'context.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
 import 'stmt.dart';
+import 'tys.dart';
 
 class LiteralExpr extends Expr {
   LiteralExpr(this.ident, this.ty);
@@ -491,9 +492,13 @@ class StructExpr extends Expr {
       bool isNew) {
     if (genericsInst.isNotEmpty) {
       final gMap = <Identifier, Ty>{};
-      for (var g in genericsInst) {
-        gMap[g.ident] = g.grt(context);
+      for (var i = 0; i < genericsInst.length; i += 1) {
+        final gg = genericsInst[i];
+        final g = struct.generics[i];
+        Log.w('$g $gg ${gg.generics}');
+        gMap[g.ident] = gg.grt(context);
       }
+      Log.w('gg $gMap');
       struct = struct.newInst(gMap, context);
     } else if (struct.generics.isNotEmpty) {
       final gMap = <Identifier, Ty>{};
@@ -529,14 +534,18 @@ class StructExpr extends Expr {
 
       for (var i = 0; i < sortFields.length; i += 1) {
         final f = sortFields[i];
-        final ty = f.build(context)?.variable?.ty;
+        final fd = fields[i].rawTy;
+        final ty = LiteralExpr.run(
+                () => f.build(context)?.variable, fd.grtBase(context))
+            ?.ty;
+
         if (ty != null) {
           final fd = fields[i];
           fa(ty, fd.rawTy);
         }
       }
 
-      Log.w('${struct.ident}: $gMap');
+      // Log.w('${struct.ident}: $gMap');
       struct = struct.newInst(gMap, context);
     }
     final structType = struct.llvmType.createType(context);
@@ -851,12 +860,13 @@ mixin FnCallMixin {
       List<FieldExpr> params,
       Variable? fnVariable,
       LLVMValueRef? struct,
+      GenTy? gen,
       Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>>? map) {
     final fnParams = fn.fnSign.fnDecl.params;
     final fnExtern = fn.extern;
     final args = <LLVMValueRef>[];
-    final retTy = fn.fnSign.fnDecl.returnTy.grt(context);
+    final retTy = fn.getRetTy(context);
     final isSret = fn.llvmType.isSret(context);
 
     StoreVariable? sret;
@@ -945,13 +955,32 @@ mixin FnCallMixin {
       if (retTy.ty == LitKind.kVoid) {
         return null;
       }
+    } else if (retTy is StructTy) {
+      final v = retTy.llvmType.createAlloca(context, Identifier.none);
+      v.store(context, ret);
+      return ExprTempValue(v, retTy);
     }
-    return ExprTempValue(LLVMTempVariable(ret, retTy), retTy);
+
+    if (retTy is RefTy) {
+      final v = LLVMRefAllocaVariable.from(ret, retTy.parent, context);
+      v.isTemp = false;
+      return ExprTempValue(v, v.ty);
+    }
+    final v = retTy.llvmType.createAlloca(context, Identifier.none);
+    v.isTemp = false;
+
+    return ExprTempValue(v, v.ty);
   }
 
-  ExprTempValue? fnCall(BuildContext context, Fn fn, List<FieldExpr> params,
-      Variable? fnVariable, LLVMValueRef? struct) {
-    return _fnCall(context, fn, params, fnVariable, struct, catchVariables,
+  ExprTempValue? fnCall(
+    BuildContext context,
+    Fn fn,
+    List<FieldExpr> params,
+    Variable? fnVariable, {
+    LLVMValueRef? struct,
+    GenTy? gen,
+  }) {
+    return _fnCall(context, fn, params, fnVariable, struct, gen, catchVariables,
         childrenVariables);
   }
 }
@@ -1014,7 +1043,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     }
     if (fn is! Fn) return null;
 
-    return fnCall(context, fn, params, variable, null);
+    return fnCall(context, fn, params, variable);
   }
 
   @override
@@ -1072,7 +1101,8 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (valTy is! StructTy) return null;
     final structTy = valTy;
     final impl = context.getImplForStruct(structTy);
-    var fn = impl?.getFn(ident);
+    var implFn = impl?.getFn(ident)?.copyFrom(structTy);
+    Fn? fn = implFn;
     LLVMValueRef? st;
 
     Variable? fnVariable;
@@ -1100,7 +1130,9 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
 
     if (fn == null) return null;
-    return fnCall(context, fn, params, fnVariable, st);
+    return fnCall(context, fn, params, fnVariable, struct: st, gen: (ident) {
+      return structTy.tys[ident];
+    });
   }
 
   Fn? _paramFn;
@@ -1122,7 +1154,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
 
     final impl = context.getImplForStruct(structTy);
-    var fn = impl?.getFn(ident);
+    Fn? fn = impl?.getFn(ident)?.copyFrom(structTy);
     if (fn == null) {
       final field =
           structTy.fields.firstWhereOrNull((element) => element.ident == ident);
@@ -1135,8 +1167,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (fn == null) return null;
     // final fnContext = context.getLastFnContext();
     // fnContext?.addChild(fn.fnSign.fnDecl.ident, fn.variables);
-    return context.createVal(
-        fn.fnSign.fnDecl.returnTy.grt(context), Identifier.none);
+    return context.createVal(fn.getRetTy(context), Identifier.none);
   }
 }
 
@@ -1969,5 +2000,33 @@ class AsExpr extends Expr {
   @override
   String toString() {
     return '$lhs as $rhs';
+  }
+}
+
+class ImportExpr extends Expr {
+  ImportExpr(this.path, {this.name});
+  final Identifier? name;
+  final ImportPath path;
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    context.pushImport(path, name: name);
+    return null;
+  }
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context) {
+    context.pushImport(path, name: name);
+    return null;
+  }
+
+  @override
+  Expr clone() {
+    return ImportExpr(path, name: name);
+  }
+
+  @override
+  String toString() {
+    final n = name == null ? '' : ' as $name';
+    return 'import $path$n';
   }
 }

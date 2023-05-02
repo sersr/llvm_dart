@@ -38,6 +38,12 @@ class BuildContext
     fn = parent!.fn;
   }
 
+  BuildContext._importRoot(BuildContext p) : parent = null {
+    kModule = p.kModule;
+    module = p.module;
+    llvmContext = p.llvmContext;
+    fpm = p.fpm;
+  }
   BuildContext.root([String name = 'root']) : parent = null {
     kModule = llvm.createKModule(name.toChar());
     _init();
@@ -84,6 +90,11 @@ class BuildContext
     if (list != null) {
       return this;
     }
+
+    for (var im in imports.values) {
+      final v = im.getFnContext(ident);
+      if (v != null) return v;
+    }
     return parent?.getFnContext(ident);
   }
 
@@ -98,6 +109,10 @@ class BuildContext
 
   BuildContext clone() {
     return BuildContext._clone(this);
+  }
+
+  BuildContext import() {
+    return BuildContext._importRoot(this);
   }
 
   LLVMBasicBlock createAndInsertBB(LLVMConstVariable val,
@@ -137,7 +152,8 @@ class BuildContext
     final params = decl.params;
     var index = 0;
 
-    var retTy = fnty.fnSign.fnDecl.returnTy.getRty(this);
+    var retTy = fnty.getRetTy(this);
+
     if (fnty.llvmType.isSret(this) && retTy is StructTy) {
       final first = llvm.LLVMGetParam(fn, index);
       final alloca = LLVMRefAllocaVariable.from(first, retTy, this);
@@ -256,8 +272,7 @@ class BuildContext
     bool hasRet = false;
     bool voidRet({bool back = false}) {
       if (hasRet) return true;
-      final decl = fn.fnSign.fnDecl;
-      final rty = decl.returnTy.grt(this);
+      final rty = fn.getRetTy(this);
       if (rty is BuiltInTy) {
         final lit = rty.ty;
         if (lit != LitKind.kVoid) {
@@ -444,15 +459,6 @@ class BuildContext
 
   void painc() {
     llvm.LLVMBuildUnreachable(builder);
-  }
-
-  LLVMValueRef createAlloca(LLVMTypeRef type, {String? name}) {
-    return alloctor(type, name ?? '_');
-  }
-
-  LLVMValueRef createMalloc(LLVMTypeRef type, {String? name}) {
-    final n = name ?? '_';
-    return llvm.LLVMBuildMalloc(builder, type, n.toChar());
   }
 
   LLVMTempOpVariable math(

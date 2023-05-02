@@ -1,6 +1,3 @@
-import 'package:llvm_dart/ast/memory.dart';
-import 'package:llvm_dart/llvm_core.dart';
-import 'package:llvm_dart/llvm_dart.dart';
 import 'package:llvm_dart/run.dart';
 import 'package:test/test.dart';
 
@@ -449,7 +446,7 @@ fn outer(f: fn()) {
 
   test('test match', () async {
     final src = '''
-extern fn printf(str: string, ...) i32;
+import 'd.kc';
 
 fn main(x: usize) i32 {
 
@@ -469,7 +466,10 @@ fn main(x: usize) i32 {
   // printf('yy: %d\\n', yy.y);
 
   // let b = Arc<Gen>();
-  // let y = Arc<Gen>{};
+  let y = Arc<Gen, Bb<Gen>>{};
+  y.data.dd.y = 111;
+
+  printf("auto: %d\\n", y.data.dd.y);
 
   // let hh = Arc{ Gen {1,2}, 222}
   // printf("ss: %d\\n", hh.data.x);
@@ -479,15 +479,23 @@ fn main(x: usize) i32 {
 
   // }
 
-  let hhx = Arc {Bb{ Gen { 3, 22 }, 101}, 22}
-  printf("hhx: %d\\n",  hhx.data.x);
+  // let hhx = Arc {Bb{ Gen { 3, 22 }, 101}, 22}
+  // printf("hhx: %d\\n",  hhx.data.x);
 
   // let single = Arc { Gen { 66 ,55}, 3366}
   // printf("single: %d\\n", single.data.x);
 
-  let base = Arc { Bb{ Base { 525, 33}, 55}, 33}
-  printf("base: %d\\n", base.data.dd.hh);
+  // let base = Arc { Bb{ Base { 525, 33}, 55}, 33}
+  // printf("base: %d\\n", base.data.dd.hh);
+  // hhx.data.dd.printHello();
+  print("value");
   0;
+}
+
+impl Gen {
+  fn printHello() {
+    printf("hello: %d\\n", self.y);
+  }
 }
 
 
@@ -500,7 +508,7 @@ struct Arc<T, S: Bb<T>> {
 
 struct Bb<T> {
   dd: T,
-  x: i32,
+  x: i64,
 }
 
 // struct Child<T: Gen> {
@@ -532,11 +540,20 @@ enum Option {
       src,
       build: true,
       b: (root) {
-        llvm.writeOutput(root.kModule, LLVMCodeGenFileType.LLVMAssemblyFile,
-            'out.s'.toChar());
+        // llvm.writeOutput(root.kModule, LLVMCodeGenFileType.LLVMAssemblyFile,
+        //     'out.s'.toChar());
       },
     );
 
     await runNativeCode();
+  });
+
+  test('ident', () {
+    final src = '''
+fn main() i32 {
+  
+}
+''';
+    testRun(src);
   });
 }

@@ -1,0 +1,19 @@
+extern fn printf(str: string, ...) i32;
+
+fn print(str: string) {
+    printf("log: %s\n", str);
+}
+
+struct Array<T> {
+    size: usize,
+}
+
+impl Array<T> {
+    fn getSize() usize {
+        return self.size;
+    }
+
+    fn elementAt(index: usize) T {
+
+    }
+}

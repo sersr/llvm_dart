@@ -211,7 +211,7 @@ class LLVMFnType extends LLVMType {
   LLVMTypeRef createFnType(BuildContext c, [Set<AnalysisVariable>? variables]) {
     final params = fn.fnSign.fnDecl.params;
     final list = <LLVMTypeRef>[];
-    var retTy = fn.fnSign.fnDecl.returnTy.getRty(c);
+    var retTy = fn.getRetTy(c);
 
     var retIsRet = isSret(c);
     if (retIsRet) {
@@ -274,7 +274,7 @@ class LLVMFnType extends LLVMType {
   }
 
   bool isSret(BuildContext c) {
-    var retTy = fn.fnSign.fnDecl.returnTy.getRty(c);
+    var retTy = fn.getRetTy(c);
     if (retTy is StructTy) {
       final size = retTy.llvmType.getCBytes(c);
       if (size > 16) return true;
@@ -307,7 +307,7 @@ class LLVMFnType extends LLVMType {
               : LLVMLinkage.LLVMInternalLinkage);
       // llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
 
-      var retTy = fn.fnSign.fnDecl.returnTy.getRty(c);
+      var retTy = fn.getRetTy(c);
       if (isSret(c)) {
         LLVMTypeRef ty = c.typePointer(retTy.llvmType.createType(c));
 
@@ -423,10 +423,13 @@ class LLVMStructType extends LLVMType {
     //   return val;
     // }
 
+    llvm.LLVMDumpType(type);
+
     final indics = <LLVMValueRef>[];
     final rIndex = extern ? index : _size!.map[field]!.index;
     LLVMValueRef v = alloca.getBaseValue(context);
 
+    llvm.LLVMDumpType(llvm.LLVMTypeOf(v));
     indics.add(context.constI32(0));
     indics.add(context.constI32(rIndex));
 

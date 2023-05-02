@@ -37,7 +37,9 @@ class LetStmt extends Stmt {
   @override
   void build(BuildContext context) {
     final realTy = ty?.grt(context);
-    ExprTempValue? val = LiteralExpr.run(() => rExpr?.build(context), realTy);
+    ExprTempValue? val = LiteralExpr.run(() {
+      return rExpr?.build(context);
+    }, realTy);
 
     final tty = realTy ?? val?.ty;
     if (tty != null) {

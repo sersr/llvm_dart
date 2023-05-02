@@ -284,10 +284,40 @@ mixin Consts on BuildMethods {
         llvmContext, ss.toChar(), ss.length, LLVMFalse);
   }
 
-  LLVMValueRef constArray(LLVMTypeRef ty, int size) {
-    final alloca =
-        llvm.LLVMBuildArrayAlloca(builder, ty, constI64(size, false), unname);
+  LLVMValueRef constArray(LLVMTypeRef ty, List<LLVMValueRef> vals) {
+    final alloca = llvm.LLVMConstArray2(ty, vals.toNative(), vals.length);
     return alloca;
+  }
+
+  LLVMValueRef createArray(LLVMTypeRef ty, LLVMValueRef size, {String? name}) {
+    final n = name ?? '_';
+    return alloctorArr(ty, size, n);
+  }
+
+  LLVMValueRef alloctorArr(LLVMTypeRef type, LLVMValueRef size, String name) {
+    final nb = allocaBuilder;
+    final alloca =
+        llvm.LLVMBuildArrayAlloca(nb ?? builder, type, size, name.toChar());
+    setLastAlloca(alloca);
+
+    if (nb != null) {
+      llvm.LLVMDisposeBuilder(nb);
+    }
+    return alloca;
+  }
+
+  LLVMValueRef createAlloca(LLVMTypeRef type, {String? name}) {
+    return alloctor(type, name ?? '_');
+  }
+
+  LLVMValueRef createMalloc(LLVMTypeRef type, {String? name}) {
+    final n = name ?? '_';
+    return llvm.LLVMBuildMalloc(builder, type, n.toChar());
+  }
+
+  LLVMValueRef createMallocArr(LLVMTypeRef type, int size, {String? name}) {
+    final n = name ?? '_';
+    return llvm.LLVMBuildArrayMalloc(builder, type, constI64(size), n.toChar());
   }
 }
 

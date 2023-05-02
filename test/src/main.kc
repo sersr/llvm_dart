@@ -1,0 +1,36 @@
+import 'd.kc';
+
+
+struct Data {
+	x: i32,
+	y: i64,
+}
+
+struct Bcx<T> {
+	x: i32,
+	b: T,
+}
+
+impl Bcx<T> {
+	fn getb() &T {
+		return &self.b;
+	}
+}
+
+struct Gen {
+	x: i32,
+}
+
+impl Gen {
+	fn printx() {
+		printf("gen.x: %d\n", self.x);
+	}
+}
+
+fn main() i32 {
+
+	let bcx = Bcx {34343 ,Gen { 3434343 }}
+	let size = bcx.getb().x;
+	printf("size: %d\n", size);
+	0;
+}

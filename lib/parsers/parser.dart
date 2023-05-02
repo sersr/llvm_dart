@@ -5,36 +5,35 @@ import 'package:collection/collection.dart';
 import '../ast/ast.dart';
 import '../ast/expr.dart';
 import '../ast/stmt.dart';
+import '../ast/tys.dart';
 import 'lexers/token_kind.dart';
 import 'lexers/token_stream.dart';
 import 'token_it.dart';
 
-Modules parseTopItem(String src) {
-  final m = Modules(src);
+Parser parseTopItem(String src) {
+  final m = Parser(src);
   m.parse();
   return m;
 }
 
-class Modules {
-  Modules(this.src);
+class Parser {
+  Parser(this.src);
   final String src;
   void parse() {
-    runZoned(() {
-      final reader = TokenReader(src);
-      final root = reader.parse(false);
-      final it = root.child.tokenIt;
-      loop(it, () {
-        final token = getToken(it);
-        if (token.kind == TokenKind.lf) return false;
-        if (token.kind == TokenKind.semi) return false;
+    final reader = TokenReader(src);
+    final root = reader.parse(false);
+    final it = root.child.tokenIt;
+    loop(it, () {
+      final token = getToken(it);
+      if (token.kind == TokenKind.lf) return false;
+      if (token.kind == TokenKind.semi) return false;
 
-        print('item:\n${getIdent(it).light}');
-        if (token.kind == TokenKind.ident) {
-          parseIdent(it, global: true);
-        }
-        return false;
-      });
-    }, zoneValues: {'astSrc': src});
+      print('item:\n${getIdent(it).light}');
+      if (token.kind == TokenKind.ident) {
+        parseIdent(it, global: true);
+      }
+      return false;
+    });
   }
 
   String getSrc(int s, int e) {
@@ -70,6 +69,12 @@ class Modules {
           ty = parseImpl(it);
         case Key.kExtern:
           ty = parseExtern(it);
+        case Key.kImport:
+          final token = getToken(it);
+          final stmt = parseImportStmt(it);
+          if (stmt != null) {
+            globalVar[token] = stmt;
+          }
         default:
       }
       if (ty != null && global) {
@@ -102,43 +107,29 @@ class Modules {
 
   ImplTy? parseImpl(TokenIterator it) {
     eatLfIfNeed(it);
-    if (!it.moveNext()) return null;
-    Identifier? com = getIdent(it);
-    Identifier? label;
-    Identifier? ident;
-    if (getKey(it) == Key.kFor) {
-      com = null;
-      eatLfIfNeed(it);
-      if (it.moveNext()) {
-        ident = getIdent(it);
-      }
-    } else {
-      eatLfIfNeed(it);
-      if (!it.moveNext()) return null;
-      final t = getToken(it);
-      if (t.kind == TokenKind.colon) {
-        eatLfIfNeed(it);
-        if (!it.moveNext()) {
-          label = getIdent(it);
-          if (!it.moveNext()) return null;
-        }
-      } else if (t.kind == TokenKind.openBrace) {
-        // no com
-        ident = com;
-        com = null;
-      } else {
+    PathTy? com = parsePathTy(it);
+    PathTy? label;
+    PathTy? ty;
+    if (it.moveNext()) {
+      if (getKey(it) == Key.kFor) {
         eatLfIfNeed(it);
         if (!it.moveNext()) return null;
-        ident = getIdent(it);
+        final t = getToken(it);
+        if (t.kind == TokenKind.colon) {
+          eatLfIfNeed(it);
+          if (!it.moveNext()) {
+            label = parsePathTy(it);
+          }
+        }
+      } else {
+        it.moveBack();
+        ty = com;
+        com = null;
       }
     }
 
-    if (ident == null) {
-      // error
-      return null;
-    }
-
-    final ty = parsePathTy(it) ?? PathTy(ident, parseGenericsInstance(it));
+    eatLfIfNeed(it);
+    ty ??= parsePathTy(it);
 
     eatLfIfNeed(it);
     checkBlock(it);
@@ -174,7 +165,9 @@ class Modules {
         return false;
       });
 
-      return ImplTy(ident, com, ty, label, fns, staticFns);
+      if (ty == null) return null;
+
+      return ImplTy(com, ty, label, fns, staticFns);
     }
 
     return null;
@@ -222,7 +215,7 @@ class Modules {
       final kind = token.kind;
 
       if (kind == TokenKind.ident) {
-        final ident = Identifier.fromToken(token);
+        final ident = getIdent(it);
         eatLfIfNeed(it);
         if (it.moveNext()) {
           assert(it.current.token.kind == TokenKind.colon);
@@ -371,7 +364,7 @@ class Modules {
   }
 
   Identifier getIdent(TokenIterator it) {
-    return Identifier.fromToken(it.current.token);
+    return Identifier.fromToken(it.current.token, src);
   }
 
   Stmt? parseStmt(TokenIterator it) {
@@ -407,9 +400,37 @@ class Modules {
     stmt ??= parseLoopExpr(it);
     stmt ??= parseWhileExpr(it);
     stmt ??= parseMatchStmt(it);
+    stmt ??= parseImportStmt(it);
     stmt ??= parseStmtBase(it);
 
     return stmt;
+  }
+
+  Stmt? parseImportStmt(TokenIterator it) {
+    final key = getKey(it);
+    if (key != Key.kImport) return null;
+    eatLfIfNeed(it);
+    final state = it.cursor;
+    if (it.moveNext()) {
+      final t = getToken(it);
+      if (t.kind == TokenKind.literal && t.literalKind == LiteralKind.kString) {
+        final path = ImportPath(getIdent(it));
+        eatLfIfNeed(it);
+        if (it.moveNext() && getKey(it) == Key.kAs) {
+          eatLfIfNeed(it);
+          if (it.moveNext()) {
+            if (getToken(it).kind == TokenKind.ident) {
+              return ExprStmt(ImportExpr(path, name: getIdent(it)));
+            }
+          }
+        } else {
+          it.moveBack();
+          return ExprStmt(ImportExpr(path));
+        }
+      }
+    }
+    state.restore();
+    return null;
   }
 
   Stmt? parseMatchStmt(TokenIterator it) {
@@ -765,6 +786,7 @@ class Modules {
       }
     }
     loop(it, () {
+      if (getToken(it).kind == TokenKind.comma) return false;
       if (getToken(it).kind == TokenKind.gt) {
         return true;
       }
@@ -778,9 +800,8 @@ class Modules {
         idents.clear();
         return true;
       }
-      if (getToken(it).kind == TokenKind.gt) {
-        return true;
-      }
+
+      eatLfIfNeed(it);
       return false;
     });
 
@@ -1357,6 +1378,7 @@ enum Key {
   kContinue('continue'),
   kMatch('match'),
   kAs('as'),
+  kImport('import'),
   ;
 
   bool get isBool {

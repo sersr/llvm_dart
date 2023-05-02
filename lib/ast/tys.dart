@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:equatable/equatable.dart';
+
 import '../parsers/lexers/token_kind.dart';
 import 'ast.dart';
 
@@ -5,10 +9,55 @@ abstract class IdentVariable {
   Identifier? ident;
 }
 
+class ImportPath with EquatableMixin {
+  ImportPath(this.name);
+  final Identifier name;
+
+  @override
+  List<Object?> get props => [name];
+
+  @override
+  String toString() {
+    return name.toString();
+  }
+}
+
+typedef ImportHandler<T> = T Function(Tys, ImportPath);
+typedef RunImport<T> = T Function(T Function());
+
 mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
   T? get parent;
 
+  String? currentPath;
+
+  final imports = <ImportPath, T>{};
+
+  R? runImport<R>(R Function() body) {
+    if (_runImport) return null;
+    return runZoned(body, zoneValues: {#_runImport: true});
+  }
+
+  ImportHandler<T>? importHandler;
+
+  ImportHandler<T>? getImportHandler() {
+    if (importHandler != null) return importHandler!;
+    return parent?.getImportHandler();
+  }
+
+  void pushImport(ImportPath path, {Identifier? name}) {
+    if (!imports.containsKey(path)) {
+      final im = getImportHandler()?.call(this, path);
+      if (im != null) {
+        imports[path] = im;
+      }
+    }
+  }
+
   final variables = <Identifier, List<V>>{};
+
+  bool get _runImport {
+    return Zone.current[#_runImport] == true;
+  }
 
   V? getVariable(Identifier ident) {
     final list = variables[ident];
@@ -26,7 +75,17 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
       }
       return last;
     }
-    return parent?.getVariable(ident);
+
+    final v = runImport(() {
+      for (var imp in imports.values) {
+        final v = imp.getVariable(ident);
+        if (v != null) {
+          return v;
+        }
+      }
+    });
+
+    return v ?? parent?.getVariable(ident);
   }
 
   void pushVariable(Identifier ident, V variable) {
@@ -95,6 +154,7 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     final list = enums.putIfAbsent(ident, () => []);
     if (!list.contains(ty)) {
       list.add(ty);
+      ty.push(this);
     }
   }
 
@@ -104,7 +164,17 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     if (list != null) {
       return list.last;
     }
-    return parent?.getFn(ident);
+
+    final v = runImport(() {
+      for (var imp in imports.values) {
+        final v = imp.getFn(ident);
+        if (v != null) {
+          return v;
+        }
+      }
+    });
+
+    return v ?? parent?.getFn(ident);
   }
 
   void pushFn(Identifier ident, Fn fn) {
@@ -148,7 +218,7 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
 
   final implForStructs = <StructTy, List<ImplTy>>{};
   ImplTy? getImplForStruct(StructTy structTy) {
-    final list = implForStructs[structTy];
+    final list = implForStructs[structTy.parentOrCurrent];
     if (list != null) {
       return list.last;
     }
@@ -174,13 +244,13 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
       } else if (ty is ComponentTy) {
         pushComponent(ty.ident, ty);
       } else if (ty is ImplTy) {
-        pushImpl(ty.ident, ty);
+        pushImpl(ty.struct.ident, ty);
       } else {
         print('unknown ty {${ty.runtimeType}}');
       }
     }
     for (var impl in impls) {
-      final struct = getStruct(impl.ident);
+      final struct = getStruct(impl.struct.ident);
       if (struct != null) {
         pushImplForStruct(struct, impl);
         impl.initStructFns(this);

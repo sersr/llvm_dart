@@ -30,11 +30,12 @@ class RawIdent with EquatableMixin {
 }
 
 class Identifier with EquatableMixin {
-  Identifier(this.name, this.start, int? end)
-      : end = (end ?? start) + 1,
-        builtInName = '';
+  // Identifier(this.name, this.start, int? end)
+  //     : end = (end ?? start) + 1,
+  //       data = '',
+  //       builtInName = '';
 
-  Identifier.fromToken(Token token)
+  Identifier.fromToken(Token token, this.data)
       : start = token.start,
         end = token.end,
         builtInName = '',
@@ -43,12 +44,16 @@ class Identifier with EquatableMixin {
   Identifier.builtIn(this.builtInName)
       : name = '',
         start = 0,
-        end = 0;
+        end = 0,
+        data = '';
 
   final String name;
   final int start;
   final int end;
   final String builtInName;
+
+  @protected
+  final String data;
 
   bool get isValid => end != 0;
 
@@ -56,22 +61,15 @@ class Identifier with EquatableMixin {
     return RawIdent(start, end);
   }
 
-  static final Identifier none = Identifier('', 0, 0);
+  static final Identifier none = Identifier.builtIn('');
 
-  String ext([int count = 1]) {
-    if (start <= 0) return src;
-    final s = (start - count).clamp(0, start);
-    if (identical(this, none)) {
-      return '';
-    }
-    if (builtInName.isNotEmpty) {
-      return builtInName;
-    }
-    final raw = Zone.current['astSrc'];
-    if (raw is String) {
-      return raw.substring(s, end);
-    }
-    return '';
+  static bool get enableIdentEq {
+    return Zone.current[#data] == true;
+  }
+
+  static R run<R>(R Function() body, {ZoneSpecification? zoneSpecification}) {
+    return runZoned(body,
+        zoneValues: {#data: true}, zoneSpecification: zoneSpecification);
   }
 
   @override
@@ -82,9 +80,9 @@ class Identifier with EquatableMixin {
     if (builtInName.isNotEmpty) {
       return [builtInName];
     }
-    final src = Zone.current['astSrc'];
-    if (src is String) {
-      return [src.substring(start, end)];
+
+    if (enableIdentEq) {
+      return [data.substring(start, end)];
     }
     return [name, start, end];
   }
@@ -96,20 +94,12 @@ class Identifier with EquatableMixin {
     if (builtInName.isNotEmpty) {
       return builtInName;
     }
-    final src = Zone.current['astSrc'];
-    if (src is String) {
-      return src.substring(start, end);
-    }
-    return '';
+    return data.substring(start, end);
   }
 
   /// 指示当前的位置
   String get light {
-    final src = Zone.current['astSrc'];
-    if (src is String) {
-      return lightSrc(src, start, end);
-    }
-    return '';
+    return lightSrc(data, start, end);
   }
 
   static String lightSrc(String src, int start, int end) {
@@ -143,12 +133,8 @@ class Identifier with EquatableMixin {
     if (builtInName.isNotEmpty) {
       return '[$builtInName]';
     }
-    final src = Zone.current['astSrc'];
-    var rang = '[$start - $end]';
-    if (src is String) {
-      rang = src.substring(start, end);
-    }
-    return '$name$rang';
+
+    return data.substring(start, end);
   }
 }
 
@@ -156,6 +142,7 @@ class Identifier with EquatableMixin {
 class GenericParam with EquatableMixin {
   GenericParam(this.ident, this.ty);
   final Identifier ident;
+
   final PathTy ty;
 
   bool get isRef => ty.isRef;
@@ -462,7 +449,7 @@ abstract class Ty extends BuildMixin with EquatableMixin {
   //   throw UnimplementedError('ty');
   // }
 
-  static final PathTy unknown = UnknownTy(Identifier('', 0, 0));
+  static final PathTy unknown = UnknownTy(Identifier.none);
 
   LLVMType get llvmType;
 
@@ -578,31 +565,56 @@ class PathTy with EquatableMixin {
     }
   }
 
-  Ty getRty(Tys c) {
-    return kind.resolveTy(grt(c));
-  }
+  // Ty getRty(Tys c) {
+  //   return kind.resolveTy(grt(c));
+  // }
 
-  Ty grt(Tys c, {Ty? Function(Identifier ident)? gen}) {
+  Ty? grtBase(Tys c) {
     var rty = ty;
     // if (ty != null) return ty!;
 
     final tySrc = ident.src;
     rty ??= BuiltInTy.from(tySrc);
 
-    rty ??= gen?.call(ident);
     rty ??= c.getTy(ident);
+    if (rty == null) {
+      // error
+    }
+
+    return rty;
+  }
+
+  Ty? grtOrT(Tys c, {GenTy? gen}) {
+    var rty = ty;
+    // if (ty != null) return ty!;
+
+    final tySrc = ident.src;
+    rty ??= BuiltInTy.from(tySrc);
+
+    rty ??= c.getTy(ident);
+    rty ??= gen?.call(ident);
     if (rty == null) {
       // error
     }
     if (rty is StructTy && generics.isNotEmpty) {
       final gMap = <Identifier, Ty>{};
-      for (var g in generics) {
-        gMap[g.ident] = g.grt(c, gen: gen);
+
+      for (var i = 0; i < generics.length; i += 1) {
+        final g = generics[i];
+        final gg = rty.generics[i];
+        final gty = g.grtOrT(c, gen: gen);
+        if (gty != null) {
+          gMap[gg.ident] = gty;
+        }
       }
       rty = rty.newInst(gMap, c, gen: gen);
     }
+    if (rty == null) return null;
+    return kind.resolveTy(rty);
+  }
 
-    return rty!;
+  Ty grt(Tys c, {GenTy? gen}) {
+    return grtOrT(c, gen: gen)!;
   }
 }
 
@@ -638,6 +650,13 @@ class FnTy extends Fn {
 class Fn extends Ty {
   Fn(this.fnSign, this.block);
 
+  Ty getRetTy(Tys c) {
+    return fnSign.fnDecl.returnTy.grt(c, gen: (ident) {
+      final v = grt(c, ident);
+      return v;
+    });
+  }
+
   @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
@@ -661,6 +680,10 @@ class Fn extends Ty {
 
   @override
   List<Object?> get props => [fnSign, block];
+
+  Ty? grt(Tys c, Identifier ident) {
+    return null;
+  }
 
   final _cache = <ListKey, LLVMConstVariable>{};
 
@@ -728,8 +751,39 @@ class Fn extends Ty {
 }
 
 class ImplFn extends Fn {
-  ImplFn(super.fnSign, super.block, this.ty);
+  ImplFn(super.fnSign, super.block, this.ty, this.implty);
   final StructTy ty;
+  final ImplTy implty;
+
+  ImplFn? _parent;
+  final _caches = <StructTy, ImplFn>{};
+  ImplFn copyFrom(StructTy other) {
+    if (ty == other) return this;
+    _parent ??= this;
+
+    return _parent!._caches.putIfAbsent(
+      other,
+      () => ImplFn(fnSign, block, other, implty).._parent = _parent,
+    );
+  }
+
+  @override
+  Ty? grt(Tys c, Identifier ident) {
+    if (ty.generics.isEmpty) return null;
+    final impltyStruct = implty.struct.grtOrT(c);
+    if (impltyStruct is StructTy) {
+      final v = impltyStruct.generics.indexWhere((e) => e.ident == ident);
+      if (v != -1) {
+        final g = ty.generics[v];
+        final vx = ty.tys[g.ident];
+        return vx;
+      }
+    }
+    return null;
+  }
+
+  @override
+  List<Object?> get props => [ty.tys, implty];
 }
 
 class FieldDef {
@@ -743,7 +797,7 @@ class FieldDef {
     return _ty.grt(c);
   }
 
-  Ty grts(Tys c, Ty? Function(Identifier ident) gen) {
+  Ty? grts(Tys c, GenTy gen) {
     if (_rty != null) return _rty!;
     return _ty.grt(c, gen: gen);
   }
@@ -762,6 +816,8 @@ class FieldDef {
   bool get isRef => _isRef ??= kinds.isRef;
 }
 
+typedef GenTy = Ty? Function(Identifier ident);
+
 class StructTy extends Ty with EquatableMixin {
   StructTy(this.ident, this.fields, this.generics);
   final Identifier ident;
@@ -775,8 +831,8 @@ class StructTy extends Ty with EquatableMixin {
   Map<Identifier, Ty> get tys => _tys ?? const {};
 
   StructTy? _parent;
-  StructTy newInst(Map<Identifier, Ty> tys, Tys c,
-      {Ty? Function(Identifier ident)? gen}) {
+  StructTy get parentOrCurrent => _parent ?? this;
+  StructTy newInst(Map<Identifier, Ty> tys, Tys c, {GenTy? gen}) {
     _parent ??= this;
     if (tys.isEmpty) return _parent!;
     final key = ListKey(tys);
@@ -787,7 +843,7 @@ class StructTy extends Ty with EquatableMixin {
         final g = f.grts(c, (ident) {
           final data = tys[ident];
           if (data != null) {
-            Log.w(data);
+            // Log.w(data);
             return data;
           }
           return gen?.call(ident);
@@ -821,6 +877,10 @@ class StructTy extends Ty with EquatableMixin {
     context.pushVariable(ident, TyVariable(this));
   }
 
+  void push(Tys context) {
+    context.pushStruct(ident, this);
+  }
+
   @override
   void analysis(AnalysisContext context) {
     context.pushStruct(ident, this);
@@ -850,6 +910,11 @@ class EnumTy extends Ty {
 
   @override
   List<Object?> get props => [ident, variants];
+  void push(Tys context) {
+    for (var v in variants) {
+      v.push(context);
+    }
+  }
 
   @override
   void build(BuildContext context) {
@@ -917,7 +982,7 @@ class ComponentTy extends Ty {
 }
 
 class ImplTy extends Ty {
-  ImplTy(this.ident, this.com, this.ty, this.label, this.fns, this.staticFns) {
+  ImplTy(this.com, this.struct, this.label, this.fns, this.staticFns) {
     for (var fn in fns) {
       fn.incLevel();
     }
@@ -925,10 +990,9 @@ class ImplTy extends Ty {
       fn.incLevel();
     }
   }
-  final PathTy ty;
-  final Identifier ident;
-  final Identifier? com;
-  final Identifier? label;
+  final PathTy struct;
+  final PathTy? com;
+  final PathTy? label;
   final List<Fn> fns;
   final List<Fn> staticFns;
 
@@ -944,45 +1008,48 @@ class ImplTy extends Ty {
     }
   }
 
-  Fn? getFn(Identifier ident) {
+  ImplFn? getFn(Identifier ident) {
     return _fns?.firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident);
   }
 
   List<ImplFn>? _fns;
 
   void initStructFns(Tys context) {
-    final structTy = context.getStruct(ident);
-    if (structTy == null) return;
-    context.pushImplForStruct(structTy, this);
+    // final ty = struct.grt(context);
+    final ident = struct.ident;
     final ty = context.getStruct(ident);
-    if (ty == null) {
-      //error
-      return;
-    }
-    _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty)).toList();
+    if (ty is! StructTy) return;
+    context.pushImplForStruct(ty, this);
+    // final ty = context.getStruct(ident);
+    // if (ty == null) {
+    //   //error
+    //   return;
+    // }
+    _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty, this)).toList();
   }
 
   @override
   void build(BuildContext context) {
-    context.pushImpl(ident, this);
-    // check ty
-    final structTy = context.getStruct(ident);
-    if (structTy == null) return;
-    context.pushImplForStruct(structTy, this);
-    final ty = context.getStruct(ident);
-    if (ty == null) {
-      //error
-      return;
-    }
+    context.pushImpl(struct.ident, this);
+    initStructFns(context);
+    // // check ty
+    // final structTy = context.getStruct(ident);
+    // if (structTy == null) return;
+    // context.pushImplForStruct(structTy, this);
+    // final ty = context.getStruct(ident);
+    // if (ty == null) {
+    //   //error
+    //   return;
+    // }
 
-    for (var fn in staticFns) {
-      fn.customBuild(context);
-    }
-    final ifns =
-        _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty)).toList();
-    for (var fn in ifns) {
-      fn.customBuild(context);
-    }
+    // for (var fn in staticFns) {
+    //   fn.customBuild(context);
+    // }
+    // final ifns =
+    //     _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty)).toList();
+    // for (var fn in ifns) {
+    //   fn.customBuild(context);
+    // }
   }
 
   @override
@@ -999,25 +1066,26 @@ class ImplTy extends Ty {
     if (sfnn.isNotEmpty) {
       fnnStr = '$pad$fnnStr';
     }
-    return 'impl $cc$ty {\n$pad$sfnn$fnnStr$pad}';
+    return 'impl $cc$struct {\n$pad$sfnn$fnnStr$pad}';
   }
 
   @override
-  List<Object?> get props => [ident, ty, fns, label];
+  List<Object?> get props => [struct, struct, fns, label];
 
   @override
   LLVMType get llvmType => throw UnimplementedError();
 
   @override
   void analysis(AnalysisContext context) {
+    final ident = struct.ident;
     context.pushImpl(ident, this);
     final structTy = context.getStruct(ident);
-    if (structTy == null) return;
+    if (structTy is! StructTy) return;
     context.pushImplForStruct(structTy, this);
-    final ty = context.getStruct(ident);
-    if (ty == null) {
-      //error
-      return;
-    }
+    // final ty = context.getStruct(ident);
+    // if (ty == null) {
+    //   //error
+    //   return;
+    // }
   }
 }
