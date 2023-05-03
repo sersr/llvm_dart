@@ -186,9 +186,6 @@ class IfExpr extends Expr {
               val.create(variable);
             } else {
               final v = val.load(context);
-              llvm.LLVMDumpValue(v);
-              final vv = variable.getBaseValue(context);
-              llvm.LLVMDumpValue(vv);
               variable.store(context, v);
             }
           }
@@ -830,6 +827,7 @@ mixin FnCallMixin {
   }
 
   void autoAddChild(Fn fn, List<FieldExpr> params, AnalysisContext context) {
+    // ignore: invalid_use_of_protected_member
     final fields = fn.fnSign.fnDecl.params;
     final sortFields =
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
@@ -863,6 +861,7 @@ mixin FnCallMixin {
       GenTy? gen,
       Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>>? map) {
+    // ignore: invalid_use_of_protected_member
     final fnParams = fn.fnSign.fnDecl.params;
     final fnExtern = fn.extern;
     final args = <LLVMValueRef>[];
@@ -886,7 +885,7 @@ mixin FnCallMixin {
       final p = sortFields[i];
       Ty? c;
       if (i < fnParams.length) {
-        c = fnParams[i].ty.grt(context);
+        c = fn.getRty(context, fnParams[i].ty);
       }
       final v = LiteralExpr.run(() {
         return p.build(context)?.variable;
@@ -932,6 +931,7 @@ mixin FnCallMixin {
     }
 
     if (fn is FnTy) {
+      // ignore: invalid_use_of_protected_member
       final params = fn.fnSign.fnDecl.params;
       for (var p in params) {
         var v = context.getVariable(p.ident);
@@ -955,10 +955,6 @@ mixin FnCallMixin {
       if (retTy.ty == LitKind.kVoid) {
         return null;
       }
-    } else if (retTy is StructTy) {
-      final v = retTy.llvmType.createAlloca(context, Identifier.none);
-      v.store(context, ret);
-      return ExprTempValue(v, retTy);
     }
 
     if (retTy is RefTy) {
@@ -967,6 +963,7 @@ mixin FnCallMixin {
       return ExprTempValue(v, v.ty);
     }
     final v = retTy.llvmType.createAlloca(context, Identifier.none);
+    v.store(context, ret);
     v.isTemp = false;
 
     return ExprTempValue(v, v.ty);

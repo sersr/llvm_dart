@@ -209,6 +209,7 @@ class LLVMFnType extends LLVMType {
   }
 
   LLVMTypeRef createFnType(BuildContext c, [Set<AnalysisVariable>? variables]) {
+    // ignore: invalid_use_of_protected_member
     final params = fn.fnSign.fnDecl.params;
     final list = <LLVMTypeRef>[];
     var retTy = fn.getRetTy(c);
@@ -239,10 +240,10 @@ class LLVMFnType extends LLVMType {
     }
 
     for (var p in params) {
-      final realTy = p.ty.grt(c);
+      final realTy = fn.getRty(c, p.ty);
       LLVMTypeRef ty;
-      if (p.isRef) {
-        ty = c.typePointer(realTy.llvmType.createType(c));
+      if (!p.isRef) {
+        ty = realTy.llvmType.createType(c);
       } else {
         ty = cType(realTy);
       }
@@ -423,18 +424,20 @@ class LLVMStructType extends LLVMType {
     //   return val;
     // }
 
-    llvm.LLVMDumpType(type);
-
-    final indics = <LLVMValueRef>[];
+    // final indics = <LLVMValueRef>[];
     final rIndex = extern ? index : _size!.map[field]!.index;
     LLVMValueRef v = alloca.getBaseValue(context);
 
-    llvm.LLVMDumpType(llvm.LLVMTypeOf(v));
-    indics.add(context.constI32(0));
-    indics.add(context.constI32(rIndex));
-
-    final fieldValue = llvm.LLVMBuildInBoundsGEP2(
-        context.builder, type, v, indics.toNative(), indics.length, unname);
+    // indics.add(context.constI32(0));
+    // indics.add(context.constI32(rIndex));
+    LLVMValueRef fieldValue;
+    // if (alloca is StoreVariable) {
+    //   fieldValue = llvm.LLVMBuildInBoundsGEP2(
+    //       context.builder, type, v, indics.toNative(), indics.length, unname);
+    // } else {
+    fieldValue =
+        llvm.LLVMBuildStructGEP2(context.builder, type, v, rIndex, unname);
+    // }
 
     final val = LLVMRefAllocaVariable.from(fieldValue, rTy, context);
 
@@ -489,7 +492,12 @@ class LLVMStructType extends LLVMType {
       Identifier ident, bool isExternFnParam) {
     final extern = isExternFnParam;
     if (!extern) {
-      return LLVMAllocaVariable(ty, value, cCreateType(c))..isTemp = false;
+      llvm.LLVMDumpValue(value);
+      final v = createAlloca(c, ident);
+      c.setName(v.alloca, ident.src);
+      v.store(c, value);
+      v.isTemp = false;
+      return v;
     }
     StoreVariable calloca;
 

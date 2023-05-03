@@ -39,7 +39,14 @@ class Project {
 
   void run() {
     analysis();
-    build();
+    build(asmPrinter);
+  }
+
+  void asmPrinter() {
+    if (buildContext != null && printAsm) {
+      llvm.writeOutput(buildContext!.kModule,
+          LLVMCodeGenFileType.LLVMAssemblyFile, 'out.s'.toChar());
+    }
   }
 
   void analysis() {
@@ -58,6 +65,7 @@ class Project {
   }
 
   bool mem2reg = false;
+  bool printAsm = false;
 
   BuildContext importBuild(Tys current, ImportPath path) {
     final c = current as BuildContext;
@@ -87,7 +95,7 @@ class Project {
     return child;
   }
 
-  void build() {
+  void build([void Function()? after]) {
     Identifier.run(() {
       llvm.initLLVM();
       final root = buildContext = BuildContext.root();
@@ -110,6 +118,7 @@ class Project {
       }
 
       llvm.LLVMDumpModule(root.module);
+      after?.call();
       llvm.writeOutput(
           root.kModule, LLVMCodeGenFileType.LLVMObjectFile, 'out.o'.toChar());
       root.dispose();

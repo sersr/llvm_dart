@@ -6,6 +6,8 @@ import 'package:test/test.dart';
 void main() {
   test('file', () async {
     final project = Project(testSrcDir.childFile('main.kc').path);
+    project.mem2reg = true;
+    // project.printAsm = true;
     runPrint(project.run);
     await runNativeCode();
   });

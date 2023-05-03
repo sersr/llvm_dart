@@ -149,6 +149,7 @@ class BuildContext
   void _build(
       LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
       {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
+    // ignore: invalid_use_of_protected_member
     final params = decl.params;
     var index = 0;
 
@@ -181,14 +182,14 @@ class BuildContext
       final p = params[i];
 
       final fnParam = llvm.LLVMGetParam(fn, i + index);
-      var realTy = p.ty.grt(this);
+      var realTy = fnty.getRty(this, p.ty);
       if (realTy is FnTy) {
         final extra = map[p.ident];
         if (extra != null) {
           realTy = realTy.clone(extra);
         }
-      } else {
-        realTy = p.ty.kind.resolveTy(realTy);
+        // } else {
+        //   realTy = p.ty.kind.resolveTy(realTy);
       }
 
       resolveParam(realTy, fnParam, p.ident, fnty.extern);

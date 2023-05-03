@@ -901,6 +901,10 @@ class Parser {
       if (lhs != null) {
         eatLfIfNeed(it);
 
+        if (getToken(it).kind == TokenKind.closeParen) {
+          return lhs;
+        }
+
         Expr lhsss = lhs;
         loop(it, () {
           final t = getToken(it);

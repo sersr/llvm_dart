@@ -396,6 +396,7 @@ class Block extends BuildMixin with EquatableMixin {
 class FnDecl with EquatableMixin {
   FnDecl(this.ident, this.params, this.returnTy, this.isVar);
   final Identifier ident;
+  @protected
   final List<GenericParam> params;
   final PathTy returnTy;
   final bool isVar;
@@ -651,7 +652,11 @@ class Fn extends Ty {
   Fn(this.fnSign, this.block);
 
   Ty getRetTy(Tys c) {
-    return fnSign.fnDecl.returnTy.grt(c, gen: (ident) {
+    return getRty(c, fnSign.fnDecl.returnTy);
+  }
+
+  Ty getRty(Tys c, PathTy ty) {
+    return ty.grt(c, gen: (ident) {
       final v = grt(c, ident);
       return v;
     });

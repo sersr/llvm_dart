@@ -60,20 +60,30 @@ mixin DelayVariableMixin {
 
   LLVMValueRef? _alloca;
 
+  bool _created = false;
+
   bool create([StoreVariable? alloca]) {
     final result = _alloca == null;
-    _alloca ??= _create(alloca);
+    _alloca ??= _inCreate(alloca);
     return result;
   }
 
-  LLVMValueRef get alloca => _alloca ??= _create();
+  LLVMValueRef _inCreate([StoreVariable? alloca]) {
+    _created = true;
+    return _create(alloca);
+  }
+
+  LLVMValueRef get alloca => _alloca ??= _inCreate();
 }
 
-/// 只要用于 [Struct] 作为右值时延时分配
+/// [unused]
 class LLVMAllocaDelayVariable extends StoreVariable with DelayVariableMixin {
-  LLVMAllocaDelayVariable(this.ty, this._create, this.type);
+  LLVMAllocaDelayVariable(this.ty, this._create, this.type) : _allocaI = null;
+  LLVMAllocaDelayVariable.def(
+      this.ty, LLVMValueRef this._allocaI, this._create, this.type);
   @override
   final LLVMValueRef Function([StoreVariable? alloca]) _create;
+  final LLVMValueRef? _allocaI;
   @override
   final Ty ty;
 
@@ -84,12 +94,23 @@ class LLVMAllocaDelayVariable extends StoreVariable with DelayVariableMixin {
   }
 
   @override
+  LLVMValueRef getBaseValue(BuildContext c) {
+    if (_allocaI != null && !_created) {
+      return _allocaI!;
+    }
+    return super.getBaseValue(c);
+  }
+
+  @override
   Variable getRef(BuildContext c) {
     return LLVMRefAllocaVariable.cc(c, this, alloca);
   }
 
   @override
   LLVMValueRef load(BuildContext c) {
+    if (_allocaI != null && !_created) {
+      return _allocaI!;
+    }
     return llvm.LLVMBuildLoad2(c.builder, type, alloca, unname);
   }
 

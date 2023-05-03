@@ -12,8 +12,12 @@ struct Bcx<T> {
 }
 
 impl Bcx<T> {
-	fn getb() &T {
-		return &self.b;
+	fn getb(n: Gen) &T {
+		let y = &self.b;
+		self.b = n;
+		let h = n;
+		printf("h: %d\n", h.x);
+		y;
 	}
 }
 
@@ -28,9 +32,10 @@ impl Gen {
 }
 
 fn main() i32 {
+	print('start');
 
 	let bcx = Bcx {34343 ,Gen { 3434343 }}
-	let size = bcx.getb().x;
-	printf("size: %d\n", size);
+	let size = bcx.getb( Gen { 66666 });
+	printf("size: %d\n", size.x);
 	0;
 }
