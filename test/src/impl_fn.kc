@@ -1,0 +1,20 @@
+import 'd.kc';
+
+fn main() i32 {
+    let g = Gen { 3 };
+    g.pp();
+}
+
+struct Gen {
+    y: i32,
+}
+
+impl Gen {
+    fn pp() {
+        let y = 444;
+        fn inx() {
+            printf("y: %d\n", y);
+        }
+        inx();
+    }
+}

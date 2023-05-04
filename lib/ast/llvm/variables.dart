@@ -51,7 +51,7 @@ class LLVMConstVariable extends Variable {
 
   @override
   Variable getRef(BuildContext c) {
-    return LLVMRefAllocaVariable.cc(c, this, value);
+    return LLVMRefAllocaVariable.create(c, this)..store(c, value);
   }
 }
 
@@ -60,30 +60,20 @@ mixin DelayVariableMixin {
 
   LLVMValueRef? _alloca;
 
-  bool _created = false;
-
   bool create([StoreVariable? alloca]) {
     final result = _alloca == null;
-    _alloca ??= _inCreate(alloca);
+    _alloca ??= _create(alloca);
     return result;
   }
 
-  LLVMValueRef _inCreate([StoreVariable? alloca]) {
-    _created = true;
-    return _create(alloca);
-  }
-
-  LLVMValueRef get alloca => _alloca ??= _inCreate();
+  LLVMValueRef get alloca => _alloca ??= _create();
 }
 
-/// [unused]
+/// 只要用于 [Struct] 作为右值时延时分配
 class LLVMAllocaDelayVariable extends StoreVariable with DelayVariableMixin {
-  LLVMAllocaDelayVariable(this.ty, this._create, this.type) : _allocaI = null;
-  LLVMAllocaDelayVariable.def(
-      this.ty, LLVMValueRef this._allocaI, this._create, this.type);
+  LLVMAllocaDelayVariable(this.ty, this._create, this.type);
   @override
   final LLVMValueRef Function([StoreVariable? alloca]) _create;
-  final LLVMValueRef? _allocaI;
   @override
   final Ty ty;
 
@@ -94,23 +84,12 @@ class LLVMAllocaDelayVariable extends StoreVariable with DelayVariableMixin {
   }
 
   @override
-  LLVMValueRef getBaseValue(BuildContext c) {
-    if (_allocaI != null && !_created) {
-      return _allocaI!;
-    }
-    return super.getBaseValue(c);
-  }
-
-  @override
   Variable getRef(BuildContext c) {
-    return LLVMRefAllocaVariable.cc(c, this, alloca);
+    return LLVMRefAllocaVariable.create(c, this)..store(c, alloca);
   }
 
   @override
   LLVMValueRef load(BuildContext c) {
-    if (_allocaI != null && !_created) {
-      return _allocaI!;
-    }
     return llvm.LLVMBuildLoad2(c.builder, type, alloca, unname);
   }
 
@@ -200,7 +179,7 @@ class LLVMAllocaVariable extends StoreVariable {
 
   @override
   Variable getRef(BuildContext c) {
-    return LLVMRefAllocaVariable.cc(c, this, alloca);
+    return LLVMRefAllocaVariable.create(c, this)..store(c, alloca);
   }
 }
 
@@ -208,25 +187,15 @@ abstract class Deref extends Variable {
   Variable getDeref(BuildContext c);
 }
 
-class LLVMRefAllocaVariable extends StoreVariable
-    with DelayVariableMixin
-    implements Deref {
-  LLVMRefAllocaVariable(this.ty, this._allocaI);
-  LLVMRefAllocaVariable.delay(
-    this.ty,
-    this._allocaI,
-    this._create,
-  );
+class LLVMRefAllocaVariable extends StoreVariable implements Deref {
+  LLVMRefAllocaVariable(this.ty, this.alloca);
+  @override
+  final LLVMValueRef alloca;
 
-  final LLVMValueRef _allocaI;
-
-  static LLVMRefAllocaVariable cc(
-      BuildContext c, Variable parent, LLVMValueRef ref) {
+  static LLVMRefAllocaVariable create(BuildContext c, Variable parent) {
     final rr = RefTy(parent.ty);
-    return LLVMRefAllocaVariable.delay(rr, ref, ([StoreVariable? alloca]) {
-      final alloca = rr.llvmType.createAlloca(c, Identifier.none);
-      return alloca.alloca;
-    });
+    final alloca = rr.llvmType.createAlloca(c, Identifier.none);
+    return LLVMRefAllocaVariable(rr, alloca.alloca);
   }
 
   static StoreVariable from(LLVMValueRef value, Ty ty, BuildContext c) {
@@ -237,18 +206,13 @@ class LLVMRefAllocaVariable extends StoreVariable
     return LLVMAllocaVariable(ty, value, type);
   }
 
-  bool _stored = false;
   @override
   LLVMValueRef load(BuildContext c) {
-    if (!_stored) {
-      return _allocaI;
-    }
     return llvm.LLVMBuildLoad2(c.builder, c.pointer(), alloca, unname);
   }
 
   @override
   LLVMValueRef store(BuildContext c, LLVMValueRef val) {
-    _stored = true;
     return llvm.LLVMBuildStore(c.builder, val, alloca);
   }
 
@@ -278,14 +242,7 @@ class LLVMRefAllocaVariable extends StoreVariable
 
   @override
   Variable getRef(BuildContext c) {
-    return cc(c, this, alloca);
-  }
-
-  @override
-  late LLVMValueRef Function([StoreVariable? alloca]) _create = _defCreate;
-
-  LLVMValueRef _defCreate([StoreVariable? alloca]) {
-    return _allocaI;
+    return create(c, this)..store(c, alloca);
   }
 }
 
@@ -308,7 +265,7 @@ class LLVMTempVariable extends Variable {
 
   @override
   Variable getRef(BuildContext c) {
-    return LLVMRefAllocaVariable.cc(c, this, value);
+    return LLVMRefAllocaVariable.create(c, this)..store(c, value);
   }
 
   @override
@@ -351,7 +308,7 @@ class LLVMLitVariable extends Variable {
   @override
   LLVMRefAllocaVariable getRef(BuildContext c) {
     final alloca = createAlloca(c);
-    return LLVMRefAllocaVariable.cc(c, alloca, alloca.alloca);
+    return LLVMRefAllocaVariable.create(c, alloca)..store(c, alloca.alloca);
   }
 }
 
@@ -375,7 +332,7 @@ class LLVMTempOpVariable extends Variable {
 
   @override
   Variable getRef(BuildContext c) {
-    return LLVMRefAllocaVariable.cc(c, this, value);
+    return LLVMRefAllocaVariable.create(c, this)..store(c, value);
   }
 
   @override

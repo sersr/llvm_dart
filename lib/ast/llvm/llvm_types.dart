@@ -39,9 +39,13 @@ abstract class LLVMType {
   LLVMTypeRef createType(BuildContext c);
 
   StoreVariable createAlloca(BuildContext c, Identifier ident) {
+    // final type = createType(c);
+    // final v = c.createAlloca(type, name: ident.src);
+    // final val = LLVMAllocaVariable(ty, v, type);
     final type = createType(c);
-    final v = c.createAlloca(type, name: ident.src);
-    final val = LLVMAllocaVariable(ty, v, type);
+    final val = LLVMAllocaDelayVariable(ty, ([alloca]) {
+      return c.alloctor(type, ident.src);
+    }, type);
     if (ident.isValid) {
       val.ident = ident;
     }
@@ -476,10 +480,12 @@ class LLVMStructType extends LLVMType {
   }
 
   @override
-  LLVMAllocaVariable createAlloca(BuildContext c, Identifier ident) {
+  LLVMAllocaDelayVariable createAlloca(BuildContext c, Identifier ident) {
     final type = createType(c);
-    final alloca = c.alloctor(type, ident.src);
-    return LLVMAllocaVariable(ty, alloca, type);
+    return LLVMAllocaDelayVariable(ty, ([alloca]) {
+      return c.alloctor(type, ident.src);
+    }, type);
+    // return LLVMAllocaVariable(ty, alloca, type);
   }
 
   LLVMAllocaVariable _createExternAlloca(BuildContext c, Identifier ident) {
@@ -492,7 +498,6 @@ class LLVMStructType extends LLVMType {
       Identifier ident, bool isExternFnParam) {
     final extern = isExternFnParam;
     if (!extern) {
-      llvm.LLVMDumpValue(value);
       final v = createAlloca(c, ident);
       c.setName(v.alloca, ident.src);
       v.store(c, value);
@@ -860,22 +865,26 @@ class LLVMEnumItemType extends LLVMStructType {
     return FieldsSize(map, count, alignSize);
   }
 
-  LLVMAllocaVariable _createAlloca(BuildContext c, Identifier ident) {
-    final type = pTy.createType(c);
-    final ctype = createType(c);
-    final alloca = c.alloctor(type, ident.src);
-    return LLVMAllocaVariable(ty, alloca, ctype);
-  }
+  // LLVMAllocaVariable _createAlloca(BuildContext c, Identifier ident) {
+  //   final type = pTy.createType(c);
+  //   final ctype = createType(c);
+  //   final alloca = c.alloctor(type, ident.src);
+  //   return LLVMAllocaVariable(ty, alloca, ctype);
+  // }
 
   @override
-  LLVMAllocaVariable createAlloca(BuildContext c, Identifier ident) {
-    final alloca = _createAlloca(c, ident);
-    final indices = [c.constI32(0), c.constI32(0)];
-    final first = llvm.LLVMBuildInBoundsGEP2(c.builder, alloca.type,
-        alloca.alloca, indices.toNative(), indices.length, unname);
-    final index = ty.parent.variants.indexOf(ty);
-    llvm.LLVMBuildStore(c.builder, pTy.getIndexValue(c, index), first);
-    return alloca;
+  LLVMAllocaDelayVariable createAlloca(BuildContext c, Identifier ident) {
+    final type = pTy.createType(c);
+    return LLVMAllocaDelayVariable(ty, ([alloca]) {
+      final ctype = createType(c);
+      final alloca = c.alloctor(type, ident.src);
+      final indices = [c.constI32(0), c.constI32(0)];
+      final first = llvm.LLVMBuildInBoundsGEP2(
+          c.builder, ctype, alloca, indices.toNative(), indices.length, unname);
+      final index = ty.parent.variants.indexOf(ty);
+      llvm.LLVMBuildStore(c.builder, pTy.getIndexValue(c, index), first);
+      return alloca;
+    }, type);
   }
 
   int load(BuildContext c, Variable parent, List<FieldExpr> params) {

@@ -63,12 +63,20 @@ class LetStmt extends Stmt {
         delayAlloca.ident = nameIdent;
       }
 
+      if (nameIdent.src == 'yx') {
+        Log.w('..');
+      }
+
       if (variable is StoreVariable && variable.isTemp) {
         variable.isTemp = false;
         variable.ident = nameIdent;
         context.setName(variable.alloca, nameIdent.src);
         context.pushVariable(nameIdent, variable);
         return;
+        // } else if (variable is LLVMAllocaVariable && variable.ty is StructTy) {
+        //   alloca = tty.llvmType.createAlloca(context, nameIdent);
+        //   final rValue = variable.load(context);
+        //   alloca.store(context, rValue);
       }
 
       if (alloca == null) {
@@ -104,7 +112,9 @@ class LetStmt extends Stmt {
   @override
   void analysis(AnalysisContext context) {
     final realTy = ty?.grt(context);
-    final v = LiteralExpr.run(() => rExpr?.analysis(context), realTy);
+    final v = LiteralExpr.run(() {
+      return rExpr?.analysis(context);
+    }, realTy);
 
     if (v == null) return;
 

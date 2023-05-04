@@ -655,8 +655,19 @@ class Fn extends Ty {
     return getRty(c, fnSign.fnDecl.returnTy);
   }
 
+  Ty? getRetTyOrT(Tys c) {
+    return getRtyOrT(c, fnSign.fnDecl.returnTy);
+  }
+
   Ty getRty(Tys c, PathTy ty) {
     return ty.grt(c, gen: (ident) {
+      final v = grt(c, ident);
+      return v;
+    });
+  }
+
+  Ty? getRtyOrT(Tys c, PathTy ty) {
+    return ty.grtOrT(c, gen: (ident) {
       final v = grt(c, ident);
       return v;
     });
@@ -726,6 +737,7 @@ class Fn extends Ty {
 
   bool _anaysised = false;
 
+  void analysisContext(AnalysisContext context) {}
   @override
   void analysis(AnalysisContext context) {
     if (_anaysised) return;
@@ -734,8 +746,10 @@ class Fn extends Ty {
     final child = context.childContext();
     child.setFnContext(this);
     fnSign.fnDecl.analysis(child);
+    analysisContext(child);
     block?.analysis(child);
     selfVariables = child.catchVariables;
+    Log.w("${fnSign.fnDecl.ident} $selfVariables");
     _get = () => child.childrenVariables;
     if (block != null && block!.stmts.isNotEmpty) {
       final lastStmt = block!.stmts.last;
@@ -773,6 +787,53 @@ class ImplFn extends Fn {
   }
 
   @override
+  void analysisContext(AnalysisContext context) {
+    final ident = Identifier.builtIn('self');
+    final v = context.createVal(ty, ident);
+    context.pushVariable(ident, v);
+  }
+
+  // @override
+  // Map<ListKey, LLVMConstVariable> get _cache {
+  //   if (_parent == this) {
+  //     return super._cache;
+  //   }
+  //   return _parent?._cache ?? {};
+  // }
+
+  // @override
+  // Set<AnalysisVariable> get selfVariables {
+  //   if (_parent == this) {
+  //     return super.selfVariables;
+  //   }
+  //   return _parent?.selfVariables ?? {};
+  // }
+
+  // @override
+  // Set<AnalysisVariable> get variables {
+  //   if (_parent == this) {
+  //     return super.variables;
+  //   }
+  //   return _parent?.variables ?? {};
+  // }
+
+  // @override
+  // Set<AnalysisVariable> Function()? get _get {
+  //   if (_parent == this) {
+  //     return super._get;
+  //   }
+  //   return _parent?._get;
+  // }
+
+  // @override
+  // List<RawIdent> get sretVariables {
+  //   if (_parent == this) {
+  //     return super.sretVariables;
+  //   }
+  //   return _parent?.sretVariables ?? [];
+  // }
+
+  @override
   Ty? grt(Tys c, Identifier ident) {
     if (ty.generics.isEmpty) return null;
     final impltyStruct = implty.struct.grtOrT(c);
@@ -805,6 +866,11 @@ class FieldDef {
   Ty? grts(Tys c, GenTy gen) {
     if (_rty != null) return _rty!;
     return _ty.grt(c, gen: gen);
+  }
+
+  Ty? grtOrT(Tys c, {GenTy? gen}) {
+    if (_rty != null) return _rty!;
+    return _ty.grtOrT(c, gen: gen);
   }
 
   FieldDef clone() {
@@ -1084,9 +1150,11 @@ class ImplTy extends Ty {
   void analysis(AnalysisContext context) {
     final ident = struct.ident;
     context.pushImpl(ident, this);
-    final structTy = context.getStruct(ident);
-    if (structTy is! StructTy) return;
-    context.pushImplForStruct(structTy, this);
+    initStructFns(context);
+    // final structTy = context.getStruct(ident);
+
+    // if (structTy is! StructTy) return;
+    // context.pushImplForStruct(structTy, this);
     // final ty = context.getStruct(ident);
     // if (ty == null) {
     //   //error

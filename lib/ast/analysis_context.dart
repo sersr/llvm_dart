@@ -6,6 +6,10 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   AnalysisContext.root() : parent = null;
 
   AnalysisContext._(AnalysisContext this.parent);
+  @override
+  AnalysisContext import() {
+    return AnalysisContext.root();
+  }
 
   AnalysisContext childContext() {
     final c = AnalysisContext._(this);

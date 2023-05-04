@@ -22,12 +22,13 @@ class ImportPath with EquatableMixin {
   }
 }
 
-typedef ImportHandler<T> = T Function(Tys, ImportPath);
+typedef ImportHandler = Tys Function(Tys, ImportPath);
 typedef RunImport<T> = T Function(T Function());
 
 mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
   T? get parent;
 
+  T import();
   String? currentPath;
 
   final imports = <ImportPath, T>{};
@@ -37,9 +38,9 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     return runZoned(body, zoneValues: {#_runImport: true});
   }
 
-  ImportHandler<T>? importHandler;
+  ImportHandler? importHandler;
 
-  ImportHandler<T>? getImportHandler() {
+  ImportHandler? getImportHandler() {
     if (importHandler != null) return importHandler!;
     return parent?.getImportHandler();
   }
@@ -48,7 +49,7 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     if (!imports.containsKey(path)) {
       final im = getImportHandler()?.call(this, path);
       if (im != null) {
-        imports[path] = im;
+        imports[path] = im as T;
       }
     }
   }

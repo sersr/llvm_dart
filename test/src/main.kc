@@ -12,12 +12,35 @@ struct Bcx<T> {
 }
 
 impl Bcx<T> {
-	fn getb(n: Gen) &T {
+	fn getb(n: &Gen) &T {
 		let y = &self.b;
-		self.b = n;
-		let h = n;
-		printf("h: %d\n", h.x);
+		let hh = self;
+		let hx = &self;
+		let hhxa = n;
+		printf("h nn h: %d\n", hx.x);
+		let u = 212;
+		 fn inn() {
+			let yx = hx;
+			let hch = yx.x;
+			printf("hhinn: %d, hch: %d\n", yx.x, hch);
+		}
+		// printf("hh: %d\n", hh.x);
+		inn();
+
+		// printf("last value: %d\n", y.x);
+		// self.b = n;
+		// let h = n;
+		// printf("h: %d\n", h.x);
 		y;
+	}
+
+	fn gee() {
+		let x = 33;
+		fn hin() {
+			let y = printf('gee.hin: %d\n', x);
+			printf("hin pr: %d\n", y);
+		}
+		hin();
 	}
 }
 
@@ -33,9 +56,15 @@ impl Gen {
 
 fn main() i32 {
 	print('start');
+	let y = 55 as i64;
+	let bcx = Bcx {10202 ,Gen { 3434343 }}
+	let size = bcx.getb(& Gen { 66666 }).x;
+	printf("main size: %d\n", size);
 
-	let bcx = Bcx {34343 ,Gen { 3434343 }}
-	let size = bcx.getb( Gen { 66666 });
-	printf("size: %d\n", size.x);
+	fn pp() {
+	 //	printf("size: %d\n", size);
+	}
+	pp();
+	bcx.gee();
 	0;
 }

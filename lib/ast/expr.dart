@@ -480,13 +480,12 @@ class StructExpr extends Expr {
     return buildTupeOrStruct(struct, context, ident, fields, generics, isNew);
   }
 
-  static ExprTempValue? buildTupeOrStruct(
-      StructTy struct,
-      BuildContext context,
-      Identifier ident,
-      List<FieldExpr> params,
-      List<PathTy> genericsInst,
-      bool isNew) {
+  static StructTy genStruct(
+    StructTy struct,
+    Tys context,
+    List<FieldExpr> params,
+    List<PathTy> genericsInst,
+  ) {
     if (genericsInst.isNotEmpty) {
       final gMap = <Identifier, Ty>{};
       for (var i = 0; i < genericsInst.length; i += 1) {
@@ -529,13 +528,21 @@ class StructExpr extends Expr {
         }
       }
 
+      bool isBuild = context is BuildContext;
       for (var i = 0; i < sortFields.length; i += 1) {
         final f = sortFields[i];
         final fd = fields[i].rawTy;
-        final ty = LiteralExpr.run(
-                () => f.build(context)?.variable, fd.grtBase(context))
-            ?.ty;
 
+        Ty? ty;
+        if (isBuild) {
+          ty = LiteralExpr.run(
+                  () => f.build(context)?.variable, fd.grtBase(context))
+              ?.ty;
+        } else {
+          ty = LiteralExpr.run(() => f.analysis(context as AnalysisContext),
+                  fd.grtBase(context))
+              ?.ty;
+        }
         if (ty != null) {
           final fd = fields[i];
           fa(ty, fd.rawTy);
@@ -545,6 +552,17 @@ class StructExpr extends Expr {
       // Log.w('${struct.ident}: $gMap');
       struct = struct.newInst(gMap, context);
     }
+    return struct;
+  }
+
+  static ExprTempValue? buildTupeOrStruct(
+      StructTy struct,
+      BuildContext context,
+      Identifier ident,
+      List<FieldExpr> params,
+      List<PathTy> genericsInst,
+      bool isNew) {
+    struct = genStruct(struct, context, params, genericsInst);
     final structType = struct.llvmType.createType(context);
     LLVMValueRef create([StoreVariable? alloca]) {
       var value = alloca;
@@ -592,10 +610,12 @@ class StructExpr extends Expr {
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    final struct = context.getStruct(ident);
+    var struct = context.getStruct(ident);
     if (struct == null) return null;
+    struct = genStruct(struct, context, fields, generics);
+
     final sortFields = alignParam(
-        fields, (p) => struct.fields.indexWhere((e) => e.ident == p.ident));
+        fields, (p) => struct!.fields.indexWhere((e) => e.ident == p.ident));
 
     final all = <Identifier, AnalysisVariable>{};
     for (var i = 0; i < sortFields.length; i++) {
@@ -831,7 +851,6 @@ mixin FnCallMixin {
     final fields = fn.fnSign.fnDecl.params;
     final sortFields =
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
-
     for (var f in sortFields) {
       Ty? vty;
       Identifier? ident;
@@ -961,10 +980,13 @@ mixin FnCallMixin {
       final v = LLVMRefAllocaVariable.from(ret, retTy.parent, context);
       v.isTemp = false;
       return ExprTempValue(v, v.ty);
+    } else if (retTy is StructTy) {
+      final v = retTy.llvmType.createAlloca(context, Identifier.none);
+      v.store(context, ret);
+      v.isTemp = false;
+      return ExprTempValue(v, v.ty);
     }
-    final v = retTy.llvmType.createAlloca(context, Identifier.none);
-    v.store(context, ret);
-    v.isTemp = false;
+    final v = LLVMConstVariable(ret, retTy);
 
     return ExprTempValue(v, v.ty);
   }
@@ -1086,10 +1108,15 @@ class MethodCallExpr extends Expr with FnCallMixin {
     final variable = receiver.build(context);
     var val = variable?.variable;
     if (variable == null) return null;
-    while (true) {
-      if (val is! LLVMRefAllocaVariable) {
-        break;
-      }
+    // while (true) {
+    //   if (val is! Deref) {
+    //     break;
+    //   }
+    //   final v = val.getDeref(context);
+    //   if (v == val) break;
+    //   val = v;
+    // }
+    if (val is Deref) {
       val = val.getDeref(context);
     }
     if (val == null) return null;
@@ -1147,7 +1174,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
         _paramFn = pp;
         autoAddChild(pp, params, context);
       }
-      return p;
+      if (p != null) return p;
     }
 
     final impl = context.getImplForStruct(structTy);
@@ -1155,13 +1182,15 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (fn == null) {
       final field =
           structTy.fields.firstWhereOrNull((element) => element.ident == ident);
-      final ty = field?.grt(context);
+      final ty = field?.grtOrT(context);
       if (ty is FnTy) {
         fn = ty;
         autoAddChild(fn, params, context);
       }
     }
     if (fn == null) return null;
+    fn.analysis(context.getLastFnContext() ?? context);
+
     // final fnContext = context.getLastFnContext();
     // fnContext?.addChild(fn.fnSign.fnDecl.ident, fn.variables);
     return context.createVal(fn.getRetTy(context), Identifier.none);
@@ -1186,14 +1215,18 @@ class StructDotFieldExpr extends Expr {
     final val = structVal?.variable;
     var newVal = PointerKind.refDerefs(val, context, kind);
 
-    while (true) {
-      if (newVal is! Deref) {
-        break;
-      }
+    // while (true) {
+    //   if (newVal is! Deref) {
+    //     break;
+    //   }
+    //   final v = newVal.getDeref(context);
+    //   if (v == newVal) break;
+    //   newVal = v;
+    // }
+    if (newVal is Deref) {
       newVal = newVal.getDeref(context);
     }
-
-    var ty = newVal?.ty.getRealTy(context);
+    var ty = newVal?.ty;
     if (ty is! StructTy) return null;
     final v = ty.llvmType.getField(newVal!, context, ident);
     if (v == null) return null;
@@ -1215,7 +1248,17 @@ class StructDotFieldExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     var variable = struct.analysis(context);
     if (variable == null) return null;
-    final structTy = variable.ty;
+    var structTy = variable.ty;
+
+    while (true) {
+      if (structTy is! RefTy) {
+        break;
+      }
+      structTy = structTy.parent;
+    }
+    if (structTy is RefTy) {
+      structTy = structTy.baseTy;
+    }
     if (structTy is! StructTy) return null;
     if (variable is AnalysisStructVariable) {
       final p = variable.getParam(ident);
@@ -1570,6 +1613,9 @@ class VariableIdentExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final val = context.getVariable(ident);
+    if (ident.src == 'yx') {
+      Log.w('..');
+    }
     if (val != null) {
       if (val is Deref) {
         if (ident.src == 'self') {
@@ -1609,6 +1655,9 @@ class VariableIdentExpr extends Expr {
   bool _isCatch = false;
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
+    if (ident.src == 'yx') {
+      Log.w('..');
+    }
     final v = context.getVariable(ident);
     final fnContext = context.getLastFnContext();
     if (fnContext != null) {

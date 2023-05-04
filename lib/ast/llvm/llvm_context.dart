@@ -111,6 +111,7 @@ class BuildContext
     return BuildContext._clone(this);
   }
 
+  @override
   BuildContext import() {
     return BuildContext._importRoot(this);
   }
@@ -170,10 +171,15 @@ class BuildContext
       final p = fnty.ty;
       final selfParam = llvm.LLVMGetParam(fn, index);
       final ident = Identifier.builtIn('self');
-      final alloca = RefTy(p).llvmType.createAlloca(this, ident);
-      alloca.store(this, selfParam);
+      // final alloca = RefTy(p).llvmType.createAlloca(this, ident);
+      // alloca.store(this, selfParam);
+
+      // 只读引用
+      final alloca =
+          LLVMAllocaVariable(p, selfParam, p.llvmType.createType(this));
       setName(alloca.alloca, 'self');
       alloca.isTemp = false;
+      alloca.isRef = true;
       pushVariable(ident, alloca);
       index += 1;
     }
@@ -188,8 +194,6 @@ class BuildContext
         if (extra != null) {
           realTy = realTy.clone(extra);
         }
-        // } else {
-        //   realTy = p.ty.kind.resolveTy(realTy);
       }
 
       resolveParam(realTy, fnParam, p.ident, fnty.extern);
@@ -206,9 +210,11 @@ class BuildContext
         return;
       }
 
-      final alloca = LLVMRefAllocaVariable.from(value, val.ty, this);
+      final ty = val.ty;
+      // final alloca = LLVMRefAllocaVariable.from(value, ty, this);
+      final type = ty.llvmType.createType(this);
+      final alloca = LLVMAllocaVariable(ty, value, type);
       alloca.isTemp = false;
-      alloca.isRef = true;
 
       setName(value, ident.src);
       pushVariable(ident, alloca);
@@ -230,12 +236,16 @@ class BuildContext
   void resolveParam(
       Ty ty, LLVMValueRef fnParam, Identifier ident, bool extern) {
     Variable alloca;
-    if (ty is StructTy) {
+    if (ty is StructTy && !extern) {
       alloca = ty.llvmType.createAllocaFromParam(this, fnParam, ident, extern);
     } else if (ty is Fn) {
       alloca = ty.llvmType.createAllocaParam(this, ident, fnParam);
+    } else if (ty is! RefTy) {
+      alloca = LLVMConstVariable(fnParam, ty);
+      setName(fnParam, ident.src);
     } else {
       final a = alloca = ty.llvmType.createAlloca(this, ident);
+      a.isTemp = false;
       a.store(this, fnParam);
     }
     if (alloca is StoreVariable) alloca.isTemp = false;

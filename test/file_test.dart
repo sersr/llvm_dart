@@ -5,9 +5,12 @@ import 'package:test/test.dart';
 
 void main() {
   test('file', () async {
-    final project = Project(testSrcDir.childFile('main.kc').path);
-    project.mem2reg = true;
+    final name = 'main.kc';
+    // final name = 'impl_fn.kc';
+    final project = Project(testSrcDir.childFile(name).path);
+    // project.mem2reg = true;
     // project.printAsm = true;
+    project.enableBuild = true;
     runPrint(project.run);
     await runNativeCode();
   });

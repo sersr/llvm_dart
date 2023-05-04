@@ -39,7 +39,7 @@ class Project {
 
   void run() {
     analysis();
-    build(asmPrinter);
+    if (enableBuild) build(asmPrinter);
   }
 
   void asmPrinter() {
@@ -55,24 +55,30 @@ class Project {
       print(parser.globalTy.values.join('\n'));
 
       final alc = analysisContext = AnalysisContext.root();
-
+      alc.currentPath = path;
+      alc.importHandler = importBuild;
       alc.pushAllTy(parser.globalTy);
 
       for (var val in parser.globalVar.values) {
         val.analysis(alc);
+      }
+      for (var fns in alc.fns.values) {
+        for (var fn in fns) {
+          fn.analysis(alc);
+        }
       }
     });
   }
 
   bool mem2reg = false;
   bool printAsm = false;
+  bool enableBuild = true;
 
-  BuildContext importBuild(Tys current, ImportPath path) {
-    final c = current as BuildContext;
-    final child = c.import();
+  Tys importBuild(Tys current, ImportPath path) {
+    final child = current.import();
     final pname = Consts.regSrc(path.name.src);
     var pathName = '';
-    final currentPath = c.currentPath;
+    final currentPath = current.currentPath;
     if (currentPath != null) {
       pathName =
           join(currentDir.childDirectory(currentPath).parent.path, pname);
@@ -88,11 +94,17 @@ class Project {
       print(mImport.globalVar.values.join('__\n__'));
       print(mImport.globalTy.values.join('__\n__'));
       child.pushAllTy(mImport.globalTy);
-      for (var val in mImport.globalVar.values) {
-        val.build(child);
+      if (child is BuildContext) {
+        for (var val in mImport.globalVar.values) {
+          val.build(child);
+        }
+      } else if (child is AnalysisContext) {
+        for (var val in mImport.globalVar.values) {
+          val.analysis(child);
+        }
       }
     }
-    return child;
+    return child as Tys;
   }
 
   void build([void Function()? after]) {
@@ -100,7 +112,7 @@ class Project {
       llvm.initLLVM();
       final root = buildContext = BuildContext.root();
       root.currentPath = path;
-      root.importHandler = importBuild;
+      root.importHandler = importBuild as dynamic;
       BuildContext.mem2reg = mem2reg;
       root.pushAllTy(parser.globalTy);
       root.pushFn(SizeOfFn.ident, sizeOfFn);
