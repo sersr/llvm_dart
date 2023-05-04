@@ -63,10 +63,6 @@ class LetStmt extends Stmt {
         delayAlloca.ident = nameIdent;
       }
 
-      if (nameIdent.src == 'yx') {
-        Log.w('..');
-      }
-
       if (variable is StoreVariable && variable.isTemp) {
         variable.isTemp = false;
         variable.ident = nameIdent;

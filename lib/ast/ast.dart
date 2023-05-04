@@ -155,10 +155,10 @@ class GenericParam with EquatableMixin {
   @override
   List<Object?> get props => [ident, ty];
 
-  void analysis(AnalysisContext context) {
+  void analysis(AnalysisContext context, Fn fn) {
     context.pushVariable(
       ident,
-      context.createVal(ty.grt(context), ident, ty.kind)
+      context.createVal(fn.getRty(context, ty), ident, ty.kind)
         ..lifeCycle.isOut = true,
     );
   }
@@ -415,9 +415,9 @@ class FnDecl with EquatableMixin {
   @override
   List<Object?> get props => [ident, params, returnTy];
 
-  void analysis(AnalysisContext context) {
+  void analysis(AnalysisContext context, Fn fn) {
     for (var p in params) {
-      p.analysis(context);
+      p.analysis(context, fn);
     }
   }
 }
@@ -434,8 +434,8 @@ class FnSign with EquatableMixin {
     return fnDecl.toString();
   }
 
-  void analysis(AnalysisContext context) {
-    fnDecl.analysis(context);
+  void analysis(AnalysisContext context, Fn fn) {
+    fnDecl.analysis(context, fn);
   }
 
   @override
@@ -637,7 +637,13 @@ class FnTy extends Fn {
       cache.add(GenericParam(e.ident, PathTy.ty(e.ty, [PointerKind.ref])));
     }
     final decl = FnDecl(rawDecl.ident, cache, rawDecl.returnTy, rawDecl.isVar);
-    return FnTy(decl);
+    return FnTy(decl)..copy(this);
+  }
+
+  @override
+  Fn cloneDefault() {
+    // copy ???
+    return FnTy(fnSign.fnDecl)..copy(this);
   }
 
   @override
@@ -715,9 +721,22 @@ class Fn extends Ty {
     return customBuild(context, variables, map);
   }
 
+  Fn cloneDefault() {
+    return Fn(fnSign, block?.clone())..copy(this);
+  }
+
+  void copy(Fn from) {
+    selfVariables = from.selfVariables;
+    _get = from._get;
+    sretVariables = from.sretVariables;
+  }
+
   LLVMConstVariable? customBuild(BuildContext context,
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
+    if (fnSign.fnDecl.ident.src == 'inn') {
+      Log.w('....$hashCode ${fnSign.fnDecl.ident} ${variables?.toList()}');
+    }
     final key = ListKey(variables?.map((e) => e.ty).toList() ?? []);
     return _cache.putIfAbsent(key, () {
       return context.buildFnBB(this, variables, map ?? const {});
@@ -742,13 +761,19 @@ class Fn extends Ty {
   void analysis(AnalysisContext context) {
     if (_anaysised) return;
     _anaysised = true;
+    if (fnSign.fnDecl.ident.src == 'inn') {
+      // Log.w('...$hashCode');
+    }
     context.pushFn(fnSign.fnDecl.ident, this);
     final child = context.childContext();
     child.setFnContext(this);
-    fnSign.fnDecl.analysis(child);
+    fnSign.fnDecl.analysis(child, this);
     analysisContext(child);
     block?.analysis(child);
     selfVariables = child.catchVariables;
+    if (fnSign.fnDecl.ident.src == 'inn') {
+      Log.w('...${child.hashCode} $selfVariables');
+    }
     Log.w("${fnSign.fnDecl.ident} $selfVariables");
     _get = () => child.childrenVariables;
     if (block != null && block!.stmts.isNotEmpty) {
@@ -782,7 +807,9 @@ class ImplFn extends Fn {
 
     return _parent!._caches.putIfAbsent(
       other,
-      () => ImplFn(fnSign, block, other, implty).._parent = _parent,
+      () {
+        return ImplFn(fnSign, block?.clone(), other, implty).._parent = _parent;
+      },
     );
   }
 

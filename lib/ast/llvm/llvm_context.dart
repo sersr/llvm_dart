@@ -244,7 +244,9 @@ class BuildContext
       alloca = LLVMConstVariable(fnParam, ty);
       setName(fnParam, ident.src);
     } else {
-      final a = alloca = ty.llvmType.createAlloca(this, ident);
+      final a = alloca = LLVMRefAllocaVariable.from(fnParam, ty, this);
+      // final a = alloca = ty.llvmType.createAlloca(this, ident);
+      setName(a.alloca, ident.src);
       a.isTemp = false;
       a.store(this, fnParam);
     }

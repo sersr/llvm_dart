@@ -795,7 +795,7 @@ class FnExpr extends Expr {
   final Fn fn;
   @override
   Expr clone() {
-    return FnExpr(fn);
+    return FnExpr(fn.cloneDefault());
   }
 
   @override
@@ -1655,9 +1655,6 @@ class VariableIdentExpr extends Expr {
   bool _isCatch = false;
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    if (ident.src == 'yx') {
-      Log.w('..');
-    }
     final v = context.getVariable(ident);
     final fnContext = context.getLastFnContext();
     if (fnContext != null) {
