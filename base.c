@@ -121,7 +121,7 @@ Gen xxs(int y) {
 
 
 int main(int argc, char** argv) {
-  char * xx = argv[argc];
+  printf("sss : %s\n", argv[0]);
   return 0;
 }
 

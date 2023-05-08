@@ -612,6 +612,17 @@ class PathTy with EquatableMixin {
         }
       }
       rty = rty.newInst(gMap, c, gen: gen);
+    } else if (rty is CTypeTy && generics.isNotEmpty) {
+      final gMap = <Identifier, Ty>{};
+      for (var i = 0; i < generics.length; i += 1) {
+        final g = generics[i];
+        final gg = rty.generics[i];
+        final gty = g.grtOrT(c, gen: gen);
+        if (gty != null) {
+          gMap[gg.ident] = gty;
+        }
+      }
+      rty = rty.newInst(gMap, c, gen: gen);
     }
     if (rty == null) return null;
     return kind.resolveTy(rty);
@@ -902,7 +913,7 @@ class FieldDef {
 
 typedef GenTy = Ty? Function(Identifier ident);
 
-class StructTy extends Ty with EquatableMixin {
+class StructTy extends Ty with EquatableMixin implements PathInterFace {
   StructTy(this.ident, this.fields, this.generics);
   final Identifier ident;
   final List<FieldDef> fields;
@@ -912,6 +923,7 @@ class StructTy extends Ty with EquatableMixin {
   final _tyLists = <ListKey, StructTy>{};
 
   Map<Identifier, Ty>? _tys;
+  @override
   Map<Identifier, Ty> get tys => _tys ?? const {};
 
   StructTy? _parent;
@@ -1217,27 +1229,44 @@ class ArrayLLVMType extends LLVMType {
     }, createType(c));
   }
 
-  StoreVariable getElement(BuildContext c, Variable val, LLVMValueRef index) {
+  Variable getElement(BuildContext c, Variable val, LLVMValueRef index) {
     final indics = <LLVMValueRef>[];
 
-    indics.add(c.constI32(0));
     indics.add(index);
 
-    final v = llvm.LLVMBuildInBoundsGEP2(c.builder, createType(c),
+    var v = llvm.LLVMBuildInBoundsGEP2(c.builder, createType(c),
         val.getBaseValue(c), indics.toNative(), indics.length, unname);
+    v = llvm.LLVMBuildLoad2(c.builder, c.pointer(), v, unname);
     final vv = LLVMRefAllocaVariable.from(v, ty.elementType, c);
-
     vv.isTemp = false;
     return vv;
   }
 }
 
-class CTypeTy extends Ty {
+abstract class PathInterFace {
+  Map<Identifier, Ty> get tys;
+}
+
+class CTypeTy extends Ty implements PathInterFace {
   CTypeTy(this.pathTy);
   final PathTy pathTy;
   Identifier get ident => pathTy.ident;
 
   List<PathTy> get generics => pathTy.generics;
+
+  CTypeTy? _parent;
+  CTypeTy get root => _parent ?? this;
+  Map<Identifier, Ty>? _tys;
+  @override
+  Map<Identifier, Ty> get tys => _tys ?? const {};
+  final _tyLists = <ListKey, CTypeTy>{};
+
+  CTypeTy newInst(Map<Identifier, Ty> tys, Tys c, {GenTy? gen}) {
+    _parent ??= this;
+    return root._tyLists.putIfAbsent(ListKey(tys), () {
+      return CTypeTy(pathTy).._tys = tys;
+    });
+  }
 
   @override
   void analysis(AnalysisContext context) {

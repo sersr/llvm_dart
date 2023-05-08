@@ -494,7 +494,7 @@ class StructExpr extends Expr {
         Log.w('$g $gg ${gg.generics}');
         gMap[g.ident] = gg.grt(context);
       }
-      Log.w('gg $gMap');
+      // Log.w('gg $gMap');
       struct = struct.newInst(gMap, context);
     } else if (struct.generics.isNotEmpty) {
       final gMap = <Identifier, Ty>{};
@@ -510,19 +510,19 @@ class StructExpr extends Expr {
         final index = sg.indexWhere((e) => e.ident == fdTy.ident);
         if (index != -1) {
           final gen = sg[index];
-          if (gen.rawTy.generics.isNotEmpty && ty is StructTy) {
+          if (gen.rawTy.generics.isNotEmpty && ty is PathInterFace) {
             for (var f in gen.rawTy.generics) {
-              final tyg = ty.tys[f.ident];
+              final tyg = (ty as PathInterFace).tys[f.ident];
               fa(tyg!, f);
             }
           }
           gMap.putIfAbsent(fdTy.ident, () => ty);
         }
 
-        if (fdTy.generics.isNotEmpty && ty is StructTy) {
+        if (fdTy.generics.isNotEmpty && ty is PathInterFace) {
           for (var i = 0; i < fdTy.generics.length; i += 1) {
             final fdIdent = fdTy.generics[i];
-            final tyg = ty.tys[fdIdent.ident];
+            final tyg = (ty as PathInterFace).tys[fdIdent.ident];
             fa(tyg!, fdIdent);
           }
         }
@@ -1154,6 +1154,25 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
 
     if (fn == null) return null;
+    if (structTy.ident.src == 'Array' &&
+        fn.fnSign.fnDecl.ident.src == 'elementAt') {
+      if (params.isNotEmpty && st != null) {
+        final first = params.first.build(context)?.variable;
+        if (first != null && first.ty is BuiltInTy) {
+          final v = structTy.llvmType.getField(LLVMConstVariable(st, structTy),
+              context, Identifier.builtIn('pointer'));
+          if (v != null) {
+            if (structTy.tys.isNotEmpty) {
+              final arr = ArrayTy(structTy.tys.values.first);
+              final element =
+                  arr.llvmType.getElement(context, v, first.load(context));
+              return ExprTempValue(element, element.ty);
+            }
+          }
+        }
+      }
+      return null;
+    }
     return fnCall(context, fn, params, fnVariable, struct: st, gen: (ident) {
       return structTy.tys[ident];
     });

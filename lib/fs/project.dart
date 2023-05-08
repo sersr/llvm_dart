@@ -74,6 +74,7 @@ class Project {
   bool printAsm = false;
   bool enableBuild = true;
 
+  final _caches = <String, Parser?>{};
   Tys importBuild(Tys current, ImportPath path) {
     final child = current.import();
     final pname = Consts.regSrc(path.name.src);
@@ -86,13 +87,13 @@ class Project {
       final p = currentDir.childFile(pname);
       pathName = p.path;
     }
-
-    final mImport = parserToken(pathName);
+    final pn = normalize(pathName);
+    final mImport = _caches.putIfAbsent(pn, () => parserToken(pathName));
     if (mImport != null) {
-      child.currentPath = normalize(pathName);
+      child.currentPath = pn;
       child.importHandler = importBuild;
-      print(mImport.globalVar.values.join('__\n__'));
-      print(mImport.globalTy.values.join('__\n__'));
+      print(mImport.globalVar.values.join('\n'));
+      print(mImport.globalTy.values.join('\n'));
       child.pushAllTy(mImport.globalTy);
       if (child is BuildContext) {
         for (var val in mImport.globalVar.values) {

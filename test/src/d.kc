@@ -6,14 +6,12 @@ fn print(str: string) {
 
 struct Array<T> {
     size: usize,
+    pointer: cArray<T>,
 }
 
 type cArray<T>;
 
 impl Array<T> {
-    static fn fromC(size: usize,argv: cArray<T>) Array<T>{
-
-    }
     fn getSize() usize {
         return self.size;
     }

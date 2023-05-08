@@ -64,6 +64,10 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     final list = variables[ident];
     if (list != null) {
       var last = list.last;
+      // ignore: invalid_use_of_protected_member
+      if (last.ident!.data != ident.data) {
+        return last;
+      }
       for (var val in list) {
         final valIdent = val.ident!;
         if (valIdent.start > ident.start) {
@@ -128,7 +132,8 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
   // 当前范围内可获取的 struct
   final structs = <Identifier, List<StructTy>>{};
   StructTy? getStruct(Identifier ident) {
-    return getKV(ident, (c) => c.structs);
+    return getKV(ident, (c) => c.structs,
+        importHandle: (c) => c.getStruct(ident));
   }
 
   void pushStruct(Identifier ident, StructTy ty) {
@@ -137,7 +142,7 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
 
   final enums = <Identifier, List<EnumTy>>{};
   EnumTy? getEnum(Identifier ident) {
-    return getKV(ident, (c) => c.enums);
+    return getKV(ident, (c) => c.enums, importHandle: (c) => c.getEnum(ident));
   }
 
   void pushEnum(Identifier ident, EnumTy ty) {
@@ -174,7 +179,8 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
 
   final components = <Identifier, List<ComponentTy>>{};
   ComponentTy? getComponent(Identifier ident) {
-    return getKV(ident, (c) => c.components);
+    return getKV(ident, (c) => c.components,
+        importHandle: (c) => c.getComponent(ident));
   }
 
   void pushComponent(Identifier ident, ComponentTy com) {
@@ -183,7 +189,9 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
 
   final impls = <Identifier, List<ImplTy>>{};
   ImplTy? getImpl(Identifier ident) {
-    return getKV(ident, (c) => c.impls);
+    return getKV(ident, (c) => c.impls, importHandle: (c) {
+      return c.getImpl(ident);
+    });
   }
 
   void pushImpl(Identifier ident, ImplTy ty) {
@@ -192,11 +200,12 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
 
   final implForStructs = <StructTy, List<ImplTy>>{};
   ImplTy? getImplForStruct(StructTy structTy) {
-    return getKV(structTy.parentOrCurrent, (c) => c.implForStructs);
+    return getKV(structTy.parentOrCurrent, (c) => c.implForStructs,
+        importHandle: (c) => c.getImplForStruct(structTy));
   }
 
   void pushImplForStruct(StructTy structTy, ImplTy ty) {
-    pushKV(structTy, ty, implForStructs);
+    pushKV(structTy.parentOrCurrent, ty, implForStructs);
   }
 
   final cTys = <Identifier, List<CTypeTy>>{};

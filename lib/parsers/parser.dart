@@ -1049,7 +1049,17 @@ class Parser {
     final fields = <FieldExpr>[];
 
     assert(getToken(it).kind == TokenKind.openParen, '${getIdent(it)}');
-
+    eatLfIfNeed(it);
+    if (it.moveNext()) {
+      // eat `)`
+      final t = getToken(it);
+      if (t.kind == TokenKind.closeParen) {
+        it.moveNext();
+        return fields;
+      } else {
+        it.moveBack();
+      }
+    }
     loop(it, () {
       final t = getToken(it);
 
@@ -1059,10 +1069,10 @@ class Parser {
         return true;
       }
 
-      // eat `)`
-      if (t.kind == TokenKind.closeParen) {
-        return true;
-      }
+      // // eat `)`
+      // if (fields.isEmpty && t.kind == TokenKind.closeParen) {
+      //   return true;
+      // }
       if (t.kind == TokenKind.ident) {
         eatLfIfNeed(it);
         final name = getIdent(it);
@@ -1074,6 +1084,7 @@ class Parser {
             final f = FieldExpr(expr, name);
             fields.add(f);
             if (getToken(it).kind == TokenKind.closeParen) {
+              it.moveNext();
               return true;
             }
             return false;
@@ -1087,6 +1098,7 @@ class Parser {
       final f = FieldExpr(expr, null);
       fields.add(f);
       if (getToken(it).kind == TokenKind.closeParen) {
+        it.moveNext();
         return true;
       }
 
