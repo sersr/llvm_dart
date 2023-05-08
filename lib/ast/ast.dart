@@ -7,12 +7,15 @@ import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
 import 'package:nop/nop.dart';
 
+import '../llvm_core.dart';
+import '../llvm_dart.dart';
 import '../parsers/lexers/token_kind.dart';
 import 'analysis_context.dart';
 import 'context.dart';
 import 'expr.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';
+import 'memory.dart';
 import 'stmt.dart';
 import 'tys.dart';
 
@@ -249,11 +252,11 @@ enum LitKind {
   kDouble('double'),
   f32('f32'),
   f64('f64'),
-  kInt('int'),
   kString('string'),
 
   i8('i8'),
   i16('i16'),
+  kInt('int'),
   i32('i32'),
   i64('i64'),
   i128('i128'),
@@ -491,7 +494,7 @@ class RefTy extends Ty {
 
 class BuiltInTy extends Ty {
   BuiltInTy._(this._ty);
-  static final int = BuiltInTy._(LitKind.kInt);
+  static final int = BuiltInTy._(LitKind.i32);
   static final float = BuiltInTy._(LitKind.kFloat);
   static final double = BuiltInTy._(LitKind.kDouble);
   static final string = BuiltInTy._(LitKind.kString);
@@ -726,21 +729,44 @@ class Fn extends Ty {
   }
 
   void copy(Fn from) {
+    _parent = from.root;
     selfVariables = from.selfVariables;
     _get = from._get;
     sretVariables = from.sretVariables;
   }
 
+  Fn? _parent;
+  Fn get root => _parent ?? this;
+
   LLVMConstVariable? customBuild(BuildContext context,
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
-    if (fnSign.fnDecl.ident.src == 'inn') {
-      Log.w('....$hashCode ${fnSign.fnDecl.ident} ${variables?.toList()}');
+    final vk = [];
+
+    final k = getKey();
+    if (k != null) {
+      vk.add(k);
     }
-    final key = ListKey(variables?.map((e) => e.ty).toList() ?? []);
-    return _cache.putIfAbsent(key, () {
+
+    if (variables != null && variables.isNotEmpty) {
+      vk.add(variables.toList());
+    }
+    for (var v in selfVariables) {
+      final vt = v.ty;
+      vk.add(vt);
+      if (vt is StructTy) {
+        vk.add(vt.tys);
+      }
+    }
+    final key = ListKey(vk);
+
+    return root._cache.putIfAbsent(key, () {
       return context.buildFnBB(this, variables, map ?? const {});
     });
+  }
+
+  Object? getKey() {
+    return null;
   }
 
   Set<AnalysisVariable> selfVariables = {};
@@ -761,9 +787,7 @@ class Fn extends Ty {
   void analysis(AnalysisContext context) {
     if (_anaysised) return;
     _anaysised = true;
-    if (fnSign.fnDecl.ident.src == 'inn') {
-      // Log.w('...$hashCode');
-    }
+
     context.pushFn(fnSign.fnDecl.ident, this);
     final child = context.childContext();
     child.setFnContext(this);
@@ -771,10 +795,6 @@ class Fn extends Ty {
     analysisContext(child);
     block?.analysis(child);
     selfVariables = child.catchVariables;
-    if (fnSign.fnDecl.ident.src == 'inn') {
-      Log.w('...${child.hashCode} $selfVariables');
-    }
-    Log.w("${fnSign.fnDecl.ident} $selfVariables");
     _get = () => child.childrenVariables;
     if (block != null && block!.stmts.isNotEmpty) {
       final lastStmt = block!.stmts.last;
@@ -799,18 +819,24 @@ class ImplFn extends Fn {
   final StructTy ty;
   final ImplTy implty;
 
-  ImplFn? _parent;
+  @override
+  ImplFn get root => super.root as ImplFn;
   final _caches = <StructTy, ImplFn>{};
   ImplFn copyFrom(StructTy other) {
     if (ty == other) return this;
-    _parent ??= this;
+    _parent ??= root;
 
-    return _parent!._caches.putIfAbsent(
+    return root._caches.putIfAbsent(
       other,
       () {
-        return ImplFn(fnSign, block?.clone(), other, implty).._parent = _parent;
+        return ImplFn(fnSign, block?.clone(), other, implty).._parent = root;
       },
     );
+  }
+
+  @override
+  Object? getKey() {
+    return ty.tys;
   }
 
   @override
@@ -819,46 +845,6 @@ class ImplFn extends Fn {
     final v = context.createVal(ty, ident);
     context.pushVariable(ident, v);
   }
-
-  // @override
-  // Map<ListKey, LLVMConstVariable> get _cache {
-  //   if (_parent == this) {
-  //     return super._cache;
-  //   }
-  //   return _parent?._cache ?? {};
-  // }
-
-  // @override
-  // Set<AnalysisVariable> get selfVariables {
-  //   if (_parent == this) {
-  //     return super.selfVariables;
-  //   }
-  //   return _parent?.selfVariables ?? {};
-  // }
-
-  // @override
-  // Set<AnalysisVariable> get variables {
-  //   if (_parent == this) {
-  //     return super.variables;
-  //   }
-  //   return _parent?.variables ?? {};
-  // }
-
-  // @override
-  // Set<AnalysisVariable> Function()? get _get {
-  //   if (_parent == this) {
-  //     return super._get;
-  //   }
-  //   return _parent?._get;
-  // }
-
-  // @override
-  // List<RawIdent> get sretVariables {
-  //   if (_parent == this) {
-  //     return super.sretVariables;
-  //   }
-  //   return _parent?.sretVariables ?? [];
-  // }
 
   @override
   Ty? grt(Tys c, Identifier ident) {
@@ -1124,6 +1110,9 @@ class ImplTy extends Ty {
     //   return;
     // }
     _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty, this)).toList();
+    for (var fn in staticFns) {
+      fn.pushFn(context);
+    }
   }
 
   @override
@@ -1187,5 +1176,109 @@ class ImplTy extends Ty {
     //   //error
     //   return;
     // }
+  }
+}
+
+class ArrayTy extends Ty {
+  ArrayTy(this.elementType);
+  final Ty elementType;
+
+  @override
+  void analysis(AnalysisContext context) {}
+
+  @override
+  void build(BuildContext context) {}
+
+  @override
+  late final ArrayLLVMType llvmType = ArrayLLVMType(this);
+
+  @override
+  List<Object?> get props => [elementType];
+}
+
+class ArrayLLVMType extends LLVMType {
+  ArrayLLVMType(this.ty);
+
+  @override
+  final ArrayTy ty;
+  @override
+  LLVMTypeRef createType(BuildContext c) {
+    return c.typePointer(ty.elementType.llvmType.createType(c));
+  }
+
+  @override
+  int getBytes(BuildContext c) {
+    return c.pointerSize();
+  }
+
+  StoreVariable createArray(BuildContext c, int count) {
+    return LLVMAllocaDelayVariable(ty, ([alloca]) {
+      return c.createArray(ty.elementType.llvmType.createType(c), count);
+    }, createType(c));
+  }
+
+  StoreVariable getElement(BuildContext c, Variable val, LLVMValueRef index) {
+    final indics = <LLVMValueRef>[];
+
+    indics.add(c.constI32(0));
+    indics.add(index);
+
+    final v = llvm.LLVMBuildInBoundsGEP2(c.builder, createType(c),
+        val.getBaseValue(c), indics.toNative(), indics.length, unname);
+    final vv = LLVMRefAllocaVariable.from(v, ty.elementType, c);
+
+    vv.isTemp = false;
+    return vv;
+  }
+}
+
+class CTypeTy extends Ty {
+  CTypeTy(this.pathTy);
+  final PathTy pathTy;
+  Identifier get ident => pathTy.ident;
+
+  List<PathTy> get generics => pathTy.generics;
+
+  @override
+  void analysis(AnalysisContext context) {
+    context.pushCty(pathTy.ident, this);
+  }
+
+  @override
+  void build(BuildContext context) {
+    context.pushCty(pathTy.ident, this);
+  }
+
+  @override
+  late final CTypeLLVMType llvmType = CTypeLLVMType(this);
+
+  @override
+  List<Object?> get props => [pathTy];
+
+  @override
+  String toString() {
+    var g = '';
+    if (generics.isNotEmpty) {
+      g = generics.join(',');
+      g = '<$g>';
+    }
+    return 'type $ident$g';
+  }
+}
+
+class CTypeLLVMType extends LLVMType {
+  CTypeLLVMType(this.ty);
+
+  @override
+  final CTypeTy ty;
+
+  @override
+  LLVMTypeRef createType(BuildContext c) {
+    return c.pointer();
+  }
+
+  @override
+  int getBytes(BuildContext c) {
+    return c.pointerSize();
   }
 }

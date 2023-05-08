@@ -1,5 +1,4 @@
 import '../llvm_core.dart';
-import '../llvm_dart.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
 import 'llvm/llvm_context.dart';
@@ -8,8 +7,18 @@ import 'llvm/variables.dart';
 
 class SizeOfFn extends Fn {
   SizeOfFn()
-      : super(FnSign(true, FnDecl(Identifier.none, [], Ty.unknown, false)),
-            Block([], null));
+      : super(
+          FnSign(
+            true,
+            FnDecl(
+              Identifier.none,
+              [],
+              PathTy.ty(BuiltInTy.lit(LitKind.usize)),
+              false,
+            ),
+          ),
+          Block([], null),
+        );
   static final ident = Identifier.builtIn('sizeOf');
   @override
   LLVMConstVariable? build(BuildContext context,
@@ -27,7 +36,7 @@ class SizeOfType extends LLVMFnType {
 
   @override
   LLVMTypeRef createType(BuildContext c) {
-    throw UnimplementedError();
+    return c.pointer();
   }
 
   @override
@@ -37,10 +46,12 @@ class SizeOfType extends LLVMFnType {
       ty = ty.parent;
     }
     final tyy = ty!.llvmType.createType(c);
-    final size = llvm.LLVMSizeOf(tyy);
+    // final size = llvm.LLVMSizeOf(tyy);
+    final size = c.typeSize(tyy);
 
     final t = BuiltInTy.lit(LitKind.usize);
-    return LLVMConstVariable(size, t);
+    final v = t.llvmType.createValue(str: '$size');
+    return LLVMConstVariable(v.getBaseValue(c), t);
   }
 }
 

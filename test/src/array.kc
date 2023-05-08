@@ -1,0 +1,13 @@
+import 'd.kc';
+
+fn main(argc: usize, argv: cArray<string>) i32 {
+    let y = 10;
+    y -= 1;
+
+    while y >= 0 {
+        printf('size: %d, y: %d\n', argc, y);
+        y -= 1;
+    }
+
+    0;
+}

@@ -75,6 +75,8 @@ class Parser {
           if (stmt != null) {
             globalVar[token] = stmt;
           }
+        case Key.kType:
+          ty = parseType(it);
         default:
       }
       if (ty != null && global) {
@@ -82,6 +84,15 @@ class Parser {
       }
     }
     return ty;
+  }
+
+  Ty? parseType(TokenIterator it) {
+    eatLfIfNeed(it);
+    final path = parsePathTy(it);
+    if (path != null) {
+      return CTypeTy(path);
+    }
+    return null;
   }
 
   Ty? parseExtern(TokenIterator it) {
@@ -1380,6 +1391,7 @@ enum Key {
   kMatch('match'),
   kAs('as'),
   kImport('import'),
+  kType('type'),
   ;
 
   bool get isBool {

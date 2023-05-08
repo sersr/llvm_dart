@@ -8,7 +8,12 @@ struct Array<T> {
     size: usize,
 }
 
+type cArray<T>;
+
 impl Array<T> {
+    static fn fromC(size: usize,argv: cArray<T>) Array<T>{
+
+    }
     fn getSize() usize {
         return self.size;
     }

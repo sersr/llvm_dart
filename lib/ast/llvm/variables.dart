@@ -4,6 +4,7 @@ import '../ast.dart';
 import '../context.dart';
 import '../memory.dart';
 import '../tys.dart';
+import 'build_methods.dart';
 
 abstract class Variable extends IdentVariable {
   bool isRef = false;
@@ -278,11 +279,15 @@ class LLVMLitVariable extends Variable {
   LLVMLitVariable(this._load, this.ty);
   @override
   final BuiltInTy ty;
-  final LLVMValueRef Function(BuildContext c, BuiltInTy? ty) _load;
+  final LLVMValueRef Function(Consts c, BuiltInTy? ty) _load;
   LLVMValueRef? _cache;
   @override
   LLVMValueRef load(BuildContext c, {BuiltInTy? ty}) {
     return _cache ??= _load(c, ty);
+  }
+
+  LLVMValueRef getValue(Consts c) {
+    return _cache ??= _load(c, null);
   }
 
   @override

@@ -427,13 +427,13 @@ class Cursor {
         }
       }
       final c = cursor;
-      final k = getLitKind() ?? LiteralKind.kDouble;
+      final k = getLitKind() ?? LiteralKind.f64;
 
       return Token.literal(literalKind: k, start: start, end: c);
     }
 
     final end = cursor;
-    LiteralKind lkd = getLitKind() ?? LiteralKind.kInt;
+    LiteralKind lkd = getLitKind() ?? LiteralKind.i32;
 
     return Token.literal(literalKind: lkd, start: start, end: end);
   }

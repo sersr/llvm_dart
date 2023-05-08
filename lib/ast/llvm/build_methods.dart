@@ -289,15 +289,22 @@ mixin Consts on BuildMethods {
     return alloca;
   }
 
-  LLVMValueRef createArray(LLVMTypeRef ty, LLVMValueRef size, {String? name}) {
+  LLVMValueRef createArray(LLVMTypeRef ty, int size, {String? name}) {
     final n = name ?? '_';
     return alloctorArr(ty, size, n);
   }
 
-  LLVMValueRef alloctorArr(LLVMTypeRef type, LLVMValueRef size, String name) {
+  LLVMValueRef usizeValue(int size) {
+    return BuiltInTy.lit(LitKind.usize)
+        .llvmType
+        .createValue(str: '$size')
+        .getValue(this);
+  }
+
+  LLVMValueRef alloctorArr(LLVMTypeRef type, int size, String name) {
     final nb = allocaBuilder;
-    final alloca =
-        llvm.LLVMBuildArrayAlloca(nb ?? builder, type, size, name.toChar());
+    final alloca = llvm.LLVMBuildArrayAlloca(
+        nb ?? builder, type, usizeValue(size), name.toChar());
     setLastAlloca(alloca);
 
     if (nb != null) {

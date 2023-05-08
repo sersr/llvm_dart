@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 
 void main() {
   test('file', () async {
-    final name = 'main.kc';
+    final name = 'array.kc';
     // final name = 'impl_fn.kc';
     final project = Project(testSrcDir.childFile(name).path);
     // project.mem2reg = true;

@@ -74,6 +74,13 @@ fn main() i32 {
 	let bcxData = Bcx { 10001, Data { 33 ,555}, }
 	let size = bcxData.getb(& Data { 44, 666 }).x;
 		printf("main size data: %d\n", size);
+	bcxData.gee();
+	let s = sizeOf(bcxData);
+	printf('s: %d\n', s);
 
+	let b = true;
+	if b {
+		print("hello b\n");
+	}
 	0;
 }

@@ -71,7 +71,7 @@ typedef struct
 
 void printxx(int y)
 {
-  printf("y: %d\n", y);
+  printf("y 1111: %d\n", y);
 }
 void print64(int64_t x)
 {
@@ -83,9 +83,13 @@ void print64(int64_t x)
 extern Gen yy(Gen * g);
 
 
+#include<stdio.h>
+#include<stdlib.h>
 void printfp(float x)
 {
-  printf("x: %f\n", x);
+  float * xa = &x;
+  char xx[22];
+  printf("x: %f\n", *xa);
 }
 
 void printstr(char *str)
@@ -115,5 +119,10 @@ Gen xxs(int y) {
   return hh;
 }
 
+
+int main(int argc, char** argv) {
+  char * xx = argv[argc];
+  return 0;
+}
 
 #endif

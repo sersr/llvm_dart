@@ -57,7 +57,7 @@ class LiteralExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final v = realTy.llvmType.createValue(context, str: ident.src);
+    final v = realTy.llvmType.createValue(str: ident.src);
 
     return ExprTempValue(v, ty);
   }

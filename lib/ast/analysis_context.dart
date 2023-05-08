@@ -1,5 +1,3 @@
-import 'package:nop/nop.dart';
-
 import 'ast.dart';
 import 'expr.dart';
 import 'tys.dart';
@@ -48,9 +46,6 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
         break;
       }
       if (fnContext != currentFn) {
-        if (ident.src == 'hx') {
-          Log.w('...${currentFn?.hashCode}');
-        }
         currentFn?.catchVariables.add(last);
       }
       return last;

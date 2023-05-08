@@ -273,7 +273,6 @@ class BuildContext
     final fv = fn.llvmType.createFunction(this, extra);
     final block = fn.block?.clone();
     final isDecl = block == null;
-
     if (isDecl) return fv;
     final bbContext = createChildContext();
     bbContext.fn = fv;
@@ -432,7 +431,7 @@ class BuildContext
         final bb = buildSubBB(name: 'loop_body');
         llvm.LLVMBuildCondBr(
             loopBB.context.builder, variable.load(this), bb.bb, loopAfter.bb);
-        insertPointBB(bb);
+        appendBB(bb);
         block.build(bb.context);
         bb.context.br(this);
       }

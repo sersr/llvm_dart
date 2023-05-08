@@ -128,109 +128,87 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
   // 当前范围内可获取的 struct
   final structs = <Identifier, List<StructTy>>{};
   StructTy? getStruct(Identifier ident) {
-    final list = structs[ident];
-    if (list != null) {
-      return list.last;
-    }
-    return parent?.getStruct(ident);
+    return getKV(ident, (c) => c.structs);
   }
 
   void pushStruct(Identifier ident, StructTy ty) {
-    final list = structs.putIfAbsent(ident, () => []);
-    if (!list.contains(ty)) {
-      list.add(ty);
-    }
+    pushKV(ident, ty, structs);
   }
 
   final enums = <Identifier, List<EnumTy>>{};
   EnumTy? getEnum(Identifier ident) {
-    final list = enums[ident];
-    if (list != null) {
-      return list.last;
-    }
-    return parent?.getEnum(ident);
+    return getKV(ident, (c) => c.enums);
   }
 
   void pushEnum(Identifier ident, EnumTy ty) {
-    final list = enums.putIfAbsent(ident, () => []);
-    if (!list.contains(ty)) {
-      list.add(ty);
+    if (pushKV(ident, ty, enums)) {
       ty.push(this);
     }
   }
 
   final fns = <Identifier, List<Fn>>{};
   Fn? getFn(Identifier ident) {
-    final list = fns[ident];
-    if (list != null) {
-      return list.last;
-    }
-
-    final v = runImport(() {
-      for (var imp in imports.values) {
-        final v = imp.getFn(ident);
-        if (v != null) {
-          return v;
-        }
-      }
+    return getKV(ident, (c) => c.fns, importHandle: (c) {
+      return c.getFn(ident);
     });
+    // final list = fns[ident];
+    // if (list != null) {
+    //   return list.last;
+    // }
 
-    return v ?? parent?.getFn(ident);
+    // final v = runImport(() {
+    //   for (var imp in imports.values) {
+    //     final v = imp.getFn(ident);
+    //     if (v != null) {
+    //       return v;
+    //     }
+    //   }
+    // });
+
+    // return v ?? parent?.getFn(ident);
   }
 
   void pushFn(Identifier ident, Fn fn) {
-    final list = fns.putIfAbsent(ident, () => []);
-    if (!list.contains(fn)) {
-      list.add(fn);
-    }
+    pushKV(ident, fn, fns);
   }
 
   final components = <Identifier, List<ComponentTy>>{};
   ComponentTy? getComponent(Identifier ident) {
-    final list = components[ident];
-    if (list != null) {
-      return list.last;
-    }
-    return parent?.getComponent(ident);
+    return getKV(ident, (c) => c.components);
   }
 
   void pushComponent(Identifier ident, ComponentTy com) {
-    final list = components.putIfAbsent(ident, () => []);
-    if (!list.contains(com)) {
-      list.add(com);
-    }
+    pushKV(ident, com, components);
   }
 
   final impls = <Identifier, List<ImplTy>>{};
   ImplTy? getImpl(Identifier ident) {
-    final list = impls[ident];
-    if (list != null) {
-      return list.last;
-    }
-    return parent?.getImpl(ident);
+    return getKV(ident, (c) => c.impls);
   }
 
   void pushImpl(Identifier ident, ImplTy ty) {
-    final list = impls.putIfAbsent(ident, () => []);
-    if (!list.contains(ty)) {
-      list.add(ty);
-    }
+    pushKV(ident, ty, impls);
   }
 
   final implForStructs = <StructTy, List<ImplTy>>{};
   ImplTy? getImplForStruct(StructTy structTy) {
-    final list = implForStructs[structTy.parentOrCurrent];
-    if (list != null) {
-      return list.last;
-    }
-    return parent?.getImplForStruct(structTy);
+    return getKV(structTy.parentOrCurrent, (c) => c.implForStructs);
   }
 
   void pushImplForStruct(StructTy structTy, ImplTy ty) {
-    final list = implForStructs.putIfAbsent(structTy, () => []);
-    if (!list.contains(ty)) {
-      list.add(ty);
-    }
+    pushKV(structTy, ty, implForStructs);
+  }
+
+  final cTys = <Identifier, List<CTypeTy>>{};
+
+  CTypeTy? getCty(Identifier ident) {
+    return getKV(ident, (c) => c.cTys, importHandle: (c) {
+      return c.getCty(ident);
+    });
+  }
+
+  void pushCty(Identifier ident, CTypeTy ty) {
+    pushKV(ident, ty, cTys);
   }
 
   void pushAllTy(Map<Token, Ty> all) {
@@ -246,6 +224,8 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
         pushComponent(ty.ident, ty);
       } else if (ty is ImplTy) {
         pushImpl(ty.struct.ident, ty);
+      } else if (ty is CTypeTy) {
+        pushCty(ty.ident, ty);
       } else {
         print('unknown ty {${ty.runtimeType}}');
       }
@@ -264,8 +244,42 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
         getComponent(i) ??
         getImpl(i) ??
         getFn(i) ??
-        getEnum(i);
+        getEnum(i) ??
+        getCty(i);
   }
 
   void errorExpr(UnknownExpr unknownExpr) {}
+
+  VA? getKV<K, VA>(K k, Map<K, List<VA>> Function(Tys c) map,
+      {ImportKV<VA, T>? importHandle}) {
+    final list = map(this)[k];
+    if (list != null) {
+      return list.last;
+    }
+    if (importHandle != null) {
+      final v = runImport(() {
+        for (var imp in imports.values) {
+          final v = importHandle(imp);
+          if (v != null) {
+            return v;
+          }
+        }
+      });
+      if (v != null) {
+        return v;
+      }
+    }
+    return parent?.getKV(k, map, importHandle: importHandle);
+  }
+
+  bool pushKV<K, VA>(K k, VA v, Map<K, List<VA>> map) {
+    final list = map.putIfAbsent(k, () => []);
+    if (!list.contains(v)) {
+      list.add(v);
+      return true;
+    }
+    return false;
+  }
 }
+
+typedef ImportKV<VA, T> = VA? Function(T c);
