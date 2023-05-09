@@ -6,11 +6,13 @@ fn main(argc: usize, argv: cArray<string>) i32 {
     let arr = Array { argc , argv };
     let size =  arr.getSize();
 
-    let y = size as i32 - 1;
-    while y >= 0 {
+    let y = 0u64;
+    let max = size;
+    
+    while y < max {
       let str = arr.elementAt(y);
       printf('all size: %d, current: %d, str: %s\n', size, y, str);
-      y -= 1;
+      y += 1;
     }
 
     0;

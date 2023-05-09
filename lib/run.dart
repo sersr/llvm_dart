@@ -100,11 +100,11 @@ Future<void> runCode() async {
   await process.exitCode;
 }
 
-Future<void> runNativeCode() async {
+Future<void> runNativeCode({String args = ''}) async {
   final p = currentDir.path;
 
   final process = await Process.start(
-      'sh', ['-c', 'cc $p/out.o -o main && ./main'],
+      'sh', ['-c', 'cc $p/out.o -o main && ./main $args'],
       workingDirectory: p);
   stdout.addStream(process.stdout);
   stderr.addStream(process.stderr);

@@ -12,6 +12,6 @@ void main() {
     // project.printAsm = true;
     project.enableBuild = true;
     runPrint(project.run);
-    await runNativeCode();
+    await runNativeCode(args: 'hello world');
   });
 }

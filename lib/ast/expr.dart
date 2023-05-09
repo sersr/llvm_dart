@@ -664,7 +664,8 @@ class AssignExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final lhs = ref.build(context);
-    final rhs = expr.build(context);
+    final rhs = LiteralExpr.run(() => expr.build(context), lhs?.ty);
+
     final lVariable = lhs?.variable;
     final rVariable = rhs?.variable;
     if (lVariable is StoreVariable && rVariable != null) {
@@ -712,7 +713,8 @@ class AssignOpExpr extends AssignExpr {
     final lVariable = lhs?.variable;
 
     if (lVariable is StoreVariable) {
-      final val = OpExpr.math(context, op, lVariable, expr);
+      final val = LiteralExpr.run(
+          () => OpExpr.math(context, op, lVariable, expr), lVariable.ty);
       final rValue = val?.variable;
       if (rValue != null) {
         lVariable.store(context, rValue.load(context));

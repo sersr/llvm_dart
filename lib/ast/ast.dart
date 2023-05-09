@@ -1230,13 +1230,12 @@ class ArrayLLVMType extends LLVMType {
   }
 
   Variable getElement(BuildContext c, Variable val, LLVMValueRef index) {
-    final indics = <LLVMValueRef>[];
+    final indics = <LLVMValueRef>[index];
 
-    indics.add(index);
+    final p = val.load(c);
 
-    var v = llvm.LLVMBuildInBoundsGEP2(c.builder, createType(c),
-        val.getBaseValue(c), indics.toNative(), indics.length, unname);
-    v = llvm.LLVMBuildLoad2(c.builder, c.pointer(), v, unname);
+    final v = llvm.LLVMBuildInBoundsGEP2(
+        c.builder, createType(c), p, indics.toNative(), indics.length, unname);
     final vv = LLVMRefAllocaVariable.from(v, ty.elementType, c);
     vv.isTemp = false;
     return vv;
