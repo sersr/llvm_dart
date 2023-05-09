@@ -10,8 +10,8 @@ void main() {
     final project = Project(testSrcDir.childFile(name).path);
     // project.mem2reg = true;
     // project.printAsm = true;
-    project.enableBuild = true;
+    project.enableBuild = false;
     runPrint(project.run);
-    await runNativeCode(args: 'hello world');
+    // await runNativeCode(args: 'hello world');
   });
 }

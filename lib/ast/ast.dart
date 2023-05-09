@@ -175,6 +175,9 @@ class ExprTempValue {
 
 abstract class Expr extends BuildMixin {
   bool _first = true;
+
+  bool get hasUnknownExpr => false;
+
   @override
   ExprTempValue? build(BuildContext context) {
     if (!_first) return _ty;
@@ -198,6 +201,9 @@ class UnknownExpr extends Expr {
   UnknownExpr(this.ident, this.message);
   final Identifier ident;
   final String message;
+
+  @override
+  bool get hasUnknownExpr => true;
 
   @override
   Expr clone() {
@@ -825,22 +831,22 @@ class Fn extends Ty {
   late final LLVMFnType llvmType = LLVMFnType(this);
 }
 
-class ImplFn extends Fn {
-  ImplFn(super.fnSign, super.block, this.ty, this.implty);
-  final StructTy ty;
-  final ImplTy implty;
+mixin ImplFnMixin on Fn {
+  StructTy get ty;
+  ImplTy get implty;
 
   @override
-  ImplFn get root => super.root as ImplFn;
-  final _caches = <StructTy, ImplFn>{};
-  ImplFn copyFrom(StructTy other) {
+  ImplFnMixin get root => super.root as ImplFnMixin;
+  final _caches = <StructTy, ImplFnMixin>{};
+  ImplFnMixin copyFrom(StructTy other) {
     if (ty == other) return this;
     _parent ??= root;
 
     return root._caches.putIfAbsent(
       other,
       () {
-        return ImplFn(fnSign, block?.clone(), other, implty).._parent = root;
+        return cloneImpl(other).._parent = this;
+        // return ImplFn(fnSign, block?.clone(), other, implty).._parent = root;
       },
     );
   }
@@ -848,13 +854,6 @@ class ImplFn extends Fn {
   @override
   Object? getKey() {
     return ty.tys;
-  }
-
-  @override
-  void analysisContext(AnalysisContext context) {
-    final ident = Identifier.builtIn('self');
-    final v = context.createVal(ty, ident);
-    context.pushVariable(ident, v);
   }
 
   @override
@@ -874,6 +873,41 @@ class ImplFn extends Fn {
 
   @override
   List<Object?> get props => [ty.tys, implty];
+
+  ImplFnMixin cloneImpl(StructTy other);
+}
+
+class ImplFn extends Fn with ImplFnMixin {
+  ImplFn(super.fnSign, super.block, this.ty, this.implty);
+  @override
+  final StructTy ty;
+  @override
+  final ImplTy implty;
+
+  @override
+  ImplFn cloneImpl(StructTy other) {
+    return ImplFn(fnSign, block?.clone(), other, implty);
+  }
+
+  @override
+  void analysisContext(AnalysisContext context) {
+    final ident = Identifier.builtIn('self');
+    final v = context.createVal(ty, ident);
+    context.pushVariable(ident, v);
+  }
+}
+
+class ImplStaticFn extends Fn with ImplFnMixin {
+  ImplStaticFn(super.fnSign, super.block, this.ty, this.implty);
+  @override
+  final StructTy ty;
+  @override
+  final ImplTy implty;
+
+  @override
+  ImplStaticFn cloneImpl(StructTy other) {
+    return ImplStaticFn(fnSign, block?.clone(), other, implty);
+  }
 }
 
 class FieldDef {
@@ -1104,11 +1138,14 @@ class ImplTy extends Ty {
     }
   }
 
-  ImplFn? getFn(Identifier ident) {
-    return _fns?.firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident);
+  ImplFnMixin? getFn(Identifier ident) {
+    return _fns?.firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident) ??
+        _staticFns?.firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident);
   }
 
   List<ImplFn>? _fns;
+
+  List<ImplStaticFn>? _staticFns;
 
   void initStructFns(Tys context) {
     // final ty = struct.grt(context);
@@ -1122,9 +1159,9 @@ class ImplTy extends Ty {
     //   return;
     // }
     _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty, this)).toList();
-    for (var fn in staticFns) {
-      fn.pushFn(context);
-    }
+    _staticFns ??= staticFns
+        .map((e) => ImplStaticFn(e.fnSign, e.block, ty, this))
+        .toList();
   }
 
   @override
@@ -1169,7 +1206,7 @@ class ImplTy extends Ty {
   }
 
   @override
-  List<Object?> get props => [struct, struct, fns, label];
+  List<Object?> get props => [struct, staticFns, fns, label];
 
   @override
   LLVMType get llvmType => throw UnimplementedError();
@@ -1223,10 +1260,25 @@ class ArrayLLVMType extends LLVMType {
     return c.pointerSize();
   }
 
-  StoreVariable createArray(BuildContext c, int count) {
-    return LLVMAllocaDelayVariable(ty, ([alloca]) {
-      return c.createArray(ty.elementType.llvmType.createType(c), count);
-    }, createType(c));
+  StoreVariable createArray(BuildContext c, LLVMValueRef count) {
+    var st = c.getStruct(Identifier.builtIn('Array'))!;
+    final sizeIdent = Identifier.builtIn('size');
+    final pointerIdent = Identifier.builtIn('pointer');
+    final tIdent = Identifier.builtIn('T');
+    st = st.newInst({tIdent: ty.elementType}, c);
+    final arrValue = c.createArray(ty.elementType.llvmType.createType(c), count,
+        name: '_new_arr');
+    final alloca = st.llvmType.createAlloca(c, Identifier.none);
+    final size = st.llvmType.getField(alloca, c, sizeIdent);
+    size?.store(c, count);
+    final pointer = st.llvmType.getField(alloca, c, pointerIdent);
+
+    pointer?.store(c, arrValue);
+    Log.w('arr: $st');
+    return alloca;
+    // return LLVMAllocaDelayVariable(st, ([alloca]) {
+    //   return alloca.alloca;
+    // }, st.llvmType.createType(c));
   }
 
   Variable getElement(BuildContext c, Variable val, LLVMValueRef index) {

@@ -14,6 +14,20 @@ fn main(argc: usize, argv: cArray<string>) i32 {
       printf('all size: %d, current: %d, str: %s\n', size, y, str);
       y += 1;
     }
+    print('new start');
+    let new_arr = Array<i32>.new(10);
 
+    let new_max = new_arr.size;
+    y = 0;
+    printf('size: %d\n', new_max);
+    while y < new_max {
+        y + 1
+    }
+
+    y -= 1;
+    while y >= 0 {
+        printf("newx: %d\n", new_arr.elementAt(y));
+        y -= 1;
+    }
     0;
 }

@@ -88,12 +88,17 @@ class Project {
       pathName = p.path;
     }
     final pn = normalize(pathName);
-    final mImport = _caches.putIfAbsent(pn, () => parserToken(pathName));
+    final mImport = _caches.putIfAbsent(pn, () {
+      final mImport = parserToken(pathName);
+      if (mImport != null) {
+        print(mImport.globalVar.values.join('\n'));
+        print(mImport.globalTy.values.join('\n'));
+      }
+      return mImport;
+    });
     if (mImport != null) {
       child.currentPath = pn;
       child.importHandler = importBuild;
-      print(mImport.globalVar.values.join('\n'));
-      print(mImport.globalTy.values.join('\n'));
       child.pushAllTy(mImport.globalTy);
       if (child is BuildContext) {
         for (var val in mImport.globalVar.values) {

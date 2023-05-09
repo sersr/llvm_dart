@@ -525,13 +525,17 @@ class Parser {
     return null;
   }
 
+  bool get onBrace {
+    return Zone.current[#onBrace] == true;
+  }
+
   Stmt? parseWhileExpr(TokenIterator it) {
     final isLoop = getKey(it) == Key.kWhile;
     if (!isLoop) return null;
     final ident = getIdent(it);
     eatLfIfNeed(it);
 
-    final expr = parseExpr(it);
+    final expr = runZoned(() => parseExpr(it), zoneValues: {#onBrace: true});
 
     checkBlock(it);
     if (isBlockStart(it)) {
@@ -883,24 +887,26 @@ class Parser {
           }
           eatLfIfNeed(it);
 
-          final cursor = it.cursor;
-          final generics = parseGenericsInstance(it);
-          if (it.moveNext()) {
-            final t = getToken(it);
-            if (t.kind == TokenKind.openBrace) {
-              if (hasIfBlock(it)) {
-                final struct = parseStructExpr(it, ident, generics);
-                if (struct.fields.any((e) => e.expr is UnknownExpr)) {
-                  cursor.restore();
+          if (!onBrace) {
+            final cursor = it.cursor;
+            final generics = parseGenericsInstance(it);
+            if (it.moveNext()) {
+              final t = getToken(it);
+              if (t.kind == TokenKind.openBrace) {
+                if (hasIfBlock(it)) {
+                  final struct = parseStructExpr(it, ident, generics);
+                  if (struct.fields.any((e) => e.expr.hasUnknownExpr)) {
+                    cursor.restore();
+                  } else {
+                    lhs = struct;
+                    struct.isNew = isNew;
+                  }
                 } else {
-                  lhs = struct;
-                  struct.isNew = isNew;
+                  cursor.restore();
                 }
               } else {
                 cursor.restore();
               }
-            } else {
-              cursor.restore();
             }
           }
           if (lhs == null) {
@@ -1084,7 +1090,6 @@ class Parser {
             final f = FieldExpr(expr, name);
             fields.add(f);
             if (getToken(it).kind == TokenKind.closeParen) {
-              it.moveNext();
               return true;
             }
             return false;
@@ -1098,7 +1103,6 @@ class Parser {
       final f = FieldExpr(expr, null);
       fields.add(f);
       if (getToken(it).kind == TokenKind.closeParen) {
-        it.moveNext();
         return true;
       }
 
@@ -1143,7 +1147,12 @@ class Parser {
     loop(it, () {
       final t = getToken(it);
       if (t.kind == TokenKind.lf) return false;
-      if (t.kind == TokenKind.closeBrace || t.kind == TokenKind.semi) {
+      if (t.kind == TokenKind.semi) {
+        final e = UnknownExpr(getIdent(it), 'is not struct expr');
+        fields.add(FieldExpr(e, ident));
+        return true;
+      }
+      if (t.kind == TokenKind.closeBrace) {
         return true;
       }
 

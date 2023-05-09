@@ -657,6 +657,9 @@ class AssignExpr extends Expr {
   }
 
   @override
+  bool get hasUnknownExpr => ref.hasUnknownExpr || expr.hasUnknownExpr;
+
+  @override
   String toString() {
     return '$ref = $expr';
   }
@@ -729,6 +732,7 @@ class FieldExpr extends Expr {
   FieldExpr(this.expr, this.ident);
   final Identifier? ident;
   final Expr expr;
+
   @override
   FieldExpr clone() {
     return FieldExpr(expr.clone(), ident);
@@ -751,6 +755,9 @@ class FieldExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     return expr.analysis(context);
   }
+
+  @override
+  bool get hasUnknownExpr => expr.hasUnknownExpr;
 }
 
 List<F> alignParam<F>(List<F> src, int Function(F) test) {
@@ -1018,6 +1025,9 @@ class FnCallExpr extends Expr with FnCallMixin {
   final Expr expr;
   final List<FieldExpr> params;
 
+  @override
+  bool get hasUnknownExpr => expr.hasUnknownExpr;
+
   bool isNew = false;
   @override
   Expr clone() {
@@ -1088,6 +1098,10 @@ class MethodCallExpr extends Expr with FnCallMixin {
   final Identifier ident;
   final Expr receiver;
   final List<FieldExpr> params;
+
+  @override
+  bool get hasUnknownExpr => receiver.hasUnknownExpr;
+
   @override
   Expr clone() {
     return MethodCallExpr(
@@ -1131,6 +1145,10 @@ class MethodCallExpr extends Expr with FnCallMixin {
     Fn? fn = implFn;
     LLVMValueRef? st;
 
+    if (fn?.fnSign.fnDecl.ident.src == 'new') {
+      Log.w('...');
+    }
+
     Variable? fnVariable;
     // 字段有可能是一个函数指针
     if (fn == null) {
@@ -1146,34 +1164,58 @@ class MethodCallExpr extends Expr with FnCallMixin {
           }
         }
       }
-    } else {
-      // struct 一般是 StoreVariable
-      if (val is StoreVariable) {
-        st = val.alloca;
-      } else {
-        st = val.load(context);
-      }
     }
 
     if (fn == null) return null;
-    if (structTy.ident.src == 'Array' &&
-        fn.fnSign.fnDecl.ident.src == 'elementAt') {
-      if (params.isNotEmpty && st != null) {
-        final first = params.first.build(context)?.variable;
-        if (first != null && first.ty is BuiltInTy) {
-          final v = structTy.llvmType.getField(LLVMConstVariable(st, structTy),
-              context, Identifier.builtIn('pointer'));
-          if (v != null) {
+    if (structTy.ident.src == 'Array') {
+      final fnName = fn.fnSign.fnDecl.ident.src;
+
+      if (fnName != 'new') {
+        // struct 一般是 StoreVariable
+        if (val is StoreVariable) {
+          st = val.alloca;
+        } else {
+          st = val.load(context);
+        }
+      }
+
+      if (fnName == 'elementAt') {
+        if (params.isNotEmpty && st != null) {
+          final first = params.first.build(context)?.variable;
+          if (first != null && first.ty is BuiltInTy) {
+            final v = structTy.llvmType.getField(
+                LLVMConstVariable(st, structTy),
+                context,
+                Identifier.builtIn('pointer'));
+            if (v != null) {
+              if (structTy.tys.isNotEmpty) {
+                final arr = ArrayTy(structTy.tys.values.first);
+                final element =
+                    arr.llvmType.getElement(context, v, first.load(context));
+                return ExprTempValue(element, element.ty);
+              }
+            }
+          }
+        }
+        return null;
+      } else if (fnName == 'new') {
+        if (params.isNotEmpty) {
+          final first = LiteralExpr.run(
+              () => params.first.build(context)?.variable,
+              BuiltInTy.lit(LitKind.usize));
+
+          if (first != null) {
             if (structTy.tys.isNotEmpty) {
               final arr = ArrayTy(structTy.tys.values.first);
               final element =
-                  arr.llvmType.getElement(context, v, first.load(context));
+                  arr.llvmType.createArray(context, first.load(context));
+
               return ExprTempValue(element, element.ty);
             }
           }
         }
+        return null;
       }
-      return null;
     }
     return fnCall(context, fn, params, fnVariable, struct: st, gen: (ident) {
       return structTy.tys[ident];
@@ -1224,6 +1266,9 @@ class StructDotFieldExpr extends Expr {
   final Expr struct;
 
   final List<PointerKind> kind;
+
+  @override
+  bool get hasUnknownExpr => struct.hasUnknownExpr;
 
   @override
   Expr clone() {
@@ -1438,6 +1483,10 @@ class OpExpr extends Expr {
   final OpKind op;
   final Expr lhs;
   final Expr rhs;
+
+  @override
+  bool get hasUnknownExpr => lhs.hasUnknownExpr || rhs.hasUnknownExpr;
+
   @override
   Expr clone() {
     return OpExpr(op, lhs.clone(), rhs.clone());
@@ -1510,7 +1559,7 @@ class OpExpr extends Expr {
     }
 
     final v = context.math(l, (context) {
-      final r = rhs.build(context)?.variable;
+      final r = LiteralExpr.run(() => rhs.build(context)?.variable, l.ty);
       return r;
     }, op, isFloat, signed: signed);
     return ExprTempValue(v, v.ty);
@@ -1698,6 +1747,9 @@ class RefExpr extends Expr {
   RefExpr(this.current, this.kind);
   final Expr current;
   final List<PointerKind> kind;
+
+  @override
+  bool get hasUnknownExpr => current.hasUnknownExpr;
 
   @override
   void incLevel([int count = 1]) {
