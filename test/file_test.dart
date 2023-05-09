@@ -5,13 +5,15 @@ import 'package:test/test.dart';
 
 void main() {
   test('file', () async {
-    final name = 'array.kc';
-    // final name = 'impl_fn.kc';
-    final project = Project(testSrcDir.childFile(name).path);
-    // project.mem2reg = true;
-    // project.printAsm = true;
-    project.enableBuild = false;
-    runPrint(project.run);
-    // await runNativeCode(args: 'hello world');
+    final name = 'while.kc';
+    await runPrint(() {
+      // final name = 'impl_fn.kc';
+      final project = Project(testSrcDir.childFile(name).path);
+      // project.mem2reg = true;
+      // project.printAsm = true;
+      project.enableBuild = true;
+      project.run();
+      return runNativeCode(args: 'hello world');
+    });
   });
 }

@@ -22,7 +22,9 @@ class Project {
   late Parser parser;
 
   void _init() {
-    parser = parserToken(path)!;
+    Identifier.run(() {
+      parser = parserToken(path)!;
+    });
   }
 
   static Parser? parserToken(String path) {

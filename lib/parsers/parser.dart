@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:nop/nop.dart';
 
 import '../ast/ast.dart';
 import '../ast/expr.dart';
@@ -1006,6 +1007,7 @@ class Parser {
       return cache;
     }
 
+    Log.w(getIdent(it).light, showTag: false);
     loop(it, () {
       // `/n` 意味着结束
       it.moveBack();
@@ -1208,7 +1210,7 @@ class Parser {
       }
       final text = chars + t.kind.char;
       final newOp = OpKind.from(text);
-      if (newOp != null) {
+      if (newOp != null || text == '=') {
         lastOp = newOp;
         chars = text;
       } else {

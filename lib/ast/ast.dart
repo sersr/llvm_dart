@@ -1252,7 +1252,7 @@ class ArrayLLVMType extends LLVMType {
   final ArrayTy ty;
   @override
   LLVMTypeRef createType(BuildContext c) {
-    return c.typePointer(ty.elementType.llvmType.createType(c));
+    return ty.elementType.llvmType.createType(c);
   }
 
   @override
@@ -1274,11 +1274,7 @@ class ArrayLLVMType extends LLVMType {
     final pointer = st.llvmType.getField(alloca, c, pointerIdent);
 
     pointer?.store(c, arrValue);
-    Log.w('arr: $st');
     return alloca;
-    // return LLVMAllocaDelayVariable(st, ([alloca]) {
-    //   return alloca.alloca;
-    // }, st.llvmType.createType(c));
   }
 
   Variable getElement(BuildContext c, Variable val, LLVMValueRef index) {
