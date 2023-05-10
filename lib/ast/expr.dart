@@ -1137,17 +1137,44 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
     if (val == null) return null;
 
-    final valTy = variable.ty;
+    var valTy = variable.ty;
+    final fnName = ident.src;
+
+    if (valTy is ArrayTy) {
+      final structTy = valTy.structTy;
+      if (fnName == 'elementAt' && params.isNotEmpty) {
+        final first = params.first.build(context)?.variable;
+        if (first != null && first.ty is BuiltInTy) {
+          final element =
+              valTy.llvmType.getElement(context, val, first.load(context));
+          return ExprTempValue(element, element.ty);
+        }
+        // } else if (fnName == 'toStr') {
+        //   final element = valTy.llvmType.toStr(context, val);
+        //   return ExprTempValue(element, element.ty);
+      }
+
+      valTy = structTy;
+    }
     if (valTy is! StructTy) return null;
-    final structTy = valTy;
-    final impl = context.getImplForStruct(structTy);
+    var structTy = valTy;
+    final ty = LiteralExpr.letTy;
+
+    PathInterFace? letTy;
+    if (ty is PathInterFace) {
+      letTy = ty as PathInterFace;
+    }
+
+    if (structTy.tys.isEmpty) {
+      if (ty is StructTy && structTy.ident == ty.ident) {
+        structTy = ty;
+      }
+    }
+
+    final impl = context.getImplForStruct(structTy, ident);
     var implFn = impl?.getFn(ident)?.copyFrom(structTy);
     Fn? fn = implFn;
     LLVMValueRef? st;
-
-    if (fn?.fnSign.fnDecl.ident.src == 'new') {
-      Log.w('...');
-    }
 
     Variable? fnVariable;
     // 字段有可能是一个函数指针
@@ -1168,8 +1195,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
     if (fn == null) return null;
     if (structTy.ident.src == 'Array') {
-      final fnName = fn.fnSign.fnDecl.ident.src;
-
       if (fnName != 'new') {
         // struct 一般是 StoreVariable
         if (val is StoreVariable) {
@@ -1179,36 +1204,39 @@ class MethodCallExpr extends Expr with FnCallMixin {
         }
       }
 
-      if (fnName == 'elementAt') {
-        if (params.isNotEmpty && st != null) {
-          final first = params.first.build(context)?.variable;
-          if (first != null && first.ty is BuiltInTy) {
-            final v = structTy.llvmType.getField(
-                LLVMConstVariable(st, structTy),
-                context,
-                Identifier.builtIn('pointer'));
-            if (v != null) {
-              if (structTy.tys.isNotEmpty) {
-                final arr = ArrayTy(structTy.tys.values.first);
-                final element =
-                    arr.llvmType.getElement(context, v, first.load(context));
-                return ExprTempValue(element, element.ty);
-              }
-            }
-          }
-        }
-        return null;
-      } else if (fnName == 'new') {
+      // if (fnName == 'elementAt') {
+      //   if (params.isNotEmpty && st != null) {
+      //     final first = params.first.build(context)?.variable;
+      //     if (first != null && first.ty is BuiltInTy) {
+      //       final v = structTy.llvmType.getField(
+      //           LLVMConstVariable(st, structTy),
+      //           context,
+      //           Identifier.builtIn('pointer'));
+      //       if (v != null) {
+      //         if (structTy.tys.isNotEmpty) {
+      //           final arr = ArrayTy(
+      //             structTy.tys.values.first,
+      //           );
+      //           final element =
+      //               arr.llvmType.getElement(context, v, first.load(context));
+      //           return ExprTempValue(element, element.ty);
+      //         }
+      //       }
+      //     }
+      //   }
+      //   return null;
+      // } else
+      if (fnName == 'new') {
         if (params.isNotEmpty) {
           final first = LiteralExpr.run(
               () => params.first.build(context)?.variable,
               BuiltInTy.lit(LitKind.usize));
 
-          if (first != null) {
+          if (first is LLVMLitVariable) {
             if (structTy.tys.isNotEmpty) {
-              final arr = ArrayTy(structTy.tys.values.first);
-              final element =
-                  arr.llvmType.createArray(context, first.load(context));
+              final arr = ArrayTy(
+                  structTy.tys.values.first, first.value.iValue, structTy);
+              final element = arr.llvmType.createArray(context);
 
               return ExprTempValue(element, element.ty);
             }
@@ -1217,8 +1245,9 @@ class MethodCallExpr extends Expr with FnCallMixin {
         return null;
       }
     }
+
     return fnCall(context, fn, params, fnVariable, struct: st, gen: (ident) {
-      return structTy.tys[ident];
+      return structTy.tys[ident] ?? letTy?.tys[ident];
     });
   }
 
@@ -1228,8 +1257,17 @@ class MethodCallExpr extends Expr with FnCallMixin {
   AnalysisVariable? analysis(AnalysisContext context) {
     var variable = receiver.analysis(context);
     if (variable == null) return null;
-    final structTy = variable.ty;
+    var structTy = variable.ty;
     if (structTy is! StructTy) return null;
+
+    final ty = LiteralExpr.letTy;
+
+    if (structTy.tys.isEmpty) {
+      if (ty is StructTy && structTy.ident == ty.ident) {
+        structTy = ty;
+      }
+    }
+
     if (variable is AnalysisStructVariable) {
       final p = variable.getParam(ident);
       final pp = p?.ty;
@@ -1240,7 +1278,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
       if (p != null) return p;
     }
 
-    final impl = context.getImplForStruct(structTy);
+    final impl = context.getImplForStruct(structTy, ident);
     Fn? fn = impl?.getFn(ident)?.copyFrom(structTy);
     if (fn == null) {
       final field =
@@ -1293,6 +1331,9 @@ class StructDotFieldExpr extends Expr {
       newVal = newVal.getDeref(context);
     }
     var ty = newVal?.ty;
+    if (ty is ArrayTy) {
+      ty = ty.structTy;
+    }
     if (ty is! StructTy) return null;
     final v = ty.llvmType.getField(newVal!, context, ident);
     if (v == null) return null;
@@ -1683,9 +1724,6 @@ class VariableIdentExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final val = context.getVariable(ident);
-    if (ident.src == 'yx') {
-      Log.w('..');
-    }
     if (val != null) {
       if (val is Deref) {
         if (ident.src == 'self') {

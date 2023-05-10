@@ -199,9 +199,11 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
   }
 
   final implForStructs = <StructTy, List<ImplTy>>{};
-  ImplTy? getImplForStruct(StructTy structTy) {
+  ImplTy? getImplForStruct(StructTy structTy, Identifier ident) {
+    // 需要判断泛型是否匹配
     return getKV(structTy.parentOrCurrent, (c) => c.implForStructs,
-        importHandle: (c) => c.getImplForStruct(structTy));
+        importHandle: (c) => c.getImplForStruct(structTy, ident),
+        test: (v) => v.contains(ident));
   }
 
   void pushImplForStruct(StructTy structTy, ImplTy ty) {
@@ -260,25 +262,35 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
   void errorExpr(UnknownExpr unknownExpr) {}
 
   VA? getKV<K, VA>(K k, Map<K, List<VA>> Function(Tys c) map,
-      {ImportKV<VA, T>? importHandle}) {
+      {ImportKV<VA, T>? importHandle, bool Function(VA v)? test}) {
     final list = map(this)[k];
+    final hasTest = test != null;
+
     if (list != null) {
-      return list.last;
+      for (var item in list.reversed) {
+        if (hasTest && !test(item)) continue;
+
+        return item;
+      }
     }
     if (importHandle != null) {
       final v = runImport(() {
         for (var imp in imports.values) {
           final v = importHandle(imp);
           if (v != null) {
+            if (hasTest && !test(v)) continue;
+
             return v;
           }
         }
+        return null;
       });
       if (v != null) {
         return v;
       }
     }
-    return parent?.getKV(k, map, importHandle: importHandle);
+
+    return parent?.getKV(k, map, importHandle: importHandle, test: test);
   }
 
   bool pushKV<K, VA>(K k, VA v, Map<K, List<VA>> map) {

@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 
 void main() {
   test('file', () async {
-    final name = 'while.kc';
+    final name = 'array_to_str.kc';
     await runPrint(() {
       // final name = 'impl_fn.kc';
       final project = Project(testSrcDir.childFile(name).path);
@@ -13,7 +13,7 @@ void main() {
       // project.printAsm = true;
       project.enableBuild = true;
       project.run();
-      return runNativeCode(args: 'hello world');
+      return runNativeCode(run: false, args: 'hello world');
     });
   });
 }

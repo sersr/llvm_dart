@@ -5,6 +5,7 @@ import '../context.dart';
 import '../memory.dart';
 import '../tys.dart';
 import 'build_methods.dart';
+import 'llvm_types.dart';
 
 abstract class Variable extends IdentVariable {
   bool isRef = false;
@@ -276,7 +277,9 @@ class LLVMTempVariable extends Variable {
 }
 
 class LLVMLitVariable extends Variable {
-  LLVMLitVariable(this._load, this.ty);
+  LLVMLitVariable(this._load, this.ty, this.value);
+
+  final LLVMRawValue value;
   @override
   final BuiltInTy ty;
   final LLVMValueRef Function(Consts c, BuiltInTy? ty) _load;

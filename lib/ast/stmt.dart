@@ -57,10 +57,12 @@ class LetStmt extends Stmt {
       }
 
       StoreVariable? alloca;
-      final (_, delayAlloca) = context.sretVariable(nameIdent, variable);
-      if (delayAlloca != null) {
+      final (sret, delayAlloca) = context.sretVariable(nameIdent, variable);
+
+      /// 当前的变量是 sret 时才有效
+      if (sret != null) {
         alloca = delayAlloca;
-        delayAlloca.ident = nameIdent;
+        delayAlloca?.ident = nameIdent;
       }
 
       if (variable is StoreVariable && variable.isTemp) {
@@ -75,8 +77,8 @@ class LetStmt extends Stmt {
         //   alloca.store(context, rValue);
       }
 
+      bool wrapRef = variable?.isRef == true;
       if (alloca == null) {
-        bool wrapRef = variable?.isRef == true;
         if (wrapRef) {
           alloca = RefTy(tty)
               .llvmType
@@ -84,19 +86,23 @@ class LetStmt extends Stmt {
         } else {
           alloca = tty.llvmType.createAlloca(context, nameIdent);
         }
+      }
 
-        LLVMValueRef? rValue;
-        if (variable != null) {
-          if (wrapRef) {
-            rValue = variable.getBaseValue(context);
-          } else {
-            rValue = variable.load(context);
-          }
+      LLVMValueRef? rValue;
+      if (variable != null) {
+        if (variable is LLVMAllocaDelayVariable) {
+          variable.create();
         }
-        if (rValue != null) {
-          alloca.store(context, rValue);
+        if (wrapRef) {
+          rValue = variable.getBaseValue(context);
+        } else {
+          rValue = variable.load(context);
         }
       }
+      if (rValue != null) {
+        alloca.store(context, rValue);
+      }
+
       alloca.isTemp = false;
       context.pushVariable(nameIdent, alloca);
     }

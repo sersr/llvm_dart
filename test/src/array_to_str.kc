@@ -1,0 +1,56 @@
+import 'd.kc';
+
+fn main() i32 {
+  let arr = Array<i8>.new(10);
+
+  let size = 10;
+
+  printf('size: %d\n', size);
+
+  let v = 502;
+
+  let count = 0;
+  while v > 0 {
+    if(v < 10) {
+      arr.elementAt(count) = v + 48;
+      printf('index: %d\n', arr.elementAt(count));
+      count += 1;
+      break;
+     }
+    let vv = v % 10;
+     if(count > size - 2) {
+      break;
+     }
+    arr.elementAt(count) = vv + 48;
+     v = v / 10;
+    printf('index: %d\n', arr.elementAt(count));
+    count += 1;
+  }
+
+  count -= 1;
+  let vSize = count;
+
+  arr.elementAt(vSize + 1) = 0;
+  
+  let n_arr = Array<i8>.new(10);
+
+  print('reverse');
+
+  while count >= 0 {
+    let d = arr.elementAt(count);
+    printf('index: %d, %d\n', count, d);
+    n_arr.elementAt(vSize - count) = d;
+    count -= 1;
+  }
+
+  print('print: 502 to string');
+  print(n_arr.toStr());
+
+  0;
+}
+
+impl Array<i8> {
+  fn toStr() &cArray<i8> {
+    &self.pointer
+  }
+}

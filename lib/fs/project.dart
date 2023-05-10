@@ -122,11 +122,19 @@ class Project {
       root.currentPath = path;
       root.importHandler = importBuild as dynamic;
       BuildContext.mem2reg = mem2reg;
-      root.pushAllTy(parser.globalTy);
-      root.pushFn(SizeOfFn.ident, sizeOfFn);
+
+      //FIXME: 先执行`import`
       for (var val in parser.globalVar.values) {
         val.build(root);
       }
+
+      root.pushAllTy(parser.globalTy);
+
+      for (var val in parser.globalVar.values) {
+        val.build(root);
+      }
+      root.pushFn(SizeOfFn.ident, sizeOfFn);
+
       out:
       for (var fns in root.fns.values) {
         for (var fn in fns) {

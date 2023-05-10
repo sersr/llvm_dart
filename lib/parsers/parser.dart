@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:nop/nop.dart';
 
 import '../ast/ast.dart';
 import '../ast/expr.dart';
@@ -1007,7 +1006,6 @@ class Parser {
       return cache;
     }
 
-    Log.w(getIdent(it).light, showTag: false);
     loop(it, () {
       // `/n` 意味着结束
       it.moveBack();
@@ -1032,7 +1030,7 @@ class Parser {
             ops.clear();
             exprs.clear();
             exprs.add(expr);
-            it.moveNext();
+            // it.moveNext();
           }
         }
         return false;

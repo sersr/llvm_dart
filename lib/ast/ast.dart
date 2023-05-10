@@ -1126,6 +1126,11 @@ class ImplTy extends Ty {
   final List<Fn> fns;
   final List<Fn> staticFns;
 
+  bool contains(Identifier ident) {
+    return fns.any((e) => e.fnSign.fnDecl.ident == ident) ||
+        staticFns.any((e) => e.fnSign.fnDecl.ident == ident);
+  }
+
   @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
@@ -1229,8 +1234,10 @@ class ImplTy extends Ty {
 }
 
 class ArrayTy extends Ty {
-  ArrayTy(this.elementType);
+  ArrayTy(this.elementType, this.size, this.structTy);
   final Ty elementType;
+  final int size;
+  final StructTy structTy;
 
   @override
   void analysis(AnalysisContext context) {}
@@ -1252,7 +1259,7 @@ class ArrayLLVMType extends LLVMType {
   final ArrayTy ty;
   @override
   LLVMTypeRef createType(BuildContext c) {
-    return ty.elementType.llvmType.createType(c);
+    return c.arrayType(ty.llvmType.createType(c), ty.size);
   }
 
   @override
@@ -1260,15 +1267,36 @@ class ArrayLLVMType extends LLVMType {
     return c.pointerSize();
   }
 
-  StoreVariable createArray(BuildContext c, LLVMValueRef count) {
+  @override
+  StoreVariable createAlloca(BuildContext c, Identifier ident) {
+    var st = c.getStruct(Identifier.builtIn('Array'))!;
+
+    final tIdent = Identifier.builtIn('T');
+    st = st.newInst({tIdent: ty.elementType}, c);
+
+    final type = st.llvmType.createType(c);
+    final val = LLVMAllocaDelayVariable(ty, ([alloca]) {
+      return c.alloctor(type, ident.src);
+    }, type);
+    if (ident.isValid) {
+      val.ident = ident;
+    }
+    return val;
+  }
+
+  StoreVariable createArray(BuildContext c) {
     var st = c.getStruct(Identifier.builtIn('Array'))!;
     final sizeIdent = Identifier.builtIn('size');
     final pointerIdent = Identifier.builtIn('pointer');
     final tIdent = Identifier.builtIn('T');
     st = st.newInst({tIdent: ty.elementType}, c);
+    final count = BuiltInTy.lit(LitKind.usize)
+        .llvmType
+        .createValue(str: '${ty.size}')
+        .load(c);
     final arrValue = c.createArray(ty.elementType.llvmType.createType(c), count,
         name: '_new_arr');
-    final alloca = st.llvmType.createAlloca(c, Identifier.none);
+    final alloca = createAlloca(c, Identifier.none);
     final size = st.llvmType.getField(alloca, c, sizeIdent);
     size?.store(c, count);
     final pointer = st.llvmType.getField(alloca, c, pointerIdent);
@@ -1277,16 +1305,26 @@ class ArrayLLVMType extends LLVMType {
     return alloca;
   }
 
-  Variable getElement(BuildContext c, Variable val, LLVMValueRef index) {
+  Variable getElement(BuildContext c, Variable value, LLVMValueRef index) {
     final indics = <LLVMValueRef>[index];
+    final val =
+        ty.structTy.llvmType.getField(value, c, Identifier.builtIn('pointer'))!;
 
     final p = val.load(c);
 
+    final elementTy = ty.elementType.llvmType.createType(c);
+
     final v = llvm.LLVMBuildInBoundsGEP2(
-        c.builder, createType(c), p, indics.toNative(), indics.length, unname);
+        c.builder, elementTy, p, indics.toNative(), indics.length, unname);
     final vv = LLVMRefAllocaVariable.from(v, ty.elementType, c);
     vv.isTemp = false;
     return vv;
+  }
+
+  Variable toStr(BuildContext c, Variable value) {
+    final val =
+        ty.structTy.llvmType.getField(value, c, Identifier.builtIn('pointer'))!;
+    return val;
   }
 }
 
@@ -1311,7 +1349,9 @@ class CTypeTy extends Ty implements PathInterFace {
   CTypeTy newInst(Map<Identifier, Ty> tys, Tys c, {GenTy? gen}) {
     _parent ??= this;
     return root._tyLists.putIfAbsent(ListKey(tys), () {
-      return CTypeTy(pathTy).._tys = tys;
+      return CTypeTy(pathTy)
+        .._tys = tys
+        .._parent = root;
     });
   }
 
