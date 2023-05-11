@@ -1738,8 +1738,10 @@ class VariableIdentExpr extends Expr {
     if (struct != null) {
       if (generics.isNotEmpty) {
         final gg = <Identifier, Ty>{};
-        for (var g in generics) {
-          gg[g.ident] = g.grt(context);
+        for (var i = 0; i < generics.length; i += 1) {
+          final g = generics[i];
+          final gName = struct.generics[i];
+          gg[gName.ident] = g.grt(context);
         }
         struct = struct.newInst(gg, context);
       }

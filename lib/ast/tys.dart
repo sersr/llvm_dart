@@ -200,10 +200,45 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
 
   final implForStructs = <StructTy, List<ImplTy>>{};
   ImplTy? getImplForStruct(StructTy structTy, Identifier ident) {
-    // 需要判断泛型是否匹配
-    return getKV(structTy.parentOrCurrent, (c) => c.implForStructs,
+    ImplTy? cache;
+    final v = getKV(structTy.parentOrCurrent, (c) => c.implForStructs,
         importHandle: (c) => c.getImplForStruct(structTy, ident),
-        test: (v) => v.contains(ident));
+        test: (v) {
+          Ty? ty = v.struct.grtOrT(this);
+          if (ty is! StructTy) {
+            ty = getStruct(v.struct.ident);
+          }
+
+          bool? isRealTy;
+          if (ty is StructTy) {
+            if (ty.tys.isNotEmpty && structTy.tys.isNotEmpty) {
+              for (var index = 0; index < ty.generics.length; index += 1) {
+                final g = structTy.generics[index].ident;
+                final gTy = structTy.tys[g];
+                final gg = ty.generics[index].ident;
+                final ggTy = ty.tys[gg];
+                if (gTy == ggTy) {
+                  isRealTy = true;
+                } else {
+                  isRealTy = false;
+                  break;
+                }
+              }
+            }
+          }
+          if (isRealTy == false) {
+            return false;
+          }
+
+          final constain = v.contains(ident);
+
+          if (isRealTy == true && constain) {
+            cache = v;
+          }
+
+          return constain;
+        });
+    return cache ?? v;
   }
 
   void pushImplForStruct(StructTy structTy, ImplTy ty) {
