@@ -204,10 +204,7 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     final v = getKV(structTy.parentOrCurrent, (c) => c.implForStructs,
         importHandle: (c) => c.getImplForStruct(structTy, ident),
         test: (v) {
-          Ty? ty = v.struct.grtOrT(this);
-          if (ty is! StructTy) {
-            ty = getStruct(v.struct.ident);
-          }
+          Ty? ty = v.struct.grtOrT(this, getTy: getStruct);
 
           bool? isRealTy;
           if (ty is StructTy) {

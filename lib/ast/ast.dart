@@ -594,14 +594,17 @@ class PathTy with EquatableMixin {
     return rty;
   }
 
-  Ty? grtOrT(Tys c, {GenTy? gen}) {
+  Ty? grtOrT(Tys c, {GenTy? gen, GenTy? getTy}) {
     var rty = ty;
     // if (ty != null) return ty!;
 
     final tySrc = ident.src;
     rty ??= BuiltInTy.from(tySrc);
-
-    rty ??= c.getTy(ident);
+    if (getTy != null) {
+      rty ??= getTy(ident);
+    } else {
+      rty ??= c.getTy(ident);
+    }
     rty ??= gen?.call(ident);
     if (rty == null) {
       // error
