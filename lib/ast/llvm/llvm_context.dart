@@ -116,18 +116,19 @@ class BuildContext
     return BuildContext._importRoot(this);
   }
 
-  LLVMBasicBlock createAndInsertBB(LLVMConstVariable val,
-      {String name = 'entry'}) {
+  void instertFnEntryBB({String name = 'entry'}) {
     final bb = llvm.LLVMAppendBasicBlockInContext(
-        llvmContext, val.value, name.toChar());
+        llvmContext, fn.value, name.toChar());
     llvm.LLVMPositionBuilderAtEnd(builder, bb);
-    return LLVMBasicBlock(bb, this, true);
   }
 
-  LLVMBasicBlock createBB({String name = 'entry'}) {
+  LLVMBasicBlock buildSubBB({String name = 'entry'}) {
+    final child = createChildContext();
     final bb = llvm.LLVMCreateBasicBlockInContext(llvmContext, name.toChar());
-    llvm.LLVMPositionBuilderAtEnd(builder, bb);
-    return LLVMBasicBlock(bb, this, false);
+    child.fn = fn;
+
+    llvm.LLVMPositionBuilderAtEnd(child.builder, bb);
+    return LLVMBasicBlock(bb, child, false);
   }
 
   void appendBB(LLVMBasicBlock bb) {
@@ -136,12 +137,12 @@ class BuildContext
     bb.inserted = true;
   }
 
+  // 切换到另一个 BasicBlock
   void insertPointBB(LLVMBasicBlock bb) {
     assert(!bb.inserted);
-    llvm.LLVMAppendExistingBasicBlock(fn.value, bb.bb);
+    appendBB(bb);
     llvm.LLVMPositionBuilderAtEnd(builder, bb.bb);
     _breaked = false;
-    bb.inserted = true;
   }
 
   StoreVariable? _sret;
@@ -277,7 +278,7 @@ class BuildContext
     final bbContext = createChildContext();
     bbContext.fn = fv;
     bbContext.isFnBBContext = true;
-    bbContext.createAndInsertBB(fv);
+    bbContext.instertFnEntryBB();
     bbContext._build(fv.value, fn.fnSign.fnDecl, fn, extra, map: map);
     block.build(bbContext);
 
@@ -323,12 +324,6 @@ class BuildContext
 
   static bool mem2reg = false;
 
-  LLVMBasicBlock buildSubBB({String name = 'entry'}) {
-    final child = createChildContext();
-    child.fn = fn;
-    return child.createBB(name: name);
-  }
-
   bool _returned = false;
   void ret(Variable? val) {
     if (_returned) {
@@ -357,10 +352,6 @@ class BuildContext
   }
 
   /// [return]:
-  /// true  => alloca != null
-  /// false => alloca == null
-  /// null  => variable is! LLVMAllocaDelayVariable
-  ///
   /// (sret,  variable)
   (Variable?, StoreVariable?) sretVariable(
       Identifier? nameIdent, Variable? variable) {
