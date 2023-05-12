@@ -1198,35 +1198,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
     if (fn == null) return null;
 
-    if (val is StoreVariable) {
-      st = val.alloca;
-    } else {
-      st = val.load(context);
-    }
-
     if (structTy.ident.src == 'Array') {
-      // if (fnName == 'elementAt') {
-      //   if (params.isNotEmpty && st != null) {
-      //     final first = params.first.build(context)?.variable;
-      //     if (first != null && first.ty is BuiltInTy) {
-      //       final v = structTy.llvmType.getField(
-      //           LLVMConstVariable(st, structTy),
-      //           context,
-      //           Identifier.builtIn('pointer'));
-      //       if (v != null) {
-      //         if (structTy.tys.isNotEmpty) {
-      //           final arr = ArrayTy(
-      //             structTy.tys.values.first,
-      //           );
-      //           final element =
-      //               arr.llvmType.getElement(context, v, first.load(context));
-      //           return ExprTempValue(element, element.ty);
-      //         }
-      //       }
-      //     }
-      //   }
-      //   return null;
-      // } else
       if (fnName == 'new') {
         if (params.isNotEmpty) {
           final first = LiteralExpr.run(
@@ -1246,6 +1218,8 @@ class MethodCallExpr extends Expr with FnCallMixin {
         return null;
       }
     }
+
+    st = val.getBaseValue(context);
 
     return fnCall(context, fn, params, fnVariable, struct: st, gen: (ident) {
       return structTy.tys[ident] ?? letTy?.tys[ident];
