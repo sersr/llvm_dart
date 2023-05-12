@@ -973,6 +973,9 @@ mixin FnCallMixin {
     final fnValue = fnAlloca?.load(context) ?? fnVariable?.load(context);
     if (fnValue == null) return null;
 
+    if (fn.fnSign.fnDecl.ident.src == 'printx') {
+      Log.w('..');
+    }
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 
@@ -1194,16 +1197,14 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
 
     if (fn == null) return null;
-    if (structTy.ident.src == 'Array') {
-      if (fnName != 'new') {
-        // struct 一般是 StoreVariable
-        if (val is StoreVariable) {
-          st = val.alloca;
-        } else {
-          st = val.load(context);
-        }
-      }
 
+    if (val is StoreVariable) {
+      st = val.alloca;
+    } else {
+      st = val.load(context);
+    }
+
+    if (structTy.ident.src == 'Array') {
       // if (fnName == 'elementAt') {
       //   if (params.isNotEmpty && st != null) {
       //     final first = params.first.build(context)?.variable;

@@ -28,7 +28,7 @@ class Parser {
       if (token.kind == TokenKind.lf) return false;
       if (token.kind == TokenKind.semi) return false;
 
-      print('item:\n${getIdent(it).light}');
+      // print('item:\n${getIdent(it).light}');
       if (token.kind == TokenKind.ident) {
         parseIdent(it, global: true);
       }

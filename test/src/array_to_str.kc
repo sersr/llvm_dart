@@ -50,7 +50,7 @@ fn main() i32 {
 }
 
 impl Array<i8> {
-  fn toStr() &cArray<i8> {
-    &self.pointer
+  fn toStr() cArray<i8> {
+    self.pointer
   }
 }

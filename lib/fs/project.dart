@@ -1,3 +1,4 @@
+import 'package:nop/nop.dart';
 import 'package:path/path.dart';
 
 import '../ast/analysis_context.dart';
@@ -51,11 +52,28 @@ class Project {
     }
   }
 
+  void printAst() {
+    void printParser(String path, Parser parser) {
+      Log.w('--- $path', showTag: false);
+      if (parser.globalVar.isNotEmpty) {
+        print(parser.globalVar.values.join('\n'));
+      }
+      print(parser.globalTy.values.join('\n'));
+    }
+
+    Identifier.run(() {
+      printParser(path, parser);
+      for (var entry in _caches.entries) {
+        final path = entry.key;
+        final parser = entry.value;
+        if (parser == null) continue;
+        printParser(path, parser);
+      }
+    });
+  }
+
   void analysis() {
     Identifier.run(() {
-      print(parser.globalVar.values.join('\n'));
-      print(parser.globalTy.values.join('\n'));
-
       final alc = analysisContext = AnalysisContext.root();
       alc.currentPath = path;
       alc.importHandler = importBuild;
@@ -90,14 +108,7 @@ class Project {
       pathName = p.path;
     }
     final pn = normalize(pathName);
-    final mImport = _caches.putIfAbsent(pn, () {
-      final mImport = parserToken(pathName);
-      if (mImport != null) {
-        print(mImport.globalVar.values.join('\n'));
-        print(mImport.globalTy.values.join('\n'));
-      }
-      return mImport;
-    });
+    final mImport = _caches.putIfAbsent(pn, () => parserToken(pathName));
     if (mImport != null) {
       child.currentPath = pn;
       child.importHandler = importBuild;

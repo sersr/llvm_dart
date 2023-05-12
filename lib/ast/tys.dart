@@ -156,21 +156,6 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     return getKV(ident, (c) => c.fns, importHandle: (c) {
       return c.getFn(ident);
     });
-    // final list = fns[ident];
-    // if (list != null) {
-    //   return list.last;
-    // }
-
-    // final v = runImport(() {
-    //   for (var imp in imports.values) {
-    //     final v = imp.getFn(ident);
-    //     if (v != null) {
-    //       return v;
-    //     }
-    //   }
-    // });
-
-    // return v ?? parent?.getFn(ident);
   }
 
   void pushFn(Identifier ident, Fn fn) {
@@ -227,13 +212,13 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
             return false;
           }
 
-          final constain = v.contains(ident);
+          final contains = v.contains(ident);
 
-          if (isRealTy == true && constain) {
+          if (isRealTy == true && contains) {
             cache = v;
           }
 
-          return constain;
+          return contains;
         });
     return cache ?? v;
   }
