@@ -82,5 +82,14 @@ fn main() i32 {
 	if b {
 		print("hello b");
 	}
+
+	"hello world".print();
+	print('end print');
 	0;
+}
+
+impl string {
+	fn print() {
+		print(&self);
+	}
 }

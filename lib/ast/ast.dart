@@ -736,11 +736,15 @@ class Fn extends Ty {
     context.pushFn(fnSign.fnDecl.ident, this);
   }
 
+  void pushFnOnBuild(Tys context) {
+    pushFn(context);
+  }
+
   @override
   LLVMConstVariable? build(BuildContext context,
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
-    context.pushFn(fnSign.fnDecl.ident, this);
+    pushFnOnBuild(context);
     return customBuild(context, variables, map);
   }
 
@@ -808,7 +812,7 @@ class Fn extends Ty {
     if (_anaysised) return;
     _anaysised = true;
 
-    context.pushFn(fnSign.fnDecl.ident, this);
+    pushFnOnBuild(context);
     final child = context.childContext();
     child.setFnContext(this);
     fnSign.fnDecl.analysis(child, this);
@@ -853,6 +857,9 @@ mixin ImplFnMixin on Fn {
       },
     );
   }
+
+  @override
+  void pushFnOnBuild(Tys context) {}
 
   @override
   Object? getKey() {
