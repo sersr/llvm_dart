@@ -415,9 +415,16 @@ class Cursor {
   Token number() {
     final start = cursor;
     eatNumberLiteral();
-    final isFloat = nextCharRead == '.';
+    final state = _it.cursor;
+    var isFloat = nextCharRead == '.';
     if (isFloat) {
       nextChar;
+      if (!numbers.contains(nextCharRead)) {
+        state.restore();
+        isFloat = false;
+      }
+    }
+    if (isFloat) {
       eatNumberLiteral();
       if (nextCharRead == 'E' || nextCharRead == 'e') {
         nextChar;
@@ -425,11 +432,11 @@ class Cursor {
           nextChar;
           eatNumberLiteral();
         }
-      }
-      final c = cursor;
-      final k = getLitKind() ?? LiteralKind.f64;
+        final c = cursor;
+        final k = getLitKind() ?? LiteralKind.f64;
 
-      return Token.literal(literalKind: k, start: start, end: c);
+        return Token.literal(literalKind: k, start: start, end: c);
+      }
     }
 
     final end = cursor;

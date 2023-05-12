@@ -7,7 +7,7 @@ import '../tys.dart';
 import 'build_methods.dart';
 import 'llvm_types.dart';
 
-abstract class Variable extends IdentVariable {
+abstract class Variable extends LifeCycleVariable {
   bool isRef = false;
   LLVMValueRef load(BuildContext c);
   LLVMTypeRef getDerefType(BuildContext c);

@@ -5,8 +5,22 @@ import 'package:equatable/equatable.dart';
 import '../parsers/lexers/token_kind.dart';
 import 'ast.dart';
 
-abstract class IdentVariable {
+abstract class LifeCycleVariable {
   Identifier? ident;
+
+  Identifier? lifeEnd;
+
+  Identifier? get lifeCycyle => lifeEnd ?? ident;
+
+  void updateLifeCycle(Identifier ident) {
+    if (lifeEnd == null) {
+      lifeEnd = ident;
+      return;
+    }
+    if (ident.start >= lifeEnd!.start) {
+      lifeEnd = ident;
+    }
+  }
 }
 
 class ImportPath with EquatableMixin {
@@ -25,7 +39,7 @@ class ImportPath with EquatableMixin {
 typedef ImportHandler = Tys Function(Tys, ImportPath);
 typedef RunImport<T> = T Function(T Function());
 
-mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
+mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
   T? get parent;
 
   T import();
@@ -78,6 +92,7 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
         }
         last = val;
       }
+      last.updateLifeCycle(ident);
       return last;
     }
 
@@ -85,6 +100,7 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
       for (var imp in imports.values) {
         final v = imp.getVariable(ident);
         if (v != null) {
+          v.updateLifeCycle(ident);
           return v;
         }
       }
@@ -93,7 +109,7 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     return v ?? parent?.getVariable(ident);
   }
 
-  void pushVariable(Identifier ident, V variable) {
+  void pushVariable(Identifier ident, V variable, {bool isAlloca = true}) {
     final list = variables.putIfAbsent(ident, () => []);
     if (!list.contains(variable)) {
       variable.ident = ident;
@@ -183,16 +199,19 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     pushKV(ident, ty, impls);
   }
 
-  final implForStructs = <StructTy, List<ImplTy>>{};
-  ImplTy? getImplForStruct(StructTy structTy, Identifier ident) {
+  final implForStructs = <Ty, List<ImplTy>>{};
+  ImplTy? getImplForStruct(Ty structTy, Identifier ident) {
     ImplTy? cache;
-    final v = getKV(structTy.parentOrCurrent, (c) => c.implForStructs,
+    if (structTy is StructTy) {
+      structTy = structTy.parentOrCurrent;
+    }
+    final v = getKV(structTy, (c) => c.implForStructs,
         importHandle: (c) => c.getImplForStruct(structTy, ident),
         test: (v) {
           Ty? ty = v.struct.grtOrT(this, getTy: getStruct);
 
           bool? isRealTy;
-          if (ty is StructTy) {
+          if (ty is StructTy && structTy is StructTy) {
             if (ty.tys.isNotEmpty && structTy.tys.isNotEmpty) {
               for (var index = 0; index < ty.generics.length; index += 1) {
                 final g = structTy.generics[index].ident;
@@ -223,8 +242,11 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     return cache ?? v;
   }
 
-  void pushImplForStruct(StructTy structTy, ImplTy ty) {
-    pushKV(structTy.parentOrCurrent, ty, implForStructs);
+  void pushImplForStruct(Ty structTy, ImplTy ty) {
+    if (structTy is StructTy) {
+      structTy = structTy.parentOrCurrent;
+    }
+    pushKV(structTy, ty, implForStructs);
   }
 
   final cTys = <Identifier, List<CTypeTy>>{};
@@ -259,7 +281,7 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
       }
     }
     for (var impl in impls) {
-      final struct = getStruct(impl.struct.ident);
+      final struct = impl.struct.grtOrT(this);
       if (struct != null) {
         pushImplForStruct(struct, impl);
         impl.initStructFns(this);
@@ -271,6 +293,14 @@ mixin Tys<T extends Tys<T, V>, V extends IdentVariable> {
     return getStruct(i) ??
         getComponent(i) ??
         getImpl(i) ??
+        getFn(i) ??
+        getEnum(i) ??
+        getCty(i);
+  }
+
+  Ty? getTyIgnoreImpl(Identifier i) {
+    return getStruct(i) ??
+        getComponent(i) ??
         getFn(i) ??
         getEnum(i) ??
         getCty(i);

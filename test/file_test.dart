@@ -1,6 +1,7 @@
 import 'package:llvm_dart/fs/fs.dart';
 import 'package:llvm_dart/fs/project.dart';
 import 'package:llvm_dart/run.dart';
+import 'package:nop/nop.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -11,9 +12,13 @@ void main() {
       final project = Project(testSrcDir.childFile(name).path);
       // project.mem2reg = true;
       // project.printAsm = true;
-      project.enableBuild = true;
-      project.run();
+      // project.enableBuild = true;
+      project.analysis();
       project.printAst();
+      project.printLifeCycle((v) {
+        Log.w('$v', showTag: false);
+      });
+      project.build();
       return runNativeCode(run: false, args: 'hello world');
     });
   });

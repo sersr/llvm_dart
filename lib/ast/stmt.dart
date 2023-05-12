@@ -119,8 +119,9 @@ class LetStmt extends Stmt {
     }, realTy);
 
     if (v == null) return;
+    final value = v.copy(ty: realTy, ident: nameIdent);
 
-    context.pushVariable(nameIdent, v.copy(ty: realTy, ident: nameIdent));
+    context.pushVariable(nameIdent, value);
   }
 }
 

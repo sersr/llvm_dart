@@ -106,9 +106,12 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   }
 
   @override
-  void pushVariable(Identifier ident, AnalysisVariable variable) {
+  void pushVariable(Identifier ident, AnalysisVariable variable,
+      {bool isAlloca = true}) {
     variable.lifeCycle.fnContext = getLastFnContext();
-    super.pushVariable(ident, variable);
+    allLifeCycyle.add(variable);
+
+    super.pushVariable(ident, variable, isAlloca: isAlloca);
   }
 
   AnalysisContext? getFnContext(Identifier ident) {
@@ -147,10 +150,19 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
     return buf.toString();
   }
 
+  List<AnalysisVariable> allLifeCycyle = [];
+
+  void forEach(void Function(AnalysisVariable variable) action) {
+    allLifeCycyle.forEach(action);
+    for (var child in children) {
+      child.forEach(action);
+    }
+  }
+
   AnalysisVariable createVal(Ty ty, Identifier ident,
       [List<PointerKind> kind = const []]) {
     final val = AnalysisVariable._(ty, ident, kind);
-    val.lifeCycle.fnContext = getLastFnContext();
+    val.lifeCycle.fnContext = this;
     return val;
   }
 
@@ -158,12 +170,12 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
       Ty ty, Identifier ident, Map<Identifier, AnalysisVariable> map,
       [List<PointerKind> kind = const []]) {
     final val = AnalysisStructVariable._(ty, ident, map, kind);
-    val.lifeCycle.fnContext = getLastFnContext();
+    val.lifeCycle.fnContext = this;
     return val;
   }
 }
 
-class AnalysisVariable extends IdentVariable {
+class AnalysisVariable extends LifeCycleVariable {
   AnalysisVariable._(this.ty, this._ident, this.kind);
   final Ty ty;
   final List<PointerKind> kind;

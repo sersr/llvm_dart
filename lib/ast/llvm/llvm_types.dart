@@ -224,7 +224,13 @@ class LLVMFnType extends LLVMType {
     }
 
     if (fn is ImplFn) {
-      final ty = c.pointer();
+      LLVMTypeRef ty;
+      final tty = (fn as ImplFn).ty;
+      if (tty is BuiltInTy) {
+        ty = tty.llvmType.createType(c);
+      } else {
+        ty = c.pointer();
+      }
       list.add(ty);
     }
 

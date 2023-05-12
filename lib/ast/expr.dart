@@ -885,7 +885,7 @@ mixin FnCallMixin {
       Fn fn,
       List<FieldExpr> params,
       Variable? fnVariable,
-      LLVMValueRef? struct,
+      Variable? struct,
       GenTy? gen,
       Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>>? map) {
@@ -904,7 +904,11 @@ mixin FnCallMixin {
     }
 
     if (struct != null) {
-      args.add(struct);
+      if (struct.ty is BuiltInTy) {
+        args.add(struct.load(context));
+      } else {
+        args.add(struct.getBaseValue(context));
+      }
     }
     final sortFields = alignParam(
         params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
@@ -973,9 +977,6 @@ mixin FnCallMixin {
     final fnValue = fnAlloca?.load(context) ?? fnVariable?.load(context);
     if (fnValue == null) return null;
 
-    if (fn.fnSign.fnDecl.ident.src == 'printx') {
-      Log.w('..');
-    }
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 
@@ -1008,7 +1009,7 @@ mixin FnCallMixin {
     Fn fn,
     List<FieldExpr> params,
     Variable? fnVariable, {
-    LLVMValueRef? struct,
+    Variable? struct,
     GenTy? gen,
   }) {
     return _fnCall(context, fn, params, fnVariable, struct, gen, catchVariables,
@@ -1125,6 +1126,8 @@ class MethodCallExpr extends Expr with FnCallMixin {
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final variable = receiver.build(context);
+    final fnName = ident.src;
+
     var val = variable?.variable;
     if (variable == null) return null;
     // while (true) {
@@ -1141,7 +1144,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (val == null) return null;
 
     var valTy = variable.ty;
-    final fnName = ident.src;
 
     if (valTy is ArrayTy) {
       final structTy = valTy.structTy;
@@ -1159,7 +1161,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
       valTy = structTy;
     }
-    if (valTy is! StructTy) return null;
+    // if (valTy is! StructTy) return null;
     var structTy = valTy;
     final ty = LiteralExpr.letTy;
 
@@ -1167,62 +1169,63 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (ty is PathInterFace) {
       letTy = ty as PathInterFace;
     }
-
-    if (structTy.tys.isEmpty) {
-      if (ty is StructTy && structTy.ident == ty.ident) {
-        structTy = ty;
+    if (structTy is StructTy) {
+      if (structTy.tys.isEmpty) {
+        if (ty is StructTy && structTy.ident == ty.ident) {
+          structTy = ty;
+        }
       }
     }
 
     final impl = context.getImplForStruct(structTy, ident);
-    var implFn = impl?.getFn(ident)?.copyFrom(structTy);
+
+    var implFn = impl?.getFn(ident);
+    implFn = implFn?.copyFrom(structTy);
     Fn? fn = implFn;
-    LLVMValueRef? st;
+
+    if (structTy is StructTy) {
+      if (structTy.ident.src == 'Array') {
+        if (fnName == 'new') {
+          if (params.isNotEmpty) {
+            final first = LiteralExpr.run(
+                () => params.first.build(context)?.variable,
+                BuiltInTy.lit(LitKind.usize));
+
+            if (first is LLVMLitVariable) {
+              if (structTy.tys.isNotEmpty) {
+                final arr = ArrayTy(
+                    structTy.tys.values.first, first.value.iValue, structTy);
+                final element = arr.llvmType.createArray(context);
+
+                return ExprTempValue(element, element.ty);
+              }
+            }
+          }
+          return null;
+        }
+      }
+    }
 
     Variable? fnVariable;
     // 字段有可能是一个函数指针
     if (fn == null) {
-      if (val is StoreVariable) {
+      if (val is StoreVariable && structTy is StructTy) {
         final field = structTy.llvmType.getField(val, context, ident);
         if (field != null) {
           // 匿名函数作为参数要处理捕捉的变量
           if (field.ty is FnTy) {
             assert(_paramFn is Fn, 'ty: ${field.ty}, _paramFn: $_paramFn');
-            st = null;
             fnVariable = field;
             fn = _paramFn ?? field.ty as FnTy;
           }
         }
       }
     }
-
     if (fn == null) return null;
 
-    if (structTy.ident.src == 'Array') {
-      if (fnName == 'new') {
-        if (params.isNotEmpty) {
-          final first = LiteralExpr.run(
-              () => params.first.build(context)?.variable,
-              BuiltInTy.lit(LitKind.usize));
-
-          if (first is LLVMLitVariable) {
-            if (structTy.tys.isNotEmpty) {
-              final arr = ArrayTy(
-                  structTy.tys.values.first, first.value.iValue, structTy);
-              final element = arr.llvmType.createArray(context);
-
-              return ExprTempValue(element, element.ty);
-            }
-          }
-        }
-        return null;
-      }
-    }
-
-    st = val.getBaseValue(context);
-
-    return fnCall(context, fn, params, fnVariable, struct: st, gen: (ident) {
-      return structTy.tys[ident] ?? letTy?.tys[ident];
+    return fnCall(context, fn, params, fnVariable, struct: val, gen: (ident) {
+      if (structTy is StructTy) return structTy.tys[ident] ?? letTy?.tys[ident];
+      return null;
     });
   }
 

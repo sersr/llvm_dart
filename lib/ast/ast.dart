@@ -835,13 +835,13 @@ class Fn extends Ty {
 }
 
 mixin ImplFnMixin on Fn {
-  StructTy get ty;
+  Ty get ty;
   ImplTy get implty;
 
   @override
   ImplFnMixin get root => super.root as ImplFnMixin;
-  final _caches = <StructTy, ImplFnMixin>{};
-  ImplFnMixin copyFrom(StructTy other) {
+  final _caches = <Ty, ImplFnMixin>{};
+  ImplFnMixin copyFrom(Ty other) {
     if (ty == other) return this;
     _parent ??= root;
 
@@ -856,11 +856,16 @@ mixin ImplFnMixin on Fn {
 
   @override
   Object? getKey() {
-    return ty.tys;
+    if (ty is StructTy) {
+      return (ty as StructTy).tys;
+    }
+    return null;
   }
 
   @override
   Ty? grt(Tys c, Identifier ident) {
+    final ty = this.ty;
+    if (ty is! StructTy) return null;
     if (ty.generics.isEmpty) return null;
     final impltyStruct = implty.struct.grtOrT(c);
     if (impltyStruct is StructTy) {
@@ -875,20 +880,20 @@ mixin ImplFnMixin on Fn {
   }
 
   @override
-  List<Object?> get props => [ty.tys, implty];
+  List<Object?> get props => [ty, implty];
 
-  ImplFnMixin cloneImpl(StructTy other);
+  ImplFnMixin cloneImpl(Ty other);
 }
 
 class ImplFn extends Fn with ImplFnMixin {
   ImplFn(super.fnSign, super.block, this.ty, this.implty);
   @override
-  final StructTy ty;
+  final Ty ty;
   @override
   final ImplTy implty;
 
   @override
-  ImplFn cloneImpl(StructTy other) {
+  ImplFn cloneImpl(Ty other) {
     return ImplFn(fnSign, block?.clone(), other, implty);
   }
 
@@ -903,12 +908,12 @@ class ImplFn extends Fn with ImplFnMixin {
 class ImplStaticFn extends Fn with ImplFnMixin {
   ImplStaticFn(super.fnSign, super.block, this.ty, this.implty);
   @override
-  final StructTy ty;
+  final Ty ty;
   @override
   final ImplTy implty;
 
   @override
-  ImplStaticFn cloneImpl(StructTy other) {
+  ImplStaticFn cloneImpl(Ty other) {
     return ImplStaticFn(fnSign, block?.clone(), other, implty);
   }
 }
@@ -1156,16 +1161,10 @@ class ImplTy extends Ty {
   List<ImplStaticFn>? _staticFns;
 
   void initStructFns(Tys context) {
-    // final ty = struct.grt(context);
-    final ident = struct.ident;
-    final ty = context.getStruct(ident);
-    if (ty is! StructTy) return;
+    final ty = struct.grtOrT(context, getTy: context.getTyIgnoreImpl);
+    if (ty == null) return;
     context.pushImplForStruct(ty, this);
-    // final ty = context.getStruct(ident);
-    // if (ty == null) {
-    //   //error
-    //   return;
-    // }
+
     _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty, this)).toList();
     _staticFns ??= staticFns
         .map((e) => ImplStaticFn(e.fnSign, e.block, ty, this))

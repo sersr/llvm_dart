@@ -25,3 +25,9 @@ impl Array<T> {
 
     }
 }
+
+impl Array<i8> {
+  fn toStr() cArray<i8> {
+    self.pointer
+  }
+}

@@ -72,6 +72,12 @@ class Project {
     });
   }
 
+  void printLifeCycle(void Function(AnalysisVariable variable) action) {
+    final alc = analysisContext;
+    if (alc == null) return;
+    alc.forEach(action);
+  }
+
   void analysis() {
     Identifier.run(() {
       final alc = analysisContext = AnalysisContext.root();
@@ -134,7 +140,6 @@ class Project {
       root.importHandler = importBuild as dynamic;
       BuildContext.mem2reg = mem2reg;
 
-      //FIXME: 先执行`import`
       for (var val in parser.globalVar.values) {
         val.build(root);
       }
