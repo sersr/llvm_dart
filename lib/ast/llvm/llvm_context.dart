@@ -1,6 +1,7 @@
 import 'dart:ffi';
 
 import 'package:collection/collection.dart';
+import 'package:nop/nop.dart';
 
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
@@ -170,6 +171,7 @@ class BuildContext
 
     if (fnty is ImplFn) {
       final p = fnty.ty;
+      Log.w('..$p');
       final selfParam = llvm.LLVMGetParam(fn, index);
       final ident = Identifier.builtIn('self');
       // final alloca = RefTy(p).llvmType.createAlloca(this, ident);

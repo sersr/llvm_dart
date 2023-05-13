@@ -85,11 +85,18 @@ fn main() i32 {
 
 	"hello world".print();
 	print('end print');
+	33.ll();
 	0;
 }
 
 impl string {
 	fn print() {
 		print(&self);
+	}
+}
+
+impl i32 {
+	fn ll() {
+		let x = self;
 	}
 }

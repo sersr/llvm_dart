@@ -78,15 +78,20 @@ class LetStmt extends Stmt {
       }
 
       bool wrapRef = variable?.isRef == true;
-      if (alloca == null) {
-        if (wrapRef) {
-          alloca = RefTy(tty)
-              .llvmType
-              .createAlloca(context, nameIdent, isPointer: false);
-        } else {
-          alloca = tty.llvmType.createAlloca(context, nameIdent);
-        }
-      }
+      // if (alloca == null) {
+      //   if (wrapRef) {
+      //     if (tty is BuiltInTy) {
+      //       alloca = tty.llvmType.createAlloca(context, nameIdent);
+      //     } else {
+      //       alloca = RefTy(tty)
+      //           .llvmType
+      //           .createAlloca(context, nameIdent, isPointer: false);
+      //     }
+      //   } else {
+      //     alloca = tty.llvmType.createAlloca(context, nameIdent);
+      //   }
+      // }
+      alloca ??= tty.llvmType.createAlloca(context, nameIdent);
 
       LLVMValueRef? rValue;
       if (variable != null) {
