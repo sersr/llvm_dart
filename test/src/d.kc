@@ -13,21 +13,13 @@ type cArray<T>;
 
 impl Array<T> {
 
-    static fn new(size: usize) T {
-
-    }
+    static fn new(size: usize) T;
     
-    fn getSize() usize {
-        return self.size;
-    }
+    fn getSize() usize;
 
-    fn elementAt(index: usize) &T {
-
-    }
+    fn elementAt(index: usize) &T;
 }
 
 impl Array<i8> {
-  fn toStr() cArray<i8> {
-    self.pointer
-  }
+  fn toStr() &string;
 }

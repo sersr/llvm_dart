@@ -536,11 +536,11 @@ class StructExpr extends Expr {
         Ty? ty;
         if (isBuild) {
           ty = LiteralExpr.run(
-                  () => f.build(context)?.variable, fd.grtBase(context))
+                  () => f.build(context)?.variable, fd.grtOrT(context))
               ?.ty;
         } else {
           ty = LiteralExpr.run(() => f.analysis(context as AnalysisContext),
-                  fd.grtBase(context))
+                  fd.grtOrT(context))
               ?.ty;
         }
         if (ty != null) {
@@ -1161,7 +1161,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
     var valTy = variable.ty;
 
     if (valTy is ArrayTy) {
-      final structTy = valTy.structTy;
       if (fnName == 'elementAt' && params.isNotEmpty) {
         final first = params.first.build(context)?.variable;
         if (first != null && first.ty is BuiltInTy) {
@@ -1169,14 +1168,15 @@ class MethodCallExpr extends Expr with FnCallMixin {
               valTy.llvmType.getElement(context, val, first.load(context));
           return ExprTempValue(element, element.ty);
         }
-        // } else if (fnName == 'toStr') {
-        //   final element = valTy.llvmType.toStr(context, val);
-        //   return ExprTempValue(element, element.ty);
+      } else if (fnName == 'getSize') {
+        final size = BuiltInTy.usize.llvmType.createValue(str: '${valTy.size}');
+        return ExprTempValue(size, size.ty);
+      } else if (fnName == 'toStr') {
+        final element = valTy.llvmType.toStr(context, val);
+        return ExprTempValue(element, element.ty);
       }
-
-      valTy = structTy;
     }
-    // if (valTy is! StructTy) return null;
+
     var structTy = valTy;
     final ty = LiteralExpr.letTy;
 
@@ -1208,9 +1208,10 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
             if (first is LLVMLitVariable) {
               if (structTy.tys.isNotEmpty) {
-                final arr = ArrayTy(
-                    structTy.tys.values.first, first.value.iValue, structTy);
-                final element = arr.llvmType.createArray(context);
+                final arr =
+                    ArrayTy(structTy.tys.values.first, first.value.iValue);
+                final element =
+                    arr.llvmType.createAlloca(context, Identifier.none);
 
                 return ExprTempValue(element, element.ty);
               }
@@ -1324,9 +1325,7 @@ class StructDotFieldExpr extends Expr {
       newVal = newVal.getDeref(context);
     }
     var ty = newVal?.ty;
-    if (ty is ArrayTy) {
-      ty = ty.structTy;
-    }
+
     if (ty is! StructTy) return null;
     final v = ty.llvmType.getField(newVal!, context, ident);
     if (v == null) return null;
@@ -2191,5 +2190,69 @@ class ImportExpr extends Expr {
   String toString() {
     final n = name == null ? '' : ' as $name';
     return 'import $path$n';
+  }
+}
+
+class ArrayExpr extends Expr {
+  ArrayExpr(this.elements);
+
+  final List<Expr> elements;
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    Ty? ty;
+    for (var element in elements) {
+      final v = element.analysis(context);
+      if (v != null) {
+        ty ??= v.ty;
+      }
+    }
+    ty ??= LiteralExpr.letTy;
+    if (ty == null) return null;
+    return context.createVal(ArrayTy(ty, elements.length), Identifier.none);
+  }
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context) {
+    final values = <LLVMValueRef>[];
+    Ty? arrTy = LiteralExpr.letTy;
+
+    Ty? ty;
+    if (arrTy is ArrayTy) {
+      ty = arrTy.elementType;
+    }
+
+    final elementTy = LiteralExpr.run(() {
+      Ty? ty;
+      for (var element in elements) {
+        final v = element.build(context)?.variable;
+        if (v != null) {
+          ty ??= v.ty;
+          values.add(v.load(context));
+        }
+      }
+      return ty;
+    }, ty);
+
+    ty ??= elementTy;
+
+    if (arrTy == null && ty != null) {
+      arrTy = ArrayTy(ty, elements.length);
+    }
+    if (arrTy is ArrayTy) {
+      final v = arrTy.llvmType.createArray(context, values);
+      return ExprTempValue(v, v.ty);
+    }
+
+    return null;
+  }
+
+  @override
+  ArrayExpr clone() {
+    return ArrayExpr(elements.map((e) => e.clone()).toList());
+  }
+
+  @override
+  String toString() {
+    return '[${elements.join(',')}]';
   }
 }

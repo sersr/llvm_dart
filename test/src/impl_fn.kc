@@ -5,13 +5,22 @@ fn main() i32 {
     g.pp();
     // let arr:[Gen; 5] = <Gen>[];
     // let arr2 = Array<Gen>{11,2,3,23,3, size : 55};
-
     let yy = 10;
     fn hh() {
         printf('...%d\n', yy);
     }
     hh();
     let some = Some(11);
+
+    let arr = Array<i8>.new(10);
+    let aa:[i8, 10] = [ 48, 50, 54, 0];
+    aa.elementAt(0) = 48 + 5;
+    let size = aa.getSize() as i8;
+    aa.elementAt(1) = size + 38;
+    print('next number: 506');
+    print(aa.toStr());
+    
+
     0
 }
 

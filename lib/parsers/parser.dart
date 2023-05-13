@@ -338,12 +338,25 @@ class Parser {
         ty = PathTy.ty(FnTy(decl), pointerKind);
       } else if (getToken(it).kind == TokenKind.ident) {
         ty = PathTy(getIdent(it), parseGenericsInstance(it), pointerKind);
+      } else if (getToken(it).kind == TokenKind.openBracket) {
+        ty = parseArrayPathTy(it);
       }
     }
     if (ty == null) {
       state.restore();
     }
     return ty;
+  }
+
+  ArrayPathTy? parseArrayPathTy(TokenIterator it) {
+    it.moveNext();
+    it = it.current.child.tokenIt;
+    final aty = parsePathTy(it);
+
+    if (aty == null) return null;
+    it.moveNext();
+    final expr = parseExpr(it);
+    return ArrayPathTy(aty, expr);
   }
 
   bool isBlockStart(TokenIterator it) {
@@ -421,6 +434,31 @@ class Parser {
     stmt ??= parseStmtBase(it);
 
     return stmt;
+  }
+
+  ArrayExpr? parseArrayExpr(TokenIterator it) {
+    assert(getToken(it).kind == TokenKind.openBracket);
+
+    it.moveNext();
+
+    it = it.current.child.tokenIt;
+    final exprs = <Expr>[];
+    loop(it, () {
+      final t = getToken(it);
+      if (t.kind != TokenKind.comma) {
+        it.moveBack();
+      }
+      final expr = parseExpr(it);
+      exprs.add(expr);
+
+      return false;
+    });
+
+    if (exprs.isNotEmpty) {
+      return ArrayExpr(exprs);
+    }
+
+    return null;
   }
 
   Stmt? parseImportStmt(TokenIterator it) {
@@ -848,6 +886,8 @@ class Parser {
           final ty = BuiltInTy.lit(lkd);
           lhs = LiteralExpr(getIdent(it), ty);
         }
+      } else if (t.kind == TokenKind.openBracket) {
+        lhs = parseArrayExpr(it);
       }
 
       lhs ??= parseIfExpr(it);

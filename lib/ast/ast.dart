@@ -506,6 +506,8 @@ class BuiltInTy extends Ty {
   static final string = BuiltInTy._(LitKind.kString);
   static final kVoid = BuiltInTy._(LitKind.kVoid);
   static final kBool = BuiltInTy._(LitKind.kBool);
+  static final usize = BuiltInTy._(LitKind.usize);
+
   BuiltInTy.lit(this._ty);
 
   final LitKind _ty;
@@ -600,6 +602,7 @@ class PathTy with EquatableMixin {
 
     final tySrc = ident.src;
     rty ??= BuiltInTy.from(tySrc);
+
     if (getTy != null) {
       rty ??= getTy(ident);
     } else {
@@ -639,6 +642,34 @@ class PathTy with EquatableMixin {
 
   Ty grt(Tys c, {GenTy? gen}) {
     return grtOrT(c, gen: gen)!;
+  }
+}
+
+class ArrayPathTy extends PathTy {
+  ArrayPathTy(this.elementTy, this.size) : super(Identifier.none, []);
+  final PathTy elementTy;
+  final Expr size;
+
+  @override
+  Ty? grtOrT(Tys<Tys<dynamic, LifeCycleVariable>, LifeCycleVariable> c,
+      {GenTy? gen, GenTy? getTy}) {
+    final e = elementTy.grtOrT(c, gen: gen, getTy: getTy);
+    if (e == null) return null;
+    Expr s = size;
+    if (s is RefExpr) {
+      s = s.current;
+    }
+    if (s is LiteralExpr) {
+      final raw = LLVMRawValue(s.ident.src);
+      return ArrayTy(e, raw.iValue);
+    }
+
+    return null;
+  }
+
+  @override
+  String toString() {
+    return '[$elementTy; $size]';
   }
 }
 
@@ -1243,10 +1274,9 @@ class ImplTy extends Ty {
 }
 
 class ArrayTy extends Ty {
-  ArrayTy(this.elementType, this.size, this.structTy);
+  ArrayTy(this.elementType, this.size);
   final Ty elementType;
   final int size;
-  final StructTy structTy;
 
   @override
   void analysis(AnalysisContext context) {}
@@ -1268,58 +1298,37 @@ class ArrayLLVMType extends LLVMType {
   final ArrayTy ty;
   @override
   LLVMTypeRef createType(BuildContext c) {
-    return c.arrayType(ty.llvmType.createType(c), ty.size);
+    return c.arrayType(ty.elementType.llvmType.createType(c), ty.size);
   }
 
   @override
   int getBytes(BuildContext c) {
-    return c.pointerSize();
+    return c.typeSize(createType(c));
   }
 
   @override
   StoreVariable createAlloca(BuildContext c, Identifier ident) {
-    var st = c.getStruct(Identifier.builtIn('Array'))!;
-
-    final tIdent = Identifier.builtIn('T');
-    st = st.newInst({tIdent: ty.elementType}, c);
-
-    final type = st.llvmType.createType(c);
     final val = LLVMAllocaDelayVariable(ty, ([alloca]) {
-      return c.alloctor(type, ident.src);
-    }, type);
+      final count =
+          BuiltInTy.usize.llvmType.createValue(str: '${ty.size}').load(c);
+      return c.createArray(ty.elementType.llvmType.createType(c), count,
+          name: ident.src);
+    }, createType(c));
     if (ident.isValid) {
       val.ident = ident;
     }
     return val;
   }
 
-  StoreVariable createArray(BuildContext c) {
-    var st = c.getStruct(Identifier.builtIn('Array'))!;
-    final sizeIdent = Identifier.builtIn('size');
-    final pointerIdent = Identifier.builtIn('pointer');
-    final tIdent = Identifier.builtIn('T');
-    st = st.newInst({tIdent: ty.elementType}, c);
-    final count = BuiltInTy.lit(LitKind.usize)
-        .llvmType
-        .createValue(str: '${ty.size}')
-        .load(c);
-    final arrValue = c.createArray(ty.elementType.llvmType.createType(c), count,
-        name: '_new_arr');
-    final alloca = createAlloca(c, Identifier.none);
-    final size = st.llvmType.getField(alloca, c, sizeIdent);
-    size?.store(c, count);
-    final pointer = st.llvmType.getField(alloca, c, pointerIdent);
-
-    pointer?.store(c, arrValue);
-    return alloca;
+  LLVMConstVariable createArray(BuildContext c, List<LLVMValueRef> values) {
+    final value = c.constArray(ty.elementType.llvmType.createType(c), values);
+    return LLVMConstVariable(value, ty);
   }
 
   Variable getElement(BuildContext c, Variable value, LLVMValueRef index) {
     final indics = <LLVMValueRef>[index];
-    final val =
-        ty.structTy.llvmType.getField(value, c, Identifier.builtIn('pointer'))!;
 
-    final p = val.load(c);
+    final p = value.getBaseValue(c);
 
     final elementTy = ty.elementType.llvmType.createType(c);
 
@@ -1331,9 +1340,7 @@ class ArrayLLVMType extends LLVMType {
   }
 
   Variable toStr(BuildContext c, Variable value) {
-    final val =
-        ty.structTy.llvmType.getField(value, c, Identifier.builtIn('pointer'))!;
-    return val;
+    return LLVMConstVariable(value.getBaseValue(c), BuiltInTy.string);
   }
 }
 

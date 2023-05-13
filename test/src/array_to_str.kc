@@ -48,9 +48,3 @@ fn main() i32 {
 
   0;
 }
-
-impl Array<i8> {
-  fn toStr() cArray<i8> {
-    self.pointer
-  }
-}
