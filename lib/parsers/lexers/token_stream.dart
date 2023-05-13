@@ -21,11 +21,11 @@ class TokenReader {
     while (true) {
       final token = cursor.advanceToken();
 
-      if (token.kind == TokenKind.openBrace) {
+      if (token.kind.isOpen) {
         tokens.add(TokenTree(token: token));
         tokens.add(parse(true));
         continue;
-      } else if (token.kind == TokenKind.closeBrace) {
+      } else if (token.kind.isClose) {
         if (isDelimited) {
           return TokenTree(child: tokens, token: token);
         }

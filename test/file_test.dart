@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 
 void main() {
   test('file', () async {
-    final name = 'main.kc';
+    final name = 'impl_fn.kc';
     await runPrint(() {
       // final name = 'impl_fn.kc';
       final project = Project(testSrcDir.childFile(name).path);

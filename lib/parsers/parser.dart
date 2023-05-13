@@ -221,6 +221,11 @@ class Parser {
   FnDecl parseFnDecl(TokenIterator it, Identifier ident) {
     final params = <GenericParam>[];
     bool isVar = false;
+
+    final preIt = it;
+    if (it.moveNext()) {
+      it = it.current.child.tokenIt;
+    }
     loop(it, () {
       final token = getToken(it);
       final kind = token.kind;
@@ -256,6 +261,7 @@ class Parser {
 
     PathTy? retTy;
 
+    it = preIt;
     eatLfIfNeed(it);
     final state = it.cursor;
     if (it.moveNext()) {
@@ -832,7 +838,8 @@ class Parser {
       final t = getToken(it);
       Expr? lhs;
       if (t.kind == TokenKind.openParen) {
-        lhs = parseExpr(it, runOpInner: runOp);
+        it.moveNext();
+        lhs = parseExpr(it.current.child.tokenIt, runOpInner: runOp);
       } else if (t.kind == TokenKind.literal) {
         final lit = t.literalKind!;
         final lkd = LitKind.from(lit);
@@ -1055,6 +1062,9 @@ class Parser {
     final fields = <FieldExpr>[];
 
     assert(getToken(it).kind == TokenKind.openParen, '${getIdent(it)}');
+    it.moveNext();
+    it = it.current.child.tokenIt;
+
     eatLfIfNeed(it);
     if (it.moveNext()) {
       // eat `)`
@@ -1337,11 +1347,13 @@ class Parser {
     eatLfIfNeed(it);
     final types = parseGenerics(it);
     eatLfIfNeed(it);
-
     it.moveNext(); // (
     if (getToken(it).kind != TokenKind.openParen) {
       return EnumItem(ident, [], types);
     }
+
+    it.moveNext();
+    it = it.current.child.tokenIt;
 
     final fields = <FieldDef>[];
 

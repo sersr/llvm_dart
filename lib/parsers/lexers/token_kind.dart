@@ -121,6 +121,14 @@ enum TokenKind {
     return '${toString()} "$char"';
   }
 
+  bool get isOpen {
+    return this == openBrace || this == openParen || this == openBracket;
+  }
+
+  bool get isClose {
+    return this == closeBrace || this == closeParen || this == closeBracket;
+  }
+
   final String char;
   const TokenKind(this.char);
 

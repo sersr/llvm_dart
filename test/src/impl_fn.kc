@@ -1,15 +1,29 @@
 import 'd.kc';
 
 fn main() i32 {
-    let g = Gen { 3 };
+    let g = Gen(3);
     g.pp();
-    let arr:[Gen; 5] = <Gen>[];
-    let arr2 = Array<Gen>{11,2,3,23,3, size : 55};
+    // let arr:[Gen; 5] = <Gen>[];
+    // let arr2 = Array<Gen>{11,2,3,23,3, size : 55};
+
+    let yy = 10;
+    fn hh() {
+        printf('...%d\n', yy);
+    }
+    hh();
+    let some = Some(11);
+    0
 }
 
 struct Gen {
     y: i32,
 }
+
+enum Option {
+    Some(i32),
+    None(),
+}
+
 
 impl Gen {
     fn pp() {

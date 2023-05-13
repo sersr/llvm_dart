@@ -86,6 +86,7 @@ fn main() i32 {
 	"hello world".print();
 	print('end print');
 	33.ll();
+
 	0;
 }
 
@@ -98,5 +99,13 @@ impl string {
 impl i32 {
 	fn ll() {
 		let x = self;
+	}
+}
+
+type String;
+
+impl String {
+	static fn new() String {
+
 	}
 }

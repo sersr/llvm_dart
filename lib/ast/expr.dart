@@ -1085,10 +1085,25 @@ class FnCallExpr extends Expr with FnCallMixin {
   AnalysisVariable? analysis(AnalysisContext context) {
     final fn = expr.analysis(context);
     if (fn == null) return null;
+    final fnty = fn.ty;
+    if (fnty is StructTy) {
+      final struct = StructExpr.genStruct(fnty, context, params, []);
+      final sortFields = alignParam(
+          params, (p) => struct.fields.indexWhere((e) => e.ident == p.ident));
+
+      final all = <Identifier, AnalysisVariable>{};
+      for (var i = 0; i < sortFields.length; i++) {
+        final f = sortFields[i];
+        final structF = struct.fields[i];
+        final v = f.expr.analysis(context);
+        if (v == null) continue;
+        all[structF.ident] = v;
+      }
+      return context.createStructVal(struct, struct.ident, all);
+    }
     if (fn.ty is SizeOfFn) {
       return context.createVal(BuiltInTy.lit(LitKind.usize), Identifier.none);
     }
-    final fnty = fn.ty;
     if (fnty is! Fn) return null;
     autoAddChild(fnty, params, context);
 
@@ -1750,6 +1765,20 @@ class VariableIdentExpr extends Expr {
     }
 
     if (v != null) return v;
+
+    var struct = context.getStruct(ident);
+    if (struct != null) {
+      if (generics.isNotEmpty) {
+        final gg = <Identifier, Ty>{};
+        for (var i = 0; i < generics.length; i += 1) {
+          final g = generics[i];
+          final gName = struct.generics[i];
+          gg[gName.ident] = g.grt(context);
+        }
+        struct = struct.newInst(gg, context);
+      }
+      return context.createVal(struct, ident);
+    }
     final fn = context.getFn(ident);
     if (fn != null) {
       context.addChild(fn);
