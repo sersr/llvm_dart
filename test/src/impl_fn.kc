@@ -19,13 +19,29 @@ fn main() i32 {
     aa.elementAt(1) = size + 38;
     print('next number: 506');
     print(aa.toStr());
-    
+    let y = Gen { 10 };
 
+		y.print();
+    hello(&y);
     0
 }
 
 struct Gen {
     y: i32,
+}
+
+com Print {
+  fn print();
+}
+
+impl Print:test for Gen {
+  fn print() {
+		print('hello');
+	}
+}
+
+fn hello<T>(y: &T) {
+
 }
 
 enum Option {

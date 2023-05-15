@@ -141,31 +141,31 @@ class Identifier with EquatableMixin {
   }
 }
 
-// foo( ... ), Gen{ ... }
-class GenericParam with EquatableMixin {
-  GenericParam(this.ident, this.ty);
-  final Identifier ident;
+// // foo( ... ), Gen{ ... }
+// class FieldDef with EquatableMixin {
+//   FieldDef(this.ident, this.ty);
+//   final Identifier ident;
 
-  final PathTy ty;
+//   final PathTy ty;
 
-  bool get isRef => ty.isRef;
+//   bool get isRef => ty.isRef;
 
-  @override
-  String toString() {
-    return '$ident: $ty';
-  }
+//   @override
+//   String toString() {
+//     return '$ident: $ty';
+//   }
 
-  @override
-  List<Object?> get props => [ident, ty];
+//   @override
+//   List<Object?> get props => [ident, ty];
 
-  void analysis(AnalysisContext context, Fn fn) {
-    context.pushVariable(
-      ident,
-      context.createVal(fn.getRty(context, ty), ident, ty.kind)
-        ..lifeCycle.isOut = true,
-    );
-  }
-}
+//   void analysis(AnalysisContext context, Fn fn) {
+//     context.pushVariable(
+//       ident,
+//       context.createVal(fn.getRty(context, ty), ident, ty.kind)
+//         ..lifeCycle.isOut = true,
+//     );
+//   }
+// }
 
 class ExprTempValue {
   ExprTempValue(this.variable, this.ty);
@@ -403,10 +403,16 @@ class Block extends BuildMixin with EquatableMixin {
 
 // 函数声明
 class FnDecl with EquatableMixin {
-  FnDecl(this.ident, this.params, this.returnTy, this.isVar);
+  FnDecl(this.ident, this.params, this.generics, this.returnTy, this.isVar);
   final Identifier ident;
-  @protected
-  final List<GenericParam> params;
+
+  FnDecl copywith(List<FieldDef> params) {
+    return FnDecl(ident, params, generics, returnTy, isVar);
+  }
+
+  final List<FieldDef> params;
+  final List<FieldDef> generics;
+
   final PathTy returnTy;
   final bool isVar;
 
@@ -418,7 +424,8 @@ class FnDecl with EquatableMixin {
   @override
   String toString() {
     final isVals = isVar ? ', ...' : '';
-    return '$ident(${params.join(',')}$isVals) -> $returnTy';
+    final g = generics.isNotEmpty ? '<${generics.join(',')}>' : '';
+    return '$ident$g(${params.join(',')}$isVals) -> $returnTy';
   }
 
   @override
@@ -426,7 +433,12 @@ class FnDecl with EquatableMixin {
 
   void analysis(AnalysisContext context, Fn fn) {
     for (var p in params) {
-      p.analysis(context, fn);
+      final t = fn.getRtyOrT(context, p.rawTy);
+      if (t == null) continue;
+      context.pushVariable(
+        ident,
+        context.createVal(t, ident, p.rawTy.kind)..lifeCycle.isOut = true,
+      );
     }
   }
 }
@@ -688,9 +700,10 @@ class FnTy extends Fn {
     final rawDecl = fnSign.fnDecl;
     final cache = rawDecl.params.toList();
     for (var e in extra) {
-      cache.add(GenericParam(e.ident, PathTy.ty(e.ty, [PointerKind.ref])));
+      cache.add(FieldDef(e.ident, PathTy.ty(e.ty, [PointerKind.ref])));
     }
-    final decl = FnDecl(rawDecl.ident, cache, rawDecl.returnTy, rawDecl.isVar);
+    final decl = FnDecl(rawDecl.ident, cache, rawDecl.generics,
+        rawDecl.returnTy, rawDecl.isVar);
     return FnTy(decl)..copy(this);
   }
 
@@ -708,27 +721,27 @@ class FnTy extends Fn {
   }
 }
 
-class Fn extends Ty {
+class Fn extends Ty with NewInst<Fn> {
   Fn(this.fnSign, this.block);
 
   Ty getRetTy(Tys c) {
-    return getRty(c, fnSign.fnDecl.returnTy);
+    return getRetTyOrT(c)!;
   }
 
   Ty? getRetTyOrT(Tys c) {
     return getRtyOrT(c, fnSign.fnDecl.returnTy);
   }
 
-  Ty getRty(Tys c, PathTy ty) {
-    return ty.grt(c, gen: (ident) {
-      final v = grt(c, ident);
+  Ty getRty(Tys c, FieldDef p) {
+    return p.grts(c, (ident) {
+      final v = tys[ident] ?? grt(c, ident);
       return v;
     });
   }
 
   Ty? getRtyOrT(Tys c, PathTy ty) {
     return ty.grtOrT(c, gen: (ident) {
-      final v = grt(c, ident);
+      final v = tys[ident] ?? grt(c, ident);
       return v;
     });
   }
@@ -757,8 +770,9 @@ class Fn extends Ty {
   @override
   List<Object?> get props => [fnSign, block];
 
+  @mustCallSuper
   Ty? grt(Tys c, Identifier ident) {
-    return null;
+    return tys[ident];
   }
 
   final _cache = <ListKey, LLVMConstVariable>{};
@@ -790,7 +804,6 @@ class Fn extends Ty {
     sretVariables = from.sretVariables;
   }
 
-  Fn? _parent;
   Fn get root => _parent ?? this;
 
   LLVMConstVariable? customBuild(BuildContext context,
@@ -867,27 +880,40 @@ class Fn extends Ty {
 
   @override
   late final LLVMFnType llvmType = LLVMFnType(this);
+
+  @override
+  List<FieldDef> get fields => fnSign.fnDecl.params;
+
+  @override
+  Fn newTy(List<FieldDef> fields) {
+    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
+    return Fn(s, block?.clone())..copy(this);
+  }
 }
 
 mixin ImplFnMixin on Fn {
   Ty get ty;
   ImplTy get implty;
 
-  @override
-  ImplFnMixin get root => super.root as ImplFnMixin;
-  final _caches = <Ty, ImplFnMixin>{};
+  ImplFnMixin get rootImpl => _parentImpl ?? this;
+  final _cachesImpl = <Ty, ImplFnMixin>{};
+  ImplFnMixin? _parentImpl;
+
   ImplFnMixin copyFrom(Ty other) {
     if (ty == other) return this;
     _parent ??= root;
 
-    return root._caches.putIfAbsent(
+    return rootImpl._cachesImpl.putIfAbsent(
       other,
       () {
-        return cloneImpl(other).._parent = this;
+        return cloneImpl(other).._parentImpl = this;
         // return ImplFn(fnSign, block?.clone(), other, implty).._parent = root;
       },
     );
   }
+
+  @override
+  ImplFnMixin newTy(List<FieldDef> fields);
 
   @override
   void pushFnOnBuild(Tys context) {}
@@ -902,6 +928,10 @@ mixin ImplFnMixin on Fn {
 
   @override
   Ty? grt(Tys c, Identifier ident) {
+    final nTy = super.grt(c, ident);
+    if (nTy != null) {
+      return nTy;
+    }
     final ty = this.ty;
     if (ty is! StructTy) return null;
     if (ty.generics.isEmpty) return null;
@@ -931,6 +961,12 @@ class ImplFn extends Fn with ImplFnMixin {
   final ImplTy implty;
 
   @override
+  ImplFnMixin newTy(List<FieldDef> fields) {
+    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
+    return ImplFn(s, block?.clone(), ty, implty)..copy(this);
+  }
+
+  @override
   ImplFn cloneImpl(Ty other) {
     return ImplFn(fnSign, block?.clone(), other, implty);
   }
@@ -951,6 +987,12 @@ class ImplStaticFn extends Fn with ImplFnMixin {
   final ImplTy implty;
 
   @override
+  ImplFnMixin newTy(List<FieldDef> fields) {
+    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
+    return ImplStaticFn(s, block, ty, implty)..copy(this);
+  }
+
+  @override
   ImplStaticFn cloneImpl(Ty other) {
     return ImplStaticFn(fnSign, block?.clone(), other, implty);
   }
@@ -967,7 +1009,7 @@ class FieldDef {
     return _ty.grt(c);
   }
 
-  Ty? grts(Tys c, GenTy gen) {
+  Ty grts(Tys c, GenTy gen) {
     if (_rty != null) return _rty!;
     return _ty.grt(c, gen: gen);
   }
@@ -984,7 +1026,7 @@ class FieldDef {
   List<PointerKind> get kinds => _ty.kind;
   @override
   String toString() {
-    return '$ident: ${kinds.join('')}$_ty';
+    return '$ident: $_ty';
   }
 
   bool? _isRef;
@@ -993,34 +1035,34 @@ class FieldDef {
 
 typedef GenTy = Ty? Function(Identifier ident);
 
-class StructTy extends Ty with EquatableMixin implements PathInterFace {
-  StructTy(this.ident, this.fields, this.generics);
-  final Identifier ident;
-  final List<FieldDef> fields;
-
-  final List<FieldDef> generics;
-
-  final _tyLists = <ListKey, StructTy>{};
+mixin NewInst<T> {
+  List<FieldDef> get fields;
 
   Map<Identifier, Ty>? _tys;
-  @override
-  Map<Identifier, Ty> get tys => _tys ?? const {};
 
-  StructTy? _parent;
-  StructTy get parentOrCurrent => _parent ?? this;
-  StructTy newInst(Map<Identifier, Ty> tys, Tys c, {GenTy? gen}) {
-    _parent ??= this;
+  Map<Identifier, Ty> get tys => _tys ?? const {};
+  final _tyLists = <ListKey, T>{};
+
+  T? _parent;
+  T get parentOrCurrent => _parent ?? this as T;
+  T newInst(Map<Identifier, Ty> tys, Tys c, {GenTy? gen}) {
+    _parent ??= this as T;
     if (tys.isEmpty) return _parent!;
     final key = ListKey(tys);
-    return _parent!._tyLists.putIfAbsent(key, () {
+    return (_parent as NewInst)._tyLists.putIfAbsent(key, () {
       final newFields = <FieldDef>[];
       for (var f in fields) {
         final nf = f.clone();
         final g = f.grts(c, (ident) {
           final data = tys[ident];
           if (data != null) {
-            // Log.w(data);
-            return data;
+            var d = data;
+            for (var k in f.kinds) {
+              if (k == PointerKind.ref && d is RefTy) {
+                d = d.parent;
+              }
+            }
+            return d;
           }
           return gen?.call(ident);
         });
@@ -1028,10 +1070,30 @@ class StructTy extends Ty with EquatableMixin implements PathInterFace {
         newFields.add(nf);
       }
 
-      return StructTy(ident, newFields, generics)
+      final ty = newTy(newFields);
+      (ty as NewInst)
         .._parent = _parent
         .._tys = tys;
+      return ty;
     });
+  }
+
+  T newTy(List<FieldDef> fields);
+}
+
+class StructTy extends Ty
+    with EquatableMixin, NewInst<StructTy>
+    implements PathInterFace {
+  StructTy(this.ident, this.fields, this.generics);
+  final Identifier ident;
+  @override
+  final List<FieldDef> fields;
+
+  final List<FieldDef> generics;
+
+  @override
+  StructTy newTy(List<FieldDef> fields) {
+    return StructTy(ident, fields, generics);
   }
 
   @override
@@ -1045,7 +1107,7 @@ class StructTy extends Ty with EquatableMixin implements PathInterFace {
   }
 
   @override
-  List<Object?> get props => [ident, fields];
+  List<Object?> get props => [ident, fields, _tys];
 
   @override
   void build(BuildContext context) {

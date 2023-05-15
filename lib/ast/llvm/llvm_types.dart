@@ -250,7 +250,7 @@ class LLVMFnType extends LLVMType {
     }
 
     for (var p in params) {
-      final realTy = fn.getRty(c, p.ty);
+      final realTy = fn.getRty(c, p);
       LLVMTypeRef ty;
       if (!p.isRef) {
         ty = realTy.llvmType.createType(c);

@@ -1,0 +1,26 @@
+import 'd.kc';
+
+struct Gen {
+    y: i32,
+    s: string,
+}
+
+com Print {
+  fn printx();
+}
+
+impl Print:test for Gen {
+  fn printx() {
+    print(&self.s);
+	}
+}
+
+fn hello<T>(y: &T) {
+  y.printx();
+}
+
+fn main() i32 {
+  let g = Gen { 10 , "hello"};
+  hello(&g);
+  0;
+}

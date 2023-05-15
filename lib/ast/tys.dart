@@ -299,11 +299,7 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
   }
 
   Ty? getTyIgnoreImpl(Identifier i) {
-    return getStruct(i) ??
-        getComponent(i) ??
-        getFn(i) ??
-        getEnum(i) ??
-        getCty(i);
+    return getStruct(i) ?? getFn(i) ?? getEnum(i) ?? getCty(i);
   }
 
   void errorExpr(UnknownExpr unknownExpr) {}

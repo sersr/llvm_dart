@@ -13,6 +13,7 @@ class SizeOfFn extends Fn {
             FnDecl(
               Identifier.none,
               [],
+              [],
               PathTy.ty(BuiltInTy.lit(LitKind.usize)),
               false,
             ),

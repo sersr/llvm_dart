@@ -480,27 +480,29 @@ class StructExpr extends Expr {
     return buildTupeOrStruct(struct, context, ident, fields, generics, isNew);
   }
 
-  static StructTy genStruct(
-    StructTy struct,
+  static T genStruct<T>(
+    T t,
     Tys context,
     List<FieldExpr> params,
-    List<PathTy> genericsInst,
-  ) {
+    List<PathTy> genericsInst, {
+    required List<FieldDef> fields,
+    required List<FieldDef> generics,
+    required T Function(Map<Identifier, Ty> map, Tys) newInst,
+  }) {
     if (genericsInst.isNotEmpty) {
       final gMap = <Identifier, Ty>{};
       for (var i = 0; i < genericsInst.length; i += 1) {
         final gg = genericsInst[i];
-        final g = struct.generics[i];
+        final g = generics[i];
         Log.w('$g $gg ${gg.generics}');
         gMap[g.ident] = gg.grt(context);
       }
       // Log.w('gg $gMap');
-      struct = struct.newInst(gMap, context);
-    } else if (struct.generics.isNotEmpty) {
+      t = newInst(gMap, context);
+    } else if (generics.isNotEmpty) {
       final gMap = <Identifier, Ty>{};
 
-      final fields = struct.fields;
-      final sg = struct.generics;
+      final sg = generics;
       final sortFields = alignParam(
           params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
@@ -550,9 +552,9 @@ class StructExpr extends Expr {
       }
 
       // Log.w('${struct.ident}: $gMap');
-      struct = struct.newInst(gMap, context);
+      t = newInst(gMap, context);
     }
-    return struct;
+    return t;
   }
 
   static ExprTempValue? buildTupeOrStruct(
@@ -562,7 +564,15 @@ class StructExpr extends Expr {
       List<FieldExpr> params,
       List<PathTy> genericsInst,
       bool isNew) {
-    struct = genStruct(struct, context, params, genericsInst);
+    struct = genStruct(
+      struct,
+      context,
+      params,
+      genericsInst,
+      fields: struct.fields,
+      generics: struct.generics,
+      newInst: struct.newInst,
+    );
     final structType = struct.llvmType.createType(context);
     LLVMValueRef create([StoreVariable? alloca]) {
       var value = alloca;
@@ -612,7 +622,15 @@ class StructExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     var struct = context.getStruct(ident);
     if (struct == null) return null;
-    struct = genStruct(struct, context, fields, generics);
+    struct = genStruct(
+      struct,
+      context,
+      fields,
+      generics,
+      fields: struct.fields,
+      generics: struct.generics,
+      newInst: struct.newInst,
+    );
 
     final sortFields = alignParam(
         fields, (p) => struct!.fields.indexWhere((e) => e.ident == p.ident));
@@ -889,6 +907,11 @@ mixin FnCallMixin {
       GenTy? gen,
       Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>>? map) {
+    fn = StructExpr.genStruct(fn, context, params, [],
+        fields: fn.fnSign.fnDecl.params,
+        generics: fn.fnSign.fnDecl.generics, newInst: (g, c) {
+      return fn;
+    });
     // ignore: invalid_use_of_protected_member
     final fnParams = fn.fnSign.fnDecl.params;
     final fnExtern = fn.extern;
@@ -917,7 +940,7 @@ mixin FnCallMixin {
       final p = sortFields[i];
       Ty? c;
       if (i < fnParams.length) {
-        c = fn.getRty(context, fnParams[i].ty);
+        c = fn.getRty(context, fnParams[i]);
       }
       final v = LiteralExpr.run(() {
         return p.build(context)?.variable;
@@ -1078,7 +1101,13 @@ class FnCallExpr extends Expr with FnCallMixin {
     }
     if (fn is! Fn) return null;
 
-    return fnCall(context, fn, params, variable);
+    final fnnn = StructExpr.genStruct(fn, context, params, [],
+        fields: fn.fnSign.fnDecl.params,
+        generics: fn.fnSign.fnDecl.generics, newInst: (g, c) {
+      return fn.newInst(g, c);
+    });
+
+    return fnCall(context, fnnn, params, variable);
   }
 
   @override
@@ -1087,7 +1116,8 @@ class FnCallExpr extends Expr with FnCallMixin {
     if (fn == null) return null;
     final fnty = fn.ty;
     if (fnty is StructTy) {
-      final struct = StructExpr.genStruct(fnty, context, params, []);
+      final struct = StructExpr.genStruct(fnty, context, params, [],
+          fields: fnty.fields, generics: fnty.generics, newInst: fnty.newInst);
       final sortFields = alignParam(
           params, (p) => struct.fields.indexWhere((e) => e.ident == p.ident));
 
@@ -1105,10 +1135,16 @@ class FnCallExpr extends Expr with FnCallMixin {
       return context.createVal(BuiltInTy.lit(LitKind.usize), Identifier.none);
     }
     if (fnty is! Fn) return null;
-    autoAddChild(fnty, params, context);
+    final fnnn = StructExpr.genStruct(fnty, context, params, [],
+        fields: fnty.fnSign.fnDecl.params,
+        generics: fnty.fnSign.fnDecl.generics, newInst: (g, c) {
+      return fnty.newInst(g, c);
+    });
+
+    autoAddChild(fnnn, params, context);
 
     return context.createVal(
-        fnty.fnSign.fnDecl.returnTy.grt(context), Identifier.none);
+        fnnn.fnSign.fnDecl.returnTy.grt(context), Identifier.none);
   }
 }
 
@@ -1158,7 +1194,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
     if (val == null) return null;
 
-    var valTy = variable.ty;
+    var valTy = val.ty;
 
     if (valTy is ArrayTy) {
       if (fnName == 'elementAt' && params.isNotEmpty) {
@@ -1273,6 +1309,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
 
     final impl = context.getImplForStruct(structTy, ident);
+
     Fn? fn = impl?.getFn(ident)?.copyFrom(structTy);
     if (fn == null) {
       final field =
@@ -1284,6 +1321,12 @@ class MethodCallExpr extends Expr with FnCallMixin {
       }
     }
     if (fn == null) return null;
+    fn = StructExpr.genStruct(fn, context, params, [],
+        fields: fn.fnSign.fnDecl.params,
+        generics: fn.fnSign.fnDecl.generics, newInst: (g, c) {
+      return fn!.newInst(g, c);
+    });
+
     fn.analysis(context.getLastFnContext() ?? context);
 
     // final fnContext = context.getLastFnContext();
@@ -1685,6 +1728,20 @@ extension ListPointerKind on List<PointerKind> {
     return refCount > 0;
   }
 
+  List<PointerKind> drefRef() {
+    final list = <PointerKind>[];
+    for (var v in this) {
+      if (v == PointerKind.ref) {
+        list.add(PointerKind.deref);
+      } else if (v == PointerKind.deref) {
+        list.add(PointerKind.ref);
+      } else {
+        list.add(v);
+      }
+    }
+    return list;
+  }
+
   Ty resolveTy(Ty baseTy) {
     for (var kind in this) {
       if (kind == PointerKind.ref) {
@@ -1745,11 +1802,12 @@ class VariableIdentExpr extends Expr {
       if (fn is SizeOfFn) {
         return ExprTempValue(null, fn);
       }
-      final fnContext = context.getFnContext(ident);
-      final value = fn.build(fnContext!);
-      if (value != null) {
-        return ExprTempValue(value, value.ty);
-      }
+      return ExprTempValue(null, fn);
+      // final fnContext = context.getFnContext(ident);
+      // final value = fn.build(fnContext!);
+      // if (value != null) {
+      //   return ExprTempValue(value, value.ty);
+      // }
     }
     return null;
   }

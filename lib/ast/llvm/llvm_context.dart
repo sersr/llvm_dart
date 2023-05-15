@@ -189,7 +189,7 @@ class BuildContext
       final p = params[i];
 
       final fnParam = llvm.LLVMGetParam(fn, i + index);
-      var realTy = fnty.getRty(this, p.ty);
+      var realTy = fnty.getRty(this, p);
       if (realTy is FnTy) {
         final extra = map[p.ident];
         if (extra != null) {
@@ -249,7 +249,6 @@ class BuildContext
       // final a = alloca = ty.llvmType.createAlloca(this, ident);
       setName(a.alloca, ident.src);
       a.isTemp = false;
-      a.store(this, fnParam);
     }
     if (alloca is StoreVariable) alloca.isTemp = false;
     pushVariable(ident, alloca);

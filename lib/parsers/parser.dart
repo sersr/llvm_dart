@@ -121,18 +121,19 @@ class Parser {
     PathTy? com = parsePathTy(it);
     PathTy? label;
     PathTy? ty;
+
+    eatLfIfNeed(it);
     if (it.moveNext()) {
-      if (getKey(it) == Key.kFor) {
+      final t = getToken(it);
+      if (t.kind == TokenKind.colon) {
         eatLfIfNeed(it);
-        if (!it.moveNext()) return null;
-        final t = getToken(it);
-        if (t.kind == TokenKind.colon) {
-          eatLfIfNeed(it);
-          if (!it.moveNext()) {
-            label = parsePathTy(it);
-          }
-        }
+        label = parsePathTy(it);
       } else {
+        it.moveBack();
+      }
+    }
+    if (it.moveNext()) {
+      if (getKey(it) != Key.kFor) {
         it.moveBack();
         ty = com;
         com = null;
@@ -219,8 +220,16 @@ class Parser {
   }
 
   FnDecl parseFnDecl(TokenIterator it, Identifier ident) {
-    final params = <GenericParam>[];
+    final params = <FieldDef>[];
     bool isVar = false;
+    List<FieldDef> generics = const [];
+    if (getToken(it).kind == TokenKind.lt) {
+      it.moveBack();
+      generics = parseGenerics(it);
+      if (getToken(it).kind == TokenKind.gt) {
+        it.moveNext();
+      }
+    }
 
     final preIt = it;
     if (it.moveNext()) {
@@ -237,7 +246,7 @@ class Parser {
           assert(it.current.token.kind == TokenKind.colon);
           final ty = parsePathTy(it);
           if (ty != null) {
-            final param = GenericParam(ident, ty);
+            final param = FieldDef(ident, ty);
             params.add(param);
           }
         }
@@ -277,7 +286,7 @@ class Parser {
 
     retTy ??= PathTy.ty(BuiltInTy.kVoid);
 
-    return FnDecl(ident, params, retTy, isVar);
+    return FnDecl(ident, params, generics, retTy, isVar);
   }
 
   Fn? parseFn(TokenIterator it) {
