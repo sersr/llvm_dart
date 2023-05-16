@@ -480,15 +480,11 @@ class StructExpr extends Expr {
     return buildTupeOrStruct(struct, context, ident, fields, generics, isNew);
   }
 
-  static T genStruct<T>(
-    T t,
-    Tys context,
-    List<FieldExpr> params,
-    List<PathTy> genericsInst, {
-    required List<FieldDef> fields,
-    required List<FieldDef> generics,
-    required T Function(Map<Identifier, Ty> map, Tys) newInst,
-  }) {
+  static T genStruct<T>(NewInst<T> t, Tys context, List<FieldExpr> params,
+      List<PathTy> genericsInst) {
+    final fields = t.fields;
+    final generics = t.generics;
+    var nt = t as T;
     if (genericsInst.isNotEmpty) {
       final gMap = <Identifier, Ty>{};
       for (var i = 0; i < genericsInst.length; i += 1) {
@@ -498,7 +494,7 @@ class StructExpr extends Expr {
         gMap[g.ident] = gg.grt(context);
       }
       // Log.w('gg $gMap');
-      t = newInst(gMap, context);
+      nt = t.newInst(gMap, context);
     } else if (generics.isNotEmpty) {
       final gMap = <Identifier, Ty>{};
 
@@ -552,9 +548,9 @@ class StructExpr extends Expr {
       }
 
       // Log.w('${struct.ident}: $gMap');
-      t = newInst(gMap, context);
+      nt = t.newInst(gMap, context);
     }
-    return t;
+    return nt;
   }
 
   static ExprTempValue? buildTupeOrStruct(
@@ -564,15 +560,7 @@ class StructExpr extends Expr {
       List<FieldExpr> params,
       List<PathTy> genericsInst,
       bool isNew) {
-    struct = genStruct(
-      struct,
-      context,
-      params,
-      genericsInst,
-      fields: struct.fields,
-      generics: struct.generics,
-      newInst: struct.newInst,
-    );
+    struct = genStruct(struct, context, params, genericsInst);
     final structType = struct.llvmType.createType(context);
     LLVMValueRef create([StoreVariable? alloca]) {
       var value = alloca;
@@ -622,15 +610,7 @@ class StructExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     var struct = context.getStruct(ident);
     if (struct == null) return null;
-    struct = genStruct(
-      struct,
-      context,
-      fields,
-      generics,
-      fields: struct.fields,
-      generics: struct.generics,
-      newInst: struct.newInst,
-    );
+    struct = genStruct(struct, context, fields, generics);
 
     final sortFields = alignParam(
         fields, (p) => struct!.fields.indexWhere((e) => e.ident == p.ident));
@@ -907,11 +887,7 @@ mixin FnCallMixin {
       GenTy? gen,
       Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>>? map) {
-    fn = StructExpr.genStruct(fn, context, params, [],
-        fields: fn.fnSign.fnDecl.params,
-        generics: fn.fnSign.fnDecl.generics, newInst: (g, c) {
-      return fn;
-    });
+    fn = StructExpr.genStruct(fn, context, params, []);
     // ignore: invalid_use_of_protected_member
     final fnParams = fn.fnSign.fnDecl.params;
     final fnExtern = fn.extern;
@@ -1101,11 +1077,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     }
     if (fn is! Fn) return null;
 
-    final fnnn = StructExpr.genStruct(fn, context, params, [],
-        fields: fn.fnSign.fnDecl.params,
-        generics: fn.fnSign.fnDecl.generics, newInst: (g, c) {
-      return fn.newInst(g, c);
-    });
+    final fnnn = StructExpr.genStruct(fn, context, params, []);
 
     return fnCall(context, fnnn, params, variable);
   }
@@ -1116,8 +1088,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     if (fn == null) return null;
     final fnty = fn.ty;
     if (fnty is StructTy) {
-      final struct = StructExpr.genStruct(fnty, context, params, [],
-          fields: fnty.fields, generics: fnty.generics, newInst: fnty.newInst);
+      final struct = StructExpr.genStruct(fnty, context, params, []);
       final sortFields = alignParam(
           params, (p) => struct.fields.indexWhere((e) => e.ident == p.ident));
 
@@ -1135,11 +1106,7 @@ class FnCallExpr extends Expr with FnCallMixin {
       return context.createVal(BuiltInTy.lit(LitKind.usize), Identifier.none);
     }
     if (fnty is! Fn) return null;
-    final fnnn = StructExpr.genStruct(fnty, context, params, [],
-        fields: fnty.fnSign.fnDecl.params,
-        generics: fnty.fnSign.fnDecl.generics, newInst: (g, c) {
-      return fnty.newInst(g, c);
-    });
+    final fnnn = StructExpr.genStruct(fnty, context, params, []);
 
     autoAddChild(fnnn, params, context);
 
@@ -1321,11 +1288,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
       }
     }
     if (fn == null) return null;
-    fn = StructExpr.genStruct(fn, context, params, [],
-        fields: fn.fnSign.fnDecl.params,
-        generics: fn.fnSign.fnDecl.generics, newInst: (g, c) {
-      return fn!.newInst(g, c);
-    });
+    fn = StructExpr.genStruct(fn, context, params, []);
 
     fn.analysis(context.getLastFnContext() ?? context);
 

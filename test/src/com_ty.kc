@@ -11,7 +11,7 @@ com Print {
 
 impl Print:test for Gen {
   fn printx() {
-    print(&self.s);
+    print(self.s);
 	}
 }
 
@@ -20,7 +20,7 @@ fn hello<T>(y: &T) {
 }
 
 fn main() i32 {
-  let g = Gen { 10 , "hello"};
+  let g = Gen { 10 , &"hello"};
   hello(&g);
   0;
 }

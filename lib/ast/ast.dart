@@ -883,6 +883,8 @@ class Fn extends Ty with NewInst<Fn> {
 
   @override
   List<FieldDef> get fields => fnSign.fnDecl.params;
+  @override
+  List<FieldDef> get generics => fnSign.fnDecl.generics;
 
   @override
   Fn newTy(List<FieldDef> fields) {
@@ -1037,6 +1039,7 @@ typedef GenTy = Ty? Function(Identifier ident);
 
 mixin NewInst<T> {
   List<FieldDef> get fields;
+  List<FieldDef> get generics;
 
   Map<Identifier, Ty>? _tys;
 
@@ -1089,6 +1092,7 @@ class StructTy extends Ty
   @override
   final List<FieldDef> fields;
 
+  @override
   final List<FieldDef> generics;
 
   @override
