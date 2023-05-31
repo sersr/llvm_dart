@@ -405,7 +405,12 @@ class RetExpr extends Expr {
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    final val = expr?.analysis(context);
+    if (expr == null) return null;
+    return analysisAll(context, expr!);
+  }
+
+  static AnalysisVariable? analysisAll(AnalysisContext context, Expr expr) {
+    final val = expr.analysis(context);
     final current = context.getLastFnContext();
     if (val != null && current != null) {
       final valLife = val.lifeCycle.fnContext;
@@ -573,8 +578,8 @@ class StructExpr extends Expr {
       if (value == null) {
         if (isNew) {
           value = struct.llvmType.createMalloc(context, ident);
-          final fnContext = context.getLastFnContext();
-          fnContext?.addFree(value);
+          // final fnContext = context.getLastFnContext();
+          // fnContext?.addFree(value);
         } else {
           value = struct.llvmType.createAlloca(context, ident);
         }
@@ -973,7 +978,11 @@ mixin FnCallMixin {
     final fnType = fn.llvmType.createFnType(context, extra);
 
     final fnAlloca = fn.build(context, extra, map);
-    final fnValue = fnAlloca?.load(context) ?? fnVariable?.load(context);
+    LLVMValueRef? fnValue;
+    if (fnVariable is! UnimplVariable) {
+      fnValue = fnVariable?.load(context);
+    }
+    fnValue ??= fnAlloca?.load(context);
     if (fnValue == null) return null;
 
     final ret = llvm.LLVMBuildCall2(
@@ -989,8 +998,7 @@ mixin FnCallMixin {
     }
 
     if (retTy is RefTy) {
-      final v = LLVMRefAllocaVariable.from(ret, retTy.parent, context);
-      v.isTemp = false;
+      final v = LLVMConstVariable(ret, retTy);
       return ExprTempValue(v, v.ty);
     } else if (retTy is StructTy) {
       final v = retTy.llvmType.createAlloca(context, Identifier.none);
@@ -1107,7 +1115,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     }
     if (fnty is! Fn) return null;
     final fnnn = StructExpr.genStruct(fnty, context, params, []);
-
+    fnnn.analysis(context);
     autoAddChild(fnnn, params, context);
 
     return context.createVal(
@@ -1162,6 +1170,9 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (val == null) return null;
 
     var valTy = val.ty;
+    if (valTy is RefTy) {
+      valTy = valTy.parent;
+    }
 
     if (valTy is ArrayTy) {
       if (fnName == 'elementAt' && params.isNotEmpty) {
@@ -1735,6 +1746,11 @@ class VariableIdentExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
+    if (ident.src == 'NULL') {
+      final v = LLVMConstVariable(
+          llvm.LLVMConstPointerNull(context.pointer()), BuiltInTy.kVoid);
+      return ExprTempValue(v, v.ty);
+    }
     final val = context.getVariable(ident);
     if (val != null) {
       if (val is Deref) {
@@ -1760,17 +1776,36 @@ class VariableIdentExpr extends Expr {
       return ExprTempValue(TyVariable(struct), struct);
     }
 
-    final fn = context.getFn(ident);
+    var fn = context.getFn(ident);
     if (fn != null) {
       if (fn is SizeOfFn) {
         return ExprTempValue(null, fn);
       }
+
+      var enableBuild = false;
+      if (generics.isNotEmpty) {
+        final gg = <Identifier, Ty>{};
+        for (var i = 0; i < generics.length; i += 1) {
+          final g = generics[i];
+          final gName = fn.generics[i];
+          gg[gName.ident] = g.grt(context);
+        }
+        fn = fn.newInst(gg, context);
+        enableBuild = true;
+      }
+
+      if (fn.generics.isEmpty) {
+        enableBuild = true;
+      }
+
+      if (enableBuild) {
+        final fnContext = context.getFnContext(ident);
+        final value = fn.build(fnContext!);
+        if (value != null) {
+          return ExprTempValue(value, value.ty);
+        }
+      }
       return ExprTempValue(null, fn);
-      // final fnContext = context.getFnContext(ident);
-      // final value = fn.build(fnContext!);
-      // if (value != null) {
-      //   return ExprTempValue(value, value.ty);
-      // }
     }
     return null;
   }
@@ -1799,10 +1834,18 @@ class VariableIdentExpr extends Expr {
       }
       return context.createVal(struct, ident);
     }
-    final fn = context.getFn(ident);
+    var fn = context.getFn(ident);
     if (fn != null) {
       context.addChild(fn);
-
+      if (generics.isNotEmpty) {
+        final gg = <Identifier, Ty>{};
+        for (var i = 0; i < generics.length; i += 1) {
+          final g = generics[i];
+          final gName = fn.generics[i];
+          gg[gName.ident] = g.grt(context);
+        }
+        fn = fn.newInst(gg, context);
+      }
       return context.createVal(fn, ident);
     }
 

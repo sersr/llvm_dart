@@ -48,6 +48,7 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
       if (fnContext != currentFn) {
         currentFn?.catchVariables.add(last);
       }
+      last.updateLifeCycle(ident);
       return last;
     }
 
@@ -77,6 +78,7 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   void addChild(Fn target) {
     final fn = getLastFnContext();
     if (fn == null) return;
+    if (fn._currentFn == target) return;
     fn._catchFns.add(() {
       final c = <AnalysisVariable>{};
       for (var v in target.variables) {
@@ -95,10 +97,12 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
     if (list != null) {
       var last = list.last;
       for (var val in list.reversed) {
-        last = list.last;
+        last = val;
         if (val.ident.start > ident.start) continue;
-        return val;
+        break;
       }
+      last.updateLifeCycle(ident);
+
       return last;
     }
     final fnContext = getLastFnContext();

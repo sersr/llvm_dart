@@ -16,7 +16,7 @@ void main() {
       project.analysis();
       project.printAst();
       project.printLifeCycle((v) {
-        Log.w('$v', showTag: false);
+        Log.w(v.lifeCycyle?.light, showTag: false);
       });
       project.build();
       return runNativeCode(run: false, args: 'hello world');

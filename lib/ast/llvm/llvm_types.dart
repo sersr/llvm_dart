@@ -44,7 +44,7 @@ abstract class LLVMType {
     // final val = LLVMAllocaVariable(ty, v, type);
     final type = createType(c);
     final val = LLVMAllocaDelayVariable(ty, ([alloca]) {
-      return c.alloctor(type, ident.src);
+      return c.alloctor(type, ty: ty, name: ident.src);
     }, type);
     if (ident.isValid) {
       val.ident = ident;
@@ -197,7 +197,7 @@ class LLVMFnType extends LLVMType {
   @override
   StoreVariable createAlloca(BuildContext c, Identifier ident) {
     final type = c.pointer();
-    final v = c.createAlloca(type, name: ident.src);
+    final v = c.alloctor(type, ty: ty, name: ident.src);
     return LLVMAllocaVariable(ty, v, type);
   }
 
@@ -294,6 +294,9 @@ class LLVMFnType extends LLVMType {
   }
 
   late final _cacheFns = <ListKey, LLVMConstVariable>{};
+
+  bool contains(Set<AnalysisVariable>? key) =>
+      _cacheFns.containsKey(ListKey(key?.toList() ?? []));
 
   LLVMConstVariable createFunction(BuildContext c,
       [Set<AnalysisVariable>? variables]) {
@@ -477,7 +480,7 @@ class LLVMStructType extends LLVMType {
     final size = getCBytes(c);
     if (size <= 16) {
       final loadTy = c.getStructExternType(size);
-      final arr = c.createAlloca(loadTy, name: 'struct_arr');
+      final arr = c.alloctor(loadTy, ty: ty, name: 'struct_arr');
       llvm.LLVMBuildMemCpy(
           c.builder, arr, 4, alloca.getBaseValue(c), 4, c.constI64(size));
       return llvm.LLVMBuildLoad2(c.builder, loadTy, arr, unname);
@@ -489,14 +492,14 @@ class LLVMStructType extends LLVMType {
   LLVMAllocaDelayVariable createAlloca(BuildContext c, Identifier ident) {
     final type = createType(c);
     return LLVMAllocaDelayVariable(ty, ([alloca]) {
-      return c.alloctor(type, ident.src);
+      return c.alloctor(type, ty: ty, name: ident.src);
     }, type);
     // return LLVMAllocaVariable(ty, alloca, type);
   }
 
   LLVMAllocaVariable _createExternAlloca(BuildContext c, Identifier ident) {
     final type = cCreateType(c);
-    final alloca = c.alloctor(type, ident.src);
+    final alloca = c.alloctor(type, ty: ty, name: ident.src);
     return LLVMAllocaVariable(ty, alloca, type);
   }
 
@@ -521,7 +524,7 @@ class LLVMStructType extends LLVMType {
       /// extern "C"
       final size = getBytes(c);
       final loadTy = c.getStructExternType(size); // array
-      final arrTy = c.alloctor(loadTy, 'param_$ident');
+      final arrTy = c.alloctor(loadTy, ty: ty, name: 'param_$ident');
       llvm.LLVMBuildStore(c.builder, value, arrTy);
 
       // copy
@@ -634,7 +637,7 @@ class LLVMRefType extends LLVMType {
   StoreVariable createAlloca(BuildContext c, Identifier ident,
       {bool isPointer = true}) {
     final type = createType(c);
-    final v = c.createAlloca(type, name: ident.src);
+    final v = c.alloctor(type, ty: ty, name: ident.src);
     if (isPointer) {
       return LLVMRefAllocaVariable(ty, v);
     } else {
@@ -883,7 +886,7 @@ class LLVMEnumItemType extends LLVMStructType {
     final type = pTy.createType(c);
     return LLVMAllocaDelayVariable(ty, ([alloca]) {
       final ctype = createType(c);
-      final alloca = c.alloctor(type, ident.src);
+      final alloca = c.alloctor(type, ty: ty, name: ident.src);
       final indices = [c.constI32(0), c.constI32(0)];
       final first = llvm.LLVMBuildInBoundsGEP2(
           c.builder, ctype, alloca, indices.toNative(), indices.length, unname);

@@ -111,6 +111,8 @@ class Identifier with EquatableMixin {
       lineStart = src.substring(0, start).lastIndexOf('\n');
       if (lineStart != -1) {
         lineStart += 1;
+      } else {
+        lineStart = 0;
       }
     }
     var lineEnd = src.substring(start).indexOf('\n');
@@ -119,6 +121,7 @@ class Identifier with EquatableMixin {
     } else {
       lineEnd += start;
     }
+
     if (lineStart != -1) {
       final vs = src.substring(lineStart, lineEnd);
       final s = ' ' * (start - lineStart);
@@ -391,9 +394,14 @@ class Block extends BuildMixin with EquatableMixin {
       }
     }
 
-    for (var stmt in stmts) {
+    for (var i = 0; i < stmts.length; i += 1) {
+      final stmt = stmts[i];
       if (fnStmt.contains(stmt)) continue;
       stmt.analysis(context);
+      if (i == stmts.length - 1 && stmt is ExprStmt) {
+        final expr = stmt.expr;
+        RetExpr.analysisAll(context, expr);
+      }
     }
     for (var fn in fnStmt) {
       fn.analysis(context);
@@ -433,11 +441,10 @@ class FnDecl with EquatableMixin {
 
   void analysis(AnalysisContext context, Fn fn) {
     for (var p in params) {
-      final t = fn.getRtyOrT(context, p.rawTy);
-      if (t == null) continue;
+      final t = fn.getRty(context, p);
       context.pushVariable(
-        ident,
-        context.createVal(t, ident, p.rawTy.kind)..lifeCycle.isOut = true,
+        p.ident,
+        context.createVal(t, p.ident, p.rawTy.kind)..lifeCycle.isOut = true,
       );
     }
   }
@@ -724,12 +731,14 @@ class FnTy extends Fn {
 class Fn extends Ty with NewInst<Fn> {
   Fn(this.fnSign, this.block);
 
+  Identifier get fnName => fnSign.fnDecl.ident;
+
   Ty getRetTy(Tys c) {
     return getRetTyOrT(c)!;
   }
 
   Ty? getRetTyOrT(Tys c) {
-    return getRtyOrT(c, fnSign.fnDecl.returnTy);
+    return _getRtyOrT(c, fnSign.fnDecl.returnTy);
   }
 
   Ty getRty(Tys c, FieldDef p) {
@@ -739,7 +748,14 @@ class Fn extends Ty with NewInst<Fn> {
     });
   }
 
-  Ty? getRtyOrT(Tys c, PathTy ty) {
+  Ty? getRtyOrT(Tys c, FieldDef p) {
+    return p.grtOrT(c, gen: (ident) {
+      final v = tys[ident] ?? grt(c, ident);
+      return v;
+    });
+  }
+
+  Ty? _getRtyOrT(Tys c, PathTy ty) {
     return ty.grtOrT(c, gen: (ident) {
       final v = tys[ident] ?? grt(c, ident);
       return v;
@@ -855,6 +871,9 @@ class Fn extends Ty with NewInst<Fn> {
   void analysis(AnalysisContext context) {
     if (_anaysised) return;
     _anaysised = true;
+    if (generics.isNotEmpty && tys.isEmpty) {
+      return;
+    }
 
     pushFnOnBuild(context);
     final child = context.childContext();
@@ -977,6 +996,7 @@ class ImplFn extends Fn with ImplFnMixin {
   void analysisContext(AnalysisContext context) {
     final ident = Identifier.builtIn('self');
     final v = context.createVal(ty, ident);
+    v.lifeCycle.isOut = true;
     context.pushVariable(ident, v);
   }
 }

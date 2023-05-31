@@ -5,6 +5,7 @@ import '../../llvm_dart.dart';
 import '../../parsers/token_it.dart';
 import '../ast.dart';
 import '../memory.dart';
+import 'variables.dart';
 
 mixin BuildMethods {
   LLVMModuleRef get module;
@@ -144,9 +145,12 @@ mixin BuildMethods {
     }
   }
 
-  LLVMValueRef alloctor(LLVMTypeRef type, String name) {
+  LLVMValueRef alloctor(LLVMTypeRef type, {Ty? ty, String name = '_'}) {
     final nb = allocaBuilder;
     final alloca = llvm.LLVMBuildAlloca(nb ?? builder, type, name.toChar());
+    if (ty != null) {
+      addFree(LLVMAllocaVariable(ty, alloca, type));
+    }
     setLastAlloca(alloca);
     if (nb != null) {
       llvm.LLVMDisposeBuilder(nb);
@@ -157,6 +161,10 @@ mixin BuildMethods {
   void setName(LLVMValueRef ref, String name) {
     llvm.LLVMSetValueName(ref, name.toChar());
   }
+
+  void addFree(Variable val) {}
+
+  void dropAll() {}
 }
 
 mixin Consts on BuildMethods {
@@ -311,10 +319,6 @@ mixin Consts on BuildMethods {
       llvm.LLVMDisposeBuilder(nb);
     }
     return alloca;
-  }
-
-  LLVMValueRef createAlloca(LLVMTypeRef type, {String? name}) {
-    return alloctor(type, name ?? '_');
   }
 
   LLVMValueRef createMalloc(LLVMTypeRef type, {String? name}) {

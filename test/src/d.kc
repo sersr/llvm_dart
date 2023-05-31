@@ -5,8 +5,6 @@ fn print(str: string) {
 }
 
 struct Array<T> {
-    size: usize,
-    pointer: cArray<T>,
 }
 
 type cArray<T>;

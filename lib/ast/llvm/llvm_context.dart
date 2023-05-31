@@ -254,23 +254,43 @@ class BuildContext
     pushVariable(ident, alloca);
   }
 
-  final _freeVal = <StoreVariable>[];
+  final _freeVal = <Variable>[];
 
-  void addFree(StoreVariable val) {
+  @override
+  void addFree(Variable val) {
     _freeVal.add(val);
   }
 
-  void _freeAll() {
+  @override
+  void dropAll() {
     for (var val in _freeVal) {
-      final v = val.getBaseValue(this);
-      llvm.LLVMBuildFree(builder, v);
+      final ty = val.ty;
+      final ident = Identifier.builtIn('drop');
+      final impl = getImplForStruct(ty, ident);
+      final fn = impl?.getFn(ident)?.copyFrom(ty);
+      final fnv = fn?.build(this);
+      if (fn == null || fnv == null) continue;
+      LLVMValueRef v;
+      if (val.ty is BuiltInTy) {
+        v = val.load(this);
+      } else {
+        v = val.getBaseValue(this);
+      }
+      final type = fn.llvmType.createFnType(this);
+      llvm.LLVMBuildCall2(
+          builder, type, fnv.getBaseValue(this), [v].toNative(), 1, unname);
     }
   }
 
   LLVMConstVariable buildFnBB(Fn fn,
       [Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>> map = const {}]) {
+    final contains = fn.llvmType.contains(extra);
+
     final fv = fn.llvmType.createFunction(this, extra);
+    if (contains) {
+      return fv;
+    }
     final block = fn.block?.clone();
     final isDecl = block == null;
     if (isDecl) return fv;
@@ -329,7 +349,7 @@ class BuildContext
       // error
       return;
     }
-    _freeAll();
+    dropAll();
     _returned = true;
     if (val == null) {
       llvm.LLVMBuildRetVoid(builder);
@@ -474,7 +494,7 @@ class BuildContext
     if (op == OpKind.And || op == OpKind.Or) {
       final after = buildSubBB(name: 'op_after');
       final opBB = buildSubBB(name: 'op_bb');
-      final allocaValue = createAlloca(i1, name: 'op');
+      final allocaValue = alloctor(i1, name: 'op');
       final variable = LLVMAllocaVariable(BuiltInTy.kBool, allocaValue, i1);
 
       variable.store(this, l);

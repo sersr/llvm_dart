@@ -1064,6 +1064,9 @@ class Parser {
 
     loop(it, () {
       // `/n` 意味着结束
+      if (getToken(it).kind == TokenKind.semi) {
+        return true;
+      }
       it.moveBack();
 
       final op = resolveOp(it);
