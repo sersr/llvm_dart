@@ -79,7 +79,10 @@ mixin BuildMethods {
     return llvm.LLVMPointerTypeInContext(llvmContext, 0);
   }
 
-  LLVMTypeRef typePointer(LLVMTypeRef type) {
+  LLVMTypeRef typePointer(LLVMTypeRef? type) {
+    if (type == null) {
+      return pointer();
+    }
     return llvm.LLVMPointerType(type, 0);
   }
 

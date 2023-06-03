@@ -548,6 +548,7 @@ class LLVMStructType extends LLVMType {
 
   @override
   int getBytes(BuildContext c) {
+    if (ty.extern) return getCBytes(c);
     return c.typeSize(createType(c));
   }
 

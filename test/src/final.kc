@@ -1,0 +1,84 @@
+
+import 'd.kc';
+import 'stack_overflow.kc';
+
+type ptr;
+
+fn main() i32 {
+  final y = 10;
+  printf("hello: %d\n", y);
+  init_sig_stack();
+
+  if y == 10 {
+    print("end");
+  }
+
+  let y = 10i64;
+  let ha = Hy{};
+  let hh = HH {1, ha};
+
+  printf("hh: %d\n", hh.y);
+
+  y = null;
+  let yy = 10;
+  if 10 == y {
+    print("y == yy");
+  }
+  if p {
+    print("null");
+  }
+  let yx = 0x10;
+  printf("yx: %d\n", yx);
+  let y = Hy {};
+  y.print();
+  hh.x = y;
+  let size = sizeOf(y);
+  printf("size: %d\n", size);
+  hh.x.print();
+
+  let y = -1f32;
+  if y {
+    print("y == -1");
+  }
+  loopx();
+  0;
+}
+
+static p:ptr = null;
+
+static y = 10;
+
+struct HH {
+  y: i32,
+  x: Hy,
+  h: Hax,
+}
+
+struct Hax {
+  asx: i32,
+  hh: i32,
+}
+
+struct Hy;
+
+impl Hy {
+  fn print() {
+    printf("hhhh%p\n", self);
+  }
+}
+
+fn loopx() {
+  let y = malloc(10);
+  free(y);
+  let h = HH {};
+  if h.h.hh == null {
+    print("h.h.hh == null");
+  }
+  h.h = null;
+  let hb = false;
+  printf("size hb: %d\n", sizeOf(hb));
+}
+
+extern fn malloc(size: usize) ptr;
+extern fn realloc(p: ptr, size: usize) ptr;
+extern fn free(p: ptr);

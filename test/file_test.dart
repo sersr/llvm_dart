@@ -5,9 +5,8 @@ import 'package:nop/nop.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('file', () async {
-    final name = 'com_ty.kc';
-    await runPrint(() {
+  Future<void> run(String name) {
+    return runPrint(() {
       // final name = 'impl_fn.kc';
       final project = Project(testSrcDir.childFile(name).path);
       // project.mem2reg = true;
@@ -16,10 +15,14 @@ void main() {
       project.analysis();
       project.printAst();
       project.printLifeCycle((v) {
-        Log.w(v.lifeCycyle?.light, showTag: false);
+        // Log.w(v.lifeCycyle?.light, showTag: false);
       });
       project.build();
       return runNativeCode(run: false, args: 'hello world');
     });
-  });
+  }
+
+  test('file', () => run('com_ty.kc'));
+
+  test('final', () => run('final.kc'));
 }

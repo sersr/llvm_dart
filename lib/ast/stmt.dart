@@ -1,11 +1,11 @@
-import 'package:nop/nop.dart';
-
 import '../llvm_core.dart';
+import '../llvm_dart.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
 import 'context.dart';
 import 'expr.dart';
 import 'llvm/variables.dart';
+import 'memory.dart';
 
 class LetStmt extends Stmt {
   LetStmt(this.isFinal, this.ident, this.nameIdent, this.rExpr, this.ty);
@@ -46,6 +46,10 @@ class LetStmt extends Stmt {
       final variable = val?.variable;
       if (variable is LLVMLitVariable) {
         if (tty is BuiltInTy) {
+          if (isFinal) {
+            context.pushVariable(nameIdent, variable);
+            return;
+          }
           final alloca = variable.createAlloca(context, tty);
           alloca.isTemp = false;
           alloca.ident = nameIdent;
@@ -164,41 +168,52 @@ class ExprStmt extends Stmt {
 }
 
 class StaticStmt extends Stmt {
-  StaticStmt(this.ident, this.variable, this.expr, this.ty);
+  StaticStmt(this.ident, this.expr, this.ty, this.isConst);
+  final bool isConst;
   @override
   Stmt clone() {
-    return StaticStmt(ident, variable, expr.clone(), ty);
+    return StaticStmt(ident, expr.clone(), ty, isConst).._done = _done;
   }
 
-  final Identifier variable;
-  final PathTy? ty;
   final Identifier ident;
+  final PathTy? ty;
   final Expr expr;
 
   @override
   String toString() {
     final y = ty == null ? '' : ' : $ty';
-    return '${pad}static $variable$y = $expr';
+    return '${pad}static $ident$y = $expr';
   }
 
+  bool _done = false;
   @override
   void build(BuildContext context) {
-    final realTy = ty?.grt(context);
+    final realTy = ty?.grtOrT(context);
+    if (ty != null && realTy == null) return;
+
     final e = LiteralExpr.run(() => expr.build(context), realTy);
 
     final rty = realTy ?? e?.ty;
-    if (e == null) return;
-    if (rty != null && e.ty != rty) {
-      Log.e('$ty = ${e.ty}');
-      return;
-    }
+    final val = e?.variable;
+    if (e == null || val == null) return;
+    // if (rty != null && e.ty != rty) {
+    //   Log.e('$ty = ${e.ty}');
+    //   return;
+    // }
     final y = rty ?? e.ty;
-    final v = y.llvmType.createAlloca(context, ident);
-    context.pushVariable(variable, v);
+    final type = y.llvmType.createType(context);
+
+    final llValue =
+        llvm.LLVMAddGlobal(context.module, type, ident.src.toChar());
+
+    final v = LLVMAllocaVariable(y, llValue, type);
+    llvm.LLVMSetGlobalConstant(llValue, isConst.llvmBool);
+    llvm.LLVMSetInitializer(llValue, val.load(context));
+    context.pushVariable(ident, v);
   }
 
   @override
-  List<Object?> get props => [ident, variable, ty, expr];
+  List<Object?> get props => [ident, ty, expr];
 
   @override
   void analysis(AnalysisContext context) {

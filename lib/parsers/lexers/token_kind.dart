@@ -422,9 +422,19 @@ class Cursor {
 
   Token number() {
     final start = cursor;
+    var isFloat = true;
+    if (current == '0') {
+      final n = nextCharRead;
+      if (n == 'x' || n == 'b' || n == 'o') {
+        isFloat = false;
+        nextChar;
+      }
+    }
     eatNumberLiteral();
     final state = _it.cursor;
-    var isFloat = nextCharRead == '.';
+    if (isFloat) {
+      isFloat = nextCharRead == '.';
+    }
     if (isFloat) {
       nextChar;
       if (!numbers.contains(nextCharRead)) {

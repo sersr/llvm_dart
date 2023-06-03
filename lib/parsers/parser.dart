@@ -785,7 +785,15 @@ class Parser {
     final isLet = key == Key.let;
     final isFinal = key == Key.kFinal;
     final isStatic = key == Key.kStatic;
-    if (!isLet && !isStatic && !isFinal) return null;
+    var isConst = key == Key.kConst;
+    if (!isLet && !isStatic && !isFinal && !isConst) return null;
+    if (isStatic) {
+      if (it.moveNext()) {
+        if (getKey(it) != Key.kConst) {
+          it.moveBack();
+        }
+      }
+    }
     final ident = getIdent(it);
     eatLfIfNeed(it);
     it.moveNext();
@@ -811,7 +819,7 @@ class Parser {
     if (c.kind == TokenKind.eq) {
       final r = parseExpr(it);
       if (isStatic) {
-        return StaticStmt(ident, l, r, ty);
+        return StaticStmt(l, r, ty, isConst);
       }
       return LetStmt(isFinal, ident, l, r, ty);
     } else {
@@ -1280,14 +1288,14 @@ class Parser {
       return false;
     });
 
-    // 处理未知操作符
-    loop(it, () {
-      final t = getToken(it).kind;
-      final op = OpKind.from(t.char);
-      if (op != null) return false;
-      it.moveBack();
-      return true;
-    });
+    // // 处理未知操作符
+    // loop(it, () {
+    //   final t = getToken(it).kind;
+    //   final op = OpKind.from(t.char);
+    //   if (op != null) return false;
+    //   it.moveBack();
+    //   return true;
+    // });
 
     return lastOp ?? OpKind.from(chars);
   }
@@ -1340,26 +1348,27 @@ class Parser {
 
     eatLfIfNeed(it);
 
-    it.moveNext(); // {
-    it.moveNext(); // block
-
     final fields = <FieldDef>[];
-    it = it.current.child.tokenIt;
-    loop(it, () {
-      final k = getToken(it).kind;
-      if (k == TokenKind.closeBrace) return true;
-      if (k == TokenKind.ident) {
-        final name = getIdent(it);
+    it.moveNext(); // {
+    if (getToken(it).kind == TokenKind.openBrace) {
+      it.moveNext(); // block
 
-        eatLfIfNeed(it);
-        it.moveNext(); // :
+      it = it.current.child.tokenIt;
+      loop(it, () {
+        final k = getToken(it).kind;
+        if (k == TokenKind.closeBrace) return true;
+        if (k == TokenKind.ident) {
+          final name = getIdent(it);
 
-        final ty = parsePathTy(it) ?? UnknownTy(ident);
-        fields.add(FieldDef(name, ty));
-      }
-      return false;
-    });
+          eatLfIfNeed(it);
+          it.moveNext(); // :
 
+          final ty = parsePathTy(it) ?? UnknownTy(ident);
+          fields.add(FieldDef(name, ty));
+        }
+        return false;
+      });
+    }
     return StructTy(ident, fields, types);
   }
 
@@ -1456,6 +1465,7 @@ enum Key {
   struct('struct'),
   kEnum('enum'),
   kStatic('static'),
+  kConst('const'),
   kImpl('impl'),
   kComponent('com'),
   kRet('return'),

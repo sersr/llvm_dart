@@ -489,6 +489,24 @@ class BuildContext
       OpKind op,
       bool isFloat,
       {bool signed = true}) {
+    final lty = lhs.ty;
+    // 提供外部操作符实现接口
+    if (lty is! BuiltInTy) {
+      if (op == OpKind.Eq || op == OpKind.Ne) {
+        if (lhs.ty is CTypeTy) {
+          final l = lhs.load(this);
+          final rv = rhsBuilder(this);
+          final r = rv?.load(this);
+          final id = op.getICmpId(false);
+
+          if (r != null && id != null) {
+            final v = llvm.LLVMBuildICmp(builder, id, l, r, unname);
+            return LLVMTempOpVariable(BuiltInTy.kBool, isFloat, signed, v);
+          }
+        }
+      }
+    }
+
     final l = lhs.load(this);
 
     if (op == OpKind.And || op == OpKind.Or) {
@@ -523,6 +541,7 @@ class BuildContext
       // error
       return LLVMTempOpVariable(lhs.ty, isFloat, signed, l);
     }
+
     LLVMValueRef Function(LLVMBuilderRef b, LLVMValueRef l, LLVMValueRef r,
         Pointer<Char> name)? llfn;
 

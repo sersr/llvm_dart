@@ -4,10 +4,7 @@ fn print(str: string) {
     printf("log: %s\n", str);
 }
 
-struct Array<T> {
-}
-
-type cArray<T>;
+struct Array<T>;
 
 impl Array<T> {
 
@@ -21,3 +18,4 @@ impl Array<T> {
 impl Array<i8> {
   fn toStr() &string;
 }
+

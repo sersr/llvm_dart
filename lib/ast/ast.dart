@@ -181,6 +181,11 @@ abstract class Expr extends BuildMixin {
 
   bool get hasUnknownExpr => false;
 
+  void reset() {
+    _first = true;
+    _ty = null;
+  }
+
   @override
   ExprTempValue? build(BuildContext context) {
     if (!_first) return _ty;
@@ -519,13 +524,17 @@ class RefTy extends Ty {
 
 class BuiltInTy extends Ty {
   BuiltInTy._(this._ty);
-  static final int = BuiltInTy._(LitKind.i32);
+  static final i32 = BuiltInTy._(LitKind.i32);
   static final float = BuiltInTy._(LitKind.kFloat);
   static final double = BuiltInTy._(LitKind.kDouble);
   static final string = BuiltInTy._(LitKind.kString);
   static final kVoid = BuiltInTy._(LitKind.kVoid);
   static final kBool = BuiltInTy._(LitKind.kBool);
   static final usize = BuiltInTy._(LitKind.usize);
+
+  static LLVMValueRef constUsize(BuildContext context, int size) {
+    return usize.llvmType.createValue(str: '$size').load(context);
+  }
 
   BuiltInTy.lit(this._ty);
 
@@ -1081,7 +1090,8 @@ mixin NewInst<T> {
           if (data != null) {
             var d = data;
             for (var k in f.kinds) {
-              if (k == PointerKind.ref && d is RefTy) {
+              if ((k == PointerKind.ref || k == PointerKind.deref) &&
+                  d is RefTy) {
                 d = d.parent;
               }
             }
