@@ -43,6 +43,7 @@ class BuildContext
     module = p.module;
     llvmContext = p.llvmContext;
     fpm = p.fpm;
+    builder = llvm.LLVMCreateBuilderInContext(llvmContext);
   }
   BuildContext.root([String name = 'root']) : parent = null {
     kModule = llvm.createKModule(name.toChar());

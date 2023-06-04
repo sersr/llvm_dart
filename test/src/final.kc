@@ -76,7 +76,29 @@ fn loopx() {
   }
   h.h = null;
   let hb = false;
+  hhg(h);
   printf("size hb: %d\n", sizeOf(hb));
+}
+
+fn hhg(g: HH) {
+  let y = 10;
+
+  match y {
+    < 9 => {
+      print(" < 9");
+    },
+    11 => {
+      print(" == 11");
+    },
+    o => {
+      printf("vv: %d\n", o);
+    }
+  }
+}
+
+enum Option {
+  Some(i32),
+  None(),
 }
 
 extern fn malloc(size: usize) ptr;

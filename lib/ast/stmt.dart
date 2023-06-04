@@ -208,7 +208,7 @@ class StaticStmt extends Stmt {
 
     final v = LLVMAllocaVariable(y, llValue, type);
     llvm.LLVMSetGlobalConstant(llValue, isConst.llvmBool);
-    llvm.LLVMSetInitializer(llValue, val.load(context));
+    llvm.LLVMSetInitializer(llValue, val.getBaseValue(context));
     context.pushVariable(ident, v);
   }
 

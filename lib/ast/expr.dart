@@ -1798,9 +1798,19 @@ class VariableIdentExpr extends Expr {
         return ExprTempValue(null, BuiltInTy.kVoid);
       }
       final v = LLVMConstVariable(llvm.LLVMConstNull(ty), letTy!);
-
       return ExprTempValue(v, v.ty);
     }
+    // if (ident.src == 'nullptr') {
+    //   final letTy = LiteralExpr.letTy;
+    //   final ty = letTy?.llvmType.createType(context);
+
+    //   if (ty == null) {
+    //     return ExprTempValue(null, BuiltInTy.kVoid);
+    //   }
+
+    //   final v = LLVMConstVariable(llvm.LLVMConstPointerNull(ty), letTy!);
+    //   return ExprTempValue(v, v.ty);
+    // }
     final val = context.getVariable(ident);
     if (val != null) {
       if (val is Deref) {
@@ -1994,9 +2004,10 @@ class BlockExpr extends Expr {
 }
 
 class MatchItemExpr extends BuildMixin {
-  MatchItemExpr(this.expr, this.block);
+  MatchItemExpr(this.expr, this.block, this.op);
   final Expr expr;
   final Block block;
+  final OpKind? op;
 
   MatchItemExpr? child;
 
@@ -2036,6 +2047,14 @@ class MatchItemExpr extends BuildMixin {
     return IfExprBlock.retFromBlock(block, context);
   }
 
+  bool get isValIdent {
+    var e = expr;
+    if (e is RefExpr) {
+      e = e.current;
+    }
+    return op == null && e is VariableIdentExpr;
+  }
+
   bool get isOther {
     var e = expr;
     if (e is RefExpr) {
@@ -2047,6 +2066,22 @@ class MatchItemExpr extends BuildMixin {
       }
     }
     return false;
+  }
+
+  void build4(BuildContext context, ExprTempValue parrern) {
+    final child = context;
+    var e = expr;
+    if (e is RefExpr) {
+      e = e.current;
+    }
+    e = e as VariableIdentExpr;
+    child.pushVariable(e.ident, parrern.variable!);
+    block.build(child);
+  }
+
+  Variable? build3(BuildContext context, ExprTempValue pattern) {
+    return OpExpr.math(context, op ?? OpKind.Eq, pattern.variable, expr)
+        ?.variable;
   }
 
   int? build2(BuildContext context, ExprTempValue pattern) {
@@ -2074,12 +2109,13 @@ class MatchItemExpr extends BuildMixin {
   }
 
   MatchItemExpr clone() {
-    return MatchItemExpr(expr.clone(), block.clone());
+    return MatchItemExpr(expr.clone(), block.clone(), op);
   }
 
   @override
   String toString() {
-    return '$pad$expr =>$block';
+    final o = op == null ? '' : '${op!.op} ';
+    return '$pad$o$expr =>$block';
   }
 }
 
@@ -2116,7 +2152,80 @@ class MatchExpr extends Expr {
     final variable = expr.build(context);
     if (variable == null) return null;
     final ty = variable.ty;
-    if (ty is! EnumItem) return null;
+    if (ty is! EnumItem) {
+      // match 表达式
+      MatchItemExpr? last;
+      MatchItemExpr? valIdentItem =
+          items.firstWhereOrNull((element) => element.isValIdent);
+      for (var item in items) {
+        if (last == null) {
+          last = item;
+          continue;
+        }
+        if (item == valIdentItem) continue;
+        last.child = item;
+        last = item;
+      }
+      last?.child = valIdentItem;
+      last = valIdentItem;
+
+      StoreVariable? retVariable;
+      final retTy = LiteralExpr.letTy;
+      if (retTy != null) {
+        retVariable = retTy.llvmType.createAlloca(context, Identifier.none);
+      }
+      void buildItem(MatchItemExpr item, BuildContext context) {
+        final then = context.buildSubBB(name: 'm_then');
+        final after = context.buildSubBB(name: 'm_after');
+        LLVMBasicBlock elseBB;
+        final child = item.child;
+        if (child != null) {
+          elseBB = context.buildSubBB(name: 'm_else');
+        } else {
+          elseBB = after;
+        }
+
+        context.appendBB(then);
+        final val = item.build3(context, variable);
+        item.block.build(then.context);
+        IfExpr._blockRetValue(item.block, then.context, retVariable);
+        if (then.context.canBr) {
+          then.context.br(after.context);
+        }
+
+        if (val != null) {
+          llvm.LLVMBuildCondBr(
+              context.builder, val.load(context), then.bb, elseBB.bb);
+        }
+
+        if (child != null) {
+          context.appendBB(elseBB);
+          if (child.isValIdent) {
+            child.build4(elseBB.context, variable);
+            IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
+          } else if (child.isOther) {
+            child.build2(elseBB.context, variable);
+            IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
+          } else {
+            buildItem(child, elseBB.context);
+          }
+
+          if (elseBB.context.canBr) {
+            elseBB.context.br(after.context);
+          }
+        }
+
+        context.insertPointBB(after);
+      }
+
+      buildItem(items.first, context);
+
+      if (retVariable == null) {
+        return null;
+      }
+      return ExprTempValue(retVariable, retVariable.ty);
+    }
+
     final allCount = ty.parent.variants.length;
 
     final parent = variable.variable;

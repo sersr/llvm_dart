@@ -522,35 +522,48 @@ class Parser {
     if (!it.moveNext()) return [];
     it = it.current.child.tokenIt;
     final items = <MatchItemExpr>[];
+    void common(Expr expr, OpKind? op) {
+      if (it.moveNext()) {
+        if (getToken(it).kind == TokenKind.eq) {
+          eatLfIfNeed(it);
+          if (it.moveNext()) {
+            eatLfIfNeed(it);
+            if (getToken(it).kind == TokenKind.gt) {
+              it.moveNext();
+            }
+          }
+        }
+      }
+      eatLfIfNeed(it);
+      if (getToken(it).kind == TokenKind.openBrace) {
+        final block = parseBlock(it);
+        items.add(MatchItemExpr(expr, block, op));
+      } else {
+        final stmt = parseStmt(it);
+        if (stmt != null) {
+          final block = Block([stmt], null);
+          items.add(MatchItemExpr(expr, block, op));
+        }
+      }
+    }
+
     loop(it, () {
       final t = getToken(it);
+      if (t.kind == TokenKind.openBrace || t.kind == TokenKind.comma) {
+        return false;
+      }
       if (t.kind == TokenKind.ident) {
         it.moveBack();
         final expr = parseExpr(it);
         eatLfIfNeed(it);
-
-        if (it.moveNext()) {
-          if (getToken(it).kind == TokenKind.eq) {
-            eatLfIfNeed(it);
-            if (it.moveNext()) {
-              eatLfIfNeed(it);
-              if (getToken(it).kind == TokenKind.gt) {
-                it.moveNext();
-              }
-            }
-          }
-        }
-
-        eatLfIfNeed(it);
-        if (getToken(it).kind == TokenKind.openBrace) {
-          final block = parseBlock(it);
-          items.add(MatchItemExpr(expr, block));
-        } else {
-          final stmt = parseStmt(it);
-          if (stmt != null) {
-            final block = Block([stmt], null);
-            items.add(MatchItemExpr(expr, block));
-          }
+        common(expr, null);
+      } else {
+        final op = resolveOp(it);
+        it.moveBack();
+        final expr = parseExpr(it);
+        if (op != null || expr is! UnknownExpr) {
+          eatLfIfNeed(it);
+          common(expr, op);
         }
       }
       return false;
@@ -1267,16 +1280,16 @@ class Parser {
   }
 
   OpKind? resolveOp(TokenIterator it) {
-    final current = it.current;
-    var chars = current.token.kind.char;
+    var chars = getIdent(it).src;
     OpKind? lastOp;
+    final state = it.cursor;
     loop(it, () {
       final t = getToken(it);
       if (t.kind.char.isEmpty) {
         it.moveBack();
         return true;
       }
-      final text = chars + t.kind.char;
+      final text = chars + getIdent(it).src;
       final newOp = OpKind.from(text);
       if (newOp != null || text == '=') {
         lastOp = newOp;
@@ -1297,7 +1310,11 @@ class Parser {
     //   return true;
     // });
 
-    return lastOp ?? OpKind.from(chars);
+    final op = lastOp ?? OpKind.from(chars);
+    if (op == null) {
+      state.restore();
+    }
+    return op;
   }
 
   List<FieldDef> parseGenerics(TokenIterator it) {
