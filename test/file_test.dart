@@ -24,4 +24,6 @@ void main() {
   test('file', () => run('com_ty.kc'));
 
   test('final', () => run('final.kc'));
+
+  test('delay.kc', () => run('delay.kc'));
 }

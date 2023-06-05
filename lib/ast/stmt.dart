@@ -50,10 +50,8 @@ class LetStmt extends Stmt {
             context.pushVariable(nameIdent, variable);
             return;
           }
-          final alloca = variable.createAlloca(context, tty);
+          final alloca = variable.createAlloca(context, nameIdent, tty);
           alloca.isTemp = false;
-          alloca.ident = nameIdent;
-          context.setName(alloca.alloca, nameIdent.src);
           context.pushVariable(nameIdent, alloca);
           return;
         }
@@ -95,12 +93,12 @@ class LetStmt extends Stmt {
       //     alloca = tty.llvmType.createAlloca(context, nameIdent);
       //   }
       // }
-      alloca ??= tty.llvmType.createAlloca(context, nameIdent);
+      alloca ??= tty.llvmType.createAlloca(context, nameIdent, null);
 
       LLVMValueRef? rValue;
       if (variable != null) {
         if (variable is LLVMAllocaDelayVariable) {
-          variable.create();
+          variable.create(context);
         }
         if (wrapRef) {
           rValue = variable.getBaseValue(context);

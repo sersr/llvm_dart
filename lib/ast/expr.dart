@@ -162,7 +162,7 @@ class IfExpr extends Expr {
   StoreVariable? createIfBlock(IfExprBlock ifb, BuildContext context, Ty? ty) {
     StoreVariable? variable;
     if (ty != null) {
-      variable = ty.llvmType.createAlloca(context, Identifier.none);
+      variable = ty.llvmType.createAlloca(context, Identifier.none, null);
     }
     buildIfExprBlock(ifb, context, variable);
 
@@ -183,7 +183,7 @@ class IfExpr extends Expr {
             // error
           } else {
             if (val is LLVMAllocaDelayVariable) {
-              val.create(variable);
+              val.create(context, variable);
             } else {
               final v = val.load(context);
               variable.store(context, v);
@@ -607,7 +607,7 @@ class StructExpr extends Expr {
           // final fnContext = context.getLastFnContext();
           // fnContext?.addFree(value);
         } else {
-          value = struct.llvmType.createAlloca(context, ident);
+          value = struct.llvmType.createAlloca(context, ident, null);
         }
       }
 
@@ -631,7 +631,7 @@ class StructExpr extends Expr {
         if (v == null) continue;
         final vv = struct.llvmType.getField(value, context, fd.ident)!;
         if (v is LLVMAllocaDelayVariable) {
-          final result = v.create(vv);
+          final result = v.create(context, vv);
           if (result) {
             continue;
           }
@@ -643,7 +643,7 @@ class StructExpr extends Expr {
       return value.alloca;
     }
 
-    final value = LLVMAllocaDelayVariable(struct, create, structType);
+    final value = LLVMAllocaDelayVariable(struct, null, create, structType);
 
     return ExprTempValue(value, value.ty);
   }
@@ -940,7 +940,8 @@ mixin FnCallMixin {
 
     StoreVariable? sret;
     if (isSret) {
-      sret = retTy.llvmType.createAlloca(context, Identifier.builtIn('sret'));
+      sret = retTy.llvmType
+          .createAlloca(context, Identifier.builtIn('sret'), null);
 
       args.add(sret.alloca);
     }
@@ -1039,7 +1040,7 @@ mixin FnCallMixin {
       final v = LLVMConstVariable(ret, retTy);
       return ExprTempValue(v, v.ty);
     } else if (retTy is StructTy) {
-      final v = retTy.llvmType.createAlloca(context, Identifier.none);
+      final v = retTy.llvmType.createAlloca(context, Identifier.none, null);
       v.store(context, ret);
       v.isTemp = false;
       return ExprTempValue(v, v.ty);
@@ -1263,7 +1264,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
                 final arr =
                     ArrayTy(structTy.tys.values.first, first.value.iValue);
                 final element =
-                    arr.llvmType.createAlloca(context, Identifier.none);
+                    arr.llvmType.createAlloca(context, Identifier.none, null);
 
                 return ExprTempValue(element, element.ty);
               }
@@ -1713,7 +1714,7 @@ enum PointerKind {
         } else {
           llvmValue = llvm.LLVMBuildNeg(c.builder, va, unname);
         }
-        return LLVMTempVariable(llvmValue, val.ty);
+        return LLVMConstVariable(llvmValue, val.ty);
       }
     }
     return inst ?? val;
@@ -2172,7 +2173,8 @@ class MatchExpr extends Expr {
       StoreVariable? retVariable;
       final retTy = LiteralExpr.letTy;
       if (retTy != null) {
-        retVariable = retTy.llvmType.createAlloca(context, Identifier.none);
+        retVariable =
+            retTy.llvmType.createAlloca(context, Identifier.none, null);
       }
       void buildItem(MatchItemExpr item, BuildContext context) {
         final then = context.buildSubBB(name: 'm_then');
@@ -2234,7 +2236,7 @@ class MatchExpr extends Expr {
     StoreVariable? retVariable;
     final retTy = LiteralExpr.letTy ?? _variable?.ty;
     if (retTy != null) {
-      retVariable = retTy.llvmType.createAlloca(context, Identifier.none);
+      retVariable = retTy.llvmType.createAlloca(context, Identifier.none, null);
     }
 
     var indexValue = ty.llvmType.loadIndex(context, parent);
@@ -2372,7 +2374,7 @@ class AsExpr extends Expr {
     if (lv == null) return l;
     if (r is BuiltInTy && lty is BuiltInTy) {
       final val = context.castLit(lty.ty, lv.load(context), r.ty);
-      return ExprTempValue(LLVMTempVariable(val, r), r);
+      return ExprTempValue(LLVMConstVariable(val, r), r);
     }
     return l;
   }

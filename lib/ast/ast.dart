@@ -1403,8 +1403,9 @@ class ArrayLLVMType extends LLVMType {
   }
 
   @override
-  StoreVariable createAlloca(BuildContext c, Identifier ident) {
-    final val = LLVMAllocaDelayVariable(ty, ([alloca]) {
+  LLVMAllocaDelayVariable createAlloca(
+      BuildContext c, Identifier ident, LLVMValueRef? base) {
+    final val = LLVMAllocaDelayVariable(ty, base, ([alloca]) {
       final count =
           BuiltInTy.usize.llvmType.createValue(str: '${ty.size}').load(c);
       return c.createArray(ty.elementType.llvmType.createType(c), count,
@@ -1430,7 +1431,7 @@ class ArrayLLVMType extends LLVMType {
 
     final v = llvm.LLVMBuildInBoundsGEP2(
         c.builder, elementTy, p, indics.toNative(), indics.length, unname);
-    final vv = LLVMRefAllocaVariable.from(v, ty.elementType, c);
+    final vv = ty.elementType.llvmType.createAlloca(c, Identifier.none, v);
     vv.isTemp = false;
     return vv;
   }

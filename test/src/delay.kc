@@ -1,0 +1,32 @@
+
+import 'd.kc'
+
+fn main() i32 {
+  let y = 10;
+
+  printf("y: %d\n", y);
+
+  ref(&y);
+
+
+  base_fn(Base { 122});
+  0;
+}
+
+fn ref(y: &i32) {
+  printf("y_ref: %d\n", *y);
+}
+
+fn hello() i32 {
+  10220;
+}
+
+struct Base {
+  y: i32,
+}
+
+fn base_fn(b: Base) {
+  // let y = b.y;
+  b.y = 11;
+  printf("b.y: %d\n", b.y);
+}

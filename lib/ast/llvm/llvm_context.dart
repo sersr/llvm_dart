@@ -160,7 +160,7 @@ class BuildContext
 
     if (fnty.llvmType.isSret(this) && retTy is StructTy) {
       final first = llvm.LLVMGetParam(fn, index);
-      final alloca = LLVMRefAllocaVariable.from(first, retTy, this);
+      final alloca = retTy.llvmType.createAlloca(this, Identifier.none, first);
       alloca.isTemp = false;
       index += 1;
       // final rawIdent = fnty.sretVariables.last;
@@ -246,7 +246,7 @@ class BuildContext
       alloca = LLVMConstVariable(fnParam, ty);
       setName(fnParam, ident.src);
     } else {
-      final a = alloca = LLVMRefAllocaVariable.from(fnParam, ty, this);
+      final a = alloca = ty.llvmType.createAlloca(this, ident, fnParam);
       // final a = alloca = ty.llvmType.createAlloca(this, ident);
       setName(a.alloca, ident.src);
       a.isTemp = false;
@@ -388,7 +388,7 @@ class BuildContext
     }
 
     if (variable is LLVMAllocaDelayVariable) {
-      variable.create(alloca);
+      variable.create(this, alloca);
       if (alloca != null) {
         if (nameIdent != null) setName(alloca.alloca, nameIdent.src);
       }
