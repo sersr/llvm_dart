@@ -246,7 +246,7 @@ class LLVMFnType extends LLVMType {
     for (var p in params) {
       final realTy = fn.getRty(c, p);
       LLVMTypeRef ty;
-      if (!p.isRef) {
+      if (p.isRef) {
         ty = realTy.llvmType.createType(c);
       } else {
         ty = cType(realTy);
@@ -445,7 +445,6 @@ class LLVMStructType extends LLVMType {
     //   fieldValue = llvm.LLVMBuildInBoundsGEP2(
     //       context.builder, type, v, indics.toNative(), indics.length, unname);
     // } else {
-    llvm.LLVMDumpValue(v);
     fieldValue =
         llvm.LLVMBuildStructGEP2(context.builder, type, v, rIndex, unname);
     // }
@@ -526,9 +525,12 @@ class LLVMStructType extends LLVMType {
       final arrTy = c.alloctor(loadTy, ty: ty, name: 'param_$ident');
       llvm.LLVMBuildStore(c.builder, value, arrTy);
 
+      final al = llvm.LLVMGetAlignment(calloca.alloca);
+      final tl = llvm.LLVMGetAlignment(arrTy);
+
       // copy
-      llvm.LLVMBuildMemCpy(
-          c.builder, calloca.alloca, 4, arrTy, 4, c.constI64(size));
+      llvm.LLVMBuildMemCpy(c.builder, calloca.alloca, al, arrTy, tl,
+          BuiltInTy.constUsize(c, size));
     } else {
       calloca = LLVMAllocaVariable(ty, value, cCreateType(c))..isTemp = false;
       c.setName(calloca.alloca, ident.src);

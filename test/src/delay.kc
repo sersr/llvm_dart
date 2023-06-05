@@ -9,7 +9,7 @@ fn main() i32 {
   ref(&y);
 
 
-  base_fn(Base { 122});
+  base_fn(Base { 122}, 5555);
   0;
 }
 
@@ -25,8 +25,23 @@ struct Base {
   y: i32,
 }
 
-fn base_fn(b: Base) {
+fn base_fn(b: Base,s: i32) {
   // let y = b.y;
   b.y = 11;
-  printf("b.y: %d\n", b.y);
+  s = 433;
+  printf("b.y: %d, %d\n", b.y, s);
+  let g = G{ 11 };
+  let h = hhh;
+  hhh(&g);
+}
+
+extern
+struct G {
+  y: i32,
+}
+fn hhhx(g: G) {
+
+}
+extern fn hhh(g: &G) {
+  printf("g: %d\n", g.y);
 }

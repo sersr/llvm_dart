@@ -104,7 +104,7 @@ mixin BuildMethods {
       count = d.ceil();
       loadTy = arrayType(i64, count);
     } else {
-      if (size > 4) {
+      if (count > 4) {
         loadTy = i64;
       } else {
         loadTy = i32;

@@ -238,16 +238,17 @@ class BuildContext
   void resolveParam(
       Ty ty, LLVMValueRef fnParam, Identifier ident, bool extern) {
     Variable alloca;
-    if (ty is StructTy && !extern) {
+    if (ty is StructTy) {
       alloca = ty.llvmType.createAllocaFromParam(this, fnParam, ident, extern);
-    } else if (ty is Fn) {
-      alloca = ty.llvmType.createAllocaParam(this, ident, fnParam);
-    } else if (ty is! RefTy) {
-      alloca = LLVMConstVariable(fnParam, ty);
-      setName(fnParam, ident.src);
+      // } else if (ty is Fn) {
+      //   alloca = ty.llvmType.createAllocaParam(this, ident, fnParam);
+      // } else if (ty is! RefTy) {
+      //   alloca = LLVMConstVariable(fnParam, ty);
+      //   setName(fnParam, ident.src);
     } else {
       final a = alloca = ty.llvmType.createAlloca(this, ident, fnParam);
       // final a = alloca = ty.llvmType.createAlloca(this, ident);
+      a.create(this);
       setName(a.alloca, ident.src);
       a.isTemp = false;
     }
