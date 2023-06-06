@@ -50,6 +50,9 @@ class LiteralExpr extends Expr {
   BuiltInTy get realTy {
     final r = Zone.current[#ty];
     if (r is BuiltInTy) {
+      if (ty.ty.isNum && !r.ty.isNum) {
+        return ty;
+      }
       return r;
     }
     return ty;
@@ -1215,7 +1218,9 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
     if (valTy is ArrayTy) {
       if (fnName == 'elementAt' && params.isNotEmpty) {
-        final first = params.first.build(context)?.variable;
+        final first = LiteralExpr.run(
+            () => params.first.build(context)?.variable, BuiltInTy.usize);
+
         if (first != null && first.ty is BuiltInTy) {
           final element =
               valTy.llvmType.getElement(context, val, first.load(context));
@@ -1227,6 +1232,41 @@ class MethodCallExpr extends Expr with FnCallMixin {
       } else if (fnName == 'toStr') {
         final element = valTy.llvmType.toStr(context, val);
         return ExprTempValue(element, element.ty);
+      }
+    }
+
+    if (valTy is StructTy) {
+      if (valTy.ident.src == 'CArray') {
+        if (fnName == 'elementAt' && params.isNotEmpty) {
+          final first = LiteralExpr.run(
+              () => params.first.build(context)?.variable, BuiltInTy.usize);
+          if (first != null && first.ty is BuiltInTy) {
+            final ty = valTy.tys.values.first;
+            Variable getElement(
+                BuildContext c, Variable value, LLVMValueRef index) {
+              final indics = <LLVMValueRef>[index];
+
+              final p = value.load(c);
+              final elementTy = ty.llvmType.createType(c);
+              var ety = ty;
+
+              if (ty is CTypeTy && ty.tys.isNotEmpty) {
+                ety = ty.tys.values.first;
+              }
+
+              var v = llvm.LLVMBuildInBoundsGEP2(c.builder, elementTy, p,
+                  indics.toNative(), indics.length, unname);
+              v = llvm.LLVMBuildLoad2(c.builder, c.pointer(), v, unname);
+              final vv = ety.llvmType.createAlloca(c, Identifier.none, v);
+              return vv;
+            }
+
+            final v = valTy.llvmType
+                .getField(val, context, Identifier.builtIn('ptr'));
+            final element = getElement(context, v!, first.load(context));
+            return ExprTempValue(element, element.ty);
+          }
+        }
       }
     }
 

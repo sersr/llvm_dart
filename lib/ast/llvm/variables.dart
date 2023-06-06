@@ -168,6 +168,11 @@ class LLVMAllocaVariable extends StoreVariable implements Deref {
   final Ty ty;
 
   @override
+  Variable getRef(BuildContext c) {
+    return RefTy(ty).llvmType.createAlloca(c, Identifier.none, alloca);
+  }
+
+  @override
   LLVMValueRef load(BuildContext c) {
     final v = llvm.LLVMBuildLoad2(c.builder, type, alloca, unname);
     return v;

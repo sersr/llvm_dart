@@ -1088,7 +1088,6 @@ class Parser {
       if (getToken(it).kind == TokenKind.semi) {
         return true;
       }
-      it.moveBack();
 
       final op = resolveOp(it);
       if (op != null) {

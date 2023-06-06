@@ -294,11 +294,13 @@ enum LitKind {
   }
 
   bool get isInt {
-    if (index > f64.index && index < kBool.index) {
+    if (index >= i8.index && index < kBool.index) {
       return true;
     }
     return false;
   }
+
+  bool get isNum => isInt || isFp;
 
   LitKind get convert {
     if (index >= u8.index && index <= u128.index) {

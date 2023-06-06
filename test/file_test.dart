@@ -26,4 +26,8 @@ void main() {
   test('final', () => run('final.kc'));
 
   test('delay.kc', () => run('delay.kc'));
+
+  test('c_array.kc', () {
+    return run('c_array.kc');
+  });
 }

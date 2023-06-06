@@ -19,3 +19,15 @@ impl Array<i8> {
   fn toStr() &string;
 }
 
+type Ptr<T>;
+struct CArray<T> {
+  size: usize,
+  ptr: Ptr<T>,
+}
+
+impl CArray<T> {
+  fn elementAt(index: usize) &T;
+  fn getSize() usize {
+    self.size
+  }
+}

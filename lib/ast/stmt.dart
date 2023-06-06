@@ -51,6 +51,7 @@ class LetStmt extends Stmt {
             return;
           }
           final alloca = variable.createAlloca(context, nameIdent, tty);
+          alloca.create(context);
           alloca.isTemp = false;
           context.pushVariable(nameIdent, alloca);
           return;

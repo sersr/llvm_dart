@@ -119,7 +119,7 @@ class LLVMTypeLit extends LLVMType {
     return type;
   }
 
-  LLVMLitVariable createValue({String str = ''}) {
+  LLVMLitVariable createValue({required String str}) {
     final raw = LLVMRawValue(str);
     LLVMValueRef v(Consts c, BuiltInTy? bty) {
       final rTy = bty ?? ty;

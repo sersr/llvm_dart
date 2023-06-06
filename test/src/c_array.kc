@@ -1,0 +1,16 @@
+import 'd.kc'
+
+fn main(argc: i32, ptr: Ptr<Ptr<i8>>) i32 {
+  let args = CArray {argc, ptr};
+
+  let index = 0;
+
+  loop {
+    if index >= argc {
+      break;
+    }
+    print(args.elementAt(index));
+    index += 1;
+  }
+  0;
+}
