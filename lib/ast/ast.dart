@@ -654,7 +654,7 @@ class PathTy with EquatableMixin {
         }
       }
       rty = rty.newInst(gMap, c, gen: gen);
-    } else if (rty is CTypeTy && generics.isNotEmpty) {
+    } else if (rty is CTypeTy) {
       final gMap = <Identifier, Ty>{};
       for (var i = 0; i < generics.length; i += 1) {
         final g = generics[i];
@@ -664,7 +664,10 @@ class PathTy with EquatableMixin {
           gMap[gg.ident] = gty;
         }
       }
-      rty = rty.newInst(gMap, c, gen: gen);
+      rty = rty.grt(c, gen: (ident) {
+        return gMap[ident] ?? gen?.call(ident);
+      });
+      // rty = rty.newInst(gMap, c, gen: gen);
     }
     if (rty == null) return null;
     return kind.resolveTy(rty);
@@ -1087,7 +1090,7 @@ mixin NewInst<T> {
       final newFields = <FieldDef>[];
       for (var f in fields) {
         final nf = f.clone();
-        final g = f.grts(c, (ident) {
+        final g = f.grtOrT(c, gen: (ident) {
           final data = tys[ident];
           if (data != null) {
             var d = data;
@@ -1216,8 +1219,7 @@ class EnumItem extends StructTy {
   late EnumTy parent;
   @override
   String toString() {
-    final f = fields.map((e) => e._ty).join(',');
-    final fy = f.isEmpty ? '' : '($f)';
+    final fy = fields.isEmpty ? '' : '(${fields.join(', ')})';
     return '$ident$fy';
   }
 
@@ -1447,28 +1449,35 @@ abstract class PathInterFace {
   Map<Identifier, Ty> get tys;
 }
 
-class CTypeTy extends Ty implements PathInterFace {
-  CTypeTy(this.pathTy);
+class CTypeTy extends Ty {
+  CTypeTy(this.pathTy, this.baseTy);
   final PathTy pathTy;
+  final PathTy? baseTy;
+
   Identifier get ident => pathTy.ident;
 
   List<PathTy> get generics => pathTy.generics;
 
-  CTypeTy? _parent;
-  CTypeTy get root => _parent ?? this;
-  Map<Identifier, Ty>? _tys;
-  @override
-  Map<Identifier, Ty> get tys => _tys ?? const {};
-  final _tyLists = <ListKey, CTypeTy>{};
-
-  CTypeTy newInst(Map<Identifier, Ty> tys, Tys c, {GenTy? gen}) {
-    _parent ??= this;
-    return root._tyLists.putIfAbsent(ListKey(tys), () {
-      return CTypeTy(pathTy)
-        .._tys = tys
-        .._parent = root;
-    });
+  Ty? grt(Tys c, {GenTy? gen}) {
+    if (baseTy == null) return this;
+    return baseTy!.grtOrT(c, gen: gen);
   }
+
+  // CTypeTy? _parent;
+  // CTypeTy get root => _parent ?? this;
+  // Map<Identifier, Ty>? _tys;
+  // @override
+  // Map<Identifier, Ty> get tys => _tys ?? const {};
+  // final _tyLists = <ListKey, CTypeTy>{};
+
+  // CTypeTy newInst(Map<Identifier, Ty> tys, Tys c, {GenTy? gen}) {
+  //   _parent ??= this;
+  //   return root._tyLists.putIfAbsent(ListKey(tys), () {
+  //     return CTypeTy(pathTy, baseTy)
+  //       .._tys = tys
+  //       .._parent = root;
+  //   });
+  // }
 
   @override
   void analysis(AnalysisContext context) {
@@ -1484,16 +1493,14 @@ class CTypeTy extends Ty implements PathInterFace {
   late final CTypeLLVMType llvmType = CTypeLLVMType(this);
 
   @override
-  List<Object?> get props => [pathTy];
+  List<Object?> get props => [pathTy, baseTy];
 
   @override
   String toString() {
-    var g = '';
-    if (generics.isNotEmpty) {
-      g = generics.join(',');
-      g = '<$g>';
+    if (baseTy != null) {
+      return 'type $pathTy = $baseTy';
     }
-    return 'type $ident$g';
+    return 'type $pathTy';
   }
 }
 
@@ -1505,11 +1512,18 @@ class CTypeLLVMType extends LLVMType {
 
   @override
   LLVMTypeRef createType(BuildContext c) {
-    return c.pointer();
+    final base = ty.baseTy;
+    if (base == null) return c.pointer();
+    final bty = base.grt(c);
+    return bty.llvmType.createType(c);
   }
 
   @override
   int getBytes(BuildContext c) {
-    return c.pointerSize();
+    final base = ty.baseTy;
+    Log.w(base);
+    if (base == null) return c.pointerSize();
+    final bty = base.grt(c);
+    return bty.llvmType.getBytes(c);
   }
 }

@@ -1,10 +1,14 @@
 import 'd.kc'
+import 'stack_overflow.kc'
 
-fn main(argc: i32, ptr: Ptr<Ptr<i8>>) i32 {
+fn main(argc: i32, ptr: **i8) i32 {
+  init_sig_stack();
+
   let args = CArray {argc, ptr};
 
-  let index = 0;
+  let index = 0
 
+  let y =  10 * (202 * (10 + 33) + 210)
   loop {
     if index >= argc {
       break;
@@ -12,5 +16,37 @@ fn main(argc: i32, ptr: Ptr<Ptr<i8>>) i32 {
     print(args.elementAt(index));
     index += 1;
   }
+
+  let op = None();
+
+  match op {
+    None => {
+      print("none");
+    }
+  }
+
+  test();
   0;
+}
+
+type OhAlias = Oh;
+
+fn test() {
+  let oh = BBA {4242, 11232 };
+  printf('oh x %d y %d\n', oh.x, oh.y);
+
+}
+
+type BBA<T> = BB<S, i64>;
+struct BB<T, S> {
+  x: T,
+  y: S,
+}
+struct Oh {
+  y: i32,
+  x: i64,
+}
+enum Option {
+  Some{x: i32, y: i32, oh: OhAlias},
+  None,
 }

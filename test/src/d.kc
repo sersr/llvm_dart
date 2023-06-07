@@ -22,7 +22,7 @@ impl Array<i8> {
 type Ptr<T>;
 struct CArray<T> {
   size: usize,
-  ptr: Ptr<T>,
+  ptr: **T,
 }
 
 impl CArray<T> {

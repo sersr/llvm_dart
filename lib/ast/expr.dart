@@ -214,7 +214,7 @@ class IfExpr extends Expr {
     if (conTy is CTypeTy) {
       conv = llvm.LLVMBuildIsNull(c.builder, conv, unname);
     } else if (conTy is BuiltInTy) {
-      if (conTy.ty != LitKind.kBool) {
+      if (conTy.ty.isNum) {
         final kind = conTy.ty;
         var isFloat = false;
         var signed = false;
@@ -508,10 +508,29 @@ class StructExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final struct = context.getStruct(ident);
-    if (struct == null) return null;
+    var struct = context.getStruct(ident);
+    var gs = generics;
+    if (struct == null) {
+      final cty = context.getCty(ident);
+      final gMap = <Identifier, Ty>{};
+      for (var i = 0; i < gs.length; i += 1) {
+        final gg = gs[i];
+        final g = generics[i];
+        gMap[g.ident] = gg.grt(context);
+      }
+      final t = cty?.grt(context, gen: (ident) {
+        return gMap[ident];
+      });
 
-    return buildTupeOrStruct(struct, context, ident, fields, generics, isNew);
+      if (t is StructTy) {
+        gs = const [];
+        struct = t;
+      } else {
+        return null;
+      }
+    }
+
+    return buildTupeOrStruct(struct, context, ident, fields, gs, isNew);
   }
 
   static T genStruct<T>(NewInst<T> t, Tys context, List<FieldExpr> params,
@@ -520,17 +539,19 @@ class StructExpr extends Expr {
     final generics = t.generics;
     var nt = t as T;
     if (genericsInst.isNotEmpty) {
-      final gMap = <Identifier, Ty>{};
+      final gMap = <Identifier, Ty>{}..addAll(t.tys);
       for (var i = 0; i < genericsInst.length; i += 1) {
         final gg = genericsInst[i];
         final g = generics[i];
         Log.w('$g $gg ${gg.generics}');
-        gMap[g.ident] = gg.grt(context);
+        gMap[g.ident] = gg.grt(context, gen: (ident) {
+          return t.tys[ident];
+        });
       }
       // Log.w('gg $gMap');
       nt = t.newInst(gMap, context);
     } else if (generics.isNotEmpty) {
-      final gMap = <Identifier, Ty>{};
+      final gMap = <Identifier, Ty>{}..addAll(t.tys);
 
       final sg = generics;
       final sortFields = alignParam(
@@ -561,18 +582,22 @@ class StructExpr extends Expr {
       }
 
       bool isBuild = context is BuildContext;
+      Ty? gen(Identifier ident) {
+        return gMap[ident];
+      }
+
       for (var i = 0; i < sortFields.length; i += 1) {
         final f = sortFields[i];
         final fd = fields[i].rawTy;
 
         Ty? ty;
         if (isBuild) {
-          ty = LiteralExpr.run(
-                  () => f.build(context)?.variable, fd.grtOrT(context))
+          ty = LiteralExpr.run(() => f.build(context)?.variable,
+                  fd.grtOrT(context, gen: gen))
               ?.ty;
         } else {
           ty = LiteralExpr.run(() => f.analysis(context as AnalysisContext),
-                  fd.grtOrT(context))
+                  fd.grtOrT(context, gen: gen))
               ?.ty;
         }
         if (ty != null) {
@@ -1249,9 +1274,8 @@ class MethodCallExpr extends Expr with FnCallMixin {
               final p = value.load(c);
               final elementTy = ty.llvmType.createType(c);
               var ety = ty;
-
-              if (ty is CTypeTy && ty.tys.isNotEmpty) {
-                ety = ty.tys.values.first;
+              if (ty is RefTy) {
+                ety = ty.parent;
               }
 
               var v = llvm.LLVMBuildInBoundsGEP2(c.builder, elementTy, p,
@@ -2132,19 +2156,22 @@ class MatchItemExpr extends BuildMixin {
     if (e is RefExpr) {
       e = e.current;
     }
+    List<FieldExpr> params = const [];
+
     if (e is FnCallExpr) {
-      final enumVariable = e.expr.build(child);
-      final params = e.params;
-      final enumTy = enumVariable?.ty;
-      final val = pattern.variable;
-      if (val != null) {
-        if (enumTy is EnumItem) {
-          value = enumTy.llvmType.load(child, val, params);
-        }
-      }
-    } else {
-      expr.build(child)?.variable;
+      params = e.params;
+      e = e.expr;
     }
+
+    final enumVariable = e.build(child);
+    final enumTy = enumVariable?.ty;
+    final val = pattern.variable;
+    if (val != null) {
+      if (enumTy is EnumItem) {
+        value = enumTy.llvmType.load(child, val, params);
+      }
+    }
+
     block.build(child);
     return value;
   }

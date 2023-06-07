@@ -905,27 +905,31 @@ class LLVMEnumItemType extends LLVMStructType {
     final type = createType(c);
 
     final map = _size!.map;
-    for (var i = 0; i < ty.fields.length; i++) {
-      final f = ty.fields[i];
-      final index = map[f]!.index;
-      if (i >= params.length) break;
-      final p = params[i];
-      var ident = f.ident;
-      var e = p.expr;
-      if (e is RefExpr) {
-        e = e.current;
-      }
-      if (e is VariableIdentExpr) {
-        ident = e.ident;
-      }
 
-      final indices = [c.constI32(0), c.constI32(index)];
-      final t = f.grt(c);
-      final llValue = llvm.LLVMBuildInBoundsGEP2(
-          c.builder, type, value, indices.toNative(), indices.length, unname);
-      final v = llvm.LLVMBuildLoad2(
-          c.builder, t.llvmType.createType(c), llValue, unname);
-      c.resolveParam(t, v, ident, false);
+    if (ty.fields.length == params.length || params.isEmpty) {
+      for (var i = 0; i < ty.fields.length; i++) {
+        final f = ty.fields[i];
+        var ident = f.ident;
+        final index = map[f]!.index;
+        if (i < params.length) {
+          final p = params[i];
+          var e = p.expr;
+          if (e is RefExpr) {
+            e = e.current;
+          }
+          if (e is VariableIdentExpr) {
+            ident = e.ident;
+          }
+        }
+
+        final indices = [c.constI32(0), c.constI32(index)];
+        final t = f.grt(c);
+        final llValue = llvm.LLVMBuildInBoundsGEP2(
+            c.builder, type, value, indices.toNative(), indices.length, unname);
+        final val = LLVMAllocaVariable(t, llValue, t.llvmType.createType(c));
+        val.isTemp = false;
+        c.pushVariable(ident, val);
+      }
     }
     return ty.parent.variants.indexOf(ty);
   }

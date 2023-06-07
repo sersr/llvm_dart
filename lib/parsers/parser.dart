@@ -90,7 +90,16 @@ class Parser {
     eatLfIfNeed(it);
     final path = parsePathTy(it);
     if (path != null) {
-      return CTypeTy(path);
+      eatLfIfNeed(it);
+      PathTy? base;
+      if (it.moveNext()) {
+        if (getToken(it).kind == TokenKind.eq) {
+          base = parsePathTy(it);
+        } else {
+          it.moveBack();
+        }
+      }
+      return CTypeTy(path, base);
     }
     return null;
   }
@@ -897,8 +906,7 @@ class Parser {
     return idents;
   }
 
-  Expr parseExpr(TokenIterator it,
-      {bool runOp = false, bool runOpInner = false}) {
+  Expr parseExpr(TokenIterator it, {bool runOp = false}) {
     eatLfIfNeed(it);
     final pointerKind = getAllKind(it, runOp: runOp);
 
@@ -907,7 +915,7 @@ class Parser {
       Expr? lhs;
       if (t.kind == TokenKind.openParen) {
         it.moveNext();
-        lhs = parseExpr(it.current.child.tokenIt, runOpInner: runOp);
+        lhs = parseExpr(it.current.child.tokenIt);
       } else if (t.kind == TokenKind.literal) {
         final lit = t.literalKind!;
         final lkd = LitKind.from(lit);
@@ -1035,7 +1043,7 @@ class Parser {
           }
         }
         if (!runOp) {
-          final op = parseOpExpr(it, lhs, runOpInner);
+          final op = parseOpExpr(it, lhs);
           if (op != null) {
             lhs = op;
           }
@@ -1046,7 +1054,7 @@ class Parser {
     return UnknownExpr(getIdent(it), '');
   }
 
-  Expr? parseOpExpr(TokenIterator it, Expr lhs, bool runOpInner) {
+  Expr? parseOpExpr(TokenIterator it, Expr lhs) {
     final ops = <OpKind>[];
     final exprs = <Expr>[];
     exprs.add(lhs);
@@ -1084,36 +1092,14 @@ class Parser {
     }
 
     loop(it, () {
-      // `/n` 意味着结束
-      if (getToken(it).kind == TokenKind.semi) {
-        return true;
-      }
-
       final op = resolveOp(it);
       if (op != null) {
         final expr = parseExpr(it, runOp: true);
         ops.add(op);
         exprs.add(expr);
-        if (runOpInner) {
-          eatLfIfNeed(it);
-          // 在一个运算解析中，结束循环并移到下一个token
-          if (getToken(it).kind == TokenKind.closeParen) {
-            it.moveNext();
-            return true;
-          }
-        } else {
-          // 如果上面移动到下一个token，这里就会解析错误
-          if (getToken(it).kind == TokenKind.closeParen) {
-            eIt = exprs.tokenIt;
-            final expr = combine()!;
-            ops.clear();
-            exprs.clear();
-            exprs.add(expr);
-            // it.moveNext();
-          }
-        }
         return false;
       }
+      it.moveBack();
       return true;
     });
 
@@ -1425,7 +1411,9 @@ class Parser {
     final types = parseGenerics(it);
     eatLfIfNeed(it);
     it.moveNext(); // (
-    if (getToken(it).kind != TokenKind.openParen) {
+    final t = getToken(it);
+
+    if (t.kind != TokenKind.openParen && t.kind != TokenKind.openBrace) {
       return EnumItem(ident, [], types);
     }
 
@@ -1437,12 +1425,21 @@ class Parser {
     loop(it, () {
       final t = getToken(it);
       if (t.kind == TokenKind.lf) return false;
-      if (t.kind == TokenKind.closeParen) return true;
       final state = it.cursor;
+      var ident = Identifier.none;
+      if (t.kind == TokenKind.ident) {
+        ident = getIdent(it);
+        eatLfIfNeed(it);
+        if (it.moveNext()) {
+          if (getToken(it).kind == TokenKind.colon) {
+            it.moveNext();
+          }
+        }
+      }
       it.moveBack();
       final ty = parsePathTy(it);
       if (ty != null) {
-        final f = FieldDef(Identifier.none, ty);
+        final f = FieldDef(ident, ty);
         fields.add(f);
       } else {
         state.restore();
