@@ -26,12 +26,12 @@ class LLVMBasicBlock {
 
 class BuildContext
     with BuildMethods, Tys<BuildContext, Variable>, Consts, OverflowMath, Cast {
-  BuildContext._(BuildContext this.parent) {
+  BuildContext._(BuildContext this.parent) : isRoot = false {
     kModule = parent!.kModule;
     _dBuilder = parent!._dBuilder;
     _init();
   }
-  BuildContext._clone(BuildContext this.parent) {
+  BuildContext._clone(BuildContext this.parent) : isRoot = false {
     kModule = parent!.kModule;
     module = parent!.module;
     llvmContext = parent!.llvmContext;
@@ -42,20 +42,23 @@ class BuildContext
     _dBuilder = parent!._dBuilder;
   }
 
-  BuildContext._importRoot(BuildContext p) : parent = null {
+  BuildContext._importRoot(BuildContext p)
+      : parent = null,
+        isRoot = false {
     kModule = p.kModule;
     module = p.module;
     llvmContext = p.llvmContext;
     fpm = p.fpm;
     builder = llvm.LLVMCreateBuilderInContext(llvmContext);
     p.children.add(this);
-    _debugInit();
   }
 
   @override
   String? get currentPath => super.currentPath ?? parent?.currentPath;
 
-  BuildContext.root([String name = 'root']) : parent = null {
+  BuildContext.root([String name = 'root'])
+      : parent = null,
+        isRoot = true {
     kModule = llvm.createKModule(name.toChar());
     _init();
     _debugInit();
@@ -82,6 +85,12 @@ class BuildContext
     llvm.LLVMAddModuleFlag(module, 1, version.toChar(), version.length,
         llvm.LLVMValueAsMetadata(versionV));
     _debugInit();
+  }
+
+  @override
+  void initImportContext(BuildContext child) {
+    if (dBuilder == null) return;
+    child._debugInit();
   }
 
   bool _finalized = true;
@@ -132,12 +141,13 @@ class BuildContext
   @override
   LLVMValueRef get fnValue => fn.value;
 
+  final bool isRoot;
   void dispose() {
     llvm.LLVMDisposeBuilder(builder);
     for (var child in children) {
       child.dispose();
     }
-    if (parent == null) {
+    if (isRoot) {
       llvm.destory(kModule);
     }
   }

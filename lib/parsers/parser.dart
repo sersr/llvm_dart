@@ -909,9 +909,9 @@ class Parser {
 
   Expr parseExpr(TokenIterator it, {bool runOp = false}) {
     eatLfIfNeed(it);
-
-    final pointerIdent = getIdent(it);
+    var pointerIdent = Identifier.none;
     final pointerKind = getAllKind(it, runOp: runOp);
+    if (it.curentIsValid) pointerIdent = getIdent(it);
 
     if (it.moveNext()) {
       final t = getToken(it);

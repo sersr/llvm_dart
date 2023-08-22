@@ -232,6 +232,7 @@ mixin BuildMethods {
 
   void diSetCurrentLoc(Offset offset) {
     if (!offset.isValid) return;
+    if (dBuilder == null) return;
     final loc = llvm.LLVMDIBuilderCreateDebugLocation(
         llvmContext, offset.row, offset.column, scope, nullptr);
 

@@ -64,9 +64,12 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
       final im = getImportHandler()?.call(this, path);
       if (im != null) {
         imports[path] = im as T;
+        initImportContext(im);
       }
     }
   }
+
+  void initImportContext(T child) {}
 
   final variables = <Identifier, List<V>>{};
 

@@ -7,7 +7,7 @@ void main() {
   Future<void> run(String name, {bool run = false}) {
     return runPrint(() {
       // final name = 'impl_fn.kc';
-      final project = Project(testSrcDir.childFile(name).path);
+      final project = Project(testSrcDir.childFile(name).path, isDebug: true);
       // project.mem2reg = true;
       // project.printAsm = true;
       // project.enableBuild = true;

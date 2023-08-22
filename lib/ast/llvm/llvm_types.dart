@@ -336,9 +336,9 @@ class LLVMFnType extends LLVMType {
       }
       final offset = fn.fnSign.fnDecl.ident.offset;
 
-      final file = llvm.LLVMDIScopeGetFile(c.unit);
       final dBuilder = c.dBuilder;
-      if (dBuilder != null) {
+      if (dBuilder != null && fn.block?.stmts.isNotEmpty == true) {
+        final file = llvm.LLVMDIScopeGetFile(c.unit);
         final params = <Pointer>[];
         params.add(llvm.LLVMDIBuilderCreateBasicType(
             dBuilder, 'i32'.toChar(), 'i32'.length, 32, 5, 0));

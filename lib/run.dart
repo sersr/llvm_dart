@@ -109,7 +109,7 @@ Future<void> runNativeCode({String args = '', bool run = true}) async {
     runn = '&& ./main $args';
   }
   final process = await Process.start(
-      'sh', ['-c', 'clang -g $p/out.ll -o main $runn'],
+      'sh', ['-c', 'clang -g out.ll -o main $runn'],
       workingDirectory: p);
   stdout.addStream(process.stdout);
   stderr.addStream(process.stderr);

@@ -16,11 +16,12 @@ import '../parsers/parser.dart';
 import 'fs.dart';
 
 class Project {
-  Project(this.path) {
+  Project(this.path, {this.isDebug = true}) {
     _init();
   }
 
   final String path;
+  final bool isDebug;
 
   late Parser parser;
 
@@ -139,7 +140,7 @@ class Project {
       llvm.initLLVM();
       final root = buildContext = BuildContext.root('./test/src/debug.c');
       root.currentPath = path;
-      root.init();
+      root.init(isDebug);
       root.importHandler = importBuild as dynamic;
       BuildContext.mem2reg = mem2reg;
 
@@ -167,8 +168,8 @@ class Project {
       llvm.LLVMDumpModule(root.module);
       llvm.LLVMPrintModuleToFile(root.module, 'out.ll'.toChar(), nullptr);
       after?.call();
-      // llvm.writeOutput(
-      //     root.kModule, LLVMCodeGenFileType.LLVMObjectFile, 'out.o'.toChar());
+      llvm.writeOutput(
+          root.kModule, LLVMCodeGenFileType.LLVMObjectFile, 'out.o'.toChar());
       root.dispose();
     });
   }
