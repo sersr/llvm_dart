@@ -38,6 +38,8 @@ abstract class LLVMType {
   int getBytes(BuildContext c);
   LLVMTypeRef createType(BuildContext c);
 
+  LLVMMetadataRef createDIType(covariant BuildMethods c);
+
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
     // final type = createType(c);
@@ -45,7 +47,9 @@ abstract class LLVMType {
     // final val = LLVMAllocaVariable(ty, v, type);
     final type = createType(c);
     final val = LLVMAllocaDelayVariable(ty, base, ([alloca]) {
-      return c.alloctor(type, ty: ty, name: ident.src);
+      final value = c.alloctor(type, ty: ty, name: ident.src);
+      c.diBuilderDeclare(ident, value, ty);
+      return value;
     }, type);
     if (ident.isValid) {
       val.ident = ident;
@@ -187,6 +191,13 @@ class LLVMTypeLit extends LLVMType {
         return 0;
     }
   }
+
+  @override
+  LLVMMetadataRef createDIType(covariant BuildContext c) {
+    final name = ty.ty.name;
+    return llvm.LLVMDIBuilderCreateBasicType(
+        c.dBuilder!, name.toChar(), name.length, getBytes(c) * 8, 5, 0);
+  }
 }
 
 class LLVMFnType extends LLVMType {
@@ -323,7 +334,39 @@ class LLVMFnType extends LLVMType {
 
         llvm.LLVMAddAttributeAtIndex(v, 1, attr);
       }
+      final offset = fn.fnSign.fnDecl.ident.offset;
 
+      final file = llvm.LLVMDIScopeGetFile(c.unit);
+      final dBuilder = c.dBuilder;
+      if (dBuilder != null) {
+        final params = <Pointer>[];
+        params.add(llvm.LLVMDIBuilderCreateBasicType(
+            dBuilder, 'i32'.toChar(), 'i32'.length, 32, 5, 0));
+
+        // final param = llvm.LLVMDIBuilderGetOrCreateArray(
+        //     c.dBuilder, <Pointer>[].toNative(), 0);
+        final fnTy = llvm.LLVMDIBuilderCreateSubroutineType(
+            dBuilder, file, params.toNative(), params.length, 0);
+        final fnScope = llvm.LLVMDIBuilderCreateFunction(
+            dBuilder,
+            c.unit,
+            ident.toChar(),
+            ident.length,
+            ident.toChar(),
+            ident.length,
+            file,
+            offset.row,
+            fnTy,
+            LLVMFalse,
+            LLVMTrue,
+            offset.row,
+            0,
+            LLVMFalse);
+
+        llvm.LLVMSetSubprogram(v, fnScope);
+
+        c.diSetCurrentLoc(offset);
+      }
       return LLVMConstVariable(v, fn);
     });
   }
@@ -331,6 +374,12 @@ class LLVMFnType extends LLVMType {
   @override
   int getBytes(BuildContext c) {
     return c.pointerSize();
+  }
+
+  @override
+  LLVMMetadataRef createDIType(covariant BuildContext c) {
+    return llvm.LLVMDIBuilderCreateBasicType(
+        c.dBuilder!, 'ptr'.toChar(), 3, getBytes(c) * 8, 1, 0);
   }
 }
 
@@ -455,9 +504,10 @@ class LLVMStructType extends LLVMType {
     return val;
   }
 
-  LLVMValueRef load2(BuildContext c, Variable v, bool isExternFnParam) {
+  LLVMValueRef load2(
+      BuildContext c, Variable v, bool isExternFnParam, Offset offset) {
     if (!isExternFnParam) {
-      final llValue = v.load(c);
+      final llValue = v.load(c, offset);
       return llValue;
     }
 
@@ -468,7 +518,7 @@ class LLVMStructType extends LLVMType {
       for (var p in ty.fields) {
         final srcVal = getField(v, c, p.ident)!;
         final destVal = getField(alloca, c, p.ident, useExtern: true)!;
-        destVal.store(c, srcVal.load(c));
+        destVal.store(c, srcVal.load(c, Offset.zero));
       }
     } else {
       alloca = v;
@@ -497,6 +547,7 @@ class LLVMStructType extends LLVMType {
   LLVMAllocaVariable _createExternAlloca(BuildContext c, Identifier ident) {
     final type = cCreateType(c);
     final alloca = c.alloctor(type, ty: ty, name: ident.src);
+    c.diBuilderDeclare(ident, alloca, ty);
     return LLVMAllocaVariable(ty, alloca, type);
   }
 
@@ -542,7 +593,7 @@ class LLVMStructType extends LLVMType {
     for (var p in ty.fields) {
       final srcVal = getField(calloca, c, p.ident, useExtern: true)!;
       final destVal = getField(alloca, c, p.ident)!;
-      destVal.store(c, srcVal.load(c));
+      destVal.store(c, srcVal.load(c, Offset.zero));
     }
     return alloca;
   }
@@ -619,6 +670,44 @@ class LLVMStructType extends LLVMType {
 
     return FieldsSize(map, count, alignSize);
   }
+
+  @override
+  LLVMMetadataRef createDIType(covariant BuildContext c) {
+    final name = ty.ident.src;
+    final offset = ty.ident.offset;
+    final size = getFieldsSize(c);
+
+    final elements = <LLVMMetadataRef>[];
+    final fields = size.map.keys.toList();
+
+    for (var field in fields) {
+      var rty = field.grt(c);
+      if (rty is FnTy) {
+        elements.add(rty.llvmType.createDIType(c));
+      } else {
+        final ty = rty.llvmType.createDIType(c);
+        elements.add(ty);
+      }
+    }
+    return llvm.LLVMDIBuilderCreateStructType(
+      c.dBuilder!,
+      c.scope,
+      name.toChar(),
+      name.length,
+      llvm.LLVMDIScopeGetFile(c.unit),
+      offset.row,
+      getBytes(c),
+      size.alignSize,
+      0,
+      nullptr,
+      elements.toNative(),
+      elements.length,
+      0,
+      nullptr,
+      nullptr,
+      0,
+    );
+  }
 }
 
 class LLVMRefType extends LLVMType {
@@ -647,6 +736,18 @@ class LLVMRefType extends LLVMType {
   int getBytes(BuildContext c) {
     return c.pointerSize();
   }
+
+  @override
+  LLVMMetadataRef createDIType(covariant BuildContext c) {
+    return llvm.LLVMDIBuilderCreatePointerType(
+        c.dBuilder!,
+        parent.llvmType.createDIType(c),
+        c.pointerSize(),
+        c.pointerSize(),
+        0,
+        unname,
+        0);
+  }
 }
 
 class LLVMEnumType extends LLVMType {
@@ -664,11 +765,11 @@ class LLVMEnumType extends LLVMType {
     if (_type != null) return _type!;
     final size = getItemBytes(c);
     final index = getIndexType(c);
-    final s = getRealIndexType(c);
+    final minSize = getRealIndexType(c);
     LLVMTypeRef tyx;
-    if (s == 1) {
+    if (minSize == 1) {
       tyx = c.arrayType(c.i8, size - 1);
-    } else if (s == 4) {
+    } else if (minSize == 4) {
       final fc = (size / 4).ceil();
       tyx = c.arrayType(c.i32, fc - 1);
     } else {
@@ -687,6 +788,19 @@ class LLVMEnumType extends LLVMType {
       return c.i32;
     }
     return c.i8;
+  }
+
+  LLVMMetadataRef getIndexDIType(BuildContext c) {
+    final size = getRealIndexType(c);
+    if (size == 8) {
+      return llvm.LLVMDIBuilderCreateBasicType(
+          c.dBuilder!, 'i64'.toChar(), 3, 64, 1, 0);
+    } else if (size == 4) {
+      return llvm.LLVMDIBuilderCreateBasicType(
+          c.dBuilder!, 'i32'.toChar(), 3, 32, 1, 0);
+    }
+    return llvm.LLVMDIBuilderCreateBasicType(
+        c.dBuilder!, 'i8'.toChar(), 1, 8, 1, 0);
   }
 
   int getItemBytes(BuildContext c) {
@@ -745,6 +859,59 @@ class LLVMEnumType extends LLVMType {
       return _total = csize;
     }
     return _total = (total / csize).ceil();
+  }
+
+  @override
+  LLVMMetadataRef createDIType(covariant BuildContext c) {
+    final size = getItemBytes(c);
+    final index = getIndexDIType(c);
+    final minSize = getRealIndexType(c);
+    LLVMMetadataRef tyx;
+    if (minSize == 1) {
+      tyx = llvm.LLVMDIBuilderCreateArrayType(
+          c.dBuilder!,
+          size - 1,
+          size,
+          llvm.LLVMDIBuilderCreateBasicType(
+              c.dBuilder!, 'i8'.toChar(), 2, 8, 1, 0),
+          nullptr,
+          0);
+    } else if (minSize == 4) {
+      final fc = (size / 4).ceil();
+      tyx = llvm.LLVMDIBuilderCreateArrayType(
+          c.dBuilder!,
+          fc,
+          size,
+          llvm.LLVMDIBuilderCreateBasicType(
+              c.dBuilder!, 'i32'.toChar(), 3, 32, 1, 0),
+          nullptr,
+          0);
+    } else {
+      final item = c.getStructExternDIType(size);
+      tyx = item;
+    }
+
+    final name = ty.ident.src;
+    final offset = ty.ident.offset;
+    final elements = [index, tyx];
+    return llvm.LLVMDIBuilderCreateStructType(
+      c.dBuilder!,
+      c.scope,
+      name.toChar(),
+      name.length,
+      llvm.LLVMDIScopeGetFile(c.unit),
+      offset.row,
+      getBytes(c),
+      size,
+      0,
+      nullptr,
+      elements.toNative(),
+      elements.length,
+      0,
+      nullptr,
+      nullptr,
+      0,
+    );
   }
 }
 
@@ -886,6 +1053,7 @@ class LLVMEnumItemType extends LLVMStructType {
     return LLVMAllocaDelayVariable(ty, base, ([alloca]) {
       final ctype = createType(c);
       final alloca = c.alloctor(type, ty: ty, name: ident.src);
+      c.diBuilderDeclare(ident, alloca, ty);
       final indices = [c.constI32(0), c.constI32(0)];
       final first = llvm.LLVMBuildInBoundsGEP2(
           c.builder, ctype, alloca, indices.toNative(), indices.length, unname);
@@ -900,7 +1068,7 @@ class LLVMEnumItemType extends LLVMStructType {
     if (parent is StoreVariable) {
       value = parent.alloca;
     } else {
-      value = parent.load(c);
+      value = parent.load(c, Offset.zero);
     }
     final type = createType(c);
 
@@ -939,7 +1107,7 @@ class LLVMEnumItemType extends LLVMStructType {
     if (parent is StoreVariable) {
       value = parent.alloca;
     } else {
-      value = parent.load(c);
+      value = parent.load(c, Offset.zero);
     }
 
     final indices = [c.constI32(0), c.constI32(0)];

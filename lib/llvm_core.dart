@@ -18,6 +18,7 @@ class LLVMCore {
           lookup)
       : _lookup = lookup;
 
+  /// @}
   void LLVMInitializeCore(
     LLVMPassRegistryRef R,
   ) {
@@ -32,6 +33,9 @@ class LLVMCore {
   late final _LLVMInitializeCore =
       _LLVMInitializeCorePtr.asFunction<void Function(LLVMPassRegistryRef)>();
 
+  /// Deallocate and destroy all ManagedStatic variables.
+  /// @see llvm::llvm_shutdown
+  /// @see ManagedStatic
   void LLVMShutdown() {
     return _LLVMShutdown();
   }
@@ -40,6 +44,10 @@ class LLVMCore {
       _lookup<ffi.NativeFunction<ffi.Void Function()>>('LLVMShutdown');
   late final _LLVMShutdown = _LLVMShutdownPtr.asFunction<void Function()>();
 
+  /// Return the major, minor, and patch version of LLVM
+  ///
+  /// The version components are returned via the function's three output
+  /// parameters or skipped if a NULL pointer was supplied.
   void LLVMGetVersion(
     ffi.Pointer<ffi.UnsignedInt> Major,
     ffi.Pointer<ffi.UnsignedInt> Minor,
@@ -91,6 +99,10 @@ class LLVMCore {
   late final _LLVMDisposeMessage =
       _LLVMDisposeMessagePtr.asFunction<void Function(ffi.Pointer<ffi.Char>)>();
 
+  /// Create a new context.
+  ///
+  /// Every call to this function should be paired with a call to
+  /// LLVMContextDispose() or the context will leak memory.
   LLVMContextRef LLVMContextCreate() {
     return _LLVMContextCreate();
   }
@@ -101,6 +113,7 @@ class LLVMCore {
   late final _LLVMContextCreate =
       _LLVMContextCreatePtr.asFunction<LLVMContextRef Function()>();
 
+  /// Obtain the global context instance.
   LLVMContextRef LLVMGetGlobalContext() {
     return _LLVMGetGlobalContext();
   }
@@ -111,6 +124,7 @@ class LLVMCore {
   late final _LLVMGetGlobalContext =
       _LLVMGetGlobalContextPtr.asFunction<LLVMContextRef Function()>();
 
+  /// Set the diagnostic handler for this context.
   void LLVMContextSetDiagnosticHandler(
     LLVMContextRef C,
     LLVMDiagnosticHandler Handler,
@@ -132,6 +146,7 @@ class LLVMCore {
           void Function(
               LLVMContextRef, LLVMDiagnosticHandler, ffi.Pointer<ffi.Void>)>();
 
+  /// Get the diagnostic handler of this context.
   LLVMDiagnosticHandler LLVMContextGetDiagnosticHandler(
     LLVMContextRef C,
   ) {
@@ -147,6 +162,7 @@ class LLVMCore {
       _LLVMContextGetDiagnosticHandlerPtr.asFunction<
           LLVMDiagnosticHandler Function(LLVMContextRef)>();
 
+  /// Get the diagnostic context of this context.
   ffi.Pointer<ffi.Void> LLVMContextGetDiagnosticContext(
     LLVMContextRef C,
   ) {
@@ -162,6 +178,9 @@ class LLVMCore {
       _LLVMContextGetDiagnosticContextPtr.asFunction<
           ffi.Pointer<ffi.Void> Function(LLVMContextRef)>();
 
+  /// Set the yield callback function for this context.
+  ///
+  /// @see LLVMContext::setYieldCallback()
   void LLVMContextSetYieldCallback(
     LLVMContextRef C,
     LLVMYieldCallback Callback,
@@ -183,6 +202,9 @@ class LLVMCore {
           void Function(
               LLVMContextRef, LLVMYieldCallback, ffi.Pointer<ffi.Void>)>();
 
+  /// Retrieve whether the given context is set to discard all value names.
+  ///
+  /// @see LLVMContext::shouldDiscardValueNames()
   int LLVMContextShouldDiscardValueNames(
     LLVMContextRef C,
   ) {
@@ -198,6 +220,12 @@ class LLVMCore {
       _LLVMContextShouldDiscardValueNamesPtr.asFunction<
           int Function(LLVMContextRef)>();
 
+  /// Set whether the given context discards all value names.
+  ///
+  /// If true, only the names of GlobalValue objects will be available in the IR.
+  /// This can be used to save memory and runtime, especially in release mode.
+  ///
+  /// @see LLVMContext::setDiscardValueNames()
   void LLVMContextSetDiscardValueNames(
     LLVMContextRef C,
     int Discard,
@@ -215,6 +243,29 @@ class LLVMCore {
       _LLVMContextSetDiscardValueNamesPtr.asFunction<
           void Function(LLVMContextRef, int)>();
 
+  /// Set whether the given context is in opaque pointer mode.
+  ///
+  /// @see LLVMContext::setOpaquePointers()
+  void LLVMContextSetOpaquePointers(
+    LLVMContextRef C,
+    int OpaquePointers,
+  ) {
+    return _LLVMContextSetOpaquePointers(
+      C,
+      OpaquePointers,
+    );
+  }
+
+  late final _LLVMContextSetOpaquePointersPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMContextRef, LLVMBool)>>(
+          'LLVMContextSetOpaquePointers');
+  late final _LLVMContextSetOpaquePointers = _LLVMContextSetOpaquePointersPtr
+      .asFunction<void Function(LLVMContextRef, int)>();
+
+  /// Destroy a context instance.
+  ///
+  /// This should be called for every call to LLVMContextCreate() or memory
+  /// will be leaked.
   void LLVMContextDispose(
     LLVMContextRef C,
   ) {
@@ -229,6 +280,10 @@ class LLVMCore {
   late final _LLVMContextDispose =
       _LLVMContextDisposePtr.asFunction<void Function(LLVMContextRef)>();
 
+  /// Return a string representation of the DiagnosticInfo. Use
+  /// LLVMDisposeMessage to free the string.
+  ///
+  /// @see DiagnosticInfo::print()
   ffi.Pointer<ffi.Char> LLVMGetDiagInfoDescription(
     LLVMDiagnosticInfoRef DI,
   ) {
@@ -244,6 +299,9 @@ class LLVMCore {
   late final _LLVMGetDiagInfoDescription = _LLVMGetDiagInfoDescriptionPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(LLVMDiagnosticInfoRef)>();
 
+  /// Return an enum LLVMDiagnosticSeverity.
+  ///
+  /// @see DiagnosticInfo::getSeverity()
   int LLVMGetDiagInfoSeverity(
     LLVMDiagnosticInfoRef DI,
   ) {
@@ -294,6 +352,15 @@ class LLVMCore {
   late final _LLVMGetMDKindID = _LLVMGetMDKindIDPtr.asFunction<
       int Function(ffi.Pointer<ffi.Char>, int)>();
 
+  /// Return an unique id given the name of a enum attribute,
+  /// or 0 if no attribute by that name exists.
+  ///
+  /// See http://llvm.org/docs/LangRef.html#parameter-attributes
+  /// and http://llvm.org/docs/LangRef.html#function-attributes
+  /// for the list of available attributes.
+  ///
+  /// NB: Attribute names and/or id are subject to change without
+  /// going through the C API deprecation cycle.
   int LLVMGetEnumAttributeKindForName(
     ffi.Pointer<ffi.Char> Name,
     int SLen,
@@ -307,7 +374,7 @@ class LLVMCore {
   late final _LLVMGetEnumAttributeKindForNamePtr = _lookup<
       ffi.NativeFunction<
           ffi.UnsignedInt Function(ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMGetEnumAttributeKindForName');
+              ffi.Size)>>('LLVMGetEnumAttributeKindForName');
   late final _LLVMGetEnumAttributeKindForName =
       _LLVMGetEnumAttributeKindForNamePtr.asFunction<
           int Function(ffi.Pointer<ffi.Char>, int)>();
@@ -322,6 +389,7 @@ class LLVMCore {
   late final _LLVMGetLastEnumAttributeKind =
       _LLVMGetLastEnumAttributeKindPtr.asFunction<int Function()>();
 
+  /// Create an enum attribute.
   LLVMAttributeRef LLVMCreateEnumAttribute(
     LLVMContextRef C,
     int KindID,
@@ -341,6 +409,8 @@ class LLVMCore {
   late final _LLVMCreateEnumAttribute = _LLVMCreateEnumAttributePtr.asFunction<
       LLVMAttributeRef Function(LLVMContextRef, int, int)>();
 
+  /// Get the unique id corresponding to the enum attribute
+  /// passed as argument.
   int LLVMGetEnumAttributeKind(
     LLVMAttributeRef A,
   ) {
@@ -355,6 +425,7 @@ class LLVMCore {
   late final _LLVMGetEnumAttributeKind =
       _LLVMGetEnumAttributeKindPtr.asFunction<int Function(LLVMAttributeRef)>();
 
+  /// Get the enum attribute's value. 0 is returned if none exists.
   int LLVMGetEnumAttributeValue(
     LLVMAttributeRef A,
   ) {
@@ -369,6 +440,7 @@ class LLVMCore {
   late final _LLVMGetEnumAttributeValue = _LLVMGetEnumAttributeValuePtr
       .asFunction<int Function(LLVMAttributeRef)>();
 
+  /// Create a type attribute
   LLVMAttributeRef LLVMCreateTypeAttribute(
     LLVMContextRef C,
     int KindID,
@@ -388,6 +460,7 @@ class LLVMCore {
   late final _LLVMCreateTypeAttribute = _LLVMCreateTypeAttributePtr.asFunction<
       LLVMAttributeRef Function(LLVMContextRef, int, LLVMTypeRef)>();
 
+  /// Get the type attribute's value.
   LLVMTypeRef LLVMGetTypeAttributeValue(
     LLVMAttributeRef A,
   ) {
@@ -402,6 +475,7 @@ class LLVMCore {
   late final _LLVMGetTypeAttributeValue = _LLVMGetTypeAttributeValuePtr
       .asFunction<LLVMTypeRef Function(LLVMAttributeRef)>();
 
+  /// Create a string attribute.
   LLVMAttributeRef LLVMCreateStringAttribute(
     LLVMContextRef C,
     ffi.Pointer<ffi.Char> K,
@@ -431,6 +505,7 @@ class LLVMCore {
           LLVMAttributeRef Function(LLVMContextRef, ffi.Pointer<ffi.Char>, int,
               ffi.Pointer<ffi.Char>, int)>();
 
+  /// Get the string attribute's kind.
   ffi.Pointer<ffi.Char> LLVMGetStringAttributeKind(
     LLVMAttributeRef A,
     ffi.Pointer<ffi.UnsignedInt> Length,
@@ -450,6 +525,7 @@ class LLVMCore {
           ffi.Pointer<ffi.Char> Function(
               LLVMAttributeRef, ffi.Pointer<ffi.UnsignedInt>)>();
 
+  /// Get the string attribute's value.
   ffi.Pointer<ffi.Char> LLVMGetStringAttributeValue(
     LLVMAttributeRef A,
     ffi.Pointer<ffi.UnsignedInt> Length,
@@ -469,6 +545,7 @@ class LLVMCore {
           ffi.Pointer<ffi.Char> Function(
               LLVMAttributeRef, ffi.Pointer<ffi.UnsignedInt>)>();
 
+  /// Check for the different types of attributes.
   int LLVMIsEnumAttribute(
     LLVMAttributeRef A,
   ) {
@@ -511,6 +588,7 @@ class LLVMCore {
   late final _LLVMIsTypeAttribute =
       _LLVMIsTypeAttributePtr.asFunction<int Function(LLVMAttributeRef)>();
 
+  /// Obtain a Type from a context by its registered name.
   LLVMTypeRef LLVMGetTypeByName2(
     LLVMContextRef C,
     ffi.Pointer<ffi.Char> Name,
@@ -528,6 +606,13 @@ class LLVMCore {
   late final _LLVMGetTypeByName2 = _LLVMGetTypeByName2Ptr.asFunction<
       LLVMTypeRef Function(LLVMContextRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Create a new, empty module in the global context.
+  ///
+  /// This is equivalent to calling LLVMModuleCreateWithNameInContext with
+  /// LLVMGetGlobalContext() as the context parameter.
+  ///
+  /// Every invocation should be paired with LLVMDisposeModule() or memory
+  /// will be leaked.
   LLVMModuleRef LLVMModuleCreateWithName(
     ffi.Pointer<ffi.Char> ModuleID,
   ) {
@@ -542,6 +627,10 @@ class LLVMCore {
   late final _LLVMModuleCreateWithName = _LLVMModuleCreateWithNamePtr
       .asFunction<LLVMModuleRef Function(ffi.Pointer<ffi.Char>)>();
 
+  /// Create a new, empty module in a specific context.
+  ///
+  /// Every invocation should be paired with LLVMDisposeModule() or memory
+  /// will be leaked.
   LLVMModuleRef LLVMModuleCreateWithNameInContext(
     ffi.Pointer<ffi.Char> ModuleID,
     LLVMContextRef C,
@@ -560,6 +649,7 @@ class LLVMCore {
       _LLVMModuleCreateWithNameInContextPtr.asFunction<
           LLVMModuleRef Function(ffi.Pointer<ffi.Char>, LLVMContextRef)>();
 
+  /// Return an exact copy of the specified module.
   LLVMModuleRef LLVMCloneModule(
     LLVMModuleRef M,
   ) {
@@ -574,6 +664,10 @@ class LLVMCore {
   late final _LLVMCloneModule =
       _LLVMCloneModulePtr.asFunction<LLVMModuleRef Function(LLVMModuleRef)>();
 
+  /// Destroy a module instance.
+  ///
+  /// This must be called for every created module or memory will be
+  /// leaked.
   void LLVMDisposeModule(
     LLVMModuleRef M,
   ) {
@@ -588,9 +682,15 @@ class LLVMCore {
   late final _LLVMDisposeModule =
       _LLVMDisposeModulePtr.asFunction<void Function(LLVMModuleRef)>();
 
+  /// Obtain the identifier of a module.
+  ///
+  /// @param M Module to obtain identifier of
+  /// @param Len Out parameter which holds the length of the returned string.
+  /// @return The identifier of M.
+  /// @see Module::getModuleIdentifier()
   ffi.Pointer<ffi.Char> LLVMGetModuleIdentifier(
     LLVMModuleRef M,
-    ffi.Pointer<ffi.Int> Len,
+    ffi.Pointer<ffi.Size> Len,
   ) {
     return _LLVMGetModuleIdentifier(
       M,
@@ -600,11 +700,17 @@ class LLVMCore {
 
   late final _LLVMGetModuleIdentifierPtr = _lookup<
       ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              LLVMModuleRef, ffi.Pointer<ffi.Int>)>>('LLVMGetModuleIdentifier');
+          ffi.Pointer<ffi.Char> Function(LLVMModuleRef,
+              ffi.Pointer<ffi.Size>)>>('LLVMGetModuleIdentifier');
   late final _LLVMGetModuleIdentifier = _LLVMGetModuleIdentifierPtr.asFunction<
-      ffi.Pointer<ffi.Char> Function(LLVMModuleRef, ffi.Pointer<ffi.Int>)>();
+      ffi.Pointer<ffi.Char> Function(LLVMModuleRef, ffi.Pointer<ffi.Size>)>();
 
+  /// Set the identifier of a module to a string Ident with length Len.
+  ///
+  /// @param M The module to set identifier
+  /// @param Ident The string to set M's identifier to
+  /// @param Len Length of Ident
+  /// @see Module::setModuleIdentifier()
   void LLVMSetModuleIdentifier(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Ident,
@@ -620,13 +726,19 @@ class LLVMCore {
   late final _LLVMSetModuleIdentifierPtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMSetModuleIdentifier');
+              ffi.Size)>>('LLVMSetModuleIdentifier');
   late final _LLVMSetModuleIdentifier = _LLVMSetModuleIdentifierPtr.asFunction<
       void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Obtain the module's original source file name.
+  ///
+  /// @param M Module to obtain the name of
+  /// @param Len Out parameter which holds the length of the returned string
+  /// @return The original source file name of M
+  /// @see Module::getSourceFileName()
   ffi.Pointer<ffi.Char> LLVMGetSourceFileName(
     LLVMModuleRef M,
-    ffi.Pointer<ffi.Int> Len,
+    ffi.Pointer<ffi.Size> Len,
   ) {
     return _LLVMGetSourceFileName(
       M,
@@ -637,10 +749,17 @@ class LLVMCore {
   late final _LLVMGetSourceFileNamePtr = _lookup<
       ffi.NativeFunction<
           ffi.Pointer<ffi.Char> Function(
-              LLVMModuleRef, ffi.Pointer<ffi.Int>)>>('LLVMGetSourceFileName');
+              LLVMModuleRef, ffi.Pointer<ffi.Size>)>>('LLVMGetSourceFileName');
   late final _LLVMGetSourceFileName = _LLVMGetSourceFileNamePtr.asFunction<
-      ffi.Pointer<ffi.Char> Function(LLVMModuleRef, ffi.Pointer<ffi.Int>)>();
+      ffi.Pointer<ffi.Char> Function(LLVMModuleRef, ffi.Pointer<ffi.Size>)>();
 
+  /// Set the original source file name of a module to a string Name with length
+  /// Len.
+  ///
+  /// @param M The module to set the source file name of
+  /// @param Name The string to set M's source file name to
+  /// @param Len Length of Name
+  /// @see Module::setSourceFileName()
   void LLVMSetSourceFileName(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -656,10 +775,17 @@ class LLVMCore {
   late final _LLVMSetSourceFileNamePtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMSetSourceFileName');
+              ffi.Size)>>('LLVMSetSourceFileName');
   late final _LLVMSetSourceFileName = _LLVMSetSourceFileNamePtr.asFunction<
       void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Obtain the data layout for a module.
+  ///
+  /// @see Module::getDataLayoutStr()
+  ///
+  /// LLVMGetDataLayout is DEPRECATED, as the name is not only incorrect,
+  /// but match the name of another method on the module. Prefer the use
+  /// of LLVMGetDataLayoutStr, which is not ambiguous.
   ffi.Pointer<ffi.Char> LLVMGetDataLayoutStr(
     LLVMModuleRef M,
   ) {
@@ -688,6 +814,9 @@ class LLVMCore {
   late final _LLVMGetDataLayout = _LLVMGetDataLayoutPtr.asFunction<
       ffi.Pointer<ffi.Char> Function(LLVMModuleRef)>();
 
+  /// Set the data layout for a module.
+  ///
+  /// @see Module::setDataLayout()
   void LLVMSetDataLayout(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> DataLayoutStr,
@@ -705,6 +834,9 @@ class LLVMCore {
   late final _LLVMSetDataLayout = _LLVMSetDataLayoutPtr.asFunction<
       void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Obtain the target triple for a module.
+  ///
+  /// @see Module::getTargetTriple()
   ffi.Pointer<ffi.Char> LLVMGetTarget(
     LLVMModuleRef M,
   ) {
@@ -719,6 +851,9 @@ class LLVMCore {
   late final _LLVMGetTarget = _LLVMGetTargetPtr.asFunction<
       ffi.Pointer<ffi.Char> Function(LLVMModuleRef)>();
 
+  /// Set the target triple for a module.
+  ///
+  /// @see Module::setTargetTriple()
   void LLVMSetTarget(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Triple,
@@ -736,9 +871,14 @@ class LLVMCore {
   late final _LLVMSetTarget = _LLVMSetTargetPtr.asFunction<
       void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Returns the module flags as an array of flag-key-value triples.  The caller
+  /// is responsible for freeing this array by calling
+  /// \c LLVMDisposeModuleFlagsMetadata.
+  ///
+  /// @see Module::getModuleFlagsMetadata()
   ffi.Pointer<LLVMModuleFlagEntry> LLVMCopyModuleFlagsMetadata(
     LLVMModuleRef M,
-    ffi.Pointer<ffi.Int> Len,
+    ffi.Pointer<ffi.Size> Len,
   ) {
     return _LLVMCopyModuleFlagsMetadata(
       M,
@@ -749,12 +889,13 @@ class LLVMCore {
   late final _LLVMCopyModuleFlagsMetadataPtr = _lookup<
       ffi.NativeFunction<
           ffi.Pointer<LLVMModuleFlagEntry> Function(LLVMModuleRef,
-              ffi.Pointer<ffi.Int>)>>('LLVMCopyModuleFlagsMetadata');
+              ffi.Pointer<ffi.Size>)>>('LLVMCopyModuleFlagsMetadata');
   late final _LLVMCopyModuleFlagsMetadata =
       _LLVMCopyModuleFlagsMetadataPtr.asFunction<
           ffi.Pointer<LLVMModuleFlagEntry> Function(
-              LLVMModuleRef, ffi.Pointer<ffi.Int>)>();
+              LLVMModuleRef, ffi.Pointer<ffi.Size>)>();
 
+  /// Destroys module flags metadata entries.
   void LLVMDisposeModuleFlagsMetadata(
     ffi.Pointer<LLVMModuleFlagEntry> Entries,
   ) {
@@ -771,6 +912,9 @@ class LLVMCore {
       _LLVMDisposeModuleFlagsMetadataPtr.asFunction<
           void Function(ffi.Pointer<LLVMModuleFlagEntry>)>();
 
+  /// Returns the flag behavior for a module flag entry at a specific index.
+  ///
+  /// @see Module::ModuleFlagEntry::Behavior
   int LLVMModuleFlagEntriesGetFlagBehavior(
     ffi.Pointer<LLVMModuleFlagEntry> Entries,
     int Index,
@@ -789,10 +933,13 @@ class LLVMCore {
       _LLVMModuleFlagEntriesGetFlagBehaviorPtr.asFunction<
           int Function(ffi.Pointer<LLVMModuleFlagEntry>, int)>();
 
+  /// Returns the key for a module flag entry at a specific index.
+  ///
+  /// @see Module::ModuleFlagEntry::Key
   ffi.Pointer<ffi.Char> LLVMModuleFlagEntriesGetKey(
     ffi.Pointer<LLVMModuleFlagEntry> Entries,
     int Index,
-    ffi.Pointer<ffi.Int> Len,
+    ffi.Pointer<ffi.Size> Len,
   ) {
     return _LLVMModuleFlagEntriesGetKey(
       Entries,
@@ -806,12 +953,15 @@ class LLVMCore {
           ffi.Pointer<ffi.Char> Function(
               ffi.Pointer<LLVMModuleFlagEntry>,
               ffi.UnsignedInt,
-              ffi.Pointer<ffi.Int>)>>('LLVMModuleFlagEntriesGetKey');
+              ffi.Pointer<ffi.Size>)>>('LLVMModuleFlagEntriesGetKey');
   late final _LLVMModuleFlagEntriesGetKey =
       _LLVMModuleFlagEntriesGetKeyPtr.asFunction<
           ffi.Pointer<ffi.Char> Function(
-              ffi.Pointer<LLVMModuleFlagEntry>, int, ffi.Pointer<ffi.Int>)>();
+              ffi.Pointer<LLVMModuleFlagEntry>, int, ffi.Pointer<ffi.Size>)>();
 
+  /// Returns the metadata for a module flag entry at a specific index.
+  ///
+  /// @see Module::ModuleFlagEntry::Val
   LLVMMetadataRef LLVMModuleFlagEntriesGetMetadata(
     ffi.Pointer<LLVMModuleFlagEntry> Entries,
     int Index,
@@ -830,6 +980,10 @@ class LLVMCore {
       _LLVMModuleFlagEntriesGetMetadataPtr.asFunction<
           LLVMMetadataRef Function(ffi.Pointer<LLVMModuleFlagEntry>, int)>();
 
+  /// Add a module-level flag to the module-level flags metadata if it doesn't
+  /// already exist.
+  ///
+  /// @see Module::getModuleFlag()
   LLVMMetadataRef LLVMGetModuleFlag(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Key,
@@ -845,10 +999,14 @@ class LLVMCore {
   late final _LLVMGetModuleFlagPtr = _lookup<
       ffi.NativeFunction<
           LLVMMetadataRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMGetModuleFlag');
+              ffi.Size)>>('LLVMGetModuleFlag');
   late final _LLVMGetModuleFlag = _LLVMGetModuleFlagPtr.asFunction<
       LLVMMetadataRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Add a module-level flag to the module-level flags metadata if it doesn't
+  /// already exist.
+  ///
+  /// @see Module::addModuleFlag()
   void LLVMAddModuleFlag(
     LLVMModuleRef M,
     int Behavior,
@@ -868,11 +1026,14 @@ class LLVMCore {
   late final _LLVMAddModuleFlagPtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(LLVMModuleRef, ffi.Int32, ffi.Pointer<ffi.Char>,
-              ffi.Int, LLVMMetadataRef)>>('LLVMAddModuleFlag');
+              ffi.Size, LLVMMetadataRef)>>('LLVMAddModuleFlag');
   late final _LLVMAddModuleFlag = _LLVMAddModuleFlagPtr.asFunction<
       void Function(
           LLVMModuleRef, int, ffi.Pointer<ffi.Char>, int, LLVMMetadataRef)>();
 
+  /// Dump a representation of a module to stderr.
+  ///
+  /// @see Module::dump()
   void LLVMDumpModule(
     LLVMModuleRef M,
   ) {
@@ -887,6 +1048,10 @@ class LLVMCore {
   late final _LLVMDumpModule =
       _LLVMDumpModulePtr.asFunction<void Function(LLVMModuleRef)>();
 
+  /// Print a representation of a module to a file. The ErrorMessage needs to be
+  /// disposed with LLVMDisposeMessage. Returns 0 on success, 1 otherwise.
+  ///
+  /// @see Module::print()
   int LLVMPrintModuleToFile(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Filename,
@@ -907,6 +1072,10 @@ class LLVMCore {
       int Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
           ffi.Pointer<ffi.Pointer<ffi.Char>>)>();
 
+  /// Return a string representation of the module. Use
+  /// LLVMDisposeMessage to free the string.
+  ///
+  /// @see Module::print()
   ffi.Pointer<ffi.Char> LLVMPrintModuleToString(
     LLVMModuleRef M,
   ) {
@@ -921,9 +1090,12 @@ class LLVMCore {
   late final _LLVMPrintModuleToString = _LLVMPrintModuleToStringPtr.asFunction<
       ffi.Pointer<ffi.Char> Function(LLVMModuleRef)>();
 
+  /// Get inline assembly for a module.
+  ///
+  /// @see Module::getModuleInlineAsm()
   ffi.Pointer<ffi.Char> LLVMGetModuleInlineAsm(
     LLVMModuleRef M,
-    ffi.Pointer<ffi.Int> Len,
+    ffi.Pointer<ffi.Size> Len,
   ) {
     return _LLVMGetModuleInlineAsm(
       M,
@@ -934,10 +1106,13 @@ class LLVMCore {
   late final _LLVMGetModuleInlineAsmPtr = _lookup<
       ffi.NativeFunction<
           ffi.Pointer<ffi.Char> Function(
-              LLVMModuleRef, ffi.Pointer<ffi.Int>)>>('LLVMGetModuleInlineAsm');
+              LLVMModuleRef, ffi.Pointer<ffi.Size>)>>('LLVMGetModuleInlineAsm');
   late final _LLVMGetModuleInlineAsm = _LLVMGetModuleInlineAsmPtr.asFunction<
-      ffi.Pointer<ffi.Char> Function(LLVMModuleRef, ffi.Pointer<ffi.Int>)>();
+      ffi.Pointer<ffi.Char> Function(LLVMModuleRef, ffi.Pointer<ffi.Size>)>();
 
+  /// Set inline assembly for a module.
+  ///
+  /// @see Module::setModuleInlineAsm()
   void LLVMSetModuleInlineAsm2(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Asm,
@@ -953,10 +1128,13 @@ class LLVMCore {
   late final _LLVMSetModuleInlineAsm2Ptr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMSetModuleInlineAsm2');
+              ffi.Size)>>('LLVMSetModuleInlineAsm2');
   late final _LLVMSetModuleInlineAsm2 = _LLVMSetModuleInlineAsm2Ptr.asFunction<
       void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Append inline assembly to a module.
+  ///
+  /// @see Module::appendModuleInlineAsm()
   void LLVMAppendModuleInlineAsm(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Asm,
@@ -972,10 +1150,13 @@ class LLVMCore {
   late final _LLVMAppendModuleInlineAsmPtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMAppendModuleInlineAsm');
+              ffi.Size)>>('LLVMAppendModuleInlineAsm');
   late final _LLVMAppendModuleInlineAsm = _LLVMAppendModuleInlineAsmPtr
       .asFunction<void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Create the specified uniqued inline asm string.
+  ///
+  /// @see InlineAsm::get()
   LLVMValueRef LLVMGetInlineAsm(
     LLVMTypeRef Ty,
     ffi.Pointer<ffi.Char> AsmString,
@@ -1005,9 +1186,9 @@ class LLVMCore {
           LLVMValueRef Function(
               LLVMTypeRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMBool,
               LLVMBool,
               ffi.Int32,
@@ -1016,6 +1197,9 @@ class LLVMCore {
       LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>, int,
           ffi.Pointer<ffi.Char>, int, int, int, int, int)>();
 
+  /// Obtain the context to which this module is associated.
+  ///
+  /// @see Module::getContext()
   LLVMContextRef LLVMGetModuleContext(
     LLVMModuleRef M,
   ) {
@@ -1030,6 +1214,7 @@ class LLVMCore {
   late final _LLVMGetModuleContext = _LLVMGetModuleContextPtr.asFunction<
       LLVMContextRef Function(LLVMModuleRef)>();
 
+  /// Deprecated: Use LLVMGetTypeByName2 instead.
   LLVMTypeRef LLVMGetTypeByName(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -1047,6 +1232,9 @@ class LLVMCore {
   late final _LLVMGetTypeByName = _LLVMGetTypeByNamePtr.asFunction<
       LLVMTypeRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Obtain an iterator to the first NamedMDNode in a Module.
+  ///
+  /// @see llvm::Module::named_metadata_begin()
   LLVMNamedMDNodeRef LLVMGetFirstNamedMetadata(
     LLVMModuleRef M,
   ) {
@@ -1061,6 +1249,9 @@ class LLVMCore {
   late final _LLVMGetFirstNamedMetadata = _LLVMGetFirstNamedMetadataPtr
       .asFunction<LLVMNamedMDNodeRef Function(LLVMModuleRef)>();
 
+  /// Obtain an iterator to the last NamedMDNode in a Module.
+  ///
+  /// @see llvm::Module::named_metadata_end()
   LLVMNamedMDNodeRef LLVMGetLastNamedMetadata(
     LLVMModuleRef M,
   ) {
@@ -1075,6 +1266,10 @@ class LLVMCore {
   late final _LLVMGetLastNamedMetadata = _LLVMGetLastNamedMetadataPtr
       .asFunction<LLVMNamedMDNodeRef Function(LLVMModuleRef)>();
 
+  /// Advance a NamedMDNode iterator to the next NamedMDNode.
+  ///
+  /// Returns NULL if the iterator was already at the end and there are no more
+  /// named metadata nodes.
   LLVMNamedMDNodeRef LLVMGetNextNamedMetadata(
     LLVMNamedMDNodeRef NamedMDNode,
   ) {
@@ -1089,6 +1284,10 @@ class LLVMCore {
   late final _LLVMGetNextNamedMetadata = _LLVMGetNextNamedMetadataPtr
       .asFunction<LLVMNamedMDNodeRef Function(LLVMNamedMDNodeRef)>();
 
+  /// Decrement a NamedMDNode iterator to the previous NamedMDNode.
+  ///
+  /// Returns NULL if the iterator was already at the beginning and there are
+  /// no previous named metadata nodes.
   LLVMNamedMDNodeRef LLVMGetPreviousNamedMetadata(
     LLVMNamedMDNodeRef NamedMDNode,
   ) {
@@ -1103,6 +1302,10 @@ class LLVMCore {
   late final _LLVMGetPreviousNamedMetadata = _LLVMGetPreviousNamedMetadataPtr
       .asFunction<LLVMNamedMDNodeRef Function(LLVMNamedMDNodeRef)>();
 
+  /// Retrieve a NamedMDNode with the given name, returning NULL if no such
+  /// node exists.
+  ///
+  /// @see llvm::Module::getNamedMetadata()
   LLVMNamedMDNodeRef LLVMGetNamedMetadata(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -1118,10 +1321,14 @@ class LLVMCore {
   late final _LLVMGetNamedMetadataPtr = _lookup<
       ffi.NativeFunction<
           LLVMNamedMDNodeRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMGetNamedMetadata');
+              ffi.Size)>>('LLVMGetNamedMetadata');
   late final _LLVMGetNamedMetadata = _LLVMGetNamedMetadataPtr.asFunction<
       LLVMNamedMDNodeRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Retrieve a NamedMDNode with the given name, creating a new node if no such
+  /// node exists.
+  ///
+  /// @see llvm::Module::getOrInsertNamedMetadata()
   LLVMNamedMDNodeRef LLVMGetOrInsertNamedMetadata(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -1137,15 +1344,18 @@ class LLVMCore {
   late final _LLVMGetOrInsertNamedMetadataPtr = _lookup<
       ffi.NativeFunction<
           LLVMNamedMDNodeRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMGetOrInsertNamedMetadata');
+              ffi.Size)>>('LLVMGetOrInsertNamedMetadata');
   late final _LLVMGetOrInsertNamedMetadata =
       _LLVMGetOrInsertNamedMetadataPtr.asFunction<
           LLVMNamedMDNodeRef Function(
               LLVMModuleRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Retrieve the name of a NamedMDNode.
+  ///
+  /// @see llvm::NamedMDNode::getName()
   ffi.Pointer<ffi.Char> LLVMGetNamedMetadataName(
     LLVMNamedMDNodeRef NamedMD,
-    ffi.Pointer<ffi.Int> NameLen,
+    ffi.Pointer<ffi.Size> NameLen,
   ) {
     return _LLVMGetNamedMetadataName(
       NamedMD,
@@ -1156,12 +1366,15 @@ class LLVMCore {
   late final _LLVMGetNamedMetadataNamePtr = _lookup<
       ffi.NativeFunction<
           ffi.Pointer<ffi.Char> Function(LLVMNamedMDNodeRef,
-              ffi.Pointer<ffi.Int>)>>('LLVMGetNamedMetadataName');
+              ffi.Pointer<ffi.Size>)>>('LLVMGetNamedMetadataName');
   late final _LLVMGetNamedMetadataName =
       _LLVMGetNamedMetadataNamePtr.asFunction<
           ffi.Pointer<ffi.Char> Function(
-              LLVMNamedMDNodeRef, ffi.Pointer<ffi.Int>)>();
+              LLVMNamedMDNodeRef, ffi.Pointer<ffi.Size>)>();
 
+  /// Obtain the number of operands for named metadata in a module.
+  ///
+  /// @see llvm::Module::getNamedMetadata()
   int LLVMGetNamedMetadataNumOperands(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -1180,6 +1393,15 @@ class LLVMCore {
       _LLVMGetNamedMetadataNumOperandsPtr.asFunction<
           int Function(LLVMModuleRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Obtain the named metadata operands for a module.
+  ///
+  /// The passed LLVMValueRef pointer should refer to an array of
+  /// LLVMValueRef at least LLVMGetNamedMetadataNumOperands long. This
+  /// array will be populated with the LLVMValueRef instances. Each
+  /// instance corresponds to a llvm::MDNode.
+  ///
+  /// @see llvm::Module::getNamedMetadata()
+  /// @see llvm::MDNode::getOperand()
   void LLVMGetNamedMetadataOperands(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -1201,6 +1423,10 @@ class LLVMCore {
           void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
               ffi.Pointer<LLVMValueRef>)>();
 
+  /// Add an operand to named metadata.
+  ///
+  /// @see llvm::Module::getNamedMetadata()
+  /// @see llvm::MDNode::addOperand()
   void LLVMAddNamedMetadataOperand(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -1221,6 +1447,12 @@ class LLVMCore {
       _LLVMAddNamedMetadataOperandPtr.asFunction<
           void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, LLVMValueRef)>();
 
+  /// Return the directory of the debug location for this value, which must be
+  /// an llvm::Instruction, llvm::GlobalVariable, or llvm::Function.
+  ///
+  /// @see llvm::Instruction::getDebugLoc()
+  /// @see llvm::GlobalVariable::getDebugInfo()
+  /// @see llvm::Function::getSubprogram()
   ffi.Pointer<ffi.Char> LLVMGetDebugLocDirectory(
     LLVMValueRef Val,
     ffi.Pointer<ffi.UnsignedInt> Length,
@@ -1240,6 +1472,12 @@ class LLVMCore {
           ffi.Pointer<ffi.Char> Function(
               LLVMValueRef, ffi.Pointer<ffi.UnsignedInt>)>();
 
+  /// Return the filename of the debug location for this value, which must be
+  /// an llvm::Instruction, llvm::GlobalVariable, or llvm::Function.
+  ///
+  /// @see llvm::Instruction::getDebugLoc()
+  /// @see llvm::GlobalVariable::getDebugInfo()
+  /// @see llvm::Function::getSubprogram()
   ffi.Pointer<ffi.Char> LLVMGetDebugLocFilename(
     LLVMValueRef Val,
     ffi.Pointer<ffi.UnsignedInt> Length,
@@ -1258,6 +1496,12 @@ class LLVMCore {
       ffi.Pointer<ffi.Char> Function(
           LLVMValueRef, ffi.Pointer<ffi.UnsignedInt>)>();
 
+  /// Return the line number of the debug location for this value, which must be
+  /// an llvm::Instruction, llvm::GlobalVariable, or llvm::Function.
+  ///
+  /// @see llvm::Instruction::getDebugLoc()
+  /// @see llvm::GlobalVariable::getDebugInfo()
+  /// @see llvm::Function::getSubprogram()
   int LLVMGetDebugLocLine(
     LLVMValueRef Val,
   ) {
@@ -1272,6 +1516,10 @@ class LLVMCore {
   late final _LLVMGetDebugLocLine =
       _LLVMGetDebugLocLinePtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Return the column number of the debug location for this value, which must be
+  /// an llvm::Instruction.
+  ///
+  /// @see llvm::Instruction::getDebugLoc()
   int LLVMGetDebugLocColumn(
     LLVMValueRef Val,
   ) {
@@ -1286,6 +1534,9 @@ class LLVMCore {
   late final _LLVMGetDebugLocColumn =
       _LLVMGetDebugLocColumnPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Add a function to a module under a specified name.
+  ///
+  /// @see llvm::Function::Create()
   LLVMValueRef LLVMAddFunction(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -1306,6 +1557,11 @@ class LLVMCore {
       LLVMValueRef Function(
           LLVMModuleRef, ffi.Pointer<ffi.Char>, LLVMTypeRef)>();
 
+  /// Obtain a Function value from a Module by its name.
+  ///
+  /// The returned value corresponds to a llvm::Function value.
+  ///
+  /// @see llvm::Module::getFunction()
   LLVMValueRef LLVMGetNamedFunction(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -1323,6 +1579,9 @@ class LLVMCore {
   late final _LLVMGetNamedFunction = _LLVMGetNamedFunctionPtr.asFunction<
       LLVMValueRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Obtain an iterator to the first Function in a Module.
+  ///
+  /// @see llvm::Module::begin()
   LLVMValueRef LLVMGetFirstFunction(
     LLVMModuleRef M,
   ) {
@@ -1337,6 +1596,9 @@ class LLVMCore {
   late final _LLVMGetFirstFunction = _LLVMGetFirstFunctionPtr.asFunction<
       LLVMValueRef Function(LLVMModuleRef)>();
 
+  /// Obtain an iterator to the last Function in a Module.
+  ///
+  /// @see llvm::Module::end()
   LLVMValueRef LLVMGetLastFunction(
     LLVMModuleRef M,
   ) {
@@ -1351,6 +1613,10 @@ class LLVMCore {
   late final _LLVMGetLastFunction = _LLVMGetLastFunctionPtr.asFunction<
       LLVMValueRef Function(LLVMModuleRef)>();
 
+  /// Advance a Function iterator to the next Function.
+  ///
+  /// Returns NULL if the iterator was already at the end and there are no more
+  /// functions.
   LLVMValueRef LLVMGetNextFunction(
     LLVMValueRef Fn,
   ) {
@@ -1365,6 +1631,10 @@ class LLVMCore {
   late final _LLVMGetNextFunction =
       _LLVMGetNextFunctionPtr.asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Decrement a Function iterator to the previous Function.
+  ///
+  /// Returns NULL if the iterator was already at the beginning and there are
+  /// no previous functions.
   LLVMValueRef LLVMGetPreviousFunction(
     LLVMValueRef Fn,
   ) {
@@ -1379,6 +1649,7 @@ class LLVMCore {
   late final _LLVMGetPreviousFunction = _LLVMGetPreviousFunctionPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Deprecated: Use LLVMSetModuleInlineAsm2 instead.
   void LLVMSetModuleInlineAsm(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Asm,
@@ -1396,6 +1667,9 @@ class LLVMCore {
   late final _LLVMSetModuleInlineAsm = _LLVMSetModuleInlineAsmPtr.asFunction<
       void Function(LLVMModuleRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Obtain the enumerated type of a Type instance.
+  ///
+  /// @see llvm::Type:getTypeID()
   int LLVMGetTypeKind(
     LLVMTypeRef Ty,
   ) {
@@ -1410,6 +1684,11 @@ class LLVMCore {
   late final _LLVMGetTypeKind =
       _LLVMGetTypeKindPtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Whether the type has a known size.
+  ///
+  /// Things that don't have a size are abstract types, labels, and void.a
+  ///
+  /// @see llvm::Type::isSized()
   int LLVMTypeIsSized(
     LLVMTypeRef Ty,
   ) {
@@ -1424,6 +1703,9 @@ class LLVMCore {
   late final _LLVMTypeIsSized =
       _LLVMTypeIsSizedPtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Obtain the context to which this type instance is associated.
+  ///
+  /// @see llvm::Type::getContext()
   LLVMContextRef LLVMGetTypeContext(
     LLVMTypeRef Ty,
   ) {
@@ -1438,6 +1720,9 @@ class LLVMCore {
   late final _LLVMGetTypeContext =
       _LLVMGetTypeContextPtr.asFunction<LLVMContextRef Function(LLVMTypeRef)>();
 
+  /// Dump a representation of a type to stderr.
+  ///
+  /// @see llvm::Type::dump()
   void LLVMDumpType(
     LLVMTypeRef Val,
   ) {
@@ -1452,6 +1737,10 @@ class LLVMCore {
   late final _LLVMDumpType =
       _LLVMDumpTypePtr.asFunction<void Function(LLVMTypeRef)>();
 
+  /// Return a string representation of the type. Use
+  /// LLVMDisposeMessage to free the string.
+  ///
+  /// @see llvm::Type::print()
   ffi.Pointer<ffi.Char> LLVMPrintTypeToString(
     LLVMTypeRef Val,
   ) {
@@ -1466,6 +1755,7 @@ class LLVMCore {
   late final _LLVMPrintTypeToString = _LLVMPrintTypeToStringPtr.asFunction<
       ffi.Pointer<ffi.Char> Function(LLVMTypeRef)>();
 
+  /// Obtain an integer type from a context with specified bit width.
   LLVMTypeRef LLVMInt1TypeInContext(
     LLVMContextRef C,
   ) {
@@ -1567,6 +1857,8 @@ class LLVMCore {
   late final _LLVMIntTypeInContext = _LLVMIntTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef, int)>();
 
+  /// Obtain an integer type from the global context with a specified bit
+  /// width.
   LLVMTypeRef LLVMInt1Type() {
     return _LLVMInt1Type();
   }
@@ -1649,6 +1941,7 @@ class LLVMCore {
   late final _LLVMGetIntTypeWidth =
       _LLVMGetIntTypeWidthPtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Obtain a 16-bit floating point type from a context.
   LLVMTypeRef LLVMHalfTypeInContext(
     LLVMContextRef C,
   ) {
@@ -1663,6 +1956,7 @@ class LLVMCore {
   late final _LLVMHalfTypeInContext = _LLVMHalfTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Obtain a 16-bit brain floating point type from a context.
   LLVMTypeRef LLVMBFloatTypeInContext(
     LLVMContextRef C,
   ) {
@@ -1677,6 +1971,7 @@ class LLVMCore {
   late final _LLVMBFloatTypeInContext = _LLVMBFloatTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Obtain a 32-bit floating point type from a context.
   LLVMTypeRef LLVMFloatTypeInContext(
     LLVMContextRef C,
   ) {
@@ -1691,6 +1986,7 @@ class LLVMCore {
   late final _LLVMFloatTypeInContext = _LLVMFloatTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Obtain a 64-bit floating point type from a context.
   LLVMTypeRef LLVMDoubleTypeInContext(
     LLVMContextRef C,
   ) {
@@ -1705,6 +2001,7 @@ class LLVMCore {
   late final _LLVMDoubleTypeInContext = _LLVMDoubleTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Obtain a 80-bit floating point type (X87) from a context.
   LLVMTypeRef LLVMX86FP80TypeInContext(
     LLVMContextRef C,
   ) {
@@ -1719,6 +2016,8 @@ class LLVMCore {
   late final _LLVMX86FP80TypeInContext = _LLVMX86FP80TypeInContextPtr
       .asFunction<LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Obtain a 128-bit floating point type (112-bit mantissa) from a
+  /// context.
   LLVMTypeRef LLVMFP128TypeInContext(
     LLVMContextRef C,
   ) {
@@ -1733,6 +2032,7 @@ class LLVMCore {
   late final _LLVMFP128TypeInContext = _LLVMFP128TypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Obtain a 128-bit floating point type (two 64-bits) from a context.
   LLVMTypeRef LLVMPPCFP128TypeInContext(
     LLVMContextRef C,
   ) {
@@ -1747,6 +2047,9 @@ class LLVMCore {
   late final _LLVMPPCFP128TypeInContext = _LLVMPPCFP128TypeInContextPtr
       .asFunction<LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Obtain a floating point type from the global context.
+  ///
+  /// These map to the functions in this group of the same name.
   LLVMTypeRef LLVMHalfType() {
     return _LLVMHalfType();
   }
@@ -1810,6 +2113,10 @@ class LLVMCore {
   late final _LLVMPPCFP128Type =
       _LLVMPPCFP128TypePtr.asFunction<LLVMTypeRef Function()>();
 
+  /// Obtain a function type consisting of a specified signature.
+  ///
+  /// The function is defined as a tuple of a return Type, a list of
+  /// parameter types, and whether the function is variadic.
   LLVMTypeRef LLVMFunctionType(
     LLVMTypeRef ReturnType,
     ffi.Pointer<LLVMTypeRef> ParamTypes,
@@ -1831,6 +2138,7 @@ class LLVMCore {
   late final _LLVMFunctionType = _LLVMFunctionTypePtr.asFunction<
       LLVMTypeRef Function(LLVMTypeRef, ffi.Pointer<LLVMTypeRef>, int, int)>();
 
+  /// Returns whether a function type is variadic.
   int LLVMIsFunctionVarArg(
     LLVMTypeRef FunctionTy,
   ) {
@@ -1845,6 +2153,7 @@ class LLVMCore {
   late final _LLVMIsFunctionVarArg =
       _LLVMIsFunctionVarArgPtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Obtain the Type this function Type returns.
   LLVMTypeRef LLVMGetReturnType(
     LLVMTypeRef FunctionTy,
   ) {
@@ -1859,6 +2168,7 @@ class LLVMCore {
   late final _LLVMGetReturnType =
       _LLVMGetReturnTypePtr.asFunction<LLVMTypeRef Function(LLVMTypeRef)>();
 
+  /// Obtain the number of parameters this function accepts.
   int LLVMCountParamTypes(
     LLVMTypeRef FunctionTy,
   ) {
@@ -1873,6 +2183,15 @@ class LLVMCore {
   late final _LLVMCountParamTypes =
       _LLVMCountParamTypesPtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Obtain the types of a function's parameters.
+  ///
+  /// The Dest parameter should point to a pre-allocated array of
+  /// LLVMTypeRef at least LLVMCountParamTypes() large. On return, the
+  /// first LLVMCountParamTypes() entries in the array will be populated
+  /// with LLVMTypeRef instances.
+  ///
+  /// @param FunctionTy The function type to operate on.
+  /// @param Dest Memory address of an array to be filled with result.
   void LLVMGetParamTypes(
     LLVMTypeRef FunctionTy,
     ffi.Pointer<LLVMTypeRef> Dest,
@@ -1890,6 +2209,12 @@ class LLVMCore {
   late final _LLVMGetParamTypes = _LLVMGetParamTypesPtr.asFunction<
       void Function(LLVMTypeRef, ffi.Pointer<LLVMTypeRef>)>();
 
+  /// Create a new structure type in a context.
+  ///
+  /// A structure is specified by a list of inner elements/types and
+  /// whether these can be packed together.
+  ///
+  /// @see llvm::StructType::create()
   LLVMTypeRef LLVMStructTypeInContext(
     LLVMContextRef C,
     ffi.Pointer<LLVMTypeRef> ElementTypes,
@@ -1912,6 +2237,9 @@ class LLVMCore {
       LLVMTypeRef Function(
           LLVMContextRef, ffi.Pointer<LLVMTypeRef>, int, int)>();
 
+  /// Create a new structure type in the global context.
+  ///
+  /// @see llvm::StructType::create()
   LLVMTypeRef LLVMStructType(
     ffi.Pointer<LLVMTypeRef> ElementTypes,
     int ElementCount,
@@ -1931,6 +2259,9 @@ class LLVMCore {
   late final _LLVMStructType = _LLVMStructTypePtr.asFunction<
       LLVMTypeRef Function(ffi.Pointer<LLVMTypeRef>, int, int)>();
 
+  /// Create an empty structure in a context having a specified name.
+  ///
+  /// @see llvm::StructType::create()
   LLVMTypeRef LLVMStructCreateNamed(
     LLVMContextRef C,
     ffi.Pointer<ffi.Char> Name,
@@ -1948,6 +2279,9 @@ class LLVMCore {
   late final _LLVMStructCreateNamed = _LLVMStructCreateNamedPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Obtain the name of a structure.
+  ///
+  /// @see llvm::StructType::getName()
   ffi.Pointer<ffi.Char> LLVMGetStructName(
     LLVMTypeRef Ty,
   ) {
@@ -1962,6 +2296,9 @@ class LLVMCore {
   late final _LLVMGetStructName = _LLVMGetStructNamePtr.asFunction<
       ffi.Pointer<ffi.Char> Function(LLVMTypeRef)>();
 
+  /// Set the contents of a structure type.
+  ///
+  /// @see llvm::StructType::setBody()
   void LLVMStructSetBody(
     LLVMTypeRef StructTy,
     ffi.Pointer<LLVMTypeRef> ElementTypes,
@@ -1983,6 +2320,9 @@ class LLVMCore {
   late final _LLVMStructSetBody = _LLVMStructSetBodyPtr.asFunction<
       void Function(LLVMTypeRef, ffi.Pointer<LLVMTypeRef>, int, int)>();
 
+  /// Get the number of elements defined inside the structure.
+  ///
+  /// @see llvm::StructType::getNumElements()
   int LLVMCountStructElementTypes(
     LLVMTypeRef StructTy,
   ) {
@@ -1997,6 +2337,14 @@ class LLVMCore {
   late final _LLVMCountStructElementTypes =
       _LLVMCountStructElementTypesPtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Get the elements within a structure.
+  ///
+  /// The function is passed the address of a pre-allocated array of
+  /// LLVMTypeRef at least LLVMCountStructElementTypes() long. After
+  /// invocation, this array will be populated with the structure's
+  /// elements. The objects in the destination array will have a lifetime
+  /// of the structure type itself, which is the lifetime of the context it
+  /// is contained in.
   void LLVMGetStructElementTypes(
     LLVMTypeRef StructTy,
     ffi.Pointer<LLVMTypeRef> Dest,
@@ -2014,6 +2362,9 @@ class LLVMCore {
   late final _LLVMGetStructElementTypes = _LLVMGetStructElementTypesPtr
       .asFunction<void Function(LLVMTypeRef, ffi.Pointer<LLVMTypeRef>)>();
 
+  /// Get the type of the element at a given index in the structure.
+  ///
+  /// @see llvm::StructType::getTypeAtIndex()
   LLVMTypeRef LLVMStructGetTypeAtIndex(
     LLVMTypeRef StructTy,
     int i,
@@ -2031,6 +2382,9 @@ class LLVMCore {
   late final _LLVMStructGetTypeAtIndex = _LLVMStructGetTypeAtIndexPtr
       .asFunction<LLVMTypeRef Function(LLVMTypeRef, int)>();
 
+  /// Determine whether a structure is packed.
+  ///
+  /// @see llvm::StructType::isPacked()
   int LLVMIsPackedStruct(
     LLVMTypeRef StructTy,
   ) {
@@ -2045,6 +2399,9 @@ class LLVMCore {
   late final _LLVMIsPackedStruct =
       _LLVMIsPackedStructPtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Determine whether a structure is opaque.
+  ///
+  /// @see llvm::StructType::isOpaque()
   int LLVMIsOpaqueStruct(
     LLVMTypeRef StructTy,
   ) {
@@ -2059,6 +2416,9 @@ class LLVMCore {
   late final _LLVMIsOpaqueStruct =
       _LLVMIsOpaqueStructPtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Determine whether a structure is literal.
+  ///
+  /// @see llvm::StructType::isLiteral()
   int LLVMIsLiteralStruct(
     LLVMTypeRef StructTy,
   ) {
@@ -2073,6 +2433,11 @@ class LLVMCore {
   late final _LLVMIsLiteralStruct =
       _LLVMIsLiteralStructPtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Obtain the element type of an array or vector type.
+  ///
+  /// This currently also works for pointer types, but this usage is deprecated.
+  ///
+  /// @see llvm::SequentialType::getElementType()
   LLVMTypeRef LLVMGetElementType(
     LLVMTypeRef Ty,
   ) {
@@ -2087,6 +2452,9 @@ class LLVMCore {
   late final _LLVMGetElementType =
       _LLVMGetElementTypePtr.asFunction<LLVMTypeRef Function(LLVMTypeRef)>();
 
+  /// Returns type's subtypes
+  ///
+  /// @see llvm::Type::subtypes()
   void LLVMGetSubtypes(
     LLVMTypeRef Tp,
     ffi.Pointer<LLVMTypeRef> Arr,
@@ -2104,6 +2472,9 @@ class LLVMCore {
   late final _LLVMGetSubtypes = _LLVMGetSubtypesPtr.asFunction<
       void Function(LLVMTypeRef, ffi.Pointer<LLVMTypeRef>)>();
 
+  /// Return the number of types in the derived type.
+  ///
+  /// @see llvm::Type::getNumContainedTypes()
   int LLVMGetNumContainedTypes(
     LLVMTypeRef Tp,
   ) {
@@ -2118,6 +2489,12 @@ class LLVMCore {
   late final _LLVMGetNumContainedTypes =
       _LLVMGetNumContainedTypesPtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Create a fixed size array type that refers to a specific type.
+  ///
+  /// The created type will exist in the context that its element type
+  /// exists in.
+  ///
+  /// @see llvm::ArrayType::get()
   LLVMTypeRef LLVMArrayType(
     LLVMTypeRef ElementType,
     int ElementCount,
@@ -2134,22 +2511,11 @@ class LLVMCore {
   late final _LLVMArrayType =
       _LLVMArrayTypePtr.asFunction<LLVMTypeRef Function(LLVMTypeRef, int)>();
 
-  LLVMTypeRef LLVMArrayType2(
-    LLVMTypeRef ElementType,
-    int ElementCount,
-  ) {
-    return _LLVMArrayType2(
-      ElementType,
-      ElementCount,
-    );
-  }
-
-  late final _LLVMArrayType2Ptr = _lookup<
-          ffi.NativeFunction<LLVMTypeRef Function(LLVMTypeRef, ffi.Uint64)>>(
-      'LLVMArrayType2');
-  late final _LLVMArrayType2 =
-      _LLVMArrayType2Ptr.asFunction<LLVMTypeRef Function(LLVMTypeRef, int)>();
-
+  /// Obtain the length of an array type.
+  ///
+  /// This only works on types that represent arrays.
+  ///
+  /// @see llvm::ArrayType::getNumElements()
   int LLVMGetArrayLength(
     LLVMTypeRef ArrayTy,
   ) {
@@ -2164,20 +2530,12 @@ class LLVMCore {
   late final _LLVMGetArrayLength =
       _LLVMGetArrayLengthPtr.asFunction<int Function(LLVMTypeRef)>();
 
-  int LLVMGetArrayLength2(
-    LLVMTypeRef ArrayTy,
-  ) {
-    return _LLVMGetArrayLength2(
-      ArrayTy,
-    );
-  }
-
-  late final _LLVMGetArrayLength2Ptr =
-      _lookup<ffi.NativeFunction<ffi.Uint64 Function(LLVMTypeRef)>>(
-          'LLVMGetArrayLength2');
-  late final _LLVMGetArrayLength2 =
-      _LLVMGetArrayLength2Ptr.asFunction<int Function(LLVMTypeRef)>();
-
+  /// Create a pointer type that points to a defined type.
+  ///
+  /// The created type will exist in the context that its pointee type
+  /// exists in.
+  ///
+  /// @see llvm::PointerType::get()
   LLVMTypeRef LLVMPointerType(
     LLVMTypeRef ElementType,
     int AddressSpace,
@@ -2195,6 +2553,11 @@ class LLVMCore {
   late final _LLVMPointerType =
       _LLVMPointerTypePtr.asFunction<LLVMTypeRef Function(LLVMTypeRef, int)>();
 
+  /// Determine whether a pointer is opaque.
+  ///
+  /// True if this is an instance of an opaque PointerType.
+  ///
+  /// @see llvm::Type::isOpaquePointerTy()
   int LLVMPointerTypeIsOpaque(
     LLVMTypeRef Ty,
   ) {
@@ -2209,6 +2572,9 @@ class LLVMCore {
   late final _LLVMPointerTypeIsOpaque =
       _LLVMPointerTypeIsOpaquePtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Create an opaque pointer type in a context.
+  ///
+  /// @see llvm::PointerType::get()
   LLVMTypeRef LLVMPointerTypeInContext(
     LLVMContextRef C,
     int AddressSpace,
@@ -2226,6 +2592,11 @@ class LLVMCore {
   late final _LLVMPointerTypeInContext = _LLVMPointerTypeInContextPtr
       .asFunction<LLVMTypeRef Function(LLVMContextRef, int)>();
 
+  /// Obtain the address space of a pointer type.
+  ///
+  /// This only works on types that represent pointers.
+  ///
+  /// @see llvm::PointerType::getAddressSpace()
   int LLVMGetPointerAddressSpace(
     LLVMTypeRef PointerTy,
   ) {
@@ -2240,6 +2611,13 @@ class LLVMCore {
   late final _LLVMGetPointerAddressSpace =
       _LLVMGetPointerAddressSpacePtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Create a vector type that contains a defined type and has a specific
+  /// number of elements.
+  ///
+  /// The created type will exist in the context thats its element type
+  /// exists in.
+  ///
+  /// @see llvm::VectorType::get()
   LLVMTypeRef LLVMVectorType(
     LLVMTypeRef ElementType,
     int ElementCount,
@@ -2257,6 +2635,13 @@ class LLVMCore {
   late final _LLVMVectorType =
       _LLVMVectorTypePtr.asFunction<LLVMTypeRef Function(LLVMTypeRef, int)>();
 
+  /// Create a vector type that contains a defined type and has a scalable
+  /// number of elements.
+  ///
+  /// The created type will exist in the context thats its element type
+  /// exists in.
+  ///
+  /// @see llvm::ScalableVectorType::get()
   LLVMTypeRef LLVMScalableVectorType(
     LLVMTypeRef ElementType,
     int ElementCount,
@@ -2274,6 +2659,11 @@ class LLVMCore {
   late final _LLVMScalableVectorType = _LLVMScalableVectorTypePtr.asFunction<
       LLVMTypeRef Function(LLVMTypeRef, int)>();
 
+  /// Obtain the (possibly scalable) number of elements in a vector type.
+  ///
+  /// This only works on types that represent vectors (fixed or scalable).
+  ///
+  /// @see llvm::VectorType::getNumElements()
   int LLVMGetVectorSize(
     LLVMTypeRef VectorTy,
   ) {
@@ -2288,6 +2678,7 @@ class LLVMCore {
   late final _LLVMGetVectorSize =
       _LLVMGetVectorSizePtr.asFunction<int Function(LLVMTypeRef)>();
 
+  /// Create a void type in a context.
   LLVMTypeRef LLVMVoidTypeInContext(
     LLVMContextRef C,
   ) {
@@ -2302,6 +2693,7 @@ class LLVMCore {
   late final _LLVMVoidTypeInContext = _LLVMVoidTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Create a label type in a context.
   LLVMTypeRef LLVMLabelTypeInContext(
     LLVMContextRef C,
   ) {
@@ -2316,6 +2708,7 @@ class LLVMCore {
   late final _LLVMLabelTypeInContext = _LLVMLabelTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Create a X86 MMX type in a context.
   LLVMTypeRef LLVMX86MMXTypeInContext(
     LLVMContextRef C,
   ) {
@@ -2330,6 +2723,7 @@ class LLVMCore {
   late final _LLVMX86MMXTypeInContext = _LLVMX86MMXTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Create a X86 AMX type in a context.
   LLVMTypeRef LLVMX86AMXTypeInContext(
     LLVMContextRef C,
   ) {
@@ -2344,6 +2738,7 @@ class LLVMCore {
   late final _LLVMX86AMXTypeInContext = _LLVMX86AMXTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Create a token type in a context.
   LLVMTypeRef LLVMTokenTypeInContext(
     LLVMContextRef C,
   ) {
@@ -2358,6 +2753,7 @@ class LLVMCore {
   late final _LLVMTokenTypeInContext = _LLVMTokenTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// Create a metadata type in a context.
   LLVMTypeRef LLVMMetadataTypeInContext(
     LLVMContextRef C,
   ) {
@@ -2372,6 +2768,8 @@ class LLVMCore {
   late final _LLVMMetadataTypeInContext = _LLVMMetadataTypeInContextPtr
       .asFunction<LLVMTypeRef Function(LLVMContextRef)>();
 
+  /// These are similar to the above functions except they operate on the
+  /// global context.
   LLVMTypeRef LLVMVoidType() {
     return _LLVMVoidType();
   }
@@ -2408,6 +2806,7 @@ class LLVMCore {
   late final _LLVMX86AMXType =
       _LLVMX86AMXTypePtr.asFunction<LLVMTypeRef Function()>();
 
+  /// Create a target extension type in LLVM context.
   LLVMTypeRef LLVMTargetExtTypeInContext(
     LLVMContextRef C,
     ffi.Pointer<ffi.Char> Name,
@@ -2445,6 +2844,9 @@ class LLVMCore {
               ffi.Pointer<ffi.UnsignedInt>,
               int)>();
 
+  /// Obtain the type of a value.
+  ///
+  /// @see llvm::Value::getType()
   LLVMTypeRef LLVMTypeOf(
     LLVMValueRef Val,
   ) {
@@ -2459,6 +2861,9 @@ class LLVMCore {
   late final _LLVMTypeOf =
       _LLVMTypeOfPtr.asFunction<LLVMTypeRef Function(LLVMValueRef)>();
 
+  /// Obtain the enumerated type of a Value instance.
+  ///
+  /// @see llvm::Value::getValueID()
   int LLVMGetValueKind(
     LLVMValueRef Val,
   ) {
@@ -2473,9 +2878,12 @@ class LLVMCore {
   late final _LLVMGetValueKind =
       _LLVMGetValueKindPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain the string name of a value.
+  ///
+  /// @see llvm::Value::getName()
   ffi.Pointer<ffi.Char> LLVMGetValueName2(
     LLVMValueRef Val,
-    ffi.Pointer<ffi.Int> Length,
+    ffi.Pointer<ffi.Size> Length,
   ) {
     return _LLVMGetValueName2(
       Val,
@@ -2486,10 +2894,13 @@ class LLVMCore {
   late final _LLVMGetValueName2Ptr = _lookup<
       ffi.NativeFunction<
           ffi.Pointer<ffi.Char> Function(
-              LLVMValueRef, ffi.Pointer<ffi.Int>)>>('LLVMGetValueName2');
+              LLVMValueRef, ffi.Pointer<ffi.Size>)>>('LLVMGetValueName2');
   late final _LLVMGetValueName2 = _LLVMGetValueName2Ptr.asFunction<
-      ffi.Pointer<ffi.Char> Function(LLVMValueRef, ffi.Pointer<ffi.Int>)>();
+      ffi.Pointer<ffi.Char> Function(LLVMValueRef, ffi.Pointer<ffi.Size>)>();
 
+  /// Set the string name of a value.
+  ///
+  /// @see llvm::Value::setName()
   void LLVMSetValueName2(
     LLVMValueRef Val,
     ffi.Pointer<ffi.Char> Name,
@@ -2505,10 +2916,13 @@ class LLVMCore {
   late final _LLVMSetValueName2Ptr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(LLVMValueRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMSetValueName2');
+              ffi.Size)>>('LLVMSetValueName2');
   late final _LLVMSetValueName2 = _LLVMSetValueName2Ptr.asFunction<
       void Function(LLVMValueRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Dump a representation of a value to stderr.
+  ///
+  /// @see llvm::Value::dump()
   void LLVMDumpValue(
     LLVMValueRef Val,
   ) {
@@ -2523,6 +2937,10 @@ class LLVMCore {
   late final _LLVMDumpValue =
       _LLVMDumpValuePtr.asFunction<void Function(LLVMValueRef)>();
 
+  /// Return a string representation of the value. Use
+  /// LLVMDisposeMessage to free the string.
+  ///
+  /// @see llvm::Value::print()
   ffi.Pointer<ffi.Char> LLVMPrintValueToString(
     LLVMValueRef Val,
   ) {
@@ -2537,6 +2955,9 @@ class LLVMCore {
   late final _LLVMPrintValueToString = _LLVMPrintValueToStringPtr.asFunction<
       ffi.Pointer<ffi.Char> Function(LLVMValueRef)>();
 
+  /// Replace all uses of a value with another one.
+  ///
+  /// @see llvm::Value::replaceAllUsesWith()
   void LLVMReplaceAllUsesWith(
     LLVMValueRef OldVal,
     LLVMValueRef NewVal,
@@ -2553,6 +2974,7 @@ class LLVMCore {
   late final _LLVMReplaceAllUsesWith = _LLVMReplaceAllUsesWithPtr.asFunction<
       void Function(LLVMValueRef, LLVMValueRef)>();
 
+  /// Determine whether the specified value instance is constant.
   int LLVMIsConstant(
     LLVMValueRef Val,
   ) {
@@ -2567,6 +2989,7 @@ class LLVMCore {
   late final _LLVMIsConstant =
       _LLVMIsConstantPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Determine whether a value instance is undefined.
   int LLVMIsUndef(
     LLVMValueRef Val,
   ) {
@@ -2581,6 +3004,7 @@ class LLVMCore {
   late final _LLVMIsUndef =
       _LLVMIsUndefPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Determine whether a value instance is poisonous.
   int LLVMIsPoison(
     LLVMValueRef Val,
   ) {
@@ -3841,20 +4265,6 @@ class LLVMCore {
   late final _LLVMIsAMDNode =
       _LLVMIsAMDNodePtr.asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
-  LLVMValueRef LLVMIsAValueAsMetadata(
-    LLVMValueRef Val,
-  ) {
-    return _LLVMIsAValueAsMetadata(
-      Val,
-    );
-  }
-
-  late final _LLVMIsAValueAsMetadataPtr =
-      _lookup<ffi.NativeFunction<LLVMValueRef Function(LLVMValueRef)>>(
-          'LLVMIsAValueAsMetadata');
-  late final _LLVMIsAValueAsMetadata = _LLVMIsAValueAsMetadataPtr.asFunction<
-      LLVMValueRef Function(LLVMValueRef)>();
-
   LLVMValueRef LLVMIsAMDString(
     LLVMValueRef Val,
   ) {
@@ -3869,6 +4279,7 @@ class LLVMCore {
   late final _LLVMIsAMDString =
       _LLVMIsAMDStringPtr.asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Deprecated: Use LLVMGetValueName2 instead.
   ffi.Pointer<ffi.Char> LLVMGetValueName(
     LLVMValueRef Val,
   ) {
@@ -3883,6 +4294,7 @@ class LLVMCore {
   late final _LLVMGetValueName = _LLVMGetValueNamePtr.asFunction<
       ffi.Pointer<ffi.Char> Function(LLVMValueRef)>();
 
+  /// Deprecated: Use LLVMSetValueName2 instead.
   void LLVMSetValueName(
     LLVMValueRef Val,
     ffi.Pointer<ffi.Char> Name,
@@ -3900,6 +4312,14 @@ class LLVMCore {
   late final _LLVMSetValueName = _LLVMSetValueNamePtr.asFunction<
       void Function(LLVMValueRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Obtain the first use of a value.
+  ///
+  /// Uses are obtained in an iterator fashion. First, call this function
+  /// to obtain a reference to the first use. Then, call LLVMGetNextUse()
+  /// on that instance and all subsequently obtained instances until
+  /// LLVMGetNextUse() returns NULL.
+  ///
+  /// @see llvm::Value::use_begin()
   LLVMUseRef LLVMGetFirstUse(
     LLVMValueRef Val,
   ) {
@@ -3914,6 +4334,10 @@ class LLVMCore {
   late final _LLVMGetFirstUse =
       _LLVMGetFirstUsePtr.asFunction<LLVMUseRef Function(LLVMValueRef)>();
 
+  /// Obtain the next use of a value.
+  ///
+  /// This effectively advances the iterator. It returns NULL if you are on
+  /// the final use and no more are available.
   LLVMUseRef LLVMGetNextUse(
     LLVMUseRef U,
   ) {
@@ -3928,6 +4352,11 @@ class LLVMCore {
   late final _LLVMGetNextUse =
       _LLVMGetNextUsePtr.asFunction<LLVMUseRef Function(LLVMUseRef)>();
 
+  /// Obtain the user value for a user.
+  ///
+  /// The returned value corresponds to a llvm::User type.
+  ///
+  /// @see llvm::Use::getUser()
   LLVMValueRef LLVMGetUser(
     LLVMUseRef U,
   ) {
@@ -3942,6 +4371,9 @@ class LLVMCore {
   late final _LLVMGetUser =
       _LLVMGetUserPtr.asFunction<LLVMValueRef Function(LLVMUseRef)>();
 
+  /// Obtain the value this use corresponds to.
+  ///
+  /// @see llvm::Use::get().
   LLVMValueRef LLVMGetUsedValue(
     LLVMUseRef U,
   ) {
@@ -3956,6 +4388,9 @@ class LLVMCore {
   late final _LLVMGetUsedValue =
       _LLVMGetUsedValuePtr.asFunction<LLVMValueRef Function(LLVMUseRef)>();
 
+  /// Obtain an operand at a specific index in a llvm::User value.
+  ///
+  /// @see llvm::User::getOperand()
   LLVMValueRef LLVMGetOperand(
     LLVMValueRef Val,
     int Index,
@@ -3973,6 +4408,9 @@ class LLVMCore {
   late final _LLVMGetOperand =
       _LLVMGetOperandPtr.asFunction<LLVMValueRef Function(LLVMValueRef, int)>();
 
+  /// Obtain the use of an operand at a specific index in a llvm::User value.
+  ///
+  /// @see llvm::User::getOperandUse()
   LLVMUseRef LLVMGetOperandUse(
     LLVMValueRef Val,
     int Index,
@@ -3990,6 +4428,9 @@ class LLVMCore {
   late final _LLVMGetOperandUse = _LLVMGetOperandUsePtr.asFunction<
       LLVMUseRef Function(LLVMValueRef, int)>();
 
+  /// Set an operand at a specific index in a llvm::User value.
+  ///
+  /// @see llvm::User::setOperand()
   void LLVMSetOperand(
     LLVMValueRef User,
     int Index,
@@ -4009,6 +4450,9 @@ class LLVMCore {
   late final _LLVMSetOperand = _LLVMSetOperandPtr.asFunction<
       void Function(LLVMValueRef, int, LLVMValueRef)>();
 
+  /// Obtain the number of operands in a llvm::User value.
+  ///
+  /// @see llvm::User::getNumOperands()
   int LLVMGetNumOperands(
     LLVMValueRef Val,
   ) {
@@ -4023,6 +4467,9 @@ class LLVMCore {
   late final _LLVMGetNumOperands =
       _LLVMGetNumOperandsPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain a constant value referring to the null instance of a type.
+  ///
+  /// @see llvm::Constant::getNullValue()
   LLVMValueRef LLVMConstNull(
     LLVMTypeRef Ty,
   ) {
@@ -4037,6 +4484,12 @@ class LLVMCore {
   late final _LLVMConstNull =
       _LLVMConstNullPtr.asFunction<LLVMValueRef Function(LLVMTypeRef)>();
 
+  /// Obtain a constant value referring to the instance of a type
+  /// consisting of all ones.
+  ///
+  /// This is only valid for integer types.
+  ///
+  /// @see llvm::Constant::getAllOnesValue()
   LLVMValueRef LLVMConstAllOnes(
     LLVMTypeRef Ty,
   ) {
@@ -4051,6 +4504,9 @@ class LLVMCore {
   late final _LLVMConstAllOnes =
       _LLVMConstAllOnesPtr.asFunction<LLVMValueRef Function(LLVMTypeRef)>();
 
+  /// Obtain a constant value referring to an undefined value of a type.
+  ///
+  /// @see llvm::UndefValue::get()
   LLVMValueRef LLVMGetUndef(
     LLVMTypeRef Ty,
   ) {
@@ -4065,6 +4521,9 @@ class LLVMCore {
   late final _LLVMGetUndef =
       _LLVMGetUndefPtr.asFunction<LLVMValueRef Function(LLVMTypeRef)>();
 
+  /// Obtain a constant value referring to a poison value of a type.
+  ///
+  /// @see llvm::PoisonValue::get()
   LLVMValueRef LLVMGetPoison(
     LLVMTypeRef Ty,
   ) {
@@ -4079,6 +4538,9 @@ class LLVMCore {
   late final _LLVMGetPoison =
       _LLVMGetPoisonPtr.asFunction<LLVMValueRef Function(LLVMTypeRef)>();
 
+  /// Determine whether a value instance is null.
+  ///
+  /// @see llvm::Constant::isNullValue()
   int LLVMIsNull(
     LLVMValueRef Val,
   ) {
@@ -4093,6 +4555,8 @@ class LLVMCore {
   late final _LLVMIsNull =
       _LLVMIsNullPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain a constant that is a constant pointer pointing to NULL for a
+  /// specified type.
   LLVMValueRef LLVMConstPointerNull(
     LLVMTypeRef Ty,
   ) {
@@ -4107,6 +4571,15 @@ class LLVMCore {
   late final _LLVMConstPointerNull =
       _LLVMConstPointerNullPtr.asFunction<LLVMValueRef Function(LLVMTypeRef)>();
 
+  /// Obtain a constant value for an integer type.
+  ///
+  /// The returned value corresponds to a llvm::ConstantInt.
+  ///
+  /// @see llvm::ConstantInt::get()
+  ///
+  /// @param IntTy Integer type to obtain value of.
+  /// @param N The value the returned instance should refer to.
+  /// @param SignExtend Whether to sign extend the produced value.
   LLVMValueRef LLVMConstInt(
     LLVMTypeRef IntTy,
     int N,
@@ -4126,6 +4599,9 @@ class LLVMCore {
   late final _LLVMConstInt = _LLVMConstIntPtr.asFunction<
       LLVMValueRef Function(LLVMTypeRef, int, int)>();
 
+  /// Obtain a constant value for an integer of arbitrary precision.
+  ///
+  /// @see llvm::ConstantInt::get()
   LLVMValueRef LLVMConstIntOfArbitraryPrecision(
     LLVMTypeRef IntTy,
     int NumWords,
@@ -4146,6 +4622,13 @@ class LLVMCore {
       _LLVMConstIntOfArbitraryPrecisionPtr.asFunction<
           LLVMValueRef Function(LLVMTypeRef, int, ffi.Pointer<ffi.Uint64>)>();
 
+  /// Obtain a constant value for an integer parsed from a string.
+  ///
+  /// A similar API, LLVMConstIntOfStringAndSize is also available. If the
+  /// string's length is available, it is preferred to call that function
+  /// instead.
+  ///
+  /// @see llvm::ConstantInt::get()
   LLVMValueRef LLVMConstIntOfString(
     LLVMTypeRef IntTy,
     ffi.Pointer<ffi.Char> Text,
@@ -4165,6 +4648,10 @@ class LLVMCore {
   late final _LLVMConstIntOfString = _LLVMConstIntOfStringPtr.asFunction<
       LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Obtain a constant value for an integer parsed from a string with
+  /// specified length.
+  ///
+  /// @see llvm::ConstantInt::get()
   LLVMValueRef LLVMConstIntOfStringAndSize(
     LLVMTypeRef IntTy,
     ffi.Pointer<ffi.Char> Text,
@@ -4188,6 +4675,7 @@ class LLVMCore {
           LLVMValueRef Function(
               LLVMTypeRef, ffi.Pointer<ffi.Char>, int, int)>();
 
+  /// Obtain a constant value referring to a double floating point value.
   LLVMValueRef LLVMConstReal(
     LLVMTypeRef RealTy,
     double N,
@@ -4204,6 +4692,10 @@ class LLVMCore {
   late final _LLVMConstReal = _LLVMConstRealPtr.asFunction<
       LLVMValueRef Function(LLVMTypeRef, double)>();
 
+  /// Obtain a constant for a floating point value parsed from a string.
+  ///
+  /// A similar API, LLVMConstRealOfStringAndSize is also available. It
+  /// should be used if the input string's length is known.
   LLVMValueRef LLVMConstRealOfString(
     LLVMTypeRef RealTy,
     ffi.Pointer<ffi.Char> Text,
@@ -4221,6 +4713,7 @@ class LLVMCore {
   late final _LLVMConstRealOfString = _LLVMConstRealOfStringPtr.asFunction<
       LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Obtain a constant for a floating point value parsed from a string.
   LLVMValueRef LLVMConstRealOfStringAndSize(
     LLVMTypeRef RealTy,
     ffi.Pointer<ffi.Char> Text,
@@ -4241,6 +4734,9 @@ class LLVMCore {
       _LLVMConstRealOfStringAndSizePtr.asFunction<
           LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Obtain the zero extended value for an integer constant value.
+  ///
+  /// @see llvm::ConstantInt::getZExtValue()
   int LLVMConstIntGetZExtValue(
     LLVMValueRef ConstantVal,
   ) {
@@ -4255,6 +4751,9 @@ class LLVMCore {
   late final _LLVMConstIntGetZExtValue =
       _LLVMConstIntGetZExtValuePtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain the sign extended value for an integer constant value.
+  ///
+  /// @see llvm::ConstantInt::getSExtValue()
   int LLVMConstIntGetSExtValue(
     LLVMValueRef ConstantVal,
   ) {
@@ -4269,6 +4768,10 @@ class LLVMCore {
   late final _LLVMConstIntGetSExtValue =
       _LLVMConstIntGetSExtValuePtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain the double value for an floating point constant value.
+  /// losesInfo indicates if some precision was lost in the conversion.
+  ///
+  /// @see llvm::ConstantFP::getDoubleValue
   double LLVMConstRealGetDouble(
     LLVMValueRef ConstantVal,
     ffi.Pointer<LLVMBool> losesInfo,
@@ -4286,6 +4789,9 @@ class LLVMCore {
   late final _LLVMConstRealGetDouble = _LLVMConstRealGetDoublePtr.asFunction<
       double Function(LLVMValueRef, ffi.Pointer<LLVMBool>)>();
 
+  /// Create a ConstantDataSequential and initialize it with a string.
+  ///
+  /// @see llvm::ConstantDataArray::getString()
   LLVMValueRef LLVMConstStringInContext(
     LLVMContextRef C,
     ffi.Pointer<ffi.Char> Str,
@@ -4309,6 +4815,13 @@ class LLVMCore {
           LLVMValueRef Function(
               LLVMContextRef, ffi.Pointer<ffi.Char>, int, int)>();
 
+  /// Create a ConstantDataSequential with string content in the global context.
+  ///
+  /// This is the same as LLVMConstStringInContext except it operates on the
+  /// global context.
+  ///
+  /// @see LLVMConstStringInContext()
+  /// @see llvm::ConstantDataArray::getString()
   LLVMValueRef LLVMConstString(
     ffi.Pointer<ffi.Char> Str,
     int Length,
@@ -4328,6 +4841,9 @@ class LLVMCore {
   late final _LLVMConstString = _LLVMConstStringPtr.asFunction<
       LLVMValueRef Function(ffi.Pointer<ffi.Char>, int, int)>();
 
+  /// Returns true if the specified constant is an array of i8.
+  ///
+  /// @see ConstantDataSequential::getAsString()
   int LLVMIsConstantString(
     LLVMValueRef c,
   ) {
@@ -4342,9 +4858,12 @@ class LLVMCore {
   late final _LLVMIsConstantString =
       _LLVMIsConstantStringPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Get the given constant data sequential as a string.
+  ///
+  /// @see ConstantDataSequential::getAsString()
   ffi.Pointer<ffi.Char> LLVMGetAsString(
     LLVMValueRef c,
-    ffi.Pointer<ffi.Int> Length,
+    ffi.Pointer<ffi.Size> Length,
   ) {
     return _LLVMGetAsString(
       c,
@@ -4355,10 +4874,13 @@ class LLVMCore {
   late final _LLVMGetAsStringPtr = _lookup<
       ffi.NativeFunction<
           ffi.Pointer<ffi.Char> Function(
-              LLVMValueRef, ffi.Pointer<ffi.Int>)>>('LLVMGetAsString');
+              LLVMValueRef, ffi.Pointer<ffi.Size>)>>('LLVMGetAsString');
   late final _LLVMGetAsString = _LLVMGetAsStringPtr.asFunction<
-      ffi.Pointer<ffi.Char> Function(LLVMValueRef, ffi.Pointer<ffi.Int>)>();
+      ffi.Pointer<ffi.Char> Function(LLVMValueRef, ffi.Pointer<ffi.Size>)>();
 
+  /// Create an anonymous ConstantStruct with the specified values.
+  ///
+  /// @see llvm::ConstantStruct::getAnon()
   LLVMValueRef LLVMConstStructInContext(
     LLVMContextRef C,
     ffi.Pointer<LLVMValueRef> ConstantVals,
@@ -4382,6 +4904,12 @@ class LLVMCore {
           LLVMValueRef Function(
               LLVMContextRef, ffi.Pointer<LLVMValueRef>, int, int)>();
 
+  /// Create a ConstantStruct in the global Context.
+  ///
+  /// This is the same as LLVMConstStructInContext except it operates on the
+  /// global Context.
+  ///
+  /// @see LLVMConstStructInContext()
   LLVMValueRef LLVMConstStruct(
     ffi.Pointer<LLVMValueRef> ConstantVals,
     int Count,
@@ -4401,6 +4929,9 @@ class LLVMCore {
   late final _LLVMConstStruct = _LLVMConstStructPtr.asFunction<
       LLVMValueRef Function(ffi.Pointer<LLVMValueRef>, int, int)>();
 
+  /// Create a ConstantArray from values.
+  ///
+  /// @see llvm::ConstantArray::get()
   LLVMValueRef LLVMConstArray(
     LLVMTypeRef ElementTy,
     ffi.Pointer<LLVMValueRef> ConstantVals,
@@ -4420,25 +4951,9 @@ class LLVMCore {
   late final _LLVMConstArray = _LLVMConstArrayPtr.asFunction<
       LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<LLVMValueRef>, int)>();
 
-  LLVMValueRef LLVMConstArray2(
-    LLVMTypeRef ElementTy,
-    ffi.Pointer<LLVMValueRef> ConstantVals,
-    int Length,
-  ) {
-    return _LLVMConstArray2(
-      ElementTy,
-      ConstantVals,
-      Length,
-    );
-  }
-
-  late final _LLVMConstArray2Ptr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<LLVMValueRef>,
-              ffi.Uint64)>>('LLVMConstArray2');
-  late final _LLVMConstArray2 = _LLVMConstArray2Ptr.asFunction<
-      LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<LLVMValueRef>, int)>();
-
+  /// Create a non-anonymous ConstantStruct from values.
+  ///
+  /// @see llvm::ConstantStruct::get()
   LLVMValueRef LLVMConstNamedStruct(
     LLVMTypeRef StructTy,
     ffi.Pointer<LLVMValueRef> ConstantVals,
@@ -4458,6 +4973,12 @@ class LLVMCore {
   late final _LLVMConstNamedStruct = _LLVMConstNamedStructPtr.asFunction<
       LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<LLVMValueRef>, int)>();
 
+  /// Get element of a constant aggregate (struct, array or vector) at the
+  /// specified index. Returns null if the index is out of range, or it's not
+  /// possible to determine the element (e.g., because the constant is a
+  /// constant expression.)
+  ///
+  /// @see llvm::Constant::getAggregateElement()
   LLVMValueRef LLVMGetAggregateElement(
     LLVMValueRef C,
     int Idx,
@@ -4492,6 +5013,9 @@ class LLVMCore {
   late final _LLVMGetElementAsConstant = _LLVMGetElementAsConstantPtr
       .asFunction<LLVMValueRef Function(LLVMValueRef, int)>();
 
+  /// Create a ConstantVector from values.
+  ///
+  /// @see llvm::ConstantVector::get()
   LLVMValueRef LLVMConstVector(
     ffi.Pointer<LLVMValueRef> ScalarConstantVals,
     int Size,
@@ -4509,6 +5033,13 @@ class LLVMCore {
   late final _LLVMConstVector = _LLVMConstVectorPtr.asFunction<
       LLVMValueRef Function(ffi.Pointer<LLVMValueRef>, int)>();
 
+  /// @defgroup LLVMCCoreValueConstantExpressions Constant Expressions
+  ///
+  /// Functions in this group correspond to APIs on llvm::ConstantExpr.
+  ///
+  /// @see llvm::ConstantExpr.
+  ///
+  /// @{
   int LLVMGetConstOpcode(
     LLVMValueRef ConstantVal,
   ) {
@@ -5336,6 +5867,7 @@ class LLVMCore {
   late final _LLVMBlockAddress = _LLVMBlockAddressPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, LLVMBasicBlockRef)>();
 
+  /// Deprecated: Use LLVMGetInlineAsm instead.
   LLVMValueRef LLVMConstInlineAsm(
     LLVMTypeRef Ty,
     ffi.Pointer<ffi.Char> AsmString,
@@ -5364,6 +5896,14 @@ class LLVMCore {
       LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>,
           ffi.Pointer<ffi.Char>, int, int)>();
 
+  /// @defgroup LLVMCCoreValueConstantGlobals Global Values
+  ///
+  /// This group contains functions that operate on global values. Functions in
+  /// this group relate to functions in the llvm::GlobalValue class tree.
+  ///
+  /// @see llvm::GlobalValue
+  ///
+  /// @{
   LLVMModuleRef LLVMGetGlobalParent(
     LLVMValueRef Global,
   ) {
@@ -5543,6 +6083,10 @@ class LLVMCore {
   late final _LLVMSetUnnamedAddress =
       _LLVMSetUnnamedAddressPtr.asFunction<void Function(LLVMValueRef, int)>();
 
+  /// Returns the "value type" of a global value.  This differs from the formal
+  /// type of a global value which is always a pointer type.
+  ///
+  /// @see llvm::GlobalValue::getValueType()
   LLVMTypeRef LLVMGlobalGetValueType(
     LLVMValueRef Global,
   ) {
@@ -5557,6 +6101,7 @@ class LLVMCore {
   late final _LLVMGlobalGetValueType = _LLVMGlobalGetValueTypePtr.asFunction<
       LLVMTypeRef Function(LLVMValueRef)>();
 
+  /// Deprecated: Use LLVMGetUnnamedAddress instead.
   int LLVMHasUnnamedAddr(
     LLVMValueRef Global,
   ) {
@@ -5571,6 +6116,7 @@ class LLVMCore {
   late final _LLVMHasUnnamedAddr =
       _LLVMHasUnnamedAddrPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Deprecated: Use LLVMSetUnnamedAddress instead.
   void LLVMSetUnnamedAddr(
     LLVMValueRef Global,
     int HasUnnamedAddr,
@@ -5587,6 +6133,13 @@ class LLVMCore {
   late final _LLVMSetUnnamedAddr =
       _LLVMSetUnnamedAddrPtr.asFunction<void Function(LLVMValueRef, int)>();
 
+  /// Obtain the preferred alignment of the value.
+  /// @see llvm::AllocaInst::getAlignment()
+  /// @see llvm::LoadInst::getAlignment()
+  /// @see llvm::StoreInst::getAlignment()
+  /// @see llvm::AtomicRMWInst::setAlignment()
+  /// @see llvm::AtomicCmpXchgInst::setAlignment()
+  /// @see llvm::GlobalValue::getAlignment()
   int LLVMGetAlignment(
     LLVMValueRef V,
   ) {
@@ -5601,6 +6154,13 @@ class LLVMCore {
   late final _LLVMGetAlignment =
       _LLVMGetAlignmentPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Set the preferred alignment of the value.
+  /// @see llvm::AllocaInst::setAlignment()
+  /// @see llvm::LoadInst::setAlignment()
+  /// @see llvm::StoreInst::setAlignment()
+  /// @see llvm::AtomicRMWInst::setAlignment()
+  /// @see llvm::AtomicCmpXchgInst::setAlignment()
+  /// @see llvm::GlobalValue::setAlignment()
   void LLVMSetAlignment(
     LLVMValueRef V,
     int Bytes,
@@ -5617,6 +6177,10 @@ class LLVMCore {
   late final _LLVMSetAlignment =
       _LLVMSetAlignmentPtr.asFunction<void Function(LLVMValueRef, int)>();
 
+  /// Sets a metadata attachment, erasing the existing metadata attachment if
+  /// it already exists for the given kind.
+  ///
+  /// @see llvm::GlobalObject::setMetadata()
   void LLVMGlobalSetMetadata(
     LLVMValueRef Global,
     int Kind,
@@ -5636,6 +6200,9 @@ class LLVMCore {
   late final _LLVMGlobalSetMetadata = _LLVMGlobalSetMetadataPtr.asFunction<
       void Function(LLVMValueRef, int, LLVMMetadataRef)>();
 
+  /// Erases a metadata attachment of the given kind if it exists.
+  ///
+  /// @see llvm::GlobalObject::eraseMetadata()
   void LLVMGlobalEraseMetadata(
     LLVMValueRef Global,
     int Kind,
@@ -5652,6 +6219,9 @@ class LLVMCore {
   late final _LLVMGlobalEraseMetadata = _LLVMGlobalEraseMetadataPtr.asFunction<
       void Function(LLVMValueRef, int)>();
 
+  /// Removes all metadata attachments from this value.
+  ///
+  /// @see llvm::GlobalObject::clearMetadata()
   void LLVMGlobalClearMetadata(
     LLVMValueRef Global,
   ) {
@@ -5666,9 +6236,14 @@ class LLVMCore {
   late final _LLVMGlobalClearMetadata =
       _LLVMGlobalClearMetadataPtr.asFunction<void Function(LLVMValueRef)>();
 
+  /// Retrieves an array of metadata entries representing the metadata attached to
+  /// this value. The caller is responsible for freeing this array by calling
+  /// \c LLVMDisposeValueMetadataEntries.
+  ///
+  /// @see llvm::GlobalObject::getAllMetadata()
   ffi.Pointer<LLVMValueMetadataEntry> LLVMGlobalCopyAllMetadata(
     LLVMValueRef Value,
-    ffi.Pointer<ffi.Int> NumEntries,
+    ffi.Pointer<ffi.Size> NumEntries,
   ) {
     return _LLVMGlobalCopyAllMetadata(
       Value,
@@ -5679,12 +6254,13 @@ class LLVMCore {
   late final _LLVMGlobalCopyAllMetadataPtr = _lookup<
       ffi.NativeFunction<
           ffi.Pointer<LLVMValueMetadataEntry> Function(LLVMValueRef,
-              ffi.Pointer<ffi.Int>)>>('LLVMGlobalCopyAllMetadata');
+              ffi.Pointer<ffi.Size>)>>('LLVMGlobalCopyAllMetadata');
   late final _LLVMGlobalCopyAllMetadata =
       _LLVMGlobalCopyAllMetadataPtr.asFunction<
           ffi.Pointer<LLVMValueMetadataEntry> Function(
-              LLVMValueRef, ffi.Pointer<ffi.Int>)>();
+              LLVMValueRef, ffi.Pointer<ffi.Size>)>();
 
+  /// Destroys value metadata entries.
   void LLVMDisposeValueMetadataEntries(
     ffi.Pointer<LLVMValueMetadataEntry> Entries,
   ) {
@@ -5701,6 +6277,7 @@ class LLVMCore {
       _LLVMDisposeValueMetadataEntriesPtr.asFunction<
           void Function(ffi.Pointer<LLVMValueMetadataEntry>)>();
 
+  /// Returns the kind of a value metadata entry at a specific index.
   int LLVMValueMetadataEntriesGetKind(
     ffi.Pointer<LLVMValueMetadataEntry> Entries,
     int Index,
@@ -5719,6 +6296,8 @@ class LLVMCore {
       _LLVMValueMetadataEntriesGetKindPtr.asFunction<
           int Function(ffi.Pointer<LLVMValueMetadataEntry>, int)>();
 
+  /// Returns the underlying metadata node of a value metadata entry at a
+  /// specific index.
   LLVMMetadataRef LLVMValueMetadataEntriesGetMetadata(
     ffi.Pointer<LLVMValueMetadataEntry> Entries,
     int Index,
@@ -5737,6 +6316,13 @@ class LLVMCore {
       _LLVMValueMetadataEntriesGetMetadataPtr.asFunction<
           LLVMMetadataRef Function(ffi.Pointer<LLVMValueMetadataEntry>, int)>();
 
+  /// @defgroup LLVMCoreValueConstantGlobalVariable Global Variables
+  ///
+  /// This group contains functions that operate on global variable values.
+  ///
+  /// @see llvm::GlobalVariable
+  ///
+  /// @{
   LLVMValueRef LLVMAddGlobal(
     LLVMModuleRef M,
     LLVMTypeRef Ty,
@@ -6020,6 +6606,9 @@ class LLVMCore {
   late final _LLVMSetExternallyInitialized = _LLVMSetExternallyInitializedPtr
       .asFunction<void Function(LLVMValueRef, int)>();
 
+  /// Add a GlobalAlias with the given value type, address space and aliasee.
+  ///
+  /// @see llvm::GlobalAlias::create()
   LLVMValueRef LLVMAddAlias2(
     LLVMModuleRef M,
     LLVMTypeRef ValueTy,
@@ -6044,6 +6633,11 @@ class LLVMCore {
       LLVMValueRef Function(LLVMModuleRef, LLVMTypeRef, int, LLVMValueRef,
           ffi.Pointer<ffi.Char>)>();
 
+  /// Obtain a GlobalAlias value from a Module by its name.
+  ///
+  /// The returned value corresponds to a llvm::GlobalAlias value.
+  ///
+  /// @see llvm::Module::getNamedAlias()
   LLVMValueRef LLVMGetNamedGlobalAlias(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -6059,10 +6653,13 @@ class LLVMCore {
   late final _LLVMGetNamedGlobalAliasPtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMGetNamedGlobalAlias');
+              ffi.Size)>>('LLVMGetNamedGlobalAlias');
   late final _LLVMGetNamedGlobalAlias = _LLVMGetNamedGlobalAliasPtr.asFunction<
       LLVMValueRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Obtain an iterator to the first GlobalAlias in a Module.
+  ///
+  /// @see llvm::Module::alias_begin()
   LLVMValueRef LLVMGetFirstGlobalAlias(
     LLVMModuleRef M,
   ) {
@@ -6077,6 +6674,9 @@ class LLVMCore {
   late final _LLVMGetFirstGlobalAlias = _LLVMGetFirstGlobalAliasPtr.asFunction<
       LLVMValueRef Function(LLVMModuleRef)>();
 
+  /// Obtain an iterator to the last GlobalAlias in a Module.
+  ///
+  /// @see llvm::Module::alias_end()
   LLVMValueRef LLVMGetLastGlobalAlias(
     LLVMModuleRef M,
   ) {
@@ -6091,6 +6691,10 @@ class LLVMCore {
   late final _LLVMGetLastGlobalAlias = _LLVMGetLastGlobalAliasPtr.asFunction<
       LLVMValueRef Function(LLVMModuleRef)>();
 
+  /// Advance a GlobalAlias iterator to the next GlobalAlias.
+  ///
+  /// Returns NULL if the iterator was already at the end and there are no more
+  /// global aliases.
   LLVMValueRef LLVMGetNextGlobalAlias(
     LLVMValueRef GA,
   ) {
@@ -6105,6 +6709,10 @@ class LLVMCore {
   late final _LLVMGetNextGlobalAlias = _LLVMGetNextGlobalAliasPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Decrement a GlobalAlias iterator to the previous GlobalAlias.
+  ///
+  /// Returns NULL if the iterator was already at the beginning and there are
+  /// no previous global aliases.
   LLVMValueRef LLVMGetPreviousGlobalAlias(
     LLVMValueRef GA,
   ) {
@@ -6119,6 +6727,7 @@ class LLVMCore {
   late final _LLVMGetPreviousGlobalAlias = _LLVMGetPreviousGlobalAliasPtr
       .asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Retrieve the target value of an alias.
   LLVMValueRef LLVMAliasGetAliasee(
     LLVMValueRef Alias,
   ) {
@@ -6133,6 +6742,7 @@ class LLVMCore {
   late final _LLVMAliasGetAliasee =
       _LLVMAliasGetAliaseePtr.asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Set the target value of an alias.
   void LLVMAliasSetAliasee(
     LLVMValueRef Alias,
     LLVMValueRef Aliasee,
@@ -6149,6 +6759,9 @@ class LLVMCore {
   late final _LLVMAliasSetAliasee = _LLVMAliasSetAliaseePtr.asFunction<
       void Function(LLVMValueRef, LLVMValueRef)>();
 
+  /// Remove a function from its containing module and deletes it.
+  ///
+  /// @see llvm::Function::eraseFromParent()
   void LLVMDeleteFunction(
     LLVMValueRef Fn,
   ) {
@@ -6163,6 +6776,9 @@ class LLVMCore {
   late final _LLVMDeleteFunction =
       _LLVMDeleteFunctionPtr.asFunction<void Function(LLVMValueRef)>();
 
+  /// Check whether the given function has a personality function.
+  ///
+  /// @see llvm::Function::hasPersonalityFn()
   int LLVMHasPersonalityFn(
     LLVMValueRef Fn,
   ) {
@@ -6177,6 +6793,9 @@ class LLVMCore {
   late final _LLVMHasPersonalityFn =
       _LLVMHasPersonalityFnPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain the personality function attached to the function.
+  ///
+  /// @see llvm::Function::getPersonalityFn()
   LLVMValueRef LLVMGetPersonalityFn(
     LLVMValueRef Fn,
   ) {
@@ -6191,6 +6810,9 @@ class LLVMCore {
   late final _LLVMGetPersonalityFn = _LLVMGetPersonalityFnPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Set the personality function attached to the function.
+  ///
+  /// @see llvm::Function::setPersonalityFn()
   void LLVMSetPersonalityFn(
     LLVMValueRef Fn,
     LLVMValueRef PersonalityFn,
@@ -6207,6 +6829,9 @@ class LLVMCore {
   late final _LLVMSetPersonalityFn = _LLVMSetPersonalityFnPtr.asFunction<
       void Function(LLVMValueRef, LLVMValueRef)>();
 
+  /// Obtain the intrinsic ID number which matches the given function name.
+  ///
+  /// @see llvm::Function::lookupIntrinsicID()
   int LLVMLookupIntrinsicID(
     ffi.Pointer<ffi.Char> Name,
     int NameLen,
@@ -6220,10 +6845,13 @@ class LLVMCore {
   late final _LLVMLookupIntrinsicIDPtr = _lookup<
       ffi.NativeFunction<
           ffi.UnsignedInt Function(
-              ffi.Pointer<ffi.Char>, ffi.Int)>>('LLVMLookupIntrinsicID');
+              ffi.Pointer<ffi.Char>, ffi.Size)>>('LLVMLookupIntrinsicID');
   late final _LLVMLookupIntrinsicID = _LLVMLookupIntrinsicIDPtr.asFunction<
       int Function(ffi.Pointer<ffi.Char>, int)>();
 
+  /// Obtain the ID number from a function instance.
+  ///
+  /// @see llvm::Function::getIntrinsicID()
   int LLVMGetIntrinsicID(
     LLVMValueRef Fn,
   ) {
@@ -6238,6 +6866,10 @@ class LLVMCore {
   late final _LLVMGetIntrinsicID =
       _LLVMGetIntrinsicIDPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Create or insert the declaration of an intrinsic.  For overloaded intrinsics,
+  /// parameter types must be provided to uniquely identify an overload.
+  ///
+  /// @see llvm::Intrinsic::getDeclaration()
   LLVMValueRef LLVMGetIntrinsicDeclaration(
     LLVMModuleRef Mod,
     int ID,
@@ -6258,12 +6890,16 @@ class LLVMCore {
               LLVMModuleRef,
               ffi.UnsignedInt,
               ffi.Pointer<LLVMTypeRef>,
-              ffi.Int)>>('LLVMGetIntrinsicDeclaration');
+              ffi.Size)>>('LLVMGetIntrinsicDeclaration');
   late final _LLVMGetIntrinsicDeclaration =
       _LLVMGetIntrinsicDeclarationPtr.asFunction<
           LLVMValueRef Function(
               LLVMModuleRef, int, ffi.Pointer<LLVMTypeRef>, int)>();
 
+  /// Retrieves the type of an intrinsic.  For overloaded intrinsics, parameter
+  /// types must be provided to uniquely identify an overload.
+  ///
+  /// @see llvm::Intrinsic::getType()
   LLVMTypeRef LLVMIntrinsicGetType(
     LLVMContextRef Ctx,
     int ID,
@@ -6281,14 +6917,17 @@ class LLVMCore {
   late final _LLVMIntrinsicGetTypePtr = _lookup<
       ffi.NativeFunction<
           LLVMTypeRef Function(LLVMContextRef, ffi.UnsignedInt,
-              ffi.Pointer<LLVMTypeRef>, ffi.Int)>>('LLVMIntrinsicGetType');
+              ffi.Pointer<LLVMTypeRef>, ffi.Size)>>('LLVMIntrinsicGetType');
   late final _LLVMIntrinsicGetType = _LLVMIntrinsicGetTypePtr.asFunction<
       LLVMTypeRef Function(
           LLVMContextRef, int, ffi.Pointer<LLVMTypeRef>, int)>();
 
+  /// Retrieves the name of an intrinsic.
+  ///
+  /// @see llvm::Intrinsic::getName()
   ffi.Pointer<ffi.Char> LLVMIntrinsicGetName(
     int ID,
-    ffi.Pointer<ffi.Int> NameLength,
+    ffi.Pointer<ffi.Size> NameLength,
   ) {
     return _LLVMIntrinsicGetName(
       ID,
@@ -6299,15 +6938,16 @@ class LLVMCore {
   late final _LLVMIntrinsicGetNamePtr = _lookup<
       ffi.NativeFunction<
           ffi.Pointer<ffi.Char> Function(
-              ffi.UnsignedInt, ffi.Pointer<ffi.Int>)>>('LLVMIntrinsicGetName');
+              ffi.UnsignedInt, ffi.Pointer<ffi.Size>)>>('LLVMIntrinsicGetName');
   late final _LLVMIntrinsicGetName = _LLVMIntrinsicGetNamePtr.asFunction<
-      ffi.Pointer<ffi.Char> Function(int, ffi.Pointer<ffi.Int>)>();
+      ffi.Pointer<ffi.Char> Function(int, ffi.Pointer<ffi.Size>)>();
 
+  /// Deprecated: Use LLVMIntrinsicCopyOverloadedName2 instead.
   ffi.Pointer<ffi.Char> LLVMIntrinsicCopyOverloadedName(
     int ID,
     ffi.Pointer<LLVMTypeRef> ParamTypes,
     int ParamCount,
-    ffi.Pointer<ffi.Int> NameLength,
+    ffi.Pointer<ffi.Size> NameLength,
   ) {
     return _LLVMIntrinsicCopyOverloadedName(
       ID,
@@ -6322,19 +6962,28 @@ class LLVMCore {
           ffi.Pointer<ffi.Char> Function(
               ffi.UnsignedInt,
               ffi.Pointer<LLVMTypeRef>,
-              ffi.Int,
-              ffi.Pointer<ffi.Int>)>>('LLVMIntrinsicCopyOverloadedName');
+              ffi.Size,
+              ffi.Pointer<ffi.Size>)>>('LLVMIntrinsicCopyOverloadedName');
   late final _LLVMIntrinsicCopyOverloadedName =
       _LLVMIntrinsicCopyOverloadedNamePtr.asFunction<
           ffi.Pointer<ffi.Char> Function(
-              int, ffi.Pointer<LLVMTypeRef>, int, ffi.Pointer<ffi.Int>)>();
+              int, ffi.Pointer<LLVMTypeRef>, int, ffi.Pointer<ffi.Size>)>();
 
+  /// Copies the name of an overloaded intrinsic identified by a given list of
+  /// parameter types.
+  ///
+  /// Unlike LLVMIntrinsicGetName, the caller is responsible for freeing the
+  /// returned string.
+  ///
+  /// This version also supports unnamed types.
+  ///
+  /// @see llvm::Intrinsic::getName()
   ffi.Pointer<ffi.Char> LLVMIntrinsicCopyOverloadedName2(
     LLVMModuleRef Mod,
     int ID,
     ffi.Pointer<LLVMTypeRef> ParamTypes,
     int ParamCount,
-    ffi.Pointer<ffi.Int> NameLength,
+    ffi.Pointer<ffi.Size> NameLength,
   ) {
     return _LLVMIntrinsicCopyOverloadedName2(
       Mod,
@@ -6351,13 +7000,16 @@ class LLVMCore {
               LLVMModuleRef,
               ffi.UnsignedInt,
               ffi.Pointer<LLVMTypeRef>,
-              ffi.Int,
-              ffi.Pointer<ffi.Int>)>>('LLVMIntrinsicCopyOverloadedName2');
+              ffi.Size,
+              ffi.Pointer<ffi.Size>)>>('LLVMIntrinsicCopyOverloadedName2');
   late final _LLVMIntrinsicCopyOverloadedName2 =
       _LLVMIntrinsicCopyOverloadedName2Ptr.asFunction<
           ffi.Pointer<ffi.Char> Function(LLVMModuleRef, int,
-              ffi.Pointer<LLVMTypeRef>, int, ffi.Pointer<ffi.Int>)>();
+              ffi.Pointer<LLVMTypeRef>, int, ffi.Pointer<ffi.Size>)>();
 
+  /// Obtain if the intrinsic identified by the given ID is overloaded.
+  ///
+  /// @see llvm::Intrinsic::isOverloaded()
   int LLVMIntrinsicIsOverloaded(
     int ID,
   ) {
@@ -6372,6 +7024,11 @@ class LLVMCore {
   late final _LLVMIntrinsicIsOverloaded =
       _LLVMIntrinsicIsOverloadedPtr.asFunction<int Function(int)>();
 
+  /// Obtain the calling function of a function.
+  ///
+  /// The returned value corresponds to the LLVMCallConv enumeration.
+  ///
+  /// @see llvm::Function::getCallingConv()
   int LLVMGetFunctionCallConv(
     LLVMValueRef Fn,
   ) {
@@ -6386,6 +7043,12 @@ class LLVMCore {
   late final _LLVMGetFunctionCallConv =
       _LLVMGetFunctionCallConvPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Set the calling convention of a function.
+  ///
+  /// @see llvm::Function::setCallingConv()
+  ///
+  /// @param Fn Function to operate on
+  /// @param CC LLVMCallConv to set calling convention to
   void LLVMSetFunctionCallConv(
     LLVMValueRef Fn,
     int CC,
@@ -6402,6 +7065,10 @@ class LLVMCore {
   late final _LLVMSetFunctionCallConv = _LLVMSetFunctionCallConvPtr.asFunction<
       void Function(LLVMValueRef, int)>();
 
+  /// Obtain the name of the garbage collector to use during code
+  /// generation.
+  ///
+  /// @see llvm::Function::getGC()
   ffi.Pointer<ffi.Char> LLVMGetGC(
     LLVMValueRef Fn,
   ) {
@@ -6416,6 +7083,9 @@ class LLVMCore {
   late final _LLVMGetGC =
       _LLVMGetGCPtr.asFunction<ffi.Pointer<ffi.Char> Function(LLVMValueRef)>();
 
+  /// Define the garbage collector to use during code generation.
+  ///
+  /// @see llvm::Function::setGC()
   void LLVMSetGC(
     LLVMValueRef Fn,
     ffi.Pointer<ffi.Char> Name,
@@ -6432,6 +7102,9 @@ class LLVMCore {
   late final _LLVMSetGC = _LLVMSetGCPtr.asFunction<
       void Function(LLVMValueRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Add an attribute to a function.
+  ///
+  /// @see llvm::Function::addAttribute()
   void LLVMAddAttributeAtIndex(
     LLVMValueRef F,
     int Idx,
@@ -6578,6 +7251,8 @@ class LLVMCore {
       _LLVMRemoveStringAttributeAtIndexPtr.asFunction<
           void Function(LLVMValueRef, int, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Add a target-dependent attribute to a function
+  /// @see llvm::AttrBuilder::addAttribute()
   void LLVMAddTargetDependentFunctionAttr(
     LLVMValueRef Fn,
     ffi.Pointer<ffi.Char> A,
@@ -6599,6 +7274,9 @@ class LLVMCore {
           void Function(
               LLVMValueRef, ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>();
 
+  /// Obtain the number of parameters in a function.
+  ///
+  /// @see llvm::Function::arg_size()
   int LLVMCountParams(
     LLVMValueRef Fn,
   ) {
@@ -6613,6 +7291,15 @@ class LLVMCore {
   late final _LLVMCountParams =
       _LLVMCountParamsPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain the parameters in a function.
+  ///
+  /// The takes a pointer to a pre-allocated array of LLVMValueRef that is
+  /// at least LLVMCountParams() long. This array will be filled with
+  /// LLVMValueRef instances which correspond to the parameters the
+  /// function receives. Each LLVMValueRef corresponds to a llvm::Argument
+  /// instance.
+  ///
+  /// @see llvm::Function::arg_begin()
   void LLVMGetParams(
     LLVMValueRef Fn,
     ffi.Pointer<LLVMValueRef> Params,
@@ -6630,6 +7317,11 @@ class LLVMCore {
   late final _LLVMGetParams = _LLVMGetParamsPtr.asFunction<
       void Function(LLVMValueRef, ffi.Pointer<LLVMValueRef>)>();
 
+  /// Obtain the parameter at the specified index.
+  ///
+  /// Parameters are indexed from 0.
+  ///
+  /// @see llvm::Function::arg_begin()
   LLVMValueRef LLVMGetParam(
     LLVMValueRef Fn,
     int Index,
@@ -6647,6 +7339,13 @@ class LLVMCore {
   late final _LLVMGetParam =
       _LLVMGetParamPtr.asFunction<LLVMValueRef Function(LLVMValueRef, int)>();
 
+  /// Obtain the function to which this argument belongs.
+  ///
+  /// Unlike other functions in this group, this one takes an LLVMValueRef
+  /// that corresponds to a llvm::Attribute.
+  ///
+  /// The returned LLVMValueRef is the llvm::Function to which this
+  /// argument belongs.
   LLVMValueRef LLVMGetParamParent(
     LLVMValueRef Inst,
   ) {
@@ -6661,6 +7360,9 @@ class LLVMCore {
   late final _LLVMGetParamParent =
       _LLVMGetParamParentPtr.asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Obtain the first parameter to a function.
+  ///
+  /// @see llvm::Function::arg_begin()
   LLVMValueRef LLVMGetFirstParam(
     LLVMValueRef Fn,
   ) {
@@ -6675,6 +7377,9 @@ class LLVMCore {
   late final _LLVMGetFirstParam =
       _LLVMGetFirstParamPtr.asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Obtain the last parameter to a function.
+  ///
+  /// @see llvm::Function::arg_end()
   LLVMValueRef LLVMGetLastParam(
     LLVMValueRef Fn,
   ) {
@@ -6689,6 +7394,11 @@ class LLVMCore {
   late final _LLVMGetLastParam =
       _LLVMGetLastParamPtr.asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Obtain the next parameter to a function.
+  ///
+  /// This takes an LLVMValueRef obtained from LLVMGetFirstParam() (which is
+  /// actually a wrapped iterator) and obtains the next parameter from the
+  /// underlying iterator.
   LLVMValueRef LLVMGetNextParam(
     LLVMValueRef Arg,
   ) {
@@ -6703,6 +7413,9 @@ class LLVMCore {
   late final _LLVMGetNextParam =
       _LLVMGetNextParamPtr.asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Obtain the previous parameter to a function.
+  ///
+  /// This is the opposite of LLVMGetNextParam().
   LLVMValueRef LLVMGetPreviousParam(
     LLVMValueRef Arg,
   ) {
@@ -6717,6 +7430,10 @@ class LLVMCore {
   late final _LLVMGetPreviousParam = _LLVMGetPreviousParamPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Set the alignment for a function parameter.
+  ///
+  /// @see llvm::Argument::addAttr()
+  /// @see llvm::AttrBuilder::addAlignmentAttr()
   void LLVMSetParamAlignment(
     LLVMValueRef Arg,
     int Align,
@@ -6733,6 +7450,9 @@ class LLVMCore {
   late final _LLVMSetParamAlignment =
       _LLVMSetParamAlignmentPtr.asFunction<void Function(LLVMValueRef, int)>();
 
+  /// Add a global indirect function to a module under a specified name.
+  ///
+  /// @see llvm::GlobalIFunc::create()
   LLVMValueRef LLVMAddGlobalIFunc(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -6756,7 +7476,7 @@ class LLVMCore {
           LLVMValueRef Function(
               LLVMModuleRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMTypeRef,
               ffi.UnsignedInt,
               LLVMValueRef)>>('LLVMAddGlobalIFunc');
@@ -6764,6 +7484,11 @@ class LLVMCore {
       LLVMValueRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, int,
           LLVMTypeRef, int, LLVMValueRef)>();
 
+  /// Obtain a GlobalIFunc value from a Module by its name.
+  ///
+  /// The returned value corresponds to a llvm::GlobalIFunc value.
+  ///
+  /// @see llvm::Module::getNamedIFunc()
   LLVMValueRef LLVMGetNamedGlobalIFunc(
     LLVMModuleRef M,
     ffi.Pointer<ffi.Char> Name,
@@ -6779,10 +7504,13 @@ class LLVMCore {
   late final _LLVMGetNamedGlobalIFuncPtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMGetNamedGlobalIFunc');
+              ffi.Size)>>('LLVMGetNamedGlobalIFunc');
   late final _LLVMGetNamedGlobalIFunc = _LLVMGetNamedGlobalIFuncPtr.asFunction<
       LLVMValueRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Obtain an iterator to the first GlobalIFunc in a Module.
+  ///
+  /// @see llvm::Module::ifunc_begin()
   LLVMValueRef LLVMGetFirstGlobalIFunc(
     LLVMModuleRef M,
   ) {
@@ -6797,6 +7525,9 @@ class LLVMCore {
   late final _LLVMGetFirstGlobalIFunc = _LLVMGetFirstGlobalIFuncPtr.asFunction<
       LLVMValueRef Function(LLVMModuleRef)>();
 
+  /// Obtain an iterator to the last GlobalIFunc in a Module.
+  ///
+  /// @see llvm::Module::ifunc_end()
   LLVMValueRef LLVMGetLastGlobalIFunc(
     LLVMModuleRef M,
   ) {
@@ -6811,6 +7542,10 @@ class LLVMCore {
   late final _LLVMGetLastGlobalIFunc = _LLVMGetLastGlobalIFuncPtr.asFunction<
       LLVMValueRef Function(LLVMModuleRef)>();
 
+  /// Advance a GlobalIFunc iterator to the next GlobalIFunc.
+  ///
+  /// Returns NULL if the iterator was already at the end and there are no more
+  /// global aliases.
   LLVMValueRef LLVMGetNextGlobalIFunc(
     LLVMValueRef IFunc,
   ) {
@@ -6825,6 +7560,10 @@ class LLVMCore {
   late final _LLVMGetNextGlobalIFunc = _LLVMGetNextGlobalIFuncPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Decrement a GlobalIFunc iterator to the previous GlobalIFunc.
+  ///
+  /// Returns NULL if the iterator was already at the beginning and there are
+  /// no previous global aliases.
   LLVMValueRef LLVMGetPreviousGlobalIFunc(
     LLVMValueRef IFunc,
   ) {
@@ -6839,6 +7578,10 @@ class LLVMCore {
   late final _LLVMGetPreviousGlobalIFunc = _LLVMGetPreviousGlobalIFuncPtr
       .asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Retrieves the resolver function associated with this indirect function, or
+  /// NULL if it doesn't not exist.
+  ///
+  /// @see llvm::GlobalIFunc::getResolver()
   LLVMValueRef LLVMGetGlobalIFuncResolver(
     LLVMValueRef IFunc,
   ) {
@@ -6853,6 +7596,9 @@ class LLVMCore {
   late final _LLVMGetGlobalIFuncResolver = _LLVMGetGlobalIFuncResolverPtr
       .asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Sets the resolver function associated with this indirect function.
+  ///
+  /// @see llvm::GlobalIFunc::setResolver()
   void LLVMSetGlobalIFuncResolver(
     LLVMValueRef IFunc,
     LLVMValueRef Resolver,
@@ -6869,6 +7615,9 @@ class LLVMCore {
   late final _LLVMSetGlobalIFuncResolver = _LLVMSetGlobalIFuncResolverPtr
       .asFunction<void Function(LLVMValueRef, LLVMValueRef)>();
 
+  /// Remove a global indirect function from its parent module and delete it.
+  ///
+  /// @see llvm::GlobalIFunc::eraseFromParent()
   void LLVMEraseGlobalIFunc(
     LLVMValueRef IFunc,
   ) {
@@ -6883,6 +7632,12 @@ class LLVMCore {
   late final _LLVMEraseGlobalIFunc =
       _LLVMEraseGlobalIFuncPtr.asFunction<void Function(LLVMValueRef)>();
 
+  /// Remove a global indirect function from its parent module.
+  ///
+  /// This unlinks the global indirect function from its containing module but
+  /// keeps it alive.
+  ///
+  /// @see llvm::GlobalIFunc::removeFromParent()
   void LLVMRemoveGlobalIFunc(
     LLVMValueRef IFunc,
   ) {
@@ -6897,6 +7652,12 @@ class LLVMCore {
   late final _LLVMRemoveGlobalIFunc =
       _LLVMRemoveGlobalIFuncPtr.asFunction<void Function(LLVMValueRef)>();
 
+  /// Create an MDString value from a given string value.
+  ///
+  /// The MDString value does not take ownership of the given string, it remains
+  /// the responsibility of the caller to free it.
+  ///
+  /// @see llvm::MDString::get()
   LLVMMetadataRef LLVMMDStringInContext2(
     LLVMContextRef C,
     ffi.Pointer<ffi.Char> Str,
@@ -6912,10 +7673,13 @@ class LLVMCore {
   late final _LLVMMDStringInContext2Ptr = _lookup<
       ffi.NativeFunction<
           LLVMMetadataRef Function(LLVMContextRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMMDStringInContext2');
+              ffi.Size)>>('LLVMMDStringInContext2');
   late final _LLVMMDStringInContext2 = _LLVMMDStringInContext2Ptr.asFunction<
       LLVMMetadataRef Function(LLVMContextRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Create an MDNode value with the given array of operands.
+  ///
+  /// @see llvm::MDNode::get()
   LLVMMetadataRef LLVMMDNodeInContext2(
     LLVMContextRef C,
     ffi.Pointer<LLVMMetadataRef> MDs,
@@ -6931,11 +7695,12 @@ class LLVMCore {
   late final _LLVMMDNodeInContext2Ptr = _lookup<
       ffi.NativeFunction<
           LLVMMetadataRef Function(LLVMContextRef, ffi.Pointer<LLVMMetadataRef>,
-              ffi.Int)>>('LLVMMDNodeInContext2');
+              ffi.Size)>>('LLVMMDNodeInContext2');
   late final _LLVMMDNodeInContext2 = _LLVMMDNodeInContext2Ptr.asFunction<
       LLVMMetadataRef Function(
           LLVMContextRef, ffi.Pointer<LLVMMetadataRef>, int)>();
 
+  /// Obtain a Metadata as a Value.
   LLVMValueRef LLVMMetadataAsValue(
     LLVMContextRef C,
     LLVMMetadataRef MD,
@@ -6953,6 +7718,7 @@ class LLVMCore {
   late final _LLVMMetadataAsValue = _LLVMMetadataAsValuePtr.asFunction<
       LLVMValueRef Function(LLVMContextRef, LLVMMetadataRef)>();
 
+  /// Obtain a Value as a Metadata.
   LLVMMetadataRef LLVMValueAsMetadata(
     LLVMValueRef Val,
   ) {
@@ -6967,6 +7733,11 @@ class LLVMCore {
   late final _LLVMValueAsMetadata = _LLVMValueAsMetadataPtr.asFunction<
       LLVMMetadataRef Function(LLVMValueRef)>();
 
+  /// Obtain the underlying string from a MDString value.
+  ///
+  /// @param V Instance to obtain string from.
+  /// @param Length Memory address which will hold length of returned string.
+  /// @return String data in MDString.
   ffi.Pointer<ffi.Char> LLVMGetMDString(
     LLVMValueRef V,
     ffi.Pointer<ffi.UnsignedInt> Length,
@@ -6985,6 +7756,10 @@ class LLVMCore {
       ffi.Pointer<ffi.Char> Function(
           LLVMValueRef, ffi.Pointer<ffi.UnsignedInt>)>();
 
+  /// Obtain the number of operands from an MDNode value.
+  ///
+  /// @param V MDNode to get number of operands from.
+  /// @return Number of operands of the MDNode.
   int LLVMGetMDNodeNumOperands(
     LLVMValueRef V,
   ) {
@@ -6999,6 +7774,15 @@ class LLVMCore {
   late final _LLVMGetMDNodeNumOperands =
       _LLVMGetMDNodeNumOperandsPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain the given MDNode's operands.
+  ///
+  /// The passed LLVMValueRef pointer should point to enough memory to hold all of
+  /// the operands of the given MDNode (see LLVMGetMDNodeNumOperands) as
+  /// LLVMValueRefs. This memory will be populated with the LLVMValueRefs of the
+  /// MDNode's operands.
+  ///
+  /// @param V MDNode to get the operands from.
+  /// @param Dest Destination array for operands.
   void LLVMGetMDNodeOperands(
     LLVMValueRef V,
     ffi.Pointer<LLVMValueRef> Dest,
@@ -7016,25 +7800,7 @@ class LLVMCore {
   late final _LLVMGetMDNodeOperands = _LLVMGetMDNodeOperandsPtr.asFunction<
       void Function(LLVMValueRef, ffi.Pointer<LLVMValueRef>)>();
 
-  void LLVMReplaceMDNodeOperandWith(
-    LLVMValueRef V,
-    int Index,
-    LLVMMetadataRef Replacement,
-  ) {
-    return _LLVMReplaceMDNodeOperandWith(
-      V,
-      Index,
-      Replacement,
-    );
-  }
-
-  late final _LLVMReplaceMDNodeOperandWithPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(LLVMValueRef, ffi.UnsignedInt,
-              LLVMMetadataRef)>>('LLVMReplaceMDNodeOperandWith');
-  late final _LLVMReplaceMDNodeOperandWith = _LLVMReplaceMDNodeOperandWithPtr
-      .asFunction<void Function(LLVMValueRef, int, LLVMMetadataRef)>();
-
+  /// Deprecated: Use LLVMMDStringInContext2 instead.
   LLVMValueRef LLVMMDStringInContext(
     LLVMContextRef C,
     ffi.Pointer<ffi.Char> Str,
@@ -7054,6 +7820,7 @@ class LLVMCore {
   late final _LLVMMDStringInContext = _LLVMMDStringInContextPtr.asFunction<
       LLVMValueRef Function(LLVMContextRef, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Deprecated: Use LLVMMDStringInContext2 instead.
   LLVMValueRef LLVMMDString(
     ffi.Pointer<ffi.Char> Str,
     int SLen,
@@ -7071,6 +7838,7 @@ class LLVMCore {
   late final _LLVMMDString = _LLVMMDStringPtr.asFunction<
       LLVMValueRef Function(ffi.Pointer<ffi.Char>, int)>();
 
+  /// Deprecated: Use LLVMMDNodeInContext2 instead.
   LLVMValueRef LLVMMDNodeInContext(
     LLVMContextRef C,
     ffi.Pointer<LLVMValueRef> Vals,
@@ -7090,6 +7858,7 @@ class LLVMCore {
   late final _LLVMMDNodeInContext = _LLVMMDNodeInContextPtr.asFunction<
       LLVMValueRef Function(LLVMContextRef, ffi.Pointer<LLVMValueRef>, int)>();
 
+  /// Deprecated: Use LLVMMDNodeInContext2 instead.
   LLVMValueRef LLVMMDNode(
     ffi.Pointer<LLVMValueRef> Vals,
     int Count,
@@ -7107,6 +7876,7 @@ class LLVMCore {
   late final _LLVMMDNode = _LLVMMDNodePtr.asFunction<
       LLVMValueRef Function(ffi.Pointer<LLVMValueRef>, int)>();
 
+  /// Convert a basic block instance to a value type.
   LLVMValueRef LLVMBasicBlockAsValue(
     LLVMBasicBlockRef BB,
   ) {
@@ -7121,6 +7891,7 @@ class LLVMCore {
   late final _LLVMBasicBlockAsValue = _LLVMBasicBlockAsValuePtr.asFunction<
       LLVMValueRef Function(LLVMBasicBlockRef)>();
 
+  /// Determine whether an LLVMValueRef is itself a basic block.
   int LLVMValueIsBasicBlock(
     LLVMValueRef Val,
   ) {
@@ -7135,6 +7906,7 @@ class LLVMCore {
   late final _LLVMValueIsBasicBlock =
       _LLVMValueIsBasicBlockPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Convert an LLVMValueRef to an LLVMBasicBlockRef instance.
   LLVMBasicBlockRef LLVMValueAsBasicBlock(
     LLVMValueRef Val,
   ) {
@@ -7149,6 +7921,7 @@ class LLVMCore {
   late final _LLVMValueAsBasicBlock = _LLVMValueAsBasicBlockPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMValueRef)>();
 
+  /// Obtain the string name of a basic block.
   ffi.Pointer<ffi.Char> LLVMGetBasicBlockName(
     LLVMBasicBlockRef BB,
   ) {
@@ -7164,6 +7937,9 @@ class LLVMCore {
   late final _LLVMGetBasicBlockName = _LLVMGetBasicBlockNamePtr.asFunction<
       ffi.Pointer<ffi.Char> Function(LLVMBasicBlockRef)>();
 
+  /// Obtain the function to which a basic block belongs.
+  ///
+  /// @see llvm::BasicBlock::getParent()
   LLVMValueRef LLVMGetBasicBlockParent(
     LLVMBasicBlockRef BB,
   ) {
@@ -7178,6 +7954,14 @@ class LLVMCore {
   late final _LLVMGetBasicBlockParent = _LLVMGetBasicBlockParentPtr.asFunction<
       LLVMValueRef Function(LLVMBasicBlockRef)>();
 
+  /// Obtain the terminator instruction for a basic block.
+  ///
+  /// If the basic block does not have a terminator (it is not well-formed
+  /// if it doesn't), then NULL is returned.
+  ///
+  /// The returned LLVMValueRef corresponds to an llvm::Instruction.
+  ///
+  /// @see llvm::BasicBlock::getTerminator()
   LLVMValueRef LLVMGetBasicBlockTerminator(
     LLVMBasicBlockRef BB,
   ) {
@@ -7192,6 +7976,9 @@ class LLVMCore {
   late final _LLVMGetBasicBlockTerminator = _LLVMGetBasicBlockTerminatorPtr
       .asFunction<LLVMValueRef Function(LLVMBasicBlockRef)>();
 
+  /// Obtain the number of basic blocks in a function.
+  ///
+  /// @param Fn Function value to operate on.
   int LLVMCountBasicBlocks(
     LLVMValueRef Fn,
   ) {
@@ -7206,6 +7993,12 @@ class LLVMCore {
   late final _LLVMCountBasicBlocks =
       _LLVMCountBasicBlocksPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain all of the basic blocks in a function.
+  ///
+  /// This operates on a function value. The BasicBlocks parameter is a
+  /// pointer to a pre-allocated array of LLVMBasicBlockRef of at least
+  /// LLVMCountBasicBlocks() in length. This array is populated with
+  /// LLVMBasicBlockRef instances.
   void LLVMGetBasicBlocks(
     LLVMValueRef Fn,
     ffi.Pointer<LLVMBasicBlockRef> BasicBlocks,
@@ -7223,6 +8016,12 @@ class LLVMCore {
   late final _LLVMGetBasicBlocks = _LLVMGetBasicBlocksPtr.asFunction<
       void Function(LLVMValueRef, ffi.Pointer<LLVMBasicBlockRef>)>();
 
+  /// Obtain the first basic block in a function.
+  ///
+  /// The returned basic block can be used as an iterator. You will likely
+  /// eventually call into LLVMGetNextBasicBlock() with it.
+  ///
+  /// @see llvm::Function::begin()
   LLVMBasicBlockRef LLVMGetFirstBasicBlock(
     LLVMValueRef Fn,
   ) {
@@ -7237,6 +8036,9 @@ class LLVMCore {
   late final _LLVMGetFirstBasicBlock = _LLVMGetFirstBasicBlockPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMValueRef)>();
 
+  /// Obtain the last basic block in a function.
+  ///
+  /// @see llvm::Function::end()
   LLVMBasicBlockRef LLVMGetLastBasicBlock(
     LLVMValueRef Fn,
   ) {
@@ -7251,6 +8053,7 @@ class LLVMCore {
   late final _LLVMGetLastBasicBlock = _LLVMGetLastBasicBlockPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMValueRef)>();
 
+  /// Advance a basic block iterator.
   LLVMBasicBlockRef LLVMGetNextBasicBlock(
     LLVMBasicBlockRef BB,
   ) {
@@ -7265,6 +8068,7 @@ class LLVMCore {
   late final _LLVMGetNextBasicBlock = _LLVMGetNextBasicBlockPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMBasicBlockRef)>();
 
+  /// Go backwards in a basic block iterator.
   LLVMBasicBlockRef LLVMGetPreviousBasicBlock(
     LLVMBasicBlockRef BB,
   ) {
@@ -7279,6 +8083,10 @@ class LLVMCore {
   late final _LLVMGetPreviousBasicBlock = _LLVMGetPreviousBasicBlockPtr
       .asFunction<LLVMBasicBlockRef Function(LLVMBasicBlockRef)>();
 
+  /// Obtain the basic block that corresponds to the entry point of a
+  /// function.
+  ///
+  /// @see llvm::Function::getEntryBlock()
   LLVMBasicBlockRef LLVMGetEntryBasicBlock(
     LLVMValueRef Fn,
   ) {
@@ -7293,6 +8101,11 @@ class LLVMCore {
   late final _LLVMGetEntryBasicBlock = _LLVMGetEntryBasicBlockPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMValueRef)>();
 
+  /// Insert the given basic block after the insertion point of the given builder.
+  ///
+  /// The insertion point must be valid.
+  ///
+  /// @see llvm::Function::BasicBlockListType::insertAfter()
   void LLVMInsertExistingBasicBlockAfterInsertBlock(
     LLVMBuilderRef Builder,
     LLVMBasicBlockRef BB,
@@ -7311,6 +8124,9 @@ class LLVMCore {
       _LLVMInsertExistingBasicBlockAfterInsertBlockPtr.asFunction<
           void Function(LLVMBuilderRef, LLVMBasicBlockRef)>();
 
+  /// Append the given basic block to the basic block list of the given function.
+  ///
+  /// @see llvm::Function::BasicBlockListType::push_back()
   void LLVMAppendExistingBasicBlock(
     LLVMValueRef Fn,
     LLVMBasicBlockRef BB,
@@ -7328,6 +8144,9 @@ class LLVMCore {
   late final _LLVMAppendExistingBasicBlock = _LLVMAppendExistingBasicBlockPtr
       .asFunction<void Function(LLVMValueRef, LLVMBasicBlockRef)>();
 
+  /// Create a new basic block without inserting it into a function.
+  ///
+  /// @see llvm::BasicBlock::Create()
   LLVMBasicBlockRef LLVMCreateBasicBlockInContext(
     LLVMContextRef C,
     ffi.Pointer<ffi.Char> Name,
@@ -7346,6 +8165,9 @@ class LLVMCore {
       _LLVMCreateBasicBlockInContextPtr.asFunction<
           LLVMBasicBlockRef Function(LLVMContextRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Append a basic block to the end of a function.
+  ///
+  /// @see llvm::BasicBlock::Create()
   LLVMBasicBlockRef LLVMAppendBasicBlockInContext(
     LLVMContextRef C,
     LLVMValueRef Fn,
@@ -7367,6 +8189,10 @@ class LLVMCore {
           LLVMBasicBlockRef Function(
               LLVMContextRef, LLVMValueRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Append a basic block to the end of a function using the global
+  /// context.
+  ///
+  /// @see llvm::BasicBlock::Create()
   LLVMBasicBlockRef LLVMAppendBasicBlock(
     LLVMValueRef Fn,
     ffi.Pointer<ffi.Char> Name,
@@ -7384,6 +8210,12 @@ class LLVMCore {
   late final _LLVMAppendBasicBlock = _LLVMAppendBasicBlockPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMValueRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Insert a basic block in a function before another basic block.
+  ///
+  /// The function to add to is determined by the function of the
+  /// passed basic block.
+  ///
+  /// @see llvm::BasicBlock::Create()
   LLVMBasicBlockRef LLVMInsertBasicBlockInContext(
     LLVMContextRef C,
     LLVMBasicBlockRef BB,
@@ -7405,6 +8237,9 @@ class LLVMCore {
           LLVMBasicBlockRef Function(
               LLVMContextRef, LLVMBasicBlockRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Insert a basic block in a function using the global context.
+  ///
+  /// @see llvm::BasicBlock::Create()
   LLVMBasicBlockRef LLVMInsertBasicBlock(
     LLVMBasicBlockRef InsertBeforeBB,
     ffi.Pointer<ffi.Char> Name,
@@ -7422,6 +8257,12 @@ class LLVMCore {
   late final _LLVMInsertBasicBlock = _LLVMInsertBasicBlockPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMBasicBlockRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Remove a basic block from a function and delete it.
+  ///
+  /// This deletes the basic block from its containing function and deletes
+  /// the basic block itself.
+  ///
+  /// @see llvm::BasicBlock::eraseFromParent()
   void LLVMDeleteBasicBlock(
     LLVMBasicBlockRef BB,
   ) {
@@ -7436,6 +8277,12 @@ class LLVMCore {
   late final _LLVMDeleteBasicBlock =
       _LLVMDeleteBasicBlockPtr.asFunction<void Function(LLVMBasicBlockRef)>();
 
+  /// Remove a basic block from a function.
+  ///
+  /// This deletes the basic block from its containing function but keep
+  /// the basic block alive.
+  ///
+  /// @see llvm::BasicBlock::removeFromParent()
   void LLVMRemoveBasicBlockFromParent(
     LLVMBasicBlockRef BB,
   ) {
@@ -7451,6 +8298,9 @@ class LLVMCore {
       _LLVMRemoveBasicBlockFromParentPtr.asFunction<
           void Function(LLVMBasicBlockRef)>();
 
+  /// Move a basic block to before another one.
+  ///
+  /// @see llvm::BasicBlock::moveBefore()
   void LLVMMoveBasicBlockBefore(
     LLVMBasicBlockRef BB,
     LLVMBasicBlockRef MovePos,
@@ -7468,6 +8318,9 @@ class LLVMCore {
   late final _LLVMMoveBasicBlockBefore = _LLVMMoveBasicBlockBeforePtr
       .asFunction<void Function(LLVMBasicBlockRef, LLVMBasicBlockRef)>();
 
+  /// Move a basic block to after another one.
+  ///
+  /// @see llvm::BasicBlock::moveAfter()
   void LLVMMoveBasicBlockAfter(
     LLVMBasicBlockRef BB,
     LLVMBasicBlockRef MovePos,
@@ -7485,6 +8338,10 @@ class LLVMCore {
   late final _LLVMMoveBasicBlockAfter = _LLVMMoveBasicBlockAfterPtr.asFunction<
       void Function(LLVMBasicBlockRef, LLVMBasicBlockRef)>();
 
+  /// Obtain the first instruction in a basic block.
+  ///
+  /// The returned LLVMValueRef corresponds to a llvm::Instruction
+  /// instance.
   LLVMValueRef LLVMGetFirstInstruction(
     LLVMBasicBlockRef BB,
   ) {
@@ -7499,6 +8356,9 @@ class LLVMCore {
   late final _LLVMGetFirstInstruction = _LLVMGetFirstInstructionPtr.asFunction<
       LLVMValueRef Function(LLVMBasicBlockRef)>();
 
+  /// Obtain the last instruction in a basic block.
+  ///
+  /// The returned LLVMValueRef corresponds to an LLVM:Instruction.
   LLVMValueRef LLVMGetLastInstruction(
     LLVMBasicBlockRef BB,
   ) {
@@ -7513,6 +8373,7 @@ class LLVMCore {
   late final _LLVMGetLastInstruction = _LLVMGetLastInstructionPtr.asFunction<
       LLVMValueRef Function(LLVMBasicBlockRef)>();
 
+  /// Determine whether an instruction has any metadata attached.
   int LLVMHasMetadata(
     LLVMValueRef Val,
   ) {
@@ -7527,6 +8388,7 @@ class LLVMCore {
   late final _LLVMHasMetadata =
       _LLVMHasMetadataPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Return metadata associated with an instruction value.
   LLVMValueRef LLVMGetMetadata(
     LLVMValueRef Val,
     int KindID,
@@ -7544,6 +8406,7 @@ class LLVMCore {
   late final _LLVMGetMetadata = _LLVMGetMetadataPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, int)>();
 
+  /// Set metadata associated with an instruction value.
   void LLVMSetMetadata(
     LLVMValueRef Val,
     int KindID,
@@ -7563,10 +8426,14 @@ class LLVMCore {
   late final _LLVMSetMetadata = _LLVMSetMetadataPtr.asFunction<
       void Function(LLVMValueRef, int, LLVMValueRef)>();
 
+  /// Returns the metadata associated with an instruction value, but filters out
+  /// all the debug locations.
+  ///
+  /// @see llvm::Instruction::getAllMetadataOtherThanDebugLoc()
   ffi.Pointer<LLVMValueMetadataEntry>
       LLVMInstructionGetAllMetadataOtherThanDebugLoc(
     LLVMValueRef Instr,
-    ffi.Pointer<ffi.Int> NumEntries,
+    ffi.Pointer<ffi.Size> NumEntries,
   ) {
     return _LLVMInstructionGetAllMetadataOtherThanDebugLoc(
       Instr,
@@ -7577,13 +8444,16 @@ class LLVMCore {
   late final _LLVMInstructionGetAllMetadataOtherThanDebugLocPtr = _lookup<
           ffi.NativeFunction<
               ffi.Pointer<LLVMValueMetadataEntry> Function(
-                  LLVMValueRef, ffi.Pointer<ffi.Int>)>>(
+                  LLVMValueRef, ffi.Pointer<ffi.Size>)>>(
       'LLVMInstructionGetAllMetadataOtherThanDebugLoc');
   late final _LLVMInstructionGetAllMetadataOtherThanDebugLoc =
       _LLVMInstructionGetAllMetadataOtherThanDebugLocPtr.asFunction<
           ffi.Pointer<LLVMValueMetadataEntry> Function(
-              LLVMValueRef, ffi.Pointer<ffi.Int>)>();
+              LLVMValueRef, ffi.Pointer<ffi.Size>)>();
 
+  /// Obtain the basic block to which an instruction belongs.
+  ///
+  /// @see llvm::Instruction::getParent()
   LLVMBasicBlockRef LLVMGetInstructionParent(
     LLVMValueRef Inst,
   ) {
@@ -7598,6 +8468,12 @@ class LLVMCore {
   late final _LLVMGetInstructionParent = _LLVMGetInstructionParentPtr
       .asFunction<LLVMBasicBlockRef Function(LLVMValueRef)>();
 
+  /// Obtain the instruction that occurs after the one specified.
+  ///
+  /// The next instruction will be from the same basic block.
+  ///
+  /// If this is the last instruction in a basic block, NULL will be
+  /// returned.
   LLVMValueRef LLVMGetNextInstruction(
     LLVMValueRef Inst,
   ) {
@@ -7612,6 +8488,10 @@ class LLVMCore {
   late final _LLVMGetNextInstruction = _LLVMGetNextInstructionPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Obtain the instruction that occurred before this one.
+  ///
+  /// If the instruction is the first instruction in a basic block, NULL
+  /// will be returned.
   LLVMValueRef LLVMGetPreviousInstruction(
     LLVMValueRef Inst,
   ) {
@@ -7626,6 +8506,12 @@ class LLVMCore {
   late final _LLVMGetPreviousInstruction = _LLVMGetPreviousInstructionPtr
       .asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Remove an instruction.
+  ///
+  /// The instruction specified is removed from its containing building
+  /// block but is kept alive.
+  ///
+  /// @see llvm::Instruction::removeFromParent()
   void LLVMInstructionRemoveFromParent(
     LLVMValueRef Inst,
   ) {
@@ -7641,6 +8527,12 @@ class LLVMCore {
       _LLVMInstructionRemoveFromParentPtr.asFunction<
           void Function(LLVMValueRef)>();
 
+  /// Remove and delete an instruction.
+  ///
+  /// The instruction specified is removed from its containing building
+  /// block and then deleted.
+  ///
+  /// @see llvm::Instruction::eraseFromParent()
   void LLVMInstructionEraseFromParent(
     LLVMValueRef Inst,
   ) {
@@ -7656,6 +8548,12 @@ class LLVMCore {
       _LLVMInstructionEraseFromParentPtr.asFunction<
           void Function(LLVMValueRef)>();
 
+  /// Delete an instruction.
+  ///
+  /// The instruction specified is deleted. It must have previously been
+  /// removed from its containing building block.
+  ///
+  /// @see llvm::Value::deleteValue()
   void LLVMDeleteInstruction(
     LLVMValueRef Inst,
   ) {
@@ -7670,6 +8568,9 @@ class LLVMCore {
   late final _LLVMDeleteInstruction =
       _LLVMDeleteInstructionPtr.asFunction<void Function(LLVMValueRef)>();
 
+  /// Obtain the code opcode for an individual instruction.
+  ///
+  /// @see llvm::Instruction::getOpCode()
   int LLVMGetInstructionOpcode(
     LLVMValueRef Inst,
   ) {
@@ -7684,6 +8585,12 @@ class LLVMCore {
   late final _LLVMGetInstructionOpcode =
       _LLVMGetInstructionOpcodePtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain the predicate of an instruction.
+  ///
+  /// This is only valid for instructions that correspond to llvm::ICmpInst
+  /// or llvm::ConstantExpr whose opcode is llvm::Instruction::ICmp.
+  ///
+  /// @see llvm::ICmpInst::getPredicate()
   int LLVMGetICmpPredicate(
     LLVMValueRef Inst,
   ) {
@@ -7698,6 +8605,12 @@ class LLVMCore {
   late final _LLVMGetICmpPredicate =
       _LLVMGetICmpPredicatePtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain the float predicate of an instruction.
+  ///
+  /// This is only valid for instructions that correspond to llvm::FCmpInst
+  /// or llvm::ConstantExpr whose opcode is llvm::Instruction::FCmp.
+  ///
+  /// @see llvm::FCmpInst::getPredicate()
   int LLVMGetFCmpPredicate(
     LLVMValueRef Inst,
   ) {
@@ -7712,6 +8625,12 @@ class LLVMCore {
   late final _LLVMGetFCmpPredicate =
       _LLVMGetFCmpPredicatePtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Create a copy of 'this' instruction that is identical in all ways
+  /// except the following:
+  /// * The instruction has no parent
+  /// * The instruction has no name
+  ///
+  /// @see llvm::Instruction::clone()
   LLVMValueRef LLVMInstructionClone(
     LLVMValueRef Inst,
   ) {
@@ -7726,6 +8645,11 @@ class LLVMCore {
   late final _LLVMInstructionClone = _LLVMInstructionClonePtr.asFunction<
       LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Determine whether an instruction is a terminator. This routine is named to
+  /// be compatible with historical functions that did this by querying the
+  /// underlying C++ type.
+  ///
+  /// @see llvm::Instruction::isTerminator()
   LLVMValueRef LLVMIsATerminatorInst(
     LLVMValueRef Inst,
   ) {
@@ -7740,6 +8664,14 @@ class LLVMCore {
   late final _LLVMIsATerminatorInst = _LLVMIsATerminatorInstPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Obtain the argument count for a call instruction.
+  ///
+  /// This expects an LLVMValueRef that corresponds to a llvm::CallInst,
+  /// llvm::InvokeInst, or llvm:FuncletPadInst.
+  ///
+  /// @see llvm::CallInst::getNumArgOperands()
+  /// @see llvm::InvokeInst::getNumArgOperands()
+  /// @see llvm::FuncletPadInst::getNumArgOperands()
   int LLVMGetNumArgOperands(
     LLVMValueRef Instr,
   ) {
@@ -7754,6 +8686,13 @@ class LLVMCore {
   late final _LLVMGetNumArgOperands =
       _LLVMGetNumArgOperandsPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Set the calling convention for a call instruction.
+  ///
+  /// This expects an LLVMValueRef that corresponds to a llvm::CallInst or
+  /// llvm::InvokeInst.
+  ///
+  /// @see llvm::CallInst::setCallingConv()
+  /// @see llvm::InvokeInst::setCallingConv()
   void LLVMSetInstructionCallConv(
     LLVMValueRef Instr,
     int CC,
@@ -7770,6 +8709,12 @@ class LLVMCore {
   late final _LLVMSetInstructionCallConv = _LLVMSetInstructionCallConvPtr
       .asFunction<void Function(LLVMValueRef, int)>();
 
+  /// Obtain the calling convention for a call instruction.
+  ///
+  /// This is the opposite of LLVMSetInstructionCallConv(). Reads its
+  /// usage.
+  ///
+  /// @see LLVMSetInstructionCallConv()
   int LLVMGetInstructionCallConv(
     LLVMValueRef Instr,
   ) {
@@ -7949,6 +8894,9 @@ class LLVMCore {
       _LLVMRemoveCallSiteStringAttributePtr.asFunction<
           void Function(LLVMValueRef, int, ffi.Pointer<ffi.Char>, int)>();
 
+  /// Obtain the function type called by this instruction.
+  ///
+  /// @see llvm::CallBase::getFunctionType()
   LLVMTypeRef LLVMGetCalledFunctionType(
     LLVMValueRef C,
   ) {
@@ -7963,6 +8911,13 @@ class LLVMCore {
   late final _LLVMGetCalledFunctionType = _LLVMGetCalledFunctionTypePtr
       .asFunction<LLVMTypeRef Function(LLVMValueRef)>();
 
+  /// Obtain the pointer to the function invoked by this instruction.
+  ///
+  /// This expects an LLVMValueRef that corresponds to a llvm::CallInst or
+  /// llvm::InvokeInst.
+  ///
+  /// @see llvm::CallInst::getCalledOperand()
+  /// @see llvm::InvokeInst::getCalledOperand()
   LLVMValueRef LLVMGetCalledValue(
     LLVMValueRef Instr,
   ) {
@@ -7977,6 +8932,11 @@ class LLVMCore {
   late final _LLVMGetCalledValue =
       _LLVMGetCalledValuePtr.asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Obtain whether a call instruction is a tail call.
+  ///
+  /// This only works on llvm::CallInst instructions.
+  ///
+  /// @see llvm::CallInst::isTailCall()
   int LLVMIsTailCall(
     LLVMValueRef CallInst,
   ) {
@@ -7991,6 +8951,11 @@ class LLVMCore {
   late final _LLVMIsTailCall =
       _LLVMIsTailCallPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Set whether a call instruction is a tail call.
+  ///
+  /// This only works on llvm::CallInst instructions.
+  ///
+  /// @see llvm::CallInst::setTailCall()
   void LLVMSetTailCall(
     LLVMValueRef CallInst,
     int IsTailCall,
@@ -8007,6 +8972,11 @@ class LLVMCore {
   late final _LLVMSetTailCall =
       _LLVMSetTailCallPtr.asFunction<void Function(LLVMValueRef, int)>();
 
+  /// Return the normal destination basic block.
+  ///
+  /// This only works on llvm::InvokeInst instructions.
+  ///
+  /// @see llvm::InvokeInst::getNormalDest()
   LLVMBasicBlockRef LLVMGetNormalDest(
     LLVMValueRef InvokeInst,
   ) {
@@ -8021,6 +8991,14 @@ class LLVMCore {
   late final _LLVMGetNormalDest = _LLVMGetNormalDestPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMValueRef)>();
 
+  /// Return the unwind destination basic block.
+  ///
+  /// Works on llvm::InvokeInst, llvm::CleanupReturnInst, and
+  /// llvm::CatchSwitchInst instructions.
+  ///
+  /// @see llvm::InvokeInst::getUnwindDest()
+  /// @see llvm::CleanupReturnInst::getUnwindDest()
+  /// @see llvm::CatchSwitchInst::getUnwindDest()
   LLVMBasicBlockRef LLVMGetUnwindDest(
     LLVMValueRef InvokeInst,
   ) {
@@ -8035,6 +9013,11 @@ class LLVMCore {
   late final _LLVMGetUnwindDest = _LLVMGetUnwindDestPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMValueRef)>();
 
+  /// Set the normal destination basic block.
+  ///
+  /// This only works on llvm::InvokeInst instructions.
+  ///
+  /// @see llvm::InvokeInst::setNormalDest()
   void LLVMSetNormalDest(
     LLVMValueRef InvokeInst,
     LLVMBasicBlockRef B,
@@ -8052,6 +9035,14 @@ class LLVMCore {
   late final _LLVMSetNormalDest = _LLVMSetNormalDestPtr.asFunction<
       void Function(LLVMValueRef, LLVMBasicBlockRef)>();
 
+  /// Set the unwind destination basic block.
+  ///
+  /// Works on llvm::InvokeInst, llvm::CleanupReturnInst, and
+  /// llvm::CatchSwitchInst instructions.
+  ///
+  /// @see llvm::InvokeInst::setUnwindDest()
+  /// @see llvm::CleanupReturnInst::setUnwindDest()
+  /// @see llvm::CatchSwitchInst::setUnwindDest()
   void LLVMSetUnwindDest(
     LLVMValueRef InvokeInst,
     LLVMBasicBlockRef B,
@@ -8069,6 +9060,9 @@ class LLVMCore {
   late final _LLVMSetUnwindDest = _LLVMSetUnwindDestPtr.asFunction<
       void Function(LLVMValueRef, LLVMBasicBlockRef)>();
 
+  /// Return the number of successors that this terminator has.
+  ///
+  /// @see llvm::Instruction::getNumSuccessors
   int LLVMGetNumSuccessors(
     LLVMValueRef Term,
   ) {
@@ -8083,6 +9077,9 @@ class LLVMCore {
   late final _LLVMGetNumSuccessors =
       _LLVMGetNumSuccessorsPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Return the specified successor.
+  ///
+  /// @see llvm::Instruction::getSuccessor
   LLVMBasicBlockRef LLVMGetSuccessor(
     LLVMValueRef Term,
     int i,
@@ -8100,6 +9097,9 @@ class LLVMCore {
   late final _LLVMGetSuccessor = _LLVMGetSuccessorPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMValueRef, int)>();
 
+  /// Update the specified successor to point at the provided block.
+  ///
+  /// @see llvm::Instruction::setSuccessor
   void LLVMSetSuccessor(
     LLVMValueRef Term,
     int i,
@@ -8119,6 +9119,11 @@ class LLVMCore {
   late final _LLVMSetSuccessor = _LLVMSetSuccessorPtr.asFunction<
       void Function(LLVMValueRef, int, LLVMBasicBlockRef)>();
 
+  /// Return if a branch is conditional.
+  ///
+  /// This only works on llvm::BranchInst instructions.
+  ///
+  /// @see llvm::BranchInst::isConditional
   int LLVMIsConditional(
     LLVMValueRef Branch,
   ) {
@@ -8133,6 +9138,11 @@ class LLVMCore {
   late final _LLVMIsConditional =
       _LLVMIsConditionalPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Return the condition of a branch instruction.
+  ///
+  /// This only works on llvm::BranchInst instructions.
+  ///
+  /// @see llvm::BranchInst::getCondition
   LLVMValueRef LLVMGetCondition(
     LLVMValueRef Branch,
   ) {
@@ -8147,6 +9157,11 @@ class LLVMCore {
   late final _LLVMGetCondition =
       _LLVMGetConditionPtr.asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Set the condition of a branch instruction.
+  ///
+  /// This only works on llvm::BranchInst instructions.
+  ///
+  /// @see llvm::BranchInst::setCondition
   void LLVMSetCondition(
     LLVMValueRef Branch,
     LLVMValueRef Cond,
@@ -8163,6 +9178,11 @@ class LLVMCore {
   late final _LLVMSetCondition = _LLVMSetConditionPtr.asFunction<
       void Function(LLVMValueRef, LLVMValueRef)>();
 
+  /// Obtain the default destination basic block of a switch instruction.
+  ///
+  /// This only works on llvm::SwitchInst instructions.
+  ///
+  /// @see llvm::SwitchInst::getDefaultDest()
   LLVMBasicBlockRef LLVMGetSwitchDefaultDest(
     LLVMValueRef SwitchInstr,
   ) {
@@ -8177,6 +9197,7 @@ class LLVMCore {
   late final _LLVMGetSwitchDefaultDest = _LLVMGetSwitchDefaultDestPtr
       .asFunction<LLVMBasicBlockRef Function(LLVMValueRef)>();
 
+  /// Obtain the type that is being allocated by the alloca instruction.
   LLVMTypeRef LLVMGetAllocatedType(
     LLVMValueRef Alloca,
   ) {
@@ -8191,6 +9212,7 @@ class LLVMCore {
   late final _LLVMGetAllocatedType =
       _LLVMGetAllocatedTypePtr.asFunction<LLVMTypeRef Function(LLVMValueRef)>();
 
+  /// Check whether the given GEP operator is inbounds.
   int LLVMIsInBounds(
     LLVMValueRef GEP,
   ) {
@@ -8205,6 +9227,7 @@ class LLVMCore {
   late final _LLVMIsInBounds =
       _LLVMIsInBoundsPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Set the given GEP instruction to be inbounds or not.
   void LLVMSetIsInBounds(
     LLVMValueRef GEP,
     int InBounds,
@@ -8221,6 +9244,7 @@ class LLVMCore {
   late final _LLVMSetIsInBounds =
       _LLVMSetIsInBoundsPtr.asFunction<void Function(LLVMValueRef, int)>();
 
+  /// Get the source element type of the given GEP operator.
   LLVMTypeRef LLVMGetGEPSourceElementType(
     LLVMValueRef GEP,
   ) {
@@ -8235,6 +9259,7 @@ class LLVMCore {
   late final _LLVMGetGEPSourceElementType = _LLVMGetGEPSourceElementTypePtr
       .asFunction<LLVMTypeRef Function(LLVMValueRef)>();
 
+  /// Add an incoming value to the end of a PHI list.
   void LLVMAddIncoming(
     LLVMValueRef PhiNode,
     ffi.Pointer<LLVMValueRef> IncomingValues,
@@ -8260,6 +9285,7 @@ class LLVMCore {
       void Function(LLVMValueRef, ffi.Pointer<LLVMValueRef>,
           ffi.Pointer<LLVMBasicBlockRef>, int)>();
 
+  /// Obtain the number of incoming basic blocks to a PHI node.
   int LLVMCountIncoming(
     LLVMValueRef PhiNode,
   ) {
@@ -8274,6 +9300,7 @@ class LLVMCore {
   late final _LLVMCountIncoming =
       _LLVMCountIncomingPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain an incoming value to a PHI node as an LLVMValueRef.
   LLVMValueRef LLVMGetIncomingValue(
     LLVMValueRef PhiNode,
     int Index,
@@ -8291,6 +9318,7 @@ class LLVMCore {
   late final _LLVMGetIncomingValue = _LLVMGetIncomingValuePtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, int)>();
 
+  /// Obtain an incoming value to a PHI node as an LLVMBasicBlockRef.
   LLVMBasicBlockRef LLVMGetIncomingBlock(
     LLVMValueRef PhiNode,
     int Index,
@@ -8308,6 +9336,8 @@ class LLVMCore {
   late final _LLVMGetIncomingBlock = _LLVMGetIncomingBlockPtr.asFunction<
       LLVMBasicBlockRef Function(LLVMValueRef, int)>();
 
+  /// Obtain the number of indices.
+  /// NB: This also works on GEP operators.
   int LLVMGetNumIndices(
     LLVMValueRef Inst,
   ) {
@@ -8322,6 +9352,7 @@ class LLVMCore {
   late final _LLVMGetNumIndices =
       _LLVMGetNumIndicesPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain the indices as an array.
   ffi.Pointer<ffi.UnsignedInt> LLVMGetIndices(
     LLVMValueRef Inst,
   ) {
@@ -8337,6 +9368,12 @@ class LLVMCore {
   late final _LLVMGetIndices = _LLVMGetIndicesPtr.asFunction<
       ffi.Pointer<ffi.UnsignedInt> Function(LLVMValueRef)>();
 
+  /// @defgroup LLVMCCoreInstructionBuilder Instruction Builders
+  ///
+  /// An instruction builder represents a point within a basic block and is
+  /// the exclusive means of building instructions using the C interface.
+  ///
+  /// @{
   LLVMBuilderRef LLVMCreateBuilderInContext(
     LLVMContextRef C,
   ) {
@@ -8491,6 +9528,9 @@ class LLVMCore {
   late final _LLVMDisposeBuilder =
       _LLVMDisposeBuilderPtr.asFunction<void Function(LLVMBuilderRef)>();
 
+  /// Get location information used by debugging information.
+  ///
+  /// @see llvm::IRBuilder::getCurrentDebugLocation()
   LLVMMetadataRef LLVMGetCurrentDebugLocation2(
     LLVMBuilderRef Builder,
   ) {
@@ -8505,6 +9545,11 @@ class LLVMCore {
   late final _LLVMGetCurrentDebugLocation2 = _LLVMGetCurrentDebugLocation2Ptr
       .asFunction<LLVMMetadataRef Function(LLVMBuilderRef)>();
 
+  /// Set location information used by debugging information.
+  ///
+  /// To clear the location metadata of the given instruction, pass NULL to \p Loc.
+  ///
+  /// @see llvm::IRBuilder::SetCurrentDebugLocation()
   void LLVMSetCurrentDebugLocation2(
     LLVMBuilderRef Builder,
     LLVMMetadataRef Loc,
@@ -8522,6 +9567,14 @@ class LLVMCore {
   late final _LLVMSetCurrentDebugLocation2 = _LLVMSetCurrentDebugLocation2Ptr
       .asFunction<void Function(LLVMBuilderRef, LLVMMetadataRef)>();
 
+  /// Attempts to set the debug location for the given instruction using the
+  /// current debug location for the given builder.  If the builder has no current
+  /// debug location, this function is a no-op.
+  ///
+  /// @deprecated LLVMSetInstDebugLocation is deprecated in favor of the more general
+  /// LLVMAddMetadataToInst.
+  ///
+  /// @see llvm::IRBuilder::SetInstDebugLocation()
   void LLVMSetInstDebugLocation(
     LLVMBuilderRef Builder,
     LLVMValueRef Inst,
@@ -8538,6 +9591,9 @@ class LLVMCore {
   late final _LLVMSetInstDebugLocation = _LLVMSetInstDebugLocationPtr
       .asFunction<void Function(LLVMBuilderRef, LLVMValueRef)>();
 
+  /// Adds the metadata registered with the given builder to the given instruction.
+  ///
+  /// @see llvm::IRBuilder::AddMetadataToInst()
   void LLVMAddMetadataToInst(
     LLVMBuilderRef Builder,
     LLVMValueRef Inst,
@@ -8554,6 +9610,9 @@ class LLVMCore {
   late final _LLVMAddMetadataToInst = _LLVMAddMetadataToInstPtr.asFunction<
       void Function(LLVMBuilderRef, LLVMValueRef)>();
 
+  /// Get the dafult floating-point math metadata for a given builder.
+  ///
+  /// @see llvm::IRBuilder::getDefaultFPMathTag()
   LLVMMetadataRef LLVMBuilderGetDefaultFPMathTag(
     LLVMBuilderRef Builder,
   ) {
@@ -8569,6 +9628,11 @@ class LLVMCore {
       _LLVMBuilderGetDefaultFPMathTagPtr.asFunction<
           LLVMMetadataRef Function(LLVMBuilderRef)>();
 
+  /// Set the default floating-point math metadata for the given builder.
+  ///
+  /// To clear the metadata, pass NULL to \p FPMathTag.
+  ///
+  /// @see llvm::IRBuilder::setDefaultFPMathTag()
   void LLVMBuilderSetDefaultFPMathTag(
     LLVMBuilderRef Builder,
     LLVMMetadataRef FPMathTag,
@@ -8587,6 +9651,8 @@ class LLVMCore {
       _LLVMBuilderSetDefaultFPMathTagPtr.asFunction<
           void Function(LLVMBuilderRef, LLVMMetadataRef)>();
 
+  /// Deprecated: Passing the NULL location will crash.
+  /// Use LLVMGetCurrentDebugLocation2 instead.
   void LLVMSetCurrentDebugLocation(
     LLVMBuilderRef Builder,
     LLVMValueRef L,
@@ -8603,6 +9669,8 @@ class LLVMCore {
   late final _LLVMSetCurrentDebugLocation = _LLVMSetCurrentDebugLocationPtr
       .asFunction<void Function(LLVMBuilderRef, LLVMValueRef)>();
 
+  /// Deprecated: Returning the NULL location will crash.
+  /// Use LLVMGetCurrentDebugLocation2 instead.
   LLVMValueRef LLVMGetCurrentDebugLocation(
     LLVMBuilderRef Builder,
   ) {
@@ -9107,6 +10175,15 @@ class LLVMCore {
   late final _LLVMGetNumHandlers =
       _LLVMGetNumHandlersPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// Obtain the basic blocks acting as handlers for a catchswitch instruction.
+  ///
+  /// The Handlers parameter should point to a pre-allocated array of
+  /// LLVMBasicBlockRefs at least LLVMGetNumHandlers() large. On return, the
+  /// first LLVMGetNumHandlers() entries in the array will be populated
+  /// with LLVMBasicBlockRef instances.
+  ///
+  /// @param CatchSwitch The catchswitch instruction to operate on.
+  /// @param Handlers Memory address of an array to be filled with basic blocks.
   void LLVMGetHandlers(
     LLVMValueRef CatchSwitch,
     ffi.Pointer<LLVMBasicBlockRef> Handlers,
@@ -9160,6 +10237,11 @@ class LLVMCore {
   late final _LLVMSetArgOperand = _LLVMSetArgOperandPtr.asFunction<
       void Function(LLVMValueRef, int, LLVMValueRef)>();
 
+  /// Get the parent catchswitch instruction of a catchpad instruction.
+  ///
+  /// This only works on llvm::CatchPadInst instructions.
+  ///
+  /// @see llvm::CatchPadInst::getCatchSwitch()
   LLVMValueRef LLVMGetParentCatchSwitch(
     LLVMValueRef CatchPad,
   ) {
@@ -9174,6 +10256,11 @@ class LLVMCore {
   late final _LLVMGetParentCatchSwitch = _LLVMGetParentCatchSwitchPtr
       .asFunction<LLVMValueRef Function(LLVMValueRef)>();
 
+  /// Set the parent catchswitch instruction of a catchpad instruction.
+  ///
+  /// This only works on llvm::CatchPadInst instructions.
+  ///
+  /// @see llvm::CatchPadInst::setCatchSwitch()
   void LLVMSetParentCatchSwitch(
     LLVMValueRef CatchPad,
     LLVMValueRef CatchSwitch,
@@ -9928,6 +11015,10 @@ class LLVMCore {
       LLVMValueRef Function(
           LLVMBuilderRef, LLVMTypeRef, LLVMValueRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Creates and inserts a memset to the specified pointer and the
+  /// specified value.
+  ///
+  /// @see llvm::IRRBuilder::CreateMemSet()
   LLVMValueRef LLVMBuildMemSet(
     LLVMBuilderRef B,
     LLVMValueRef Ptr,
@@ -9952,6 +11043,9 @@ class LLVMCore {
       LLVMValueRef Function(
           LLVMBuilderRef, LLVMValueRef, LLVMValueRef, LLVMValueRef, int)>();
 
+  /// Creates and inserts a memcpy between the specified pointers.
+  ///
+  /// @see llvm::IRRBuilder::CreateMemCpy()
   LLVMValueRef LLVMBuildMemCpy(
     LLVMBuilderRef B,
     LLVMValueRef Dst,
@@ -9978,6 +11072,9 @@ class LLVMCore {
       LLVMValueRef Function(LLVMBuilderRef, LLVMValueRef, int, LLVMValueRef,
           int, LLVMValueRef)>();
 
+  /// Creates and inserts a memmove between the specified pointers.
+  ///
+  /// @see llvm::IRRBuilder::CreateMemMove()
   LLVMValueRef LLVMBuildMemMove(
     LLVMBuilderRef B,
     LLVMValueRef Dst,
@@ -10800,6 +11897,7 @@ class LLVMCore {
       LLVMValueRef Function(
           LLVMBuilderRef, LLVMValueRef, LLVMTypeRef, ffi.Pointer<ffi.Char>)>();
 
+  /// Deprecated: This cast is always signed. Use LLVMBuildIntCast2 instead.
   LLVMValueRef LLVMBuildIntCast(
     LLVMBuilderRef arg0,
     LLVMValueRef Val,
@@ -11269,6 +12367,7 @@ class LLVMCore {
       LLVMValueRef Function(LLVMBuilderRef, LLVMValueRef, LLVMValueRef,
           LLVMValueRef, int, int, int)>();
 
+  /// Get the number of elements in the mask of a ShuffleVector instruction.
   int LLVMGetNumMaskElements(
     LLVMValueRef ShuffleVectorInst,
   ) {
@@ -11283,6 +12382,8 @@ class LLVMCore {
   late final _LLVMGetNumMaskElements =
       _LLVMGetNumMaskElementsPtr.asFunction<int Function(LLVMValueRef)>();
 
+  /// \returns a constant that specifies that the result of a \c ShuffleVectorInst
+  /// is undefined.
   int LLVMGetUndefMaskElem() {
     return _LLVMGetUndefMaskElem();
   }
@@ -11292,6 +12393,11 @@ class LLVMCore {
   late final _LLVMGetUndefMaskElem =
       _LLVMGetUndefMaskElemPtr.asFunction<int Function()>();
 
+  /// Get the mask value at position Elt in the mask of a ShuffleVector
+  /// instruction.
+  ///
+  /// \Returns the result of \c LLVMGetUndefMaskElem() if the mask value is undef
+  /// at that position.
   int LLVMGetMaskValue(
     LLVMValueRef ShuffleVectorInst,
     int Elt,
@@ -11398,6 +12504,8 @@ class LLVMCore {
   late final _LLVMSetCmpXchgFailureOrdering = _LLVMSetCmpXchgFailureOrderingPtr
       .asFunction<void Function(LLVMValueRef, int)>();
 
+  /// Changes the type of M so it can be passed to FunctionPassManagers and the
+  /// JIT.  They take ModuleProviders for historical reasons.
   LLVMModuleProviderRef LLVMCreateModuleProviderForExistingModule(
     LLVMModuleRef M,
   ) {
@@ -11413,6 +12521,7 @@ class LLVMCore {
       _LLVMCreateModuleProviderForExistingModulePtr.asFunction<
           LLVMModuleProviderRef Function(LLVMModuleRef)>();
 
+  /// Destroys the module M.
   void LLVMDisposeModuleProvider(
     LLVMModuleProviderRef M,
   ) {
@@ -11427,6 +12536,9 @@ class LLVMCore {
   late final _LLVMDisposeModuleProvider = _LLVMDisposeModuleProviderPtr
       .asFunction<void Function(LLVMModuleProviderRef)>();
 
+  /// @defgroup LLVMCCoreMemoryBuffers Memory Buffers
+  ///
+  /// @{
   int LLVMCreateMemoryBufferWithContentsOfFile(
     ffi.Pointer<ffi.Char> Path,
     ffi.Pointer<LLVMMemoryBufferRef> OutMemBuf,
@@ -11489,7 +12601,7 @@ class LLVMCore {
       ffi.NativeFunction<
           LLVMMemoryBufferRef Function(
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
               LLVMBool)>>('LLVMCreateMemoryBufferWithMemoryRange');
   late final _LLVMCreateMemoryBufferWithMemoryRange =
@@ -11512,7 +12624,7 @@ class LLVMCore {
   late final _LLVMCreateMemoryBufferWithMemoryRangeCopyPtr = _lookup<
           ffi.NativeFunction<
               LLVMMemoryBufferRef Function(
-                  ffi.Pointer<ffi.Char>, ffi.Int, ffi.Pointer<ffi.Char>)>>(
+                  ffi.Pointer<ffi.Char>, ffi.Size, ffi.Pointer<ffi.Char>)>>(
       'LLVMCreateMemoryBufferWithMemoryRangeCopy');
   late final _LLVMCreateMemoryBufferWithMemoryRangeCopy =
       _LLVMCreateMemoryBufferWithMemoryRangeCopyPtr.asFunction<
@@ -11543,7 +12655,7 @@ class LLVMCore {
   }
 
   late final _LLVMGetBufferSizePtr =
-      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMMemoryBufferRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Size Function(LLVMMemoryBufferRef)>>(
           'LLVMGetBufferSize');
   late final _LLVMGetBufferSize =
       _LLVMGetBufferSizePtr.asFunction<int Function(LLVMMemoryBufferRef)>();
@@ -11562,6 +12674,8 @@ class LLVMCore {
   late final _LLVMDisposeMemoryBuffer = _LLVMDisposeMemoryBufferPtr.asFunction<
       void Function(LLVMMemoryBufferRef)>();
 
+  /// Return the global pass registry, for use with initialization functions.
+  /// @see llvm::PassRegistry::getPassRegistry
   LLVMPassRegistryRef LLVMGetGlobalPassRegistry() {
     return _LLVMGetGlobalPassRegistry();
   }
@@ -11572,6 +12686,9 @@ class LLVMCore {
   late final _LLVMGetGlobalPassRegistry = _LLVMGetGlobalPassRegistryPtr
       .asFunction<LLVMPassRegistryRef Function()>();
 
+  /// Constructs a new whole-module pass pipeline. This type of pipeline is
+  /// suitable for link-time optimization and whole-module transformations.
+  /// @see llvm::PassManager::PassManager
   LLVMPassManagerRef LLVMCreatePassManager() {
     return _LLVMCreatePassManager();
   }
@@ -11582,6 +12699,10 @@ class LLVMCore {
   late final _LLVMCreatePassManager =
       _LLVMCreatePassManagerPtr.asFunction<LLVMPassManagerRef Function()>();
 
+  /// Constructs a new function-by-function pass pipeline over the module
+  /// provider. It does not take ownership of the module provider. This type of
+  /// pipeline is suitable for code generation and JIT compilation tasks.
+  /// @see llvm::FunctionPassManager::FunctionPassManager
   LLVMPassManagerRef LLVMCreateFunctionPassManagerForModule(
     LLVMModuleRef M,
   ) {
@@ -11597,6 +12718,7 @@ class LLVMCore {
       _LLVMCreateFunctionPassManagerForModulePtr.asFunction<
           LLVMPassManagerRef Function(LLVMModuleRef)>();
 
+  /// Deprecated: Use LLVMCreateFunctionPassManagerForModule instead.
   LLVMPassManagerRef LLVMCreateFunctionPassManager(
     LLVMModuleProviderRef MP,
   ) {
@@ -11612,6 +12734,10 @@ class LLVMCore {
   late final _LLVMCreateFunctionPassManager = _LLVMCreateFunctionPassManagerPtr
       .asFunction<LLVMPassManagerRef Function(LLVMModuleProviderRef)>();
 
+  /// Initializes, executes on the provided module, and finalizes all of the
+  /// passes scheduled in the pass manager. Returns 1 if any of the passes
+  /// modified the module, 0 otherwise.
+  /// @see llvm::PassManager::run(Module&)
   int LLVMRunPassManager(
     LLVMPassManagerRef PM,
     LLVMModuleRef M,
@@ -11629,6 +12755,9 @@ class LLVMCore {
   late final _LLVMRunPassManager = _LLVMRunPassManagerPtr.asFunction<
       int Function(LLVMPassManagerRef, LLVMModuleRef)>();
 
+  /// Initializes all of the function passes scheduled in the function pass
+  /// manager. Returns 1 if any of the passes modified the module, 0 otherwise.
+  /// @see llvm::FunctionPassManager::doInitialization
   int LLVMInitializeFunctionPassManager(
     LLVMPassManagerRef FPM,
   ) {
@@ -11644,6 +12773,10 @@ class LLVMCore {
       _LLVMInitializeFunctionPassManagerPtr.asFunction<
           int Function(LLVMPassManagerRef)>();
 
+  /// Executes all of the function passes scheduled in the function pass manager
+  /// on the provided function. Returns 1 if any of the passes modified the
+  /// function, false otherwise.
+  /// @see llvm::FunctionPassManager::run(Function&)
   int LLVMRunFunctionPassManager(
     LLVMPassManagerRef FPM,
     LLVMValueRef F,
@@ -11661,6 +12794,9 @@ class LLVMCore {
   late final _LLVMRunFunctionPassManager = _LLVMRunFunctionPassManagerPtr
       .asFunction<int Function(LLVMPassManagerRef, LLVMValueRef)>();
 
+  /// Finalizes all of the function passes scheduled in the function pass
+  /// manager. Returns 1 if any of the passes modified the module, 0 otherwise.
+  /// @see llvm::FunctionPassManager::doFinalization
   int LLVMFinalizeFunctionPassManager(
     LLVMPassManagerRef FPM,
   ) {
@@ -11676,6 +12812,9 @@ class LLVMCore {
       _LLVMFinalizeFunctionPassManagerPtr.asFunction<
           int Function(LLVMPassManagerRef)>();
 
+  /// Frees the memory of a pass pipeline. For function pipelines, does not free
+  /// the module provider.
+  /// @see llvm::PassManagerBase::~PassManagerBase.
   void LLVMDisposePassManager(
     LLVMPassManagerRef PM,
   ) {
@@ -11690,6 +12829,9 @@ class LLVMCore {
   late final _LLVMDisposePassManager = _LLVMDisposePassManagerPtr.asFunction<
       void Function(LLVMPassManagerRef)>();
 
+  /// Deprecated: Multi-threading can only be enabled/disabled with the compile
+  /// time define LLVM_ENABLE_THREADS.  This function always returns
+  /// LLVMIsMultithreaded().
   int LLVMStartMultithreaded() {
     return _LLVMStartMultithreaded();
   }
@@ -11700,6 +12842,8 @@ class LLVMCore {
   late final _LLVMStartMultithreaded =
       _LLVMStartMultithreadedPtr.asFunction<int Function()>();
 
+  /// Deprecated: Multi-threading can only be enabled/disabled with the compile
+  /// time define LLVM_ENABLE_THREADS.
   void LLVMStopMultithreaded() {
     return _LLVMStopMultithreaded();
   }
@@ -11709,6 +12853,8 @@ class LLVMCore {
   late final _LLVMStopMultithreaded =
       _LLVMStopMultithreadedPtr.asFunction<void Function()>();
 
+  /// Check whether LLVM is executing in thread-safe mode or not.
+  /// @see llvm::llvm_is_multithreaded
   int LLVMIsMultithreaded() {
     return _LLVMIsMultithreaded();
   }
@@ -11846,20 +12992,6 @@ class LLVMCore {
   late final _getFPM =
       _getFPMPtr.asFunction<LLVMPassManagerRef Function(KModuleRef)>();
 
-  ffi.Pointer<ffi.Int> getM(
-    KModuleRef ref,
-  ) {
-    return _getM(
-      ref,
-    );
-  }
-
-  late final _getMPtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Int> Function(KModuleRef)>>(
-          'getM');
-  late final _getM =
-      _getMPtr.asFunction<ffi.Pointer<ffi.Int> Function(KModuleRef)>();
-
   LLVMAttributeRef LLVMCreateStructRetAttr(
     LLVMContextRef C,
     LLVMTypeRef Ty,
@@ -11877,6 +13009,29 @@ class LLVMCore {
   late final _LLVMCreateStructRetAttr = _LLVMCreateStructRetAttrPtr.asFunction<
       LLVMAttributeRef Function(LLVMContextRef, LLVMTypeRef)>();
 
+  LLVMMetadataRef LLVMCreateCompileUnit(
+    LLVMDIBuilderRef builder,
+    ffi.Pointer<ffi.Char> fileName,
+    ffi.Pointer<ffi.Char> dirName,
+  ) {
+    return _LLVMCreateCompileUnit(
+      builder,
+      fileName,
+      dirName,
+    );
+  }
+
+  late final _LLVMCreateCompileUnitPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>)>>('LLVMCreateCompileUnit');
+  late final _LLVMCreateCompileUnit = _LLVMCreateCompileUnitPtr.asFunction<
+      LLVMMetadataRef Function(
+          LLVMDIBuilderRef, ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>();
+
+  /// Obtain the data layout for a module.
+  ///
+  /// @see Module::getDataLayout()
   LLVMTargetDataRef LLVMGetModuleDataLayout(
     LLVMModuleRef M,
   ) {
@@ -11891,6 +13046,9 @@ class LLVMCore {
   late final _LLVMGetModuleDataLayout = _LLVMGetModuleDataLayoutPtr.asFunction<
       LLVMTargetDataRef Function(LLVMModuleRef)>();
 
+  /// Set the data layout for a module.
+  ///
+  /// @see Module::setDataLayout()
   void LLVMSetModuleDataLayout(
     LLVMModuleRef M,
     LLVMTargetDataRef DL,
@@ -11908,6 +13066,8 @@ class LLVMCore {
   late final _LLVMSetModuleDataLayout = _LLVMSetModuleDataLayoutPtr.asFunction<
       void Function(LLVMModuleRef, LLVMTargetDataRef)>();
 
+  /// Creates target data from a target layout string.
+  /// See the constructor llvm::DataLayout::DataLayout.
   LLVMTargetDataRef LLVMCreateTargetData(
     ffi.Pointer<ffi.Char> StringRep,
   ) {
@@ -11923,6 +13083,8 @@ class LLVMCore {
   late final _LLVMCreateTargetData = _LLVMCreateTargetDataPtr.asFunction<
       LLVMTargetDataRef Function(ffi.Pointer<ffi.Char>)>();
 
+  /// Deallocates a TargetData.
+  /// See the destructor llvm::DataLayout::~DataLayout.
   void LLVMDisposeTargetData(
     LLVMTargetDataRef TD,
   ) {
@@ -11937,6 +13099,9 @@ class LLVMCore {
   late final _LLVMDisposeTargetData =
       _LLVMDisposeTargetDataPtr.asFunction<void Function(LLVMTargetDataRef)>();
 
+  /// Adds target library information to a pass manager. This does not take
+  /// ownership of the target library info.
+  /// See the method llvm::PassManagerBase::add.
   void LLVMAddTargetLibraryInfo(
     LLVMTargetLibraryInfoRef TLI,
     LLVMPassManagerRef PM,
@@ -11955,6 +13120,9 @@ class LLVMCore {
       _LLVMAddTargetLibraryInfoPtr.asFunction<
           void Function(LLVMTargetLibraryInfoRef, LLVMPassManagerRef)>();
 
+  /// Converts target data to a target layout string. The string must be disposed
+  /// with LLVMDisposeMessage.
+  /// See the constructor llvm::DataLayout::DataLayout.
   ffi.Pointer<ffi.Char> LLVMCopyStringRepOfTargetData(
     LLVMTargetDataRef TD,
   ) {
@@ -11970,6 +13138,9 @@ class LLVMCore {
   late final _LLVMCopyStringRepOfTargetData = _LLVMCopyStringRepOfTargetDataPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetDataRef)>();
 
+  /// Returns the byte order of a target, either LLVMBigEndian or
+  /// LLVMLittleEndian.
+  /// See the method llvm::DataLayout::isLittleEndian.
   int LLVMByteOrder(
     LLVMTargetDataRef TD,
   ) {
@@ -11984,6 +13155,8 @@ class LLVMCore {
   late final _LLVMByteOrder =
       _LLVMByteOrderPtr.asFunction<int Function(LLVMTargetDataRef)>();
 
+  /// Returns the pointer size in bytes for a target.
+  /// See the method llvm::DataLayout::getPointerSize.
   int LLVMPointerSize(
     LLVMTargetDataRef TD,
   ) {
@@ -11998,6 +13171,9 @@ class LLVMCore {
   late final _LLVMPointerSize =
       _LLVMPointerSizePtr.asFunction<int Function(LLVMTargetDataRef)>();
 
+  /// Returns the pointer size in bytes for a target for a specified
+  /// address space.
+  /// See the method llvm::DataLayout::getPointerSize.
   int LLVMPointerSizeForAS(
     LLVMTargetDataRef TD,
     int AS,
@@ -12015,6 +13191,8 @@ class LLVMCore {
   late final _LLVMPointerSizeForAS = _LLVMPointerSizeForASPtr.asFunction<
       int Function(LLVMTargetDataRef, int)>();
 
+  /// Returns the integer type that is the same size as a pointer on a target.
+  /// See the method llvm::DataLayout::getIntPtrType.
   LLVMTypeRef LLVMIntPtrType(
     LLVMTargetDataRef TD,
   ) {
@@ -12029,6 +13207,9 @@ class LLVMCore {
   late final _LLVMIntPtrType =
       _LLVMIntPtrTypePtr.asFunction<LLVMTypeRef Function(LLVMTargetDataRef)>();
 
+  /// Returns the integer type that is the same size as a pointer on a target.
+  /// This version allows the address space to be specified.
+  /// See the method llvm::DataLayout::getIntPtrType.
   LLVMTypeRef LLVMIntPtrTypeForAS(
     LLVMTargetDataRef TD,
     int AS,
@@ -12046,6 +13227,8 @@ class LLVMCore {
   late final _LLVMIntPtrTypeForAS = _LLVMIntPtrTypeForASPtr.asFunction<
       LLVMTypeRef Function(LLVMTargetDataRef, int)>();
 
+  /// Returns the integer type that is the same size as a pointer on a target.
+  /// See the method llvm::DataLayout::getIntPtrType.
   LLVMTypeRef LLVMIntPtrTypeInContext(
     LLVMContextRef C,
     LLVMTargetDataRef TD,
@@ -12063,6 +13246,9 @@ class LLVMCore {
   late final _LLVMIntPtrTypeInContext = _LLVMIntPtrTypeInContextPtr.asFunction<
       LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef)>();
 
+  /// Returns the integer type that is the same size as a pointer on a target.
+  /// This version allows the address space to be specified.
+  /// See the method llvm::DataLayout::getIntPtrType.
   LLVMTypeRef LLVMIntPtrTypeForASInContext(
     LLVMContextRef C,
     LLVMTargetDataRef TD,
@@ -12083,6 +13269,8 @@ class LLVMCore {
       _LLVMIntPtrTypeForASInContextPtr.asFunction<
           LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef, int)>();
 
+  /// Computes the size of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeSizeInBits.
   int LLVMSizeOfTypeInBits(
     LLVMTargetDataRef TD,
     LLVMTypeRef Ty,
@@ -12100,6 +13288,8 @@ class LLVMCore {
   late final _LLVMSizeOfTypeInBits = _LLVMSizeOfTypeInBitsPtr.asFunction<
       int Function(LLVMTargetDataRef, LLVMTypeRef)>();
 
+  /// Computes the storage size of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeStoreSize.
   int LLVMStoreSizeOfType(
     LLVMTargetDataRef TD,
     LLVMTypeRef Ty,
@@ -12117,6 +13307,8 @@ class LLVMCore {
   late final _LLVMStoreSizeOfType = _LLVMStoreSizeOfTypePtr.asFunction<
       int Function(LLVMTargetDataRef, LLVMTypeRef)>();
 
+  /// Computes the ABI size of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeAllocSize.
   int LLVMABISizeOfType(
     LLVMTargetDataRef TD,
     LLVMTypeRef Ty,
@@ -12134,6 +13326,8 @@ class LLVMCore {
   late final _LLVMABISizeOfType = _LLVMABISizeOfTypePtr.asFunction<
       int Function(LLVMTargetDataRef, LLVMTypeRef)>();
 
+  /// Computes the ABI alignment of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeABISize.
   int LLVMABIAlignmentOfType(
     LLVMTargetDataRef TD,
     LLVMTypeRef Ty,
@@ -12151,6 +13345,8 @@ class LLVMCore {
   late final _LLVMABIAlignmentOfType = _LLVMABIAlignmentOfTypePtr.asFunction<
       int Function(LLVMTargetDataRef, LLVMTypeRef)>();
 
+  /// Computes the call frame alignment of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeABISize.
   int LLVMCallFrameAlignmentOfType(
     LLVMTargetDataRef TD,
     LLVMTypeRef Ty,
@@ -12168,6 +13364,8 @@ class LLVMCore {
   late final _LLVMCallFrameAlignmentOfType = _LLVMCallFrameAlignmentOfTypePtr
       .asFunction<int Function(LLVMTargetDataRef, LLVMTypeRef)>();
 
+  /// Computes the preferred alignment of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeABISize.
   int LLVMPreferredAlignmentOfType(
     LLVMTargetDataRef TD,
     LLVMTypeRef Ty,
@@ -12185,6 +13383,8 @@ class LLVMCore {
   late final _LLVMPreferredAlignmentOfType = _LLVMPreferredAlignmentOfTypePtr
       .asFunction<int Function(LLVMTargetDataRef, LLVMTypeRef)>();
 
+  /// Computes the preferred alignment of a global variable in bytes for a target.
+  /// See the method llvm::DataLayout::getPreferredAlignment.
   int LLVMPreferredAlignmentOfGlobal(
     LLVMTargetDataRef TD,
     LLVMValueRef GlobalVar,
@@ -12203,6 +13403,8 @@ class LLVMCore {
       _LLVMPreferredAlignmentOfGlobalPtr.asFunction<
           int Function(LLVMTargetDataRef, LLVMValueRef)>();
 
+  /// Computes the structure element that contains the byte offset for a target.
+  /// See the method llvm::StructLayout::getElementContainingOffset.
   int LLVMElementAtOffset(
     LLVMTargetDataRef TD,
     LLVMTypeRef StructTy,
@@ -12222,6 +13424,8 @@ class LLVMCore {
   late final _LLVMElementAtOffset = _LLVMElementAtOffsetPtr.asFunction<
       int Function(LLVMTargetDataRef, LLVMTypeRef, int)>();
 
+  /// Computes the byte offset of the indexed struct element for a target.
+  /// See the method llvm::StructLayout::getElementContainingOffset.
   int LLVMOffsetOfElement(
     LLVMTargetDataRef TD,
     LLVMTypeRef StructTy,
@@ -12890,21 +14094,21 @@ class LLVMCore {
               ffi.Int32,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMBool,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.UnsignedInt,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Int32,
               ffi.UnsignedInt,
               LLVMBool,
               LLVMBool,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreateCompileUnit');
+              ffi.Size)>>('LLVMDIBuilderCreateCompileUnit');
   late final _LLVMDIBuilderCreateCompileUnit =
       _LLVMDIBuilderCreateCompileUnitPtr.asFunction<
           LLVMMetadataRef Function(
@@ -12955,9 +14159,9 @@ class LLVMCore {
           LLVMMetadataRef Function(
               LLVMDIBuilderRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreateFile');
+              ffi.Size)>>('LLVMDIBuilderCreateFile');
   late final _LLVMDIBuilderCreateFile = _LLVMDIBuilderCreateFilePtr.asFunction<
       LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Char>, int,
           ffi.Pointer<ffi.Char>, int)>();
@@ -13006,13 +14210,13 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreateModule');
+              ffi.Size)>>('LLVMDIBuilderCreateModule');
   late final _LLVMDIBuilderCreateModule =
       _LLVMDIBuilderCreateModulePtr.asFunction<
           LLVMMetadataRef Function(
@@ -13056,7 +14260,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMBool)>>('LLVMDIBuilderCreateNameSpace');
   late final _LLVMDIBuilderCreateNameSpace =
       _LLVMDIBuilderCreateNameSpacePtr.asFunction<
@@ -13119,9 +14323,9 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               LLVMMetadataRef,
@@ -13391,7 +14595,7 @@ class LLVMCore {
               LLVMMetadataRef,
               ffi.UnsignedInt,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<LLVMMetadataRef>,
               ffi.UnsignedInt)>>('LLVMDIBuilderCreateImportedDeclaration');
   late final _LLVMDIBuilderCreateImportedDeclaration =
@@ -13624,7 +14828,7 @@ class LLVMCore {
           LLVMMetadataRef Function(
               LLVMDIBuilderRef,
               ffi.Pointer<LLVMMetadataRef>,
-              ffi.Int)>>('LLVMDIBuilderGetOrCreateTypeArray');
+              ffi.Size)>>('LLVMDIBuilderGetOrCreateTypeArray');
   late final _LLVMDIBuilderGetOrCreateTypeArray =
       _LLVMDIBuilderGetOrCreateTypeArrayPtr.asFunction<
           LLVMMetadataRef Function(
@@ -13706,9 +14910,9 @@ class LLVMCore {
               ffi.UnsignedInt,
               ffi.Int32,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreateMacro');
+              ffi.Size)>>('LLVMDIBuilderCreateMacro');
   late final _LLVMDIBuilderCreateMacro =
       _LLVMDIBuilderCreateMacroPtr.asFunction<
           LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef, int, int,
@@ -13772,7 +14976,7 @@ class LLVMCore {
   late final _LLVMDIBuilderCreateEnumeratorPtr = _lookup<
       ffi.NativeFunction<
           LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Char>,
-              ffi.Int, ffi.Int64, LLVMBool)>>('LLVMDIBuilderCreateEnumerator');
+              ffi.Size, ffi.Int64, LLVMBool)>>('LLVMDIBuilderCreateEnumerator');
   late final _LLVMDIBuilderCreateEnumerator =
       _LLVMDIBuilderCreateEnumeratorPtr.asFunction<
           LLVMMetadataRef Function(
@@ -13824,7 +15028,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               ffi.Uint64,
@@ -13902,7 +15106,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               ffi.Uint64,
@@ -13912,7 +15116,7 @@ class LLVMCore {
               ffi.UnsignedInt,
               ffi.UnsignedInt,
               ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreateUnionType');
+              ffi.Size)>>('LLVMDIBuilderCreateUnionType');
   late final _LLVMDIBuilderCreateUnionType =
       _LLVMDIBuilderCreateUnionTypePtr.asFunction<
           LLVMMetadataRef Function(
@@ -14028,7 +15232,7 @@ class LLVMCore {
   late final _LLVMDIBuilderCreateUnspecifiedTypePtr = _lookup<
       ffi.NativeFunction<
           LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreateUnspecifiedType');
+              ffi.Size)>>('LLVMDIBuilderCreateUnspecifiedType');
   late final _LLVMDIBuilderCreateUnspecifiedType =
       _LLVMDIBuilderCreateUnspecifiedTypePtr.asFunction<
           LLVMMetadataRef Function(
@@ -14065,7 +15269,7 @@ class LLVMCore {
           LLVMMetadataRef Function(
               LLVMDIBuilderRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Uint64,
               LLVMDWARFTypeEncoding,
               ffi.Int32)>>('LLVMDIBuilderCreateBasicType');
@@ -14111,7 +15315,7 @@ class LLVMCore {
               ffi.Uint32,
               ffi.UnsignedInt,
               ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreatePointerType');
+              ffi.Size)>>('LLVMDIBuilderCreatePointerType');
   late final _LLVMDIBuilderCreatePointerType =
       _LLVMDIBuilderCreatePointerTypePtr.asFunction<
           LLVMMetadataRef Function(LLVMDIBuilderRef, LLVMMetadataRef, int, int,
@@ -14177,7 +15381,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               ffi.Uint64,
@@ -14189,7 +15393,7 @@ class LLVMCore {
               ffi.UnsignedInt,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreateStructType');
+              ffi.Size)>>('LLVMDIBuilderCreateStructType');
   late final _LLVMDIBuilderCreateStructType =
       _LLVMDIBuilderCreateStructTypePtr.asFunction<
           LLVMMetadataRef Function(
@@ -14256,7 +15460,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               ffi.Uint64,
@@ -14323,7 +15527,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               LLVMMetadataRef,
@@ -14428,7 +15632,7 @@ class LLVMCore {
           LLVMMetadataRef Function(
               LLVMDIBuilderRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               ffi.Uint64,
@@ -14497,13 +15701,13 @@ class LLVMCore {
           LLVMMetadataRef Function(
               LLVMDIBuilderRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.UnsignedInt,
               LLVMMetadataRef)>>('LLVMDIBuilderCreateObjCProperty');
   late final _LLVMDIBuilderCreateObjCProperty =
@@ -14645,7 +15849,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               LLVMMetadataRef,
@@ -14752,7 +15956,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               ffi.UnsignedInt,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               LLVMMetadataRef,
               ffi.UnsignedInt,
@@ -14760,7 +15964,7 @@ class LLVMCore {
               ffi.Uint64,
               ffi.Uint32,
               ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreateForwardDecl');
+              ffi.Size)>>('LLVMDIBuilderCreateForwardDecl');
   late final _LLVMDIBuilderCreateForwardDecl =
       _LLVMDIBuilderCreateForwardDeclPtr.asFunction<
           LLVMMetadataRef Function(
@@ -14830,7 +16034,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               ffi.UnsignedInt,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               LLVMMetadataRef,
               ffi.UnsignedInt,
@@ -14839,7 +16043,7 @@ class LLVMCore {
               ffi.Uint32,
               ffi.Int32,
               ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreateReplaceableCompositeType');
+              ffi.Size)>>('LLVMDIBuilderCreateReplaceableCompositeType');
   late final _LLVMDIBuilderCreateReplaceableCompositeType =
       _LLVMDIBuilderCreateReplaceableCompositeTypePtr.asFunction<
           LLVMMetadataRef Function(
@@ -14903,7 +16107,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               ffi.Uint64,
@@ -14992,7 +16196,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               ffi.Uint64,
@@ -15005,7 +16209,7 @@ class LLVMCore {
               LLVMMetadataRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int)>>('LLVMDIBuilderCreateClassType');
+              ffi.Size)>>('LLVMDIBuilderCreateClassType');
   late final _LLVMDIBuilderCreateClassType =
       _LLVMDIBuilderCreateClassTypePtr.asFunction<
           LLVMMetadataRef Function(
@@ -15055,7 +16259,7 @@ class LLVMCore {
   /// @see DIType::getName()
   ffi.Pointer<ffi.Char> LLVMDITypeGetName(
     LLVMMetadataRef DType,
-    ffi.Pointer<ffi.Int> Length,
+    ffi.Pointer<ffi.Size> Length,
   ) {
     return _LLVMDITypeGetName(
       DType,
@@ -15066,9 +16270,9 @@ class LLVMCore {
   late final _LLVMDITypeGetNamePtr = _lookup<
       ffi.NativeFunction<
           ffi.Pointer<ffi.Char> Function(
-              LLVMMetadataRef, ffi.Pointer<ffi.Int>)>>('LLVMDITypeGetName');
+              LLVMMetadataRef, ffi.Pointer<ffi.Size>)>>('LLVMDITypeGetName');
   late final _LLVMDITypeGetName = _LLVMDITypeGetNamePtr.asFunction<
-      ffi.Pointer<ffi.Char> Function(LLVMMetadataRef, ffi.Pointer<ffi.Int>)>();
+      ffi.Pointer<ffi.Char> Function(LLVMMetadataRef, ffi.Pointer<ffi.Size>)>();
 
   /// Get the size of this DIType in bits.
   /// \param DType     The DIType.
@@ -15205,7 +16409,7 @@ class LLVMCore {
           LLVMMetadataRef Function(
               LLVMDIBuilderRef,
               ffi.Pointer<LLVMMetadataRef>,
-              ffi.Int)>>('LLVMDIBuilderGetOrCreateArray');
+              ffi.Size)>>('LLVMDIBuilderGetOrCreateArray');
   late final _LLVMDIBuilderGetOrCreateArray =
       _LLVMDIBuilderGetOrCreateArrayPtr.asFunction<
           LLVMMetadataRef Function(
@@ -15231,7 +16435,7 @@ class LLVMCore {
   late final _LLVMDIBuilderCreateExpressionPtr = _lookup<
       ffi.NativeFunction<
           LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Uint64>,
-              ffi.Int)>>('LLVMDIBuilderCreateExpression');
+              ffi.Size)>>('LLVMDIBuilderCreateExpression');
   late final _LLVMDIBuilderCreateExpression =
       _LLVMDIBuilderCreateExpressionPtr.asFunction<
           LLVMMetadataRef Function(
@@ -15314,9 +16518,9 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               LLVMMetadataRef,
@@ -15340,21 +16544,6 @@ class LLVMCore {
               LLVMMetadataRef,
               LLVMMetadataRef,
               int)>();
-
-  /// Get the dwarf::Tag of a DINode
-  int LLVMGetDINodeTag(
-    LLVMMetadataRef MD,
-  ) {
-    return _LLVMGetDINodeTag(
-      MD,
-    );
-  }
-
-  late final _LLVMGetDINodeTagPtr =
-      _lookup<ffi.NativeFunction<ffi.Uint16 Function(LLVMMetadataRef)>>(
-          'LLVMGetDINodeTag');
-  late final _LLVMGetDINodeTag =
-      _LLVMGetDINodeTagPtr.asFunction<int Function(LLVMMetadataRef)>();
 
   /// Retrieves the \c DIVariable associated with this global variable expression.
   /// \param GVE    The global variable expression.
@@ -15469,7 +16658,7 @@ class LLVMCore {
   late final _LLVMTemporaryMDNodePtr = _lookup<
       ffi.NativeFunction<
           LLVMMetadataRef Function(LLVMContextRef, ffi.Pointer<LLVMMetadataRef>,
-              ffi.Int)>>('LLVMTemporaryMDNode');
+              ffi.Size)>>('LLVMTemporaryMDNode');
   late final _LLVMTemporaryMDNode = _LLVMTemporaryMDNodePtr.asFunction<
       LLVMMetadataRef Function(
           LLVMContextRef, ffi.Pointer<LLVMMetadataRef>, int)>();
@@ -15565,9 +16754,9 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               LLVMMetadataRef,
@@ -15793,7 +16982,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               LLVMMetadataRef,
               ffi.UnsignedInt,
               LLVMMetadataRef,
@@ -15857,7 +17046,7 @@ class LLVMCore {
               LLVMDIBuilderRef,
               LLVMMetadataRef,
               ffi.Pointer<ffi.Char>,
-              ffi.Int,
+              ffi.Size,
               ffi.UnsignedInt,
               LLVMMetadataRef,
               ffi.UnsignedInt,
@@ -15988,6 +17177,8 @@ class LLVMCore {
       _LLVMGetMetadataKindPtr.asFunction<int Function(LLVMMetadataRef)>();
 }
 
+/// External users depend on the following values being stable. It is not safe
+/// to reorder them.
 abstract class LLVMOpcode {
   static const int LLVMRet = 1;
   static const int LLVMBr = 2;
@@ -16059,64 +17250,153 @@ abstract class LLVMOpcode {
 }
 
 abstract class LLVMTypeKind {
+  /// < type with no size
   static const int LLVMVoidTypeKind = 0;
+
+  /// < 16 bit floating point type
   static const int LLVMHalfTypeKind = 1;
+
+  /// < 32 bit floating point type
   static const int LLVMFloatTypeKind = 2;
+
+  /// < 64 bit floating point type
   static const int LLVMDoubleTypeKind = 3;
+
+  /// < 80 bit floating point type (X87)
   static const int LLVMX86_FP80TypeKind = 4;
+
+  /// < 128 bit floating point type (112-bit mantissa)
   static const int LLVMFP128TypeKind = 5;
+
+  /// < 128 bit floating point type (two 64-bits)
   static const int LLVMPPC_FP128TypeKind = 6;
+
+  /// < Labels
   static const int LLVMLabelTypeKind = 7;
+
+  /// < Arbitrary bit width integers
   static const int LLVMIntegerTypeKind = 8;
+
+  /// < Functions
   static const int LLVMFunctionTypeKind = 9;
+
+  /// < Structures
   static const int LLVMStructTypeKind = 10;
+
+  /// < Arrays
   static const int LLVMArrayTypeKind = 11;
+
+  /// < Pointers
   static const int LLVMPointerTypeKind = 12;
+
+  /// < Fixed width SIMD vector type
   static const int LLVMVectorTypeKind = 13;
+
+  /// < Metadata
   static const int LLVMMetadataTypeKind = 14;
+
+  /// < X86 MMX
   static const int LLVMX86_MMXTypeKind = 15;
+
+  /// < Tokens
   static const int LLVMTokenTypeKind = 16;
+
+  /// < Scalable SIMD vector type
   static const int LLVMScalableVectorTypeKind = 17;
+
+  /// < 16 bit brain floating point type
   static const int LLVMBFloatTypeKind = 18;
+
+  /// < X86 AMX
   static const int LLVMX86_AMXTypeKind = 19;
+
+  /// < Target extension type
   static const int LLVMTargetExtTypeKind = 20;
 }
 
 abstract class LLVMLinkage {
+  /// < Externally visible function
   static const int LLVMExternalLinkage = 0;
   static const int LLVMAvailableExternallyLinkage = 1;
+
+  /// < Keep one copy of function when linking (inline)
   static const int LLVMLinkOnceAnyLinkage = 2;
+
+  /// < Same, but only replaced by something
+  /// equivalent.
   static const int LLVMLinkOnceODRLinkage = 3;
+
+  /// < Obsolete
   static const int LLVMLinkOnceODRAutoHideLinkage = 4;
+
+  /// < Keep one copy of function when linking (weak)
   static const int LLVMWeakAnyLinkage = 5;
+
+  /// < Same, but only replaced by something
+  /// equivalent.
   static const int LLVMWeakODRLinkage = 6;
+
+  /// < Special purpose, only applies to global arrays
   static const int LLVMAppendingLinkage = 7;
+
+  /// < Rename collisions when linking (static
+  /// functions)
   static const int LLVMInternalLinkage = 8;
+
+  /// < Like Internal, but omit from symbol table
   static const int LLVMPrivateLinkage = 9;
+
+  /// < Obsolete
   static const int LLVMDLLImportLinkage = 10;
+
+  /// < Obsolete
   static const int LLVMDLLExportLinkage = 11;
+
+  /// < ExternalWeak linkage description
   static const int LLVMExternalWeakLinkage = 12;
+
+  /// < Obsolete
   static const int LLVMGhostLinkage = 13;
+
+  /// < Tentative definitions
   static const int LLVMCommonLinkage = 14;
+
+  /// < Like Private, but linker removes.
   static const int LLVMLinkerPrivateLinkage = 15;
+
+  /// < Like LinkerPrivate, but is weak.
   static const int LLVMLinkerPrivateWeakLinkage = 16;
 }
 
 abstract class LLVMVisibility {
+  /// < The GV is visible
   static const int LLVMDefaultVisibility = 0;
+
+  /// < The GV is hidden
   static const int LLVMHiddenVisibility = 1;
+
+  /// < The GV is protected
   static const int LLVMProtectedVisibility = 2;
 }
 
 abstract class LLVMUnnamedAddr {
+  /// < Address of the GV is significant.
   static const int LLVMNoUnnamedAddr = 0;
+
+  /// < Address of the GV is locally insignificant.
   static const int LLVMLocalUnnamedAddr = 1;
+
+  /// < Address of the GV is globally insignificant.
   static const int LLVMGlobalUnnamedAddr = 2;
 }
 
 abstract class LLVMDLLStorageClass {
   static const int LLVMDefaultStorageClass = 0;
+
+  /// < Function to be imported from DLL.
   static const int LLVMDLLImportStorageClass = 1;
+
+  /// < Function to be accessible from DLL.
   static const int LLVMDLLExportStorageClass = 2;
 }
 
@@ -16196,39 +17476,92 @@ abstract class LLVMValueKind {
 }
 
 abstract class LLVMIntPredicate {
+  /// < equal
   static const int LLVMIntEQ = 32;
+
+  /// < not equal
   static const int LLVMIntNE = 33;
+
+  /// < unsigned greater than
   static const int LLVMIntUGT = 34;
+
+  /// < unsigned greater or equal
   static const int LLVMIntUGE = 35;
+
+  /// < unsigned less than
   static const int LLVMIntULT = 36;
+
+  /// < unsigned less or equal
   static const int LLVMIntULE = 37;
+
+  /// < signed greater than
   static const int LLVMIntSGT = 38;
+
+  /// < signed greater or equal
   static const int LLVMIntSGE = 39;
+
+  /// < signed less than
   static const int LLVMIntSLT = 40;
+
+  /// < signed less or equal
   static const int LLVMIntSLE = 41;
 }
 
 abstract class LLVMRealPredicate {
+  /// < Always false (always folded)
   static const int LLVMRealPredicateFalse = 0;
+
+  /// < True if ordered and equal
   static const int LLVMRealOEQ = 1;
+
+  /// < True if ordered and greater than
   static const int LLVMRealOGT = 2;
+
+  /// < True if ordered and greater than or equal
   static const int LLVMRealOGE = 3;
+
+  /// < True if ordered and less than
   static const int LLVMRealOLT = 4;
+
+  /// < True if ordered and less than or equal
   static const int LLVMRealOLE = 5;
+
+  /// < True if ordered and operands are unequal
   static const int LLVMRealONE = 6;
+
+  /// < True if ordered (no nans)
   static const int LLVMRealORD = 7;
+
+  /// < True if unordered: isnan(X) | isnan(Y)
   static const int LLVMRealUNO = 8;
+
+  /// < True if unordered or equal
   static const int LLVMRealUEQ = 9;
+
+  /// < True if unordered or greater than
   static const int LLVMRealUGT = 10;
+
+  /// < True if unordered, greater than, or equal
   static const int LLVMRealUGE = 11;
+
+  /// < True if unordered or less than
   static const int LLVMRealULT = 12;
+
+  /// < True if unordered, less than, or equal
   static const int LLVMRealULE = 13;
+
+  /// < True if unordered or not equal
   static const int LLVMRealUNE = 14;
+
+  /// < Always true (always folded)
   static const int LLVMRealPredicateTrue = 15;
 }
 
 abstract class LLVMLandingPadClauseTy {
+  /// < A catch clause
   static const int LLVMLandingPadCatch = 0;
+
+  /// < A filter clause
   static const int LLVMLandingPadFilter = 1;
 }
 
@@ -16241,30 +17574,103 @@ abstract class LLVMThreadLocalMode {
 }
 
 abstract class LLVMAtomicOrdering {
+  /// < A load or store which is not atomic
   static const int LLVMAtomicOrderingNotAtomic = 0;
+
+  /// < Lowest level of atomicity, guarantees
+  /// somewhat sane results, lock free.
   static const int LLVMAtomicOrderingUnordered = 1;
+
+  /// < guarantees that if you take all the
+  /// operations affecting a specific address,
+  /// a consistent ordering exists
   static const int LLVMAtomicOrderingMonotonic = 2;
+
+  /// < Acquire provides a barrier of the sort
+  /// necessary to acquire a lock to access other
+  /// memory with normal loads and stores.
   static const int LLVMAtomicOrderingAcquire = 4;
+
+  /// < Release is similar to Acquire, but with
+  /// a barrier of the sort necessary to release
+  /// a lock.
   static const int LLVMAtomicOrderingRelease = 5;
+
+  /// < provides both an Acquire and a
+  /// Release barrier (for fences and
+  /// operations which both read and write
+  /// memory).
   static const int LLVMAtomicOrderingAcquireRelease = 6;
+
+  /// < provides Acquire semantics
+  /// for loads and Release
+  /// semantics for stores.
+  /// Additionally, it guarantees
+  /// that a total ordering exists
+  /// between all
+  /// SequentiallyConsistent
+  /// operations.
   static const int LLVMAtomicOrderingSequentiallyConsistent = 7;
 }
 
 abstract class LLVMAtomicRMWBinOp {
+  /// < Set the new value and return the one old
   static const int LLVMAtomicRMWBinOpXchg = 0;
+
+  /// < Add a value and return the old one
   static const int LLVMAtomicRMWBinOpAdd = 1;
+
+  /// < Subtract a value and return the old one
   static const int LLVMAtomicRMWBinOpSub = 2;
+
+  /// < And a value and return the old one
   static const int LLVMAtomicRMWBinOpAnd = 3;
+
+  /// < Not-And a value and return the old one
   static const int LLVMAtomicRMWBinOpNand = 4;
+
+  /// < OR a value and return the old one
   static const int LLVMAtomicRMWBinOpOr = 5;
+
+  /// < Xor a value and return the old one
   static const int LLVMAtomicRMWBinOpXor = 6;
+
+  /// < Sets the value if it's greater than the
+  /// original using a signed comparison and return
+  /// the old one
   static const int LLVMAtomicRMWBinOpMax = 7;
+
+  /// < Sets the value if it's Smaller than the
+  /// original using a signed comparison and return
+  /// the old one
   static const int LLVMAtomicRMWBinOpMin = 8;
+
+  /// < Sets the value if it's greater than the
+  /// original using an unsigned comparison and return
+  /// the old one
   static const int LLVMAtomicRMWBinOpUMax = 9;
+
+  /// < Sets the value if it's greater than the
+  /// original using an unsigned comparison and return
+  /// the old one
   static const int LLVMAtomicRMWBinOpUMin = 10;
+
+  /// < Add a floating point value and return the
+  /// old one
   static const int LLVMAtomicRMWBinOpFAdd = 11;
+
+  /// < Subtract a floating point value and return the
+  /// old one
   static const int LLVMAtomicRMWBinOpFSub = 12;
+
+  /// < Sets the value if it's greater than the
+  /// original using an floating point comparison and
+  /// return the old one
   static const int LLVMAtomicRMWBinOpFMax = 13;
+
+  /// < Sets the value if it's smaller than the
+  /// original using an floating point comparison and
+  /// return the old one
   static const int LLVMAtomicRMWBinOpFMin = 14;
 }
 
@@ -16281,25 +17687,73 @@ abstract class LLVMInlineAsmDialect {
 }
 
 abstract class LLVMModuleFlagBehavior {
+  /// Emits an error if two values disagree, otherwise the resulting value is
+  /// that of the operands.
+  ///
+  /// @see Module::ModFlagBehavior::Error
   static const int LLVMModuleFlagBehaviorError = 0;
+
+  /// Emits a warning if two values disagree. The result value will be the
+  /// operand for the flag from the first module being linked.
+  ///
+  /// @see Module::ModFlagBehavior::Warning
   static const int LLVMModuleFlagBehaviorWarning = 1;
+
+  /// Adds a requirement that another module flag be present and have a
+  /// specified value after linking is performed. The value must be a metadata
+  /// pair, where the first element of the pair is the ID of the module flag
+  /// to be restricted, and the second element of the pair is the value the
+  /// module flag should be restricted to. This behavior can be used to
+  /// restrict the allowable results (via triggering of an error) of linking
+  /// IDs with the **Override** behavior.
+  ///
+  /// @see Module::ModFlagBehavior::Require
   static const int LLVMModuleFlagBehaviorRequire = 2;
+
+  /// Uses the specified value, regardless of the behavior or value of the
+  /// other module. If both modules specify **Override**, but the values
+  /// differ, an error will be emitted.
+  ///
+  /// @see Module::ModFlagBehavior::Override
   static const int LLVMModuleFlagBehaviorOverride = 3;
+
+  /// Appends the two values, which are required to be metadata nodes.
+  ///
+  /// @see Module::ModFlagBehavior::Append
   static const int LLVMModuleFlagBehaviorAppend = 4;
+
+  /// Appends the two values, which are required to be metadata
+  /// nodes. However, duplicate entries in the second list are dropped
+  /// during the append operation.
+  ///
+  /// @see Module::ModFlagBehavior::AppendUnique
   static const int LLVMModuleFlagBehaviorAppendUnique = 5;
 }
 
+/// @see llvm::PassRegistry
 typedef LLVMPassRegistryRef = ffi.Pointer<LLVMOpaquePassRegistry>;
 
 final class LLVMOpaquePassRegistry extends ffi.Opaque {}
 
+/// The top-level container for all LLVM global data. See the LLVMContext class.
 typedef LLVMContextRef = ffi.Pointer<LLVMOpaqueContext>;
 
 final class LLVMOpaqueContext extends ffi.Opaque {}
 
+/// @defgroup LLVMCCoreContext Contexts
+///
+/// Contexts are execution states for the core LLVM IR system.
+///
+/// Most types are tied to a context instance. Multiple contexts can
+/// exist simultaneously. A single context is not thread safe. However,
+/// different contexts can execute on different threads simultaneously.
+///
+/// @{
 typedef LLVMDiagnosticHandler = ffi.Pointer<
     ffi.NativeFunction<
         ffi.Void Function(LLVMDiagnosticInfoRef, ffi.Pointer<ffi.Void>)>>;
+
+/// @see llvm::DiagnosticInfo
 typedef LLVMDiagnosticInfoRef = ffi.Pointer<LLVMOpaqueDiagnosticInfo>;
 
 final class LLVMOpaqueDiagnosticInfo extends ffi.Opaque {}
@@ -16307,68 +17761,124 @@ final class LLVMOpaqueDiagnosticInfo extends ffi.Opaque {}
 typedef LLVMYieldCallback = ffi.Pointer<
     ffi.NativeFunction<
         ffi.Void Function(LLVMContextRef, ffi.Pointer<ffi.Void>)>>;
+
+/// @defgroup LLVMCSupportTypes Types and Enumerations
+///
+/// @{
 typedef LLVMBool = ffi.Int;
+
+/// Used to represent an attributes.
+///
+/// @see llvm::Attribute
 typedef LLVMAttributeRef = ffi.Pointer<LLVMOpaqueAttributeRef>;
 
 final class LLVMOpaqueAttributeRef extends ffi.Opaque {}
 
+/// Each value in the LLVM IR has a type, an LLVMTypeRef.
+///
+/// @see llvm::Type
 typedef LLVMTypeRef = ffi.Pointer<LLVMOpaqueType>;
 
 final class LLVMOpaqueType extends ffi.Opaque {}
 
+/// The top-level container for all other LLVM Intermediate Representation (IR)
+/// objects.
+///
+/// @see llvm::Module
 typedef LLVMModuleRef = ffi.Pointer<LLVMOpaqueModule>;
 
 final class LLVMOpaqueModule extends ffi.Opaque {}
 
+/// @see llvm::Module::ModuleFlagEntry
 typedef LLVMModuleFlagEntry = LLVMOpaqueModuleFlagEntry;
 
 final class LLVMOpaqueModuleFlagEntry extends ffi.Opaque {}
 
+/// Represents an LLVM Metadata.
+///
+/// This models llvm::Metadata.
 typedef LLVMMetadataRef = ffi.Pointer<LLVMOpaqueMetadata>;
 
 final class LLVMOpaqueMetadata extends ffi.Opaque {}
 
+/// Represents an individual value in LLVM IR.
+///
+/// This models llvm::Value.
 typedef LLVMValueRef = ffi.Pointer<LLVMOpaqueValue>;
 
 final class LLVMOpaqueValue extends ffi.Opaque {}
 
+/// Represents an LLVM Named Metadata Node.
+///
+/// This models llvm::NamedMDNode.
 typedef LLVMNamedMDNodeRef = ffi.Pointer<LLVMOpaqueNamedMDNode>;
 
 final class LLVMOpaqueNamedMDNode extends ffi.Opaque {}
 
+/// Used to get the users and usees of a Value.
+///
+/// @see llvm::Use
 typedef LLVMUseRef = ffi.Pointer<LLVMOpaqueUse>;
 
 final class LLVMOpaqueUse extends ffi.Opaque {}
 
+/// Represents a basic block of instructions in LLVM IR.
+///
+/// This models llvm::BasicBlock.
 typedef LLVMBasicBlockRef = ffi.Pointer<LLVMOpaqueBasicBlock>;
 
 final class LLVMOpaqueBasicBlock extends ffi.Opaque {}
 
+/// Represents an entry in a Global Object's metadata attachments.
+///
+/// This models std::pair<unsigned, MDNode *>
 typedef LLVMValueMetadataEntry = LLVMOpaqueValueMetadataEntry;
 
 final class LLVMOpaqueValueMetadataEntry extends ffi.Opaque {}
 
 typedef LLVMAttributeIndex = ffi.UnsignedInt;
+
+/// Represents an LLVM basic block builder.
+///
+/// This models llvm::IRBuilder.
 typedef LLVMBuilderRef = ffi.Pointer<LLVMOpaqueBuilder>;
 
 final class LLVMOpaqueBuilder extends ffi.Opaque {}
 
+/// Interface used to provide a module to JIT or interpreter.
+/// This is now just a synonym for llvm::Module, but we have to keep using the
+/// different type to keep binary compatibility.
 typedef LLVMModuleProviderRef = ffi.Pointer<LLVMOpaqueModuleProvider>;
 
 final class LLVMOpaqueModuleProvider extends ffi.Opaque {}
 
+/// Used to pass regions of memory through LLVM interfaces.
+///
+/// @see llvm::MemoryBuffer
 typedef LLVMMemoryBufferRef = ffi.Pointer<LLVMOpaqueMemoryBuffer>;
 
 final class LLVMOpaqueMemoryBuffer extends ffi.Opaque {}
 
+/// @see llvm::PassManagerBase
 typedef LLVMPassManagerRef = ffi.Pointer<LLVMOpaquePassManager>;
 
 final class LLVMOpaquePassManager extends ffi.Opaque {}
 
-final class KOpaqueModule extends ffi.Opaque {}
-
 typedef KModuleRef = ffi.Pointer<KOpaqueModule>;
 
+final class KOpaqueModule extends ffi.Opaque {}
+
+/// Represents an LLVM debug info builder.
+///
+/// This models llvm::DIBuilder.
+typedef LLVMDIBuilderRef = ffi.Pointer<LLVMOpaqueDIBuilder>;
+
+final class LLVMOpaqueDIBuilder extends ffi.Opaque {}
+
+/// @defgroup LLVMCTarget Target information
+/// @ingroup LLVMC
+///
+/// @{
 abstract class LLVMByteOrdering {
   static const int LLVMBigEndian = 0;
   static const int LLVMLittleEndian = 1;
@@ -16534,10 +18044,6 @@ abstract class LLVMDWARFMacinfoRecordType {
   static const int LLVMDWARFMacinfoRecordTypeEndFile = 4;
   static const int LLVMDWARFMacinfoRecordTypeVendorExt = 255;
 }
-
-typedef LLVMDIBuilderRef = ffi.Pointer<LLVMOpaqueDIBuilder>;
-
-final class LLVMOpaqueDIBuilder extends ffi.Opaque {}
 
 /// An LLVM DWARF type encoding.
 typedef LLVMDWARFTypeEncoding = ffi.UnsignedInt;

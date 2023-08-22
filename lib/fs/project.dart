@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:nop/nop.dart';
 import 'package:path/path.dart';
 
@@ -135,8 +137,9 @@ class Project {
   void build([void Function()? after]) {
     Identifier.run(() {
       llvm.initLLVM();
-      final root = buildContext = BuildContext.root();
+      final root = buildContext = BuildContext.root('./test/src/debug.c');
       root.currentPath = path;
+      root.init();
       root.importHandler = importBuild as dynamic;
       BuildContext.mem2reg = mem2reg;
 
@@ -160,11 +163,12 @@ class Project {
           }
         }
       }
-
+      root.finalize();
       llvm.LLVMDumpModule(root.module);
+      llvm.LLVMPrintModuleToFile(root.module, 'out.ll'.toChar(), nullptr);
       after?.call();
-      llvm.writeOutput(
-          root.kModule, LLVMCodeGenFileType.LLVMObjectFile, 'out.o'.toChar());
+      // llvm.writeOutput(
+      //     root.kModule, LLVMCodeGenFileType.LLVMObjectFile, 'out.o'.toChar());
       root.dispose();
     });
   }

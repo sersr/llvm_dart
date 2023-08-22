@@ -644,9 +644,10 @@ class Parser {
     if (it.moveNext()) {
       final e = getToken(it);
       if (e.kind == TokenKind.eq) {
+        final opIdent = getIdent(it);
         final rhs = parseExpr(it);
         if (key != null) {
-          return ExprStmt(AssignOpExpr(key, lhs, rhs));
+          return ExprStmt(AssignOpExpr(key, opIdent, lhs, rhs));
         } else {
           return ExprStmt(AssignExpr(lhs, rhs));
         }
@@ -908,6 +909,8 @@ class Parser {
 
   Expr parseExpr(TokenIterator it, {bool runOp = false}) {
     eatLfIfNeed(it);
+
+    final pointerIdent = getIdent(it);
     final pointerKind = getAllKind(it, runOp: runOp);
 
     if (it.moveNext()) {
@@ -1032,7 +1035,7 @@ class Parser {
           state.restore();
         }
 
-        lhs = RefExpr(lhs, pointerKind);
+        lhs = RefExpr(lhs, pointerIdent, pointerKind);
         eatLfIfNeed(it);
         // 遇到`)`结束本次表达式解析
         if (it.moveNext()) {
@@ -1055,7 +1058,7 @@ class Parser {
   }
 
   Expr? parseOpExpr(TokenIterator it, Expr lhs) {
-    final ops = <OpKind>[];
+    final ops = <(Identifier, OpKind)>[];
     final exprs = <Expr>[];
     exprs.add(lhs);
     var eIt = exprs.tokenIt;
@@ -1071,20 +1074,20 @@ class Parser {
         }
         final index = exprs.indexOf(first);
         final opIndex = index - 1;
-        final op1 = ops[opIndex];
+        final (ident1, op1) = ops[opIndex];
         if (eIt.moveNext()) {
-          final op2 = ops[opIndex + 1];
+          final (_, op2) = ops[opIndex + 1];
           if (op1.level >= op2.level) {
-            cache = OpExpr(op1, ccache, first);
+            cache = OpExpr(op1, ccache, first, ident1);
             eIt.moveBack();
           } else {
             eIt.moveBack(); // back
             eIt.moveBack(); // back first
             final expr = combine();
-            cache = OpExpr(op1, ccache, expr!);
+            cache = OpExpr(op1, ccache, expr!, ident1);
           }
         } else {
-          cache = OpExpr(op1, ccache, first);
+          cache = OpExpr(op1, ccache, first, ident1);
           break;
         }
       }
@@ -1094,8 +1097,9 @@ class Parser {
     loop(it, () {
       final op = resolveOp(it);
       if (op != null) {
+        final opIdent = getIdent(it);
         final expr = parseExpr(it, runOp: true);
-        ops.add(op);
+        ops.add(((opIdent, op)));
         exprs.add(expr);
         return false;
       }
@@ -1107,7 +1111,7 @@ class Parser {
       eIt = exprs.tokenIt;
       return combine() ?? lhs;
     } else if (exprs.length == 2) {
-      return OpExpr(ops.first, exprs.first, exprs.last);
+      return OpExpr(ops.first.$2, exprs.first, exprs.last, ops.first.$1);
     }
     return exprs.last;
   }

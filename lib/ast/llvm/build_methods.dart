@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:characters/characters.dart';
 
 import '../../llvm_core.dart';
@@ -113,6 +115,32 @@ mixin BuildMethods {
     return loadTy;
   }
 
+  LLVMMetadataRef getStructExternDIType(int count) {
+    LLVMMetadataRef loadTy;
+    var size = pointerSize();
+    if (count > size) {
+      final d = count / size;
+      count = d.ceil();
+      loadTy = llvm.LLVMDIBuilderCreateArrayType(
+          dBuilder!,
+          count,
+          size,
+          llvm.LLVMDIBuilderCreateBasicType(
+              dBuilder!, 'i64'.toChar(), 3, 64, 1, 0),
+          nullptr,
+          0);
+    } else {
+      if (count > 4) {
+        loadTy = llvm.LLVMDIBuilderCreateBasicType(
+            dBuilder!, 'i64'.toChar(), 3, 64, 1, 0);
+      } else {
+        loadTy = llvm.LLVMDIBuilderCreateBasicType(
+            dBuilder!, 'i32'.toChar(), 3, 32, 1, 0);
+      }
+    }
+    return loadTy;
+  }
+
   bool isFnBBContext = false;
   LLVMValueRef? _allocaInst;
   BuildMethods? getLastFnContext() {
@@ -148,9 +176,16 @@ mixin BuildMethods {
     }
   }
 
+  LLVMMetadataRef get unit;
+  LLVMMetadataRef get scope;
+
+  LLVMDIBuilderRef? get dBuilder;
+
   LLVMValueRef alloctor(LLVMTypeRef type, {Ty? ty, String name = '_'}) {
     final nb = allocaBuilder;
+    llvm.LLVMSetCurrentDebugLocation2(nb ?? builder, nullptr);
     final alloca = llvm.LLVMBuildAlloca(nb ?? builder, type, name.toChar());
+
     if (ty != null) {
       addFree(LLVMAllocaVariable(ty, alloca, type));
     }
@@ -168,6 +203,49 @@ mixin BuildMethods {
   void addFree(Variable val) {}
 
   void dropAll() {}
+
+  void diBuilderDeclare(Identifier ident, LLVMValueRef alloca, Ty ty) {
+    final name = ident.src;
+    final dBuilder = this.dBuilder;
+    if (dBuilder == null) return;
+    final dTy = ty.llvmType.createDIType(this);
+    final dvariable = llvm.LLVMDIBuilderCreateParameterVariable(
+        dBuilder,
+        scope,
+        name.toChar(),
+        name.length,
+        0,
+        llvm.LLVMDIScopeGetFile(unit),
+        ident.offset.row,
+        dTy,
+        LLVMFalse,
+        0);
+
+    final expr = llvm.LLVMDIBuilderCreateExpression(dBuilder, nullptr, 0);
+    final loc = llvm.LLVMDIBuilderCreateDebugLocation(
+        llvmContext, ident.offset.row, ident.offset.column, scope, nullptr);
+
+    final bb = llvm.LLVMGetInsertBlock(builder);
+    llvm.LLVMDIBuilderInsertDeclareAtEnd(
+        dBuilder, alloca, dvariable, expr, loc, bb);
+  }
+
+  void diSetCurrentLoc(Offset offset) {
+    if (!offset.isValid) return;
+    final loc = llvm.LLVMDIBuilderCreateDebugLocation(
+        llvmContext, offset.row, offset.column, scope, nullptr);
+
+    llvm.LLVMSetCurrentDebugLocation2(builder, loc);
+  }
+
+  LLVMValueRef load2(
+      LLVMTypeRef ty, LLVMValueRef alloca, String name, Offset offset) {
+    final value = llvm.LLVMBuildLoad2(builder, ty, alloca, name.toChar());
+    if (offset.isValid) {
+      diSetCurrentLoc(offset);
+    }
+    return value;
+  }
 }
 
 mixin Consts on BuildMethods {
@@ -296,7 +374,7 @@ mixin Consts on BuildMethods {
   }
 
   LLVMValueRef constArray(LLVMTypeRef ty, List<LLVMValueRef> vals) {
-    final alloca = llvm.LLVMConstArray2(ty, vals.toNative(), vals.length);
+    final alloca = llvm.LLVMConstArray(ty, vals.toNative(), vals.length);
     return alloca;
   }
 

@@ -1,6 +1,7 @@
 // ignore_for_file: constant_identifier_names
 
 import 'dart:async';
+import 'dart:ffi';
 
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
@@ -30,6 +31,16 @@ class RawIdent with EquatableMixin {
 
   @override
   List<Object?> get props => [start, end];
+}
+
+class Offset {
+  const Offset(this.row, this.column);
+
+  static const zero = Offset(0, 0);
+
+  bool get isValid => column > 0 && row > 0;
+  final int column;
+  final int row;
 }
 
 class Identifier with EquatableMixin {
@@ -62,6 +73,27 @@ class Identifier with EquatableMixin {
 
   RawIdent get toRawIdent {
     return RawIdent(start, end);
+  }
+
+  Offset? _offset;
+
+  Offset get offset {
+    if (_offset != null) return _offset!;
+    if (!isValid) return Offset.zero;
+
+    var row = 1, column = 1;
+    final lineStart = data.substring(0, start).lastIndexOf('\n');
+    if (lineStart != -1) {
+      final before = data.substring(0, lineStart + 1);
+      row = '\n'.allMatches(before).length + 1;
+      // fn main() i32 {// <- lineStart
+      //  let y = 10;
+      // }
+      column = end - lineStart - 1;
+    } else {
+      column = end;
+    }
+    return _offset = Offset(row, column);
   }
 
   static final Identifier none = Identifier.builtIn('');
@@ -171,9 +203,10 @@ class Identifier with EquatableMixin {
 // }
 
 class ExprTempValue {
-  ExprTempValue(this.variable, this.ty);
+  ExprTempValue(this.variable, this.ty, this.currentIdent);
   final Ty ty;
   final Variable? variable;
+  final Identifier currentIdent;
 }
 
 abstract class Expr extends BuildMixin {
@@ -535,7 +568,7 @@ class BuiltInTy extends Ty {
   static final usize = BuiltInTy._(LitKind.usize);
 
   static LLVMValueRef constUsize(BuildContext context, int size) {
-    return usize.llvmType.createValue(str: '$size').load(context);
+    return usize.llvmType.createValue(str: '$size').load(context, Offset.zero);
   }
 
   BuiltInTy.lit(this._ty);
@@ -1410,8 +1443,9 @@ class ArrayLLVMType extends LLVMType {
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
     final val = LLVMAllocaDelayVariable(ty, base, ([alloca]) {
-      final count =
-          BuiltInTy.usize.llvmType.createValue(str: '${ty.size}').load(c);
+      final count = BuiltInTy.usize.llvmType
+          .createValue(str: '${ty.size}')
+          .load(c, ident.offset);
       return c.createArray(ty.elementType.llvmType.createType(c), count,
           name: ident.src);
     }, createType(c));
@@ -1442,6 +1476,17 @@ class ArrayLLVMType extends LLVMType {
 
   Variable toStr(BuildContext c, Variable value) {
     return LLVMConstVariable(value.getBaseValue(c), BuiltInTy.string);
+  }
+
+  @override
+  LLVMMetadataRef createDIType(covariant BuildContext c) {
+    return llvm.LLVMDIBuilderCreateArrayType(
+        c.dBuilder!,
+        ty.size,
+        ty.elementType.llvmType.getBytes(c),
+        ty.elementType.llvmType.createDIType(c),
+        nullptr,
+        0);
   }
 }
 
@@ -1525,5 +1570,15 @@ class CTypeLLVMType extends LLVMType {
     if (base == null) return c.pointerSize();
     final bty = base.grt(c);
     return bty.llvmType.getBytes(c);
+  }
+
+  @override
+  LLVMMetadataRef createDIType(covariant BuildContext c) {
+    final base = ty.baseTy;
+    if (base == null) {
+      return llvm.LLVMDIBuilderCreateBasicType(
+          c.dBuilder!, 'ptr'.toChar(), 3, c.pointerSize() * 8, 1, 0);
+    }
+    return base.grt(c).llvmType.createDIType(c);
   }
 }

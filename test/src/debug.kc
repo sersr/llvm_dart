@@ -1,0 +1,12 @@
+fn main() i32 { 
+  let y = 10;
+  let x = 102;
+  let hhx = 120.09;
+  hh();
+  y;
+}
+
+fn hh() i32 {
+  let hx = 10;
+  hx
+}

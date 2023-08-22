@@ -4,7 +4,7 @@ import 'package:llvm_dart/run.dart';
 import 'package:test/test.dart';
 
 void main() {
-  Future<void> run(String name) {
+  Future<void> run(String name, {bool run = false}) {
     return runPrint(() {
       // final name = 'impl_fn.kc';
       final project = Project(testSrcDir.childFile(name).path);
@@ -17,17 +17,17 @@ void main() {
         // Log.w(v.lifeCycyle?.light, showTag: false);
       });
       project.build();
-      return runNativeCode(run: false, args: 'hello world');
+      return runNativeCode(run: run, args: 'hello world');
     });
   }
 
   test('file', () => run('com_ty.kc'));
 
-  test('final', () => run('final.kc'));
+  test('final', () => run('final.kc', run: true));
 
   test('delay.kc', () => run('delay.kc'));
 
-  test('c_array.kc', () {
-    return run('c_array.kc');
-  });
+  test('c_array.kc', () => run('c_array.kc'));
+
+  test('debug', () => run('debug.kc', run: true));
 }

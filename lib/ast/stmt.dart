@@ -50,8 +50,13 @@ class LetStmt extends Stmt {
             context.pushVariable(nameIdent, variable);
             return;
           }
+
           final alloca = variable.createAlloca(context, nameIdent, tty);
+
+          // FIXME: 在 store 方法中统一实现
+          context.diSetCurrentLoc(nameIdent.offset);
           alloca.create(context);
+
           alloca.isTemp = false;
           context.pushVariable(nameIdent, alloca);
           return;
@@ -104,7 +109,7 @@ class LetStmt extends Stmt {
         if (wrapRef) {
           rValue = variable.getBaseValue(context);
         } else {
-          rValue = variable.load(context);
+          rValue = variable.load(context, ident.offset);
         }
       }
       if (rValue != null) {

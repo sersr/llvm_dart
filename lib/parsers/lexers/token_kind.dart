@@ -458,7 +458,8 @@ class Cursor {
     }
 
     final end = cursor;
-    LiteralKind lkd = getLitKind() ?? LiteralKind.i32;
+    LiteralKind lkd =
+        getLitKind() ?? (isFloat ? LiteralKind.f32 : LiteralKind.i32);
 
     return Token.literal(literalKind: lkd, start: start, end: end);
   }

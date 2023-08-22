@@ -2,6 +2,7 @@ import 'dart:ffi';
 
 import 'package:collection/collection.dart';
 
+import '../../fs/fs.dart';
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../analysis_context.dart';
@@ -27,6 +28,7 @@ class BuildContext
     with BuildMethods, Tys<BuildContext, Variable>, Consts, OverflowMath, Cast {
   BuildContext._(BuildContext this.parent) {
     kModule = parent!.kModule;
+    _dBuilder = parent!._dBuilder;
     _init();
   }
   BuildContext._clone(BuildContext this.parent) {
@@ -36,6 +38,8 @@ class BuildContext
     fpm = parent!.fpm;
     builder = parent!.builder;
     fn = parent!.fn;
+    _unit = parent!._unit;
+    _dBuilder = parent!._dBuilder;
   }
 
   BuildContext._importRoot(BuildContext p) : parent = null {
@@ -44,10 +48,62 @@ class BuildContext
     llvmContext = p.llvmContext;
     fpm = p.fpm;
     builder = llvm.LLVMCreateBuilderInContext(llvmContext);
+    p.children.add(this);
+    _debugInit();
   }
+
+  @override
+  String? get currentPath => super.currentPath ?? parent?.currentPath;
+
   BuildContext.root([String name = 'root']) : parent = null {
     kModule = llvm.createKModule(name.toChar());
     _init();
+    _debugInit();
+  }
+
+  LLVMMetadataRef? _unit;
+  @override
+  LLVMMetadataRef get unit => _unit ??= parent!.unit;
+  LLVMDIBuilderRef? _dBuilder;
+
+  @override
+  LLVMDIBuilderRef? get dBuilder => _dBuilder;
+
+  void init([bool isDebug = true]) {
+    if (!isDebug) return;
+    final info = "Debug Info Version";
+    final version = "Dwarf Version";
+
+    final infoV = constI32(3);
+    final versionV = constI32(4);
+
+    llvm.LLVMAddModuleFlag(
+        module, 1, info.toChar(), info.length, llvm.LLVMValueAsMetadata(infoV));
+    llvm.LLVMAddModuleFlag(module, 1, version.toChar(), version.length,
+        llvm.LLVMValueAsMetadata(versionV));
+    _debugInit();
+  }
+
+  bool _finalized = true;
+  void _debugInit() {
+    if (this.currentPath == null) return;
+    _finalized = false;
+    _dBuilder = llvm.LLVMCreateDIBuilder(module);
+    final currentPath = this.currentPath!;
+    final path = currentDir.childFile(currentPath);
+    final dir = path.parent.path;
+
+    _unit = llvm.LLVMCreateCompileUnit(
+        _dBuilder!, path.basename.toChar(), dir.toChar());
+  }
+
+  void finalize() {
+    if (!_finalized && _dBuilder != null) {
+      llvm.LLVMDIBuilderFinalize(_dBuilder!);
+    }
+    for (var child in children) {
+      child.finalize();
+    }
   }
 
   @override
@@ -274,7 +330,7 @@ class BuildContext
       if (fn == null || fnv == null) continue;
       LLVMValueRef v;
       if (val.ty is BuiltInTy) {
-        v = val.load(this);
+        v = val.load(this, Offset.zero);
       } else {
         v = val.getBaseValue(this);
       }
@@ -283,6 +339,11 @@ class BuildContext
           builder, type, fnv.getBaseValue(this), [v].toNative(), 1, unname);
     }
   }
+
+  LLVMMetadataRef? _fnScope;
+
+  @override
+  LLVMMetadataRef get scope => _fnScope ?? parent?.scope ?? unit;
 
   LLVMConstVariable buildFnBB(Fn fn,
       [Set<AnalysisVariable>? extra,
@@ -293,11 +354,13 @@ class BuildContext
     if (contains) {
       return fv;
     }
+
     final block = fn.block?.clone();
     final isDecl = block == null;
     if (isDecl) return fv;
     final bbContext = createChildContext();
     bbContext.fn = fv;
+    bbContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
     bbContext.isFnBBContext = true;
     bbContext.instertFnEntryBB();
     bbContext._build(fv.value, fn.fnSign.fnDecl, fn, extra, map: map);
@@ -313,7 +376,7 @@ class BuildContext
           if (back) return false;
           // error
         }
-        bbContext.ret(null);
+        bbContext.ret(null, Identifier.none);
         hasRet = true;
         return true;
       }
@@ -327,12 +390,13 @@ class BuildContext
         if (expr is! RetExpr) {
           if (!voidRet(back: true)) {
             // 获取缓存的value
-            final val = expr.build(bbContext)?.variable;
+            final valTemp = expr.build(bbContext);
+            final val = valTemp?.variable;
             if (val == null) {
               // error
             }
 
-            bbContext.ret(val);
+            bbContext.ret(val, valTemp?.currentIdent ?? Identifier.none);
           }
         }
       }
@@ -346,12 +410,15 @@ class BuildContext
   static bool mem2reg = false;
 
   bool _returned = false;
-  void ret(Variable? val) {
+  void ret(Variable? val, Identifier currentIdent) {
     if (_returned) {
       // error
       return;
     }
     dropAll();
+
+    diSetCurrentLoc(currentIdent.offset);
+
     _returned = true;
     if (val == null) {
       llvm.LLVMBuildRetVoid(builder);
@@ -360,11 +427,11 @@ class BuildContext
       final (sretV, _) = sretVariable(null, val);
 
       if (sret == null) {
-        final v = val.load(this);
+        final v = val.load(this, currentIdent.offset);
         llvm.LLVMBuildRet(builder, v);
       } else {
         if (sretV == null) {
-          final v = val.load(this);
+          final v = val.load(this, currentIdent.offset);
           sret.store(this, v);
         }
         llvm.LLVMBuildRetVoid(builder);
@@ -441,8 +508,8 @@ class BuildContext
       final variable = v?.variable;
       if (variable != null) {
         final bb = buildSubBB(name: 'loop_body');
-        llvm.LLVMBuildCondBr(
-            loopBB.context.builder, variable.load(this), bb.bb, loopAfter.bb);
+        llvm.LLVMBuildCondBr(loopBB.context.builder,
+            variable.load(this, Offset.zero), bb.bb, loopAfter.bb);
         appendBB(bb);
         block.build(bb.context);
         bb.context.br(this);
@@ -487,18 +554,20 @@ class BuildContext
 
   LLVMTempOpVariable math(
       Variable lhs,
-      Variable? Function(BuildContext context) rhsBuilder,
+      ExprTempValue? Function(BuildContext context) rhsBuilder,
       OpKind op,
       bool isFloat,
-      {bool signed = true}) {
+      {bool signed = true,
+      Offset lhsOffset = Offset.zero}) {
     final lty = lhs.ty;
     // 提供外部操作符实现接口
     if (lty is! BuiltInTy) {
       if (op == OpKind.Eq || op == OpKind.Ne) {
         if (lhs.ty is CTypeTy) {
-          final l = lhs.load(this);
-          final rv = rhsBuilder(this);
-          final r = rv?.load(this);
+          final l = lhs.load(this, lhsOffset);
+          final rvTemp = rhsBuilder(this);
+          final rv = rvTemp?.variable;
+          final r = rv?.load(this, rvTemp!.currentIdent.offset);
           final id = op.getICmpId(false);
 
           if (r != null && id != null) {
@@ -509,7 +578,7 @@ class BuildContext
       }
     }
 
-    final l = lhs.load(this);
+    final l = lhs.load(this, lhsOffset);
 
     if (op == OpKind.And || op == OpKind.Or) {
       final after = buildSubBB(name: 'op_after');
@@ -526,7 +595,8 @@ class BuildContext
         llvm.LLVMBuildCondBr(builder, l, after.bb, opBB.bb);
       }
       final c = opBB.context;
-      final r = rhsBuilder(c)?.load(c);
+      final temp = rhsBuilder(c);
+      final r = temp?.variable?.load(c, temp.currentIdent.offset);
       if (r == null) {
         // error
       }
@@ -535,10 +605,12 @@ class BuildContext
       c.br(after.context);
       insertPointBB(after);
       final ac = after.context;
-      final con = variable.load(ac);
+      final con = variable.load(ac, Offset.zero);
       return LLVMTempOpVariable(BuiltInTy.kBool, false, false, con);
     }
-    final r = rhsBuilder(this)?.load(this);
+
+    final temp = rhsBuilder(this);
+    final r = temp?.variable?.load(this, temp.currentIdent.offset);
     if (r == null) {
       // error
       return LLVMTempOpVariable(lhs.ty, isFloat, signed, l);

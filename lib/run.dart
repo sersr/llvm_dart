@@ -76,6 +76,7 @@ AnalysisContext testRun(String src,
         }
 
         llvm.LLVMDumpModule(root.module);
+
         llvm.writeOutput(
             root.kModule, LLVMCodeGenFileType.LLVMObjectFile, 'out.o'.toChar());
         b?.call(root);
@@ -93,7 +94,7 @@ Future<void> runCode() async {
   final p = currentDir.path;
 
   final process = await Process.start(
-      'sh', ['-c', 'cc $p/out.o  $p/base.c -o main && ./main'],
+      'sh', ['-c', 'clang -g $p/out.ll  $p/base.c -o main && ./main'],
       workingDirectory: p);
   stdout.addStream(process.stdout);
   stderr.addStream(process.stderr);
@@ -107,7 +108,8 @@ Future<void> runNativeCode({String args = '', bool run = true}) async {
   if (run) {
     runn = '&& ./main $args';
   }
-  final process = await Process.start('sh', ['-c', 'cc $p/out.o -o main $runn'],
+  final process = await Process.start(
+      'sh', ['-c', 'clang -g $p/out.ll -o main $runn'],
       workingDirectory: p);
   stdout.addStream(process.stdout);
   stderr.addStream(process.stderr);

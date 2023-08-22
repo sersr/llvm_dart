@@ -1,28 +1,35 @@
+import 'dart:ffi';
+
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../ast.dart';
 import '../context.dart';
-import '../memory.dart';
 import '../tys.dart';
 import 'build_methods.dart';
 import 'llvm_types.dart';
 
 abstract class Variable extends LifeCycleVariable {
   bool isRef = false;
-  LLVMValueRef load(BuildContext c);
+  LLVMValueRef load(BuildContext c, Offset offset);
   LLVMTypeRef getDerefType(BuildContext c);
   Variable getRef(BuildContext c) {
     return RefTy(ty).llvmType.createAlloca(c, Identifier.none, getBaseValue(c));
   }
 
-  LLVMValueRef getBaseValue(BuildContext c) => load(c);
+  // void setCurrentLoc(BuildContext c) {
+  //   if (ident != null) {
+  //     c.diSetCurrentLoc(ident!.offset);
+  //   }
+  // }
+
+  LLVMValueRef getBaseValue(BuildContext c) => load(c, Offset.zero);
   Ty get ty;
 
   Variable defaultDeref(BuildContext c) {
     final cTy = ty;
     if (cTy is! RefTy) return this;
 
-    final v = load(c);
+    final v = load(c, Offset.zero);
     final parent = cTy.parent;
     final type = parent.llvmType.createType(c);
     final val = LLVMAllocaVariable(parent, v, type);
@@ -56,7 +63,7 @@ class LLVMConstVariable extends Variable with Deref {
   }
 
   @override
-  LLVMValueRef load(BuildContext c) {
+  LLVMValueRef load(BuildContext c, Offset offset) {
     return value;
   }
 
@@ -138,9 +145,9 @@ class LLVMAllocaDelayVariable extends StoreVariable
   }
 
   @override
-  LLVMValueRef load(BuildContext c) {
+  LLVMValueRef load(BuildContext c, Offset offset) {
     if (!created && initAlloca != null) return initAlloca!;
-    return llvm.LLVMBuildLoad2(c.builder, type, alloca, unname);
+    return c.load2(type, alloca, '', offset);
   }
 
   @override
@@ -173,9 +180,8 @@ class LLVMAllocaVariable extends StoreVariable implements Deref {
   }
 
   @override
-  LLVMValueRef load(BuildContext c) {
-    final v = llvm.LLVMBuildLoad2(c.builder, type, alloca, unname);
-    return v;
+  LLVMValueRef load(BuildContext c, Offset offset) {
+    return c.load2(type, alloca, '', offset);
   }
 
   @override
@@ -209,7 +215,7 @@ class LLVMLitVariable extends Variable {
   final LLVMValueRef Function(Consts c, BuiltInTy? ty) _load;
   LLVMValueRef? _cache;
   @override
-  LLVMValueRef load(BuildContext c, {BuiltInTy? ty}) {
+  LLVMValueRef load(BuildContext c, Offset offset, {BuiltInTy? ty}) {
     return _cache ??= _load(c, ty);
   }
 
@@ -219,7 +225,7 @@ class LLVMLitVariable extends Variable {
 
   @override
   LLVMTypeRef getDerefType(BuildContext c) {
-    return llvm.LLVMTypeOf(load(c));
+    return llvm.LLVMTypeOf(load(c, Offset.zero));
   }
 
   @override
@@ -233,7 +239,7 @@ class LLVMLitVariable extends Variable {
       [BuiltInTy? tty]) {
     // 需要分配内存地址
     // final rty = tty ?? ty;
-    final rValue = load(c, ty: tty);
+    final rValue = load(c, Offset.zero, ty: tty);
     final alloca = ty.llvmType.createAlloca(c, ident, rValue);
     // alloca.store(c, rValue);
 
@@ -258,7 +264,7 @@ abstract class UnimplVariable extends Variable {
   }
 
   @override
-  LLVMValueRef load(BuildContext c) {
+  LLVMValueRef load(BuildContext c, Offset offset) {
     throw UnimplementedError();
   }
 

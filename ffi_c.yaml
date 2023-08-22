@@ -1,20 +1,24 @@
 name: LLVMCore
 output: 'lib/llvm_core.dart'
+llvm-path:
+  - '/opt/homebrew/Cellar/llvm/16.0.6'
+compiler-opts:
+  - "-I/opt/homebrew/opt/llvm/include/"
 headers:
   entry-points:
     - '../llvm_lang/src/llvm_wrapper.h'
-    - '/usr/local/include/llvm-c/TargetMachine.h'
-    - '/usr/local/include/llvm-c/Target.h'
-    - '/usr/local/include/llvm-c/DebugInfo.h'
-    - '/usr/local/include/llvm/IR/Attributes.inc'
+    - '/opt/homebrew/opt/llvm/include/llvm-c/TargetMachine.h'
+    - '/opt/homebrew/opt/llvm/include/llvm-c/Target.h'
+    - '/opt/homebrew/opt/llvm/include/llvm-c/DebugInfo.h'
+    # - '/opt/homebrew/opt/llvm/include/llvm/IR/Attributes.inc'
 
   include-directives:
     - '../llvm_lang/src/llvm_wrapper.h'
-    - '/usr/local/include/llvm-c/Core.h'
-    - '/usr/local/include/llvm-c/TargetMachine.h'
-    - '/usr/local/include/llvm-c/Target.h'
-    - '/usr/local/include/llvm-c/DebugInfo.h'
-    - '/usr/local/include/llvm/IR/Attributes.inc'
+    - '/opt/homebrew/opt/llvm/include/llvm-c/Core.h'
+    - '/opt/homebrew/opt/llvm/include/llvm-c/TargetMachine.h'
+    - '/opt/homebrew/opt/llvm/include/llvm-c/Target.h'
+    - '/opt/homebrew/opt/llvm/include/llvm-c/DebugInfo.h'
+    # - '/opt/homebrew/opt/llvm/include/llvm/IR/Attributes.inc'
 
 functions:
   rename:
