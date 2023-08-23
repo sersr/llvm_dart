@@ -90,27 +90,26 @@ AnalysisContext testRun(String src,
   );
 }
 
+/// 使用 [runNativeCode]
 Future<void> runCode() async {
-  final p = currentDir.path;
-
-  final process = await Process.start(
-      'sh', ['-c', 'clang -g $p/out.ll  $p/base.c -o main && ./main'],
-      workingDirectory: p);
-  stdout.addStream(process.stdout);
-  stderr.addStream(process.stderr);
-  await process.exitCode;
+  return runCmd(['clang -g out.ll base.c -o main && ./build/main']);
 }
 
 Future<void> runNativeCode({String args = '', bool run = true}) async {
-  final p = currentDir.path;
-
   var runn = '';
   if (run) {
     runn = '&& ./main $args';
   }
-  final process = await Process.start(
-      'sh', ['-c', 'clang -g out.ll -o main $runn'],
-      workingDirectory: p);
+
+  return runCmd(['clang -g out.o -o main $runn']);
+}
+
+Future<void> runCmd(List<String> cmd, {Directory? dir}) async {
+  dir ??= buildDir;
+  final p = dir.path;
+
+  final process =
+      await Process.start('sh', ['-c', ...cmd], workingDirectory: p);
   stdout.addStream(process.stdout);
   stderr.addStream(process.stderr);
   await process.exitCode;

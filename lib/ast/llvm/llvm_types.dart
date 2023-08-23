@@ -340,11 +340,8 @@ class LLVMFnType extends LLVMType {
       if (dBuilder != null && fn.block?.stmts.isNotEmpty == true) {
         final file = llvm.LLVMDIScopeGetFile(c.unit);
         final params = <Pointer>[];
-        params.add(llvm.LLVMDIBuilderCreateBasicType(
-            dBuilder, 'i32'.toChar(), 'i32'.length, 32, 5, 0));
+        params.add(retTy.llvmType.createDIType(c));
 
-        // final param = llvm.LLVMDIBuilderGetOrCreateArray(
-        //     c.dBuilder, <Pointer>[].toNative(), 0);
         final fnTy = llvm.LLVMDIBuilderCreateSubroutineType(
             dBuilder, file, params.toNative(), params.length, 0);
         final fnScope = llvm.LLVMDIBuilderCreateFunction(
@@ -367,6 +364,10 @@ class LLVMFnType extends LLVMType {
 
         c.diSetCurrentLoc(offset);
       }
+
+      c.setLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
+      c.setLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
+      c.setLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
       return LLVMConstVariable(v, fn);
     });
   }

@@ -76,14 +76,27 @@ class BuildContext
     if (!isDebug) return;
     final info = "Debug Info Version";
     final version = "Dwarf Version";
+    final picLevel = "PIC Level";
+    final uwtable = 'uwtable';
+    final framePointer = 'frame-pointer';
 
     final infoV = constI32(3);
     final versionV = constI32(4);
+    final picLevelV = constI32(2);
+    final uwtableV = constI32(1);
+    final framePointerV = constI32(1);
 
-    llvm.LLVMAddModuleFlag(
-        module, 1, info.toChar(), info.length, llvm.LLVMValueAsMetadata(infoV));
-    llvm.LLVMAddModuleFlag(module, 1, version.toChar(), version.length,
-        llvm.LLVMValueAsMetadata(versionV));
+    void add(int lv, String name, LLVMValueRef value) {
+      llvm.LLVMAddModuleFlag(module, lv, name.toChar(), name.length,
+          llvm.LLVMValueAsMetadata(value));
+    }
+
+    add(1, info, infoV);
+    add(6, version, versionV);
+    add(7, picLevel, picLevelV);
+    add(6, uwtable, uwtableV);
+    add(6, framePointer, framePointerV);
+
     _debugInit();
   }
 
@@ -568,7 +581,8 @@ class BuildContext
       OpKind op,
       bool isFloat,
       {bool signed = true,
-      Offset lhsOffset = Offset.zero}) {
+      Offset lhsOffset = Offset.zero,
+      Offset opOffset = Offset.zero}) {
     final lty = lhs.ty;
     // 提供外部操作符实现接口
     if (lty is! BuiltInTy) {
@@ -581,6 +595,7 @@ class BuildContext
           final id = op.getICmpId(false);
 
           if (r != null && id != null) {
+            diSetCurrentLoc(opOffset);
             final v = llvm.LLVMBuildICmp(builder, id, l, r, unname);
             return LLVMTempOpVariable(BuiltInTy.kBool, isFloat, signed, v);
           }
@@ -628,6 +643,8 @@ class BuildContext
 
     LLVMValueRef Function(LLVMBuilderRef b, LLVMValueRef l, LLVMValueRef r,
         Pointer<Char> name)? llfn;
+
+    diSetCurrentLoc(opOffset);
 
     if (isFloat) {
       final id = op.getFCmpId(signed);
@@ -723,7 +740,8 @@ class BuildContext
       final after = buildSubBB(name: 'math');
       final panicBB = buildSubBB(name: 'panic');
       appendBB(panicBB);
-      llvm.LLVMBuildCondBr(builder, mathValue.condition, after.bb, panicBB.bb);
+      llvm.LLVMBuildCondBr(builder, mathValue.condition, panicBB.bb, after.bb);
+      panicBB.context.diSetCurrentLoc(opOffset);
       panicBB.context.painc();
       insertPointBB(after);
       return LLVMTempOpVariable(ty, isFloat, signed, mathValue.value);

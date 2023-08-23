@@ -113,6 +113,7 @@ class LetStmt extends Stmt {
         }
       }
       if (rValue != null) {
+        context.diSetCurrentLoc(nameIdent.offset);
         alloca.store(context, rValue);
       }
 

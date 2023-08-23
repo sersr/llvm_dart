@@ -239,6 +239,10 @@ mixin BuildMethods {
     llvm.LLVMSetCurrentDebugLocation2(builder, loc);
   }
 
+  void diClearLoc() {
+    llvm.LLVMSetCurrentDebugLocation2(builder, nullptr);
+  }
+
   LLVMValueRef load2(
       LLVMTypeRef ty, LLVMValueRef alloca, String name, Offset offset) {
     final value = llvm.LLVMBuildLoad2(builder, ty, alloca, name.toChar());
@@ -246,6 +250,11 @@ mixin BuildMethods {
       diSetCurrentLoc(offset);
     }
     return value;
+  }
+
+  void setLLVMAttr(LLVMValueRef value, int index, int kind, {int val = 0}) {
+    final attr = llvm.LLVMCreateEnumAttribute(llvmContext, kind, val);
+    llvm.LLVMAddAttributeAtIndex(value, index, attr);
   }
 }
 

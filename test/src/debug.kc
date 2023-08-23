@@ -3,9 +3,7 @@ import 'd.kc';
 fn main() i32 { 
   let y = 10;
   let x = 102;
-  let hhx = 120.09;
-  printf("xx%d\n", 22);
-  hh();
+  let hhx = y + x;
   0;
 }
 

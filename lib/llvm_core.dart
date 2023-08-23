@@ -18,6 +18,1146 @@ class LLVMCore {
           lookup)
       : _lookup = lookup;
 
+  void LLVMInitializeAArch64TargetInfo() {
+    return _LLVMInitializeAArch64TargetInfo();
+  }
+
+  late final _LLVMInitializeAArch64TargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAArch64TargetInfo');
+  late final _LLVMInitializeAArch64TargetInfo =
+      _LLVMInitializeAArch64TargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAMDGPUTargetInfo() {
+    return _LLVMInitializeAMDGPUTargetInfo();
+  }
+
+  late final _LLVMInitializeAMDGPUTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAMDGPUTargetInfo');
+  late final _LLVMInitializeAMDGPUTargetInfo =
+      _LLVMInitializeAMDGPUTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeARMTargetInfo() {
+    return _LLVMInitializeARMTargetInfo();
+  }
+
+  late final _LLVMInitializeARMTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeARMTargetInfo');
+  late final _LLVMInitializeARMTargetInfo =
+      _LLVMInitializeARMTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAVRTargetInfo() {
+    return _LLVMInitializeAVRTargetInfo();
+  }
+
+  late final _LLVMInitializeAVRTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAVRTargetInfo');
+  late final _LLVMInitializeAVRTargetInfo =
+      _LLVMInitializeAVRTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeBPFTargetInfo() {
+    return _LLVMInitializeBPFTargetInfo();
+  }
+
+  late final _LLVMInitializeBPFTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeBPFTargetInfo');
+  late final _LLVMInitializeBPFTargetInfo =
+      _LLVMInitializeBPFTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeHexagonTargetInfo() {
+    return _LLVMInitializeHexagonTargetInfo();
+  }
+
+  late final _LLVMInitializeHexagonTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeHexagonTargetInfo');
+  late final _LLVMInitializeHexagonTargetInfo =
+      _LLVMInitializeHexagonTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLanaiTargetInfo() {
+    return _LLVMInitializeLanaiTargetInfo();
+  }
+
+  late final _LLVMInitializeLanaiTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLanaiTargetInfo');
+  late final _LLVMInitializeLanaiTargetInfo =
+      _LLVMInitializeLanaiTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLoongArchTargetInfo() {
+    return _LLVMInitializeLoongArchTargetInfo();
+  }
+
+  late final _LLVMInitializeLoongArchTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLoongArchTargetInfo');
+  late final _LLVMInitializeLoongArchTargetInfo =
+      _LLVMInitializeLoongArchTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMipsTargetInfo() {
+    return _LLVMInitializeMipsTargetInfo();
+  }
+
+  late final _LLVMInitializeMipsTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMipsTargetInfo');
+  late final _LLVMInitializeMipsTargetInfo =
+      _LLVMInitializeMipsTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMSP430TargetInfo() {
+    return _LLVMInitializeMSP430TargetInfo();
+  }
+
+  late final _LLVMInitializeMSP430TargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMSP430TargetInfo');
+  late final _LLVMInitializeMSP430TargetInfo =
+      _LLVMInitializeMSP430TargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeNVPTXTargetInfo() {
+    return _LLVMInitializeNVPTXTargetInfo();
+  }
+
+  late final _LLVMInitializeNVPTXTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeNVPTXTargetInfo');
+  late final _LLVMInitializeNVPTXTargetInfo =
+      _LLVMInitializeNVPTXTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializePowerPCTargetInfo() {
+    return _LLVMInitializePowerPCTargetInfo();
+  }
+
+  late final _LLVMInitializePowerPCTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializePowerPCTargetInfo');
+  late final _LLVMInitializePowerPCTargetInfo =
+      _LLVMInitializePowerPCTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeRISCVTargetInfo() {
+    return _LLVMInitializeRISCVTargetInfo();
+  }
+
+  late final _LLVMInitializeRISCVTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeRISCVTargetInfo');
+  late final _LLVMInitializeRISCVTargetInfo =
+      _LLVMInitializeRISCVTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSparcTargetInfo() {
+    return _LLVMInitializeSparcTargetInfo();
+  }
+
+  late final _LLVMInitializeSparcTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSparcTargetInfo');
+  late final _LLVMInitializeSparcTargetInfo =
+      _LLVMInitializeSparcTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSystemZTargetInfo() {
+    return _LLVMInitializeSystemZTargetInfo();
+  }
+
+  late final _LLVMInitializeSystemZTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSystemZTargetInfo');
+  late final _LLVMInitializeSystemZTargetInfo =
+      _LLVMInitializeSystemZTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeVETargetInfo() {
+    return _LLVMInitializeVETargetInfo();
+  }
+
+  late final _LLVMInitializeVETargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeVETargetInfo');
+  late final _LLVMInitializeVETargetInfo =
+      _LLVMInitializeVETargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeWebAssemblyTargetInfo() {
+    return _LLVMInitializeWebAssemblyTargetInfo();
+  }
+
+  late final _LLVMInitializeWebAssemblyTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeWebAssemblyTargetInfo');
+  late final _LLVMInitializeWebAssemblyTargetInfo =
+      _LLVMInitializeWebAssemblyTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeX86TargetInfo() {
+    return _LLVMInitializeX86TargetInfo();
+  }
+
+  late final _LLVMInitializeX86TargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeX86TargetInfo');
+  late final _LLVMInitializeX86TargetInfo =
+      _LLVMInitializeX86TargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeXCoreTargetInfo() {
+    return _LLVMInitializeXCoreTargetInfo();
+  }
+
+  late final _LLVMInitializeXCoreTargetInfoPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeXCoreTargetInfo');
+  late final _LLVMInitializeXCoreTargetInfo =
+      _LLVMInitializeXCoreTargetInfoPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAArch64Target() {
+    return _LLVMInitializeAArch64Target();
+  }
+
+  late final _LLVMInitializeAArch64TargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAArch64Target');
+  late final _LLVMInitializeAArch64Target =
+      _LLVMInitializeAArch64TargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAMDGPUTarget() {
+    return _LLVMInitializeAMDGPUTarget();
+  }
+
+  late final _LLVMInitializeAMDGPUTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAMDGPUTarget');
+  late final _LLVMInitializeAMDGPUTarget =
+      _LLVMInitializeAMDGPUTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeARMTarget() {
+    return _LLVMInitializeARMTarget();
+  }
+
+  late final _LLVMInitializeARMTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeARMTarget');
+  late final _LLVMInitializeARMTarget =
+      _LLVMInitializeARMTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAVRTarget() {
+    return _LLVMInitializeAVRTarget();
+  }
+
+  late final _LLVMInitializeAVRTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAVRTarget');
+  late final _LLVMInitializeAVRTarget =
+      _LLVMInitializeAVRTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeBPFTarget() {
+    return _LLVMInitializeBPFTarget();
+  }
+
+  late final _LLVMInitializeBPFTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeBPFTarget');
+  late final _LLVMInitializeBPFTarget =
+      _LLVMInitializeBPFTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeHexagonTarget() {
+    return _LLVMInitializeHexagonTarget();
+  }
+
+  late final _LLVMInitializeHexagonTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeHexagonTarget');
+  late final _LLVMInitializeHexagonTarget =
+      _LLVMInitializeHexagonTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLanaiTarget() {
+    return _LLVMInitializeLanaiTarget();
+  }
+
+  late final _LLVMInitializeLanaiTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLanaiTarget');
+  late final _LLVMInitializeLanaiTarget =
+      _LLVMInitializeLanaiTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLoongArchTarget() {
+    return _LLVMInitializeLoongArchTarget();
+  }
+
+  late final _LLVMInitializeLoongArchTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLoongArchTarget');
+  late final _LLVMInitializeLoongArchTarget =
+      _LLVMInitializeLoongArchTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMipsTarget() {
+    return _LLVMInitializeMipsTarget();
+  }
+
+  late final _LLVMInitializeMipsTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMipsTarget');
+  late final _LLVMInitializeMipsTarget =
+      _LLVMInitializeMipsTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMSP430Target() {
+    return _LLVMInitializeMSP430Target();
+  }
+
+  late final _LLVMInitializeMSP430TargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMSP430Target');
+  late final _LLVMInitializeMSP430Target =
+      _LLVMInitializeMSP430TargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeNVPTXTarget() {
+    return _LLVMInitializeNVPTXTarget();
+  }
+
+  late final _LLVMInitializeNVPTXTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeNVPTXTarget');
+  late final _LLVMInitializeNVPTXTarget =
+      _LLVMInitializeNVPTXTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializePowerPCTarget() {
+    return _LLVMInitializePowerPCTarget();
+  }
+
+  late final _LLVMInitializePowerPCTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializePowerPCTarget');
+  late final _LLVMInitializePowerPCTarget =
+      _LLVMInitializePowerPCTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeRISCVTarget() {
+    return _LLVMInitializeRISCVTarget();
+  }
+
+  late final _LLVMInitializeRISCVTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeRISCVTarget');
+  late final _LLVMInitializeRISCVTarget =
+      _LLVMInitializeRISCVTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSparcTarget() {
+    return _LLVMInitializeSparcTarget();
+  }
+
+  late final _LLVMInitializeSparcTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSparcTarget');
+  late final _LLVMInitializeSparcTarget =
+      _LLVMInitializeSparcTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSystemZTarget() {
+    return _LLVMInitializeSystemZTarget();
+  }
+
+  late final _LLVMInitializeSystemZTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSystemZTarget');
+  late final _LLVMInitializeSystemZTarget =
+      _LLVMInitializeSystemZTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeVETarget() {
+    return _LLVMInitializeVETarget();
+  }
+
+  late final _LLVMInitializeVETargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeVETarget');
+  late final _LLVMInitializeVETarget =
+      _LLVMInitializeVETargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeWebAssemblyTarget() {
+    return _LLVMInitializeWebAssemblyTarget();
+  }
+
+  late final _LLVMInitializeWebAssemblyTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeWebAssemblyTarget');
+  late final _LLVMInitializeWebAssemblyTarget =
+      _LLVMInitializeWebAssemblyTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeX86Target() {
+    return _LLVMInitializeX86Target();
+  }
+
+  late final _LLVMInitializeX86TargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeX86Target');
+  late final _LLVMInitializeX86Target =
+      _LLVMInitializeX86TargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeXCoreTarget() {
+    return _LLVMInitializeXCoreTarget();
+  }
+
+  late final _LLVMInitializeXCoreTargetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeXCoreTarget');
+  late final _LLVMInitializeXCoreTarget =
+      _LLVMInitializeXCoreTargetPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAArch64TargetMC() {
+    return _LLVMInitializeAArch64TargetMC();
+  }
+
+  late final _LLVMInitializeAArch64TargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAArch64TargetMC');
+  late final _LLVMInitializeAArch64TargetMC =
+      _LLVMInitializeAArch64TargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAMDGPUTargetMC() {
+    return _LLVMInitializeAMDGPUTargetMC();
+  }
+
+  late final _LLVMInitializeAMDGPUTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAMDGPUTargetMC');
+  late final _LLVMInitializeAMDGPUTargetMC =
+      _LLVMInitializeAMDGPUTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeARMTargetMC() {
+    return _LLVMInitializeARMTargetMC();
+  }
+
+  late final _LLVMInitializeARMTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeARMTargetMC');
+  late final _LLVMInitializeARMTargetMC =
+      _LLVMInitializeARMTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAVRTargetMC() {
+    return _LLVMInitializeAVRTargetMC();
+  }
+
+  late final _LLVMInitializeAVRTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAVRTargetMC');
+  late final _LLVMInitializeAVRTargetMC =
+      _LLVMInitializeAVRTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeBPFTargetMC() {
+    return _LLVMInitializeBPFTargetMC();
+  }
+
+  late final _LLVMInitializeBPFTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeBPFTargetMC');
+  late final _LLVMInitializeBPFTargetMC =
+      _LLVMInitializeBPFTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeHexagonTargetMC() {
+    return _LLVMInitializeHexagonTargetMC();
+  }
+
+  late final _LLVMInitializeHexagonTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeHexagonTargetMC');
+  late final _LLVMInitializeHexagonTargetMC =
+      _LLVMInitializeHexagonTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLanaiTargetMC() {
+    return _LLVMInitializeLanaiTargetMC();
+  }
+
+  late final _LLVMInitializeLanaiTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLanaiTargetMC');
+  late final _LLVMInitializeLanaiTargetMC =
+      _LLVMInitializeLanaiTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLoongArchTargetMC() {
+    return _LLVMInitializeLoongArchTargetMC();
+  }
+
+  late final _LLVMInitializeLoongArchTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLoongArchTargetMC');
+  late final _LLVMInitializeLoongArchTargetMC =
+      _LLVMInitializeLoongArchTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMipsTargetMC() {
+    return _LLVMInitializeMipsTargetMC();
+  }
+
+  late final _LLVMInitializeMipsTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMipsTargetMC');
+  late final _LLVMInitializeMipsTargetMC =
+      _LLVMInitializeMipsTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMSP430TargetMC() {
+    return _LLVMInitializeMSP430TargetMC();
+  }
+
+  late final _LLVMInitializeMSP430TargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMSP430TargetMC');
+  late final _LLVMInitializeMSP430TargetMC =
+      _LLVMInitializeMSP430TargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeNVPTXTargetMC() {
+    return _LLVMInitializeNVPTXTargetMC();
+  }
+
+  late final _LLVMInitializeNVPTXTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeNVPTXTargetMC');
+  late final _LLVMInitializeNVPTXTargetMC =
+      _LLVMInitializeNVPTXTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializePowerPCTargetMC() {
+    return _LLVMInitializePowerPCTargetMC();
+  }
+
+  late final _LLVMInitializePowerPCTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializePowerPCTargetMC');
+  late final _LLVMInitializePowerPCTargetMC =
+      _LLVMInitializePowerPCTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeRISCVTargetMC() {
+    return _LLVMInitializeRISCVTargetMC();
+  }
+
+  late final _LLVMInitializeRISCVTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeRISCVTargetMC');
+  late final _LLVMInitializeRISCVTargetMC =
+      _LLVMInitializeRISCVTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSparcTargetMC() {
+    return _LLVMInitializeSparcTargetMC();
+  }
+
+  late final _LLVMInitializeSparcTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSparcTargetMC');
+  late final _LLVMInitializeSparcTargetMC =
+      _LLVMInitializeSparcTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSystemZTargetMC() {
+    return _LLVMInitializeSystemZTargetMC();
+  }
+
+  late final _LLVMInitializeSystemZTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSystemZTargetMC');
+  late final _LLVMInitializeSystemZTargetMC =
+      _LLVMInitializeSystemZTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeVETargetMC() {
+    return _LLVMInitializeVETargetMC();
+  }
+
+  late final _LLVMInitializeVETargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeVETargetMC');
+  late final _LLVMInitializeVETargetMC =
+      _LLVMInitializeVETargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeWebAssemblyTargetMC() {
+    return _LLVMInitializeWebAssemblyTargetMC();
+  }
+
+  late final _LLVMInitializeWebAssemblyTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeWebAssemblyTargetMC');
+  late final _LLVMInitializeWebAssemblyTargetMC =
+      _LLVMInitializeWebAssemblyTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeX86TargetMC() {
+    return _LLVMInitializeX86TargetMC();
+  }
+
+  late final _LLVMInitializeX86TargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeX86TargetMC');
+  late final _LLVMInitializeX86TargetMC =
+      _LLVMInitializeX86TargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeXCoreTargetMC() {
+    return _LLVMInitializeXCoreTargetMC();
+  }
+
+  late final _LLVMInitializeXCoreTargetMCPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeXCoreTargetMC');
+  late final _LLVMInitializeXCoreTargetMC =
+      _LLVMInitializeXCoreTargetMCPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAArch64AsmPrinter() {
+    return _LLVMInitializeAArch64AsmPrinter();
+  }
+
+  late final _LLVMInitializeAArch64AsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAArch64AsmPrinter');
+  late final _LLVMInitializeAArch64AsmPrinter =
+      _LLVMInitializeAArch64AsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAMDGPUAsmPrinter() {
+    return _LLVMInitializeAMDGPUAsmPrinter();
+  }
+
+  late final _LLVMInitializeAMDGPUAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAMDGPUAsmPrinter');
+  late final _LLVMInitializeAMDGPUAsmPrinter =
+      _LLVMInitializeAMDGPUAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeARMAsmPrinter() {
+    return _LLVMInitializeARMAsmPrinter();
+  }
+
+  late final _LLVMInitializeARMAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeARMAsmPrinter');
+  late final _LLVMInitializeARMAsmPrinter =
+      _LLVMInitializeARMAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAVRAsmPrinter() {
+    return _LLVMInitializeAVRAsmPrinter();
+  }
+
+  late final _LLVMInitializeAVRAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAVRAsmPrinter');
+  late final _LLVMInitializeAVRAsmPrinter =
+      _LLVMInitializeAVRAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeBPFAsmPrinter() {
+    return _LLVMInitializeBPFAsmPrinter();
+  }
+
+  late final _LLVMInitializeBPFAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeBPFAsmPrinter');
+  late final _LLVMInitializeBPFAsmPrinter =
+      _LLVMInitializeBPFAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeHexagonAsmPrinter() {
+    return _LLVMInitializeHexagonAsmPrinter();
+  }
+
+  late final _LLVMInitializeHexagonAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeHexagonAsmPrinter');
+  late final _LLVMInitializeHexagonAsmPrinter =
+      _LLVMInitializeHexagonAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLanaiAsmPrinter() {
+    return _LLVMInitializeLanaiAsmPrinter();
+  }
+
+  late final _LLVMInitializeLanaiAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLanaiAsmPrinter');
+  late final _LLVMInitializeLanaiAsmPrinter =
+      _LLVMInitializeLanaiAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLoongArchAsmPrinter() {
+    return _LLVMInitializeLoongArchAsmPrinter();
+  }
+
+  late final _LLVMInitializeLoongArchAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLoongArchAsmPrinter');
+  late final _LLVMInitializeLoongArchAsmPrinter =
+      _LLVMInitializeLoongArchAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMipsAsmPrinter() {
+    return _LLVMInitializeMipsAsmPrinter();
+  }
+
+  late final _LLVMInitializeMipsAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMipsAsmPrinter');
+  late final _LLVMInitializeMipsAsmPrinter =
+      _LLVMInitializeMipsAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMSP430AsmPrinter() {
+    return _LLVMInitializeMSP430AsmPrinter();
+  }
+
+  late final _LLVMInitializeMSP430AsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMSP430AsmPrinter');
+  late final _LLVMInitializeMSP430AsmPrinter =
+      _LLVMInitializeMSP430AsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeNVPTXAsmPrinter() {
+    return _LLVMInitializeNVPTXAsmPrinter();
+  }
+
+  late final _LLVMInitializeNVPTXAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeNVPTXAsmPrinter');
+  late final _LLVMInitializeNVPTXAsmPrinter =
+      _LLVMInitializeNVPTXAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializePowerPCAsmPrinter() {
+    return _LLVMInitializePowerPCAsmPrinter();
+  }
+
+  late final _LLVMInitializePowerPCAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializePowerPCAsmPrinter');
+  late final _LLVMInitializePowerPCAsmPrinter =
+      _LLVMInitializePowerPCAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeRISCVAsmPrinter() {
+    return _LLVMInitializeRISCVAsmPrinter();
+  }
+
+  late final _LLVMInitializeRISCVAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeRISCVAsmPrinter');
+  late final _LLVMInitializeRISCVAsmPrinter =
+      _LLVMInitializeRISCVAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSparcAsmPrinter() {
+    return _LLVMInitializeSparcAsmPrinter();
+  }
+
+  late final _LLVMInitializeSparcAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSparcAsmPrinter');
+  late final _LLVMInitializeSparcAsmPrinter =
+      _LLVMInitializeSparcAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSystemZAsmPrinter() {
+    return _LLVMInitializeSystemZAsmPrinter();
+  }
+
+  late final _LLVMInitializeSystemZAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSystemZAsmPrinter');
+  late final _LLVMInitializeSystemZAsmPrinter =
+      _LLVMInitializeSystemZAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeVEAsmPrinter() {
+    return _LLVMInitializeVEAsmPrinter();
+  }
+
+  late final _LLVMInitializeVEAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeVEAsmPrinter');
+  late final _LLVMInitializeVEAsmPrinter =
+      _LLVMInitializeVEAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeWebAssemblyAsmPrinter() {
+    return _LLVMInitializeWebAssemblyAsmPrinter();
+  }
+
+  late final _LLVMInitializeWebAssemblyAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeWebAssemblyAsmPrinter');
+  late final _LLVMInitializeWebAssemblyAsmPrinter =
+      _LLVMInitializeWebAssemblyAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeX86AsmPrinter() {
+    return _LLVMInitializeX86AsmPrinter();
+  }
+
+  late final _LLVMInitializeX86AsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeX86AsmPrinter');
+  late final _LLVMInitializeX86AsmPrinter =
+      _LLVMInitializeX86AsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeXCoreAsmPrinter() {
+    return _LLVMInitializeXCoreAsmPrinter();
+  }
+
+  late final _LLVMInitializeXCoreAsmPrinterPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeXCoreAsmPrinter');
+  late final _LLVMInitializeXCoreAsmPrinter =
+      _LLVMInitializeXCoreAsmPrinterPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAArch64AsmParser() {
+    return _LLVMInitializeAArch64AsmParser();
+  }
+
+  late final _LLVMInitializeAArch64AsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAArch64AsmParser');
+  late final _LLVMInitializeAArch64AsmParser =
+      _LLVMInitializeAArch64AsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAMDGPUAsmParser() {
+    return _LLVMInitializeAMDGPUAsmParser();
+  }
+
+  late final _LLVMInitializeAMDGPUAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAMDGPUAsmParser');
+  late final _LLVMInitializeAMDGPUAsmParser =
+      _LLVMInitializeAMDGPUAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeARMAsmParser() {
+    return _LLVMInitializeARMAsmParser();
+  }
+
+  late final _LLVMInitializeARMAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeARMAsmParser');
+  late final _LLVMInitializeARMAsmParser =
+      _LLVMInitializeARMAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAVRAsmParser() {
+    return _LLVMInitializeAVRAsmParser();
+  }
+
+  late final _LLVMInitializeAVRAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAVRAsmParser');
+  late final _LLVMInitializeAVRAsmParser =
+      _LLVMInitializeAVRAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeBPFAsmParser() {
+    return _LLVMInitializeBPFAsmParser();
+  }
+
+  late final _LLVMInitializeBPFAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeBPFAsmParser');
+  late final _LLVMInitializeBPFAsmParser =
+      _LLVMInitializeBPFAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeHexagonAsmParser() {
+    return _LLVMInitializeHexagonAsmParser();
+  }
+
+  late final _LLVMInitializeHexagonAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeHexagonAsmParser');
+  late final _LLVMInitializeHexagonAsmParser =
+      _LLVMInitializeHexagonAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLanaiAsmParser() {
+    return _LLVMInitializeLanaiAsmParser();
+  }
+
+  late final _LLVMInitializeLanaiAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLanaiAsmParser');
+  late final _LLVMInitializeLanaiAsmParser =
+      _LLVMInitializeLanaiAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLoongArchAsmParser() {
+    return _LLVMInitializeLoongArchAsmParser();
+  }
+
+  late final _LLVMInitializeLoongArchAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLoongArchAsmParser');
+  late final _LLVMInitializeLoongArchAsmParser =
+      _LLVMInitializeLoongArchAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMipsAsmParser() {
+    return _LLVMInitializeMipsAsmParser();
+  }
+
+  late final _LLVMInitializeMipsAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMipsAsmParser');
+  late final _LLVMInitializeMipsAsmParser =
+      _LLVMInitializeMipsAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMSP430AsmParser() {
+    return _LLVMInitializeMSP430AsmParser();
+  }
+
+  late final _LLVMInitializeMSP430AsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMSP430AsmParser');
+  late final _LLVMInitializeMSP430AsmParser =
+      _LLVMInitializeMSP430AsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializePowerPCAsmParser() {
+    return _LLVMInitializePowerPCAsmParser();
+  }
+
+  late final _LLVMInitializePowerPCAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializePowerPCAsmParser');
+  late final _LLVMInitializePowerPCAsmParser =
+      _LLVMInitializePowerPCAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeRISCVAsmParser() {
+    return _LLVMInitializeRISCVAsmParser();
+  }
+
+  late final _LLVMInitializeRISCVAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeRISCVAsmParser');
+  late final _LLVMInitializeRISCVAsmParser =
+      _LLVMInitializeRISCVAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSparcAsmParser() {
+    return _LLVMInitializeSparcAsmParser();
+  }
+
+  late final _LLVMInitializeSparcAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSparcAsmParser');
+  late final _LLVMInitializeSparcAsmParser =
+      _LLVMInitializeSparcAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSystemZAsmParser() {
+    return _LLVMInitializeSystemZAsmParser();
+  }
+
+  late final _LLVMInitializeSystemZAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSystemZAsmParser');
+  late final _LLVMInitializeSystemZAsmParser =
+      _LLVMInitializeSystemZAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeVEAsmParser() {
+    return _LLVMInitializeVEAsmParser();
+  }
+
+  late final _LLVMInitializeVEAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeVEAsmParser');
+  late final _LLVMInitializeVEAsmParser =
+      _LLVMInitializeVEAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeWebAssemblyAsmParser() {
+    return _LLVMInitializeWebAssemblyAsmParser();
+  }
+
+  late final _LLVMInitializeWebAssemblyAsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeWebAssemblyAsmParser');
+  late final _LLVMInitializeWebAssemblyAsmParser =
+      _LLVMInitializeWebAssemblyAsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeX86AsmParser() {
+    return _LLVMInitializeX86AsmParser();
+  }
+
+  late final _LLVMInitializeX86AsmParserPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeX86AsmParser');
+  late final _LLVMInitializeX86AsmParser =
+      _LLVMInitializeX86AsmParserPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAArch64Disassembler() {
+    return _LLVMInitializeAArch64Disassembler();
+  }
+
+  late final _LLVMInitializeAArch64DisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAArch64Disassembler');
+  late final _LLVMInitializeAArch64Disassembler =
+      _LLVMInitializeAArch64DisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAMDGPUDisassembler() {
+    return _LLVMInitializeAMDGPUDisassembler();
+  }
+
+  late final _LLVMInitializeAMDGPUDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAMDGPUDisassembler');
+  late final _LLVMInitializeAMDGPUDisassembler =
+      _LLVMInitializeAMDGPUDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeARMDisassembler() {
+    return _LLVMInitializeARMDisassembler();
+  }
+
+  late final _LLVMInitializeARMDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeARMDisassembler');
+  late final _LLVMInitializeARMDisassembler =
+      _LLVMInitializeARMDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAVRDisassembler() {
+    return _LLVMInitializeAVRDisassembler();
+  }
+
+  late final _LLVMInitializeAVRDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAVRDisassembler');
+  late final _LLVMInitializeAVRDisassembler =
+      _LLVMInitializeAVRDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeBPFDisassembler() {
+    return _LLVMInitializeBPFDisassembler();
+  }
+
+  late final _LLVMInitializeBPFDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeBPFDisassembler');
+  late final _LLVMInitializeBPFDisassembler =
+      _LLVMInitializeBPFDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeHexagonDisassembler() {
+    return _LLVMInitializeHexagonDisassembler();
+  }
+
+  late final _LLVMInitializeHexagonDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeHexagonDisassembler');
+  late final _LLVMInitializeHexagonDisassembler =
+      _LLVMInitializeHexagonDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLanaiDisassembler() {
+    return _LLVMInitializeLanaiDisassembler();
+  }
+
+  late final _LLVMInitializeLanaiDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLanaiDisassembler');
+  late final _LLVMInitializeLanaiDisassembler =
+      _LLVMInitializeLanaiDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeLoongArchDisassembler() {
+    return _LLVMInitializeLoongArchDisassembler();
+  }
+
+  late final _LLVMInitializeLoongArchDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeLoongArchDisassembler');
+  late final _LLVMInitializeLoongArchDisassembler =
+      _LLVMInitializeLoongArchDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMipsDisassembler() {
+    return _LLVMInitializeMipsDisassembler();
+  }
+
+  late final _LLVMInitializeMipsDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMipsDisassembler');
+  late final _LLVMInitializeMipsDisassembler =
+      _LLVMInitializeMipsDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeMSP430Disassembler() {
+    return _LLVMInitializeMSP430Disassembler();
+  }
+
+  late final _LLVMInitializeMSP430DisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeMSP430Disassembler');
+  late final _LLVMInitializeMSP430Disassembler =
+      _LLVMInitializeMSP430DisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializePowerPCDisassembler() {
+    return _LLVMInitializePowerPCDisassembler();
+  }
+
+  late final _LLVMInitializePowerPCDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializePowerPCDisassembler');
+  late final _LLVMInitializePowerPCDisassembler =
+      _LLVMInitializePowerPCDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeRISCVDisassembler() {
+    return _LLVMInitializeRISCVDisassembler();
+  }
+
+  late final _LLVMInitializeRISCVDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeRISCVDisassembler');
+  late final _LLVMInitializeRISCVDisassembler =
+      _LLVMInitializeRISCVDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSparcDisassembler() {
+    return _LLVMInitializeSparcDisassembler();
+  }
+
+  late final _LLVMInitializeSparcDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSparcDisassembler');
+  late final _LLVMInitializeSparcDisassembler =
+      _LLVMInitializeSparcDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeSystemZDisassembler() {
+    return _LLVMInitializeSystemZDisassembler();
+  }
+
+  late final _LLVMInitializeSystemZDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeSystemZDisassembler');
+  late final _LLVMInitializeSystemZDisassembler =
+      _LLVMInitializeSystemZDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeVEDisassembler() {
+    return _LLVMInitializeVEDisassembler();
+  }
+
+  late final _LLVMInitializeVEDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeVEDisassembler');
+  late final _LLVMInitializeVEDisassembler =
+      _LLVMInitializeVEDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeWebAssemblyDisassembler() {
+    return _LLVMInitializeWebAssemblyDisassembler();
+  }
+
+  late final _LLVMInitializeWebAssemblyDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeWebAssemblyDisassembler');
+  late final _LLVMInitializeWebAssemblyDisassembler =
+      _LLVMInitializeWebAssemblyDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeX86Disassembler() {
+    return _LLVMInitializeX86Disassembler();
+  }
+
+  late final _LLVMInitializeX86DisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeX86Disassembler');
+  late final _LLVMInitializeX86Disassembler =
+      _LLVMInitializeX86DisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeXCoreDisassembler() {
+    return _LLVMInitializeXCoreDisassembler();
+  }
+
+  late final _LLVMInitializeXCoreDisassemblerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeXCoreDisassembler');
+  late final _LLVMInitializeXCoreDisassembler =
+      _LLVMInitializeXCoreDisassemblerPtr.asFunction<void Function()>();
+
+  void LLVMInitializeAMDGPUTargetMCA() {
+    return _LLVMInitializeAMDGPUTargetMCA();
+  }
+
+  late final _LLVMInitializeAMDGPUTargetMCAPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeAMDGPUTargetMCA');
+  late final _LLVMInitializeAMDGPUTargetMCA =
+      _LLVMInitializeAMDGPUTargetMCAPtr.asFunction<void Function()>();
+
+  void LLVMInitializeRISCVTargetMCA() {
+    return _LLVMInitializeRISCVTargetMCA();
+  }
+
+  late final _LLVMInitializeRISCVTargetMCAPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeRISCVTargetMCA');
+  late final _LLVMInitializeRISCVTargetMCA =
+      _LLVMInitializeRISCVTargetMCAPtr.asFunction<void Function()>();
+
+  void LLVMInitializeX86TargetMCA() {
+    return _LLVMInitializeX86TargetMCA();
+  }
+
+  late final _LLVMInitializeX86TargetMCAPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'LLVMInitializeX86TargetMCA');
+  late final _LLVMInitializeX86TargetMCA =
+      _LLVMInitializeX86TargetMCAPtr.asFunction<void Function()>();
+
   /// @}
   void LLVMInitializeCore(
     LLVMPassRegistryRef R,
@@ -13029,6 +14169,26 @@ class LLVMCore {
       LLVMMetadataRef Function(
           LLVMDIBuilderRef, ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>();
 
+  void LLVMIRReader(
+    LLVMContextRef context,
+    ffi.Pointer<ffi.Char> name,
+    ffi.Pointer<ffi.Char> outName,
+  ) {
+    return _LLVMIRReader(
+      context,
+      name,
+      outName,
+    );
+  }
+
+  late final _LLVMIRReaderPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMContextRef, ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>)>>('LLVMIRReader');
+  late final _LLVMIRReader = _LLVMIRReaderPtr.asFunction<
+      void Function(
+          LLVMContextRef, ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>();
+
   /// Obtain the data layout for a module.
   ///
   /// @see Module::getDataLayout()
@@ -17177,6 +18337,98 @@ class LLVMCore {
       _LLVMGetMetadataKindPtr.asFunction<int Function(LLVMMetadataRef)>();
 }
 
+abstract class LLVMAttr {
+  static const int FirstEnumAttr = 1;
+  static const int AllocAlign = 1;
+  static const int AllocatedPointer = 2;
+  static const int AlwaysInline = 3;
+  static const int Builtin = 4;
+  static const int Cold = 5;
+  static const int Convergent = 6;
+  static const int DisableSanitizerInstrumentation = 7;
+  static const int FnRetThunkExtern = 8;
+  static const int Hot = 9;
+  static const int ImmArg = 10;
+  static const int InReg = 11;
+  static const int InlineHint = 12;
+  static const int JumpTable = 13;
+  static const int MinSize = 14;
+  static const int MustProgress = 15;
+  static const int Naked = 16;
+  static const int Nest = 17;
+  static const int NoAlias = 18;
+  static const int NoBuiltin = 19;
+  static const int NoCallback = 20;
+  static const int NoCapture = 21;
+  static const int NoCfCheck = 22;
+  static const int NoDuplicate = 23;
+  static const int NoFree = 24;
+  static const int NoImplicitFloat = 25;
+  static const int NoInline = 26;
+  static const int NoMerge = 27;
+  static const int NoProfile = 28;
+  static const int NoRecurse = 29;
+  static const int NoRedZone = 30;
+  static const int NoReturn = 31;
+  static const int NoSanitizeBounds = 32;
+  static const int NoSanitizeCoverage = 33;
+  static const int NoSync = 34;
+  static const int NoUndef = 35;
+  static const int NoUnwind = 36;
+  static const int NonLazyBind = 37;
+  static const int NonNull = 38;
+  static const int NullPointerIsValid = 39;
+  static const int OptForFuzzing = 40;
+  static const int OptimizeForSize = 41;
+  static const int OptimizeNone = 42;
+  static const int PresplitCoroutine = 43;
+  static const int ReadNone = 44;
+  static const int ReadOnly = 45;
+  static const int Returned = 46;
+  static const int ReturnsTwice = 47;
+  static const int SExt = 48;
+  static const int SafeStack = 49;
+  static const int SanitizeAddress = 50;
+  static const int SanitizeHWAddress = 51;
+  static const int SanitizeMemTag = 52;
+  static const int SanitizeMemory = 53;
+  static const int SanitizeThread = 54;
+  static const int ShadowCallStack = 55;
+  static const int SkipProfile = 56;
+  static const int Speculatable = 57;
+  static const int SpeculativeLoadHardening = 58;
+  static const int StackProtect = 59;
+  static const int StackProtectReq = 60;
+  static const int StackProtectStrong = 61;
+  static const int StrictFP = 62;
+  static const int SwiftAsync = 63;
+  static const int SwiftError = 64;
+  static const int SwiftSelf = 65;
+  static const int WillReturn = 66;
+  static const int WriteOnly = 67;
+  static const int ZExt = 68;
+  static const int LastEnumAttr = 68;
+  static const int FirstTypeAttr = 69;
+  static const int ByRef = 69;
+  static const int ByVal = 70;
+  static const int ElementType = 71;
+  static const int InAlloca = 72;
+  static const int Preallocated = 73;
+  static const int StructRet = 74;
+  static const int LastTypeAttr = 74;
+  static const int FirstIntAttr = 75;
+  static const int Alignment = 75;
+  static const int AllocKind = 76;
+  static const int AllocSize = 77;
+  static const int Dereferenceable = 78;
+  static const int DereferenceableOrNull = 79;
+  static const int Memory = 80;
+  static const int StackAlignment = 81;
+  static const int UWTable = 82;
+  static const int VScaleRange = 83;
+  static const int LastIntAttr = 83;
+}
+
 /// External users depend on the following values being stable. It is not safe
 /// to reorder them.
 abstract class LLVMOpcode {
@@ -18124,3 +19376,47 @@ const int LLVMDIGenericSubrangeMetadataKind = 33;
 const int LLVMDIArgListMetadataKind = 34;
 
 const int LLVMDIAssignIDMetadataKind = 35;
+
+const String LLVM_DEFAULT_TARGET_TRIPLE = 'arm64-apple-darwin22.4.0';
+
+const int LLVM_ENABLE_THREADS = 1;
+
+const int LLVM_HAS_ATOMICS = 1;
+
+const String LLVM_HOST_TRIPLE = 'arm64-apple-darwin22.4.0';
+
+const int LLVM_ON_UNIX = 1;
+
+const int LLVM_USE_INTEL_JITEVENTS = 0;
+
+const int LLVM_USE_OPROFILE = 0;
+
+const int LLVM_USE_PERF = 0;
+
+const int LLVM_VERSION_MAJOR = 16;
+
+const int LLVM_VERSION_MINOR = 0;
+
+const int LLVM_VERSION_PATCH = 6;
+
+const String LLVM_VERSION_STRING = '16.0.6';
+
+const int LLVM_FORCE_ENABLE_STATS = 0;
+
+const int LLVM_WITH_Z3 = 1;
+
+const int LLVM_ENABLE_ZLIB = 1;
+
+const int LLVM_ENABLE_ZSTD = 1;
+
+const int HAVE_SYSEXITS_H = 1;
+
+const int LLVM_HAVE_LIBXAR = 1;
+
+const int LLVM_UNREACHABLE_OPTIMIZE = 1;
+
+const int LLVM_ENABLE_DIA_SDK = 0;
+
+const int LLVM_ENABLE_ABI_BREAKING_CHECKS = 0;
+
+const int LLVM_ENABLE_REVERSE_ITERATION = 0;

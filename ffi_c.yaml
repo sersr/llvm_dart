@@ -4,6 +4,7 @@ llvm-path:
   - '/opt/homebrew/Cellar/llvm/16.0.6'
 compiler-opts:
   - "-I/opt/homebrew/opt/llvm/include/"
+  - "-DFFIGEN"
 headers:
   entry-points:
     - '../llvm_lang/src/llvm_wrapper.h'
@@ -18,6 +19,8 @@ headers:
     - '/opt/homebrew/opt/llvm/include/llvm-c/TargetMachine.h'
     - '/opt/homebrew/opt/llvm/include/llvm-c/Target.h'
     - '/opt/homebrew/opt/llvm/include/llvm-c/DebugInfo.h'
+    - '/opt/homebrew/opt/llvm/include/llvm/Config/*'
+    - '/opt/homebrew/opt/llvm/include/llvm/IR/Attributes.inc'
     # - '/opt/homebrew/opt/llvm/include/llvm/IR/Attributes.inc'
 
 functions:

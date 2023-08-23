@@ -1738,8 +1738,10 @@ class OpExpr extends Expr {
 
     final v = context.math(l, (context) {
       return LiteralExpr.run(() => rhs.build(context), l.ty);
-    }, op, isFloat, signed: signed, lhsOffset: lhsIdent.offset);
-    return ExprTempValue(v, v.ty, opIdent);
+    }, op, isFloat,
+        signed: signed, lhsOffset: lhsIdent.offset, opOffset: opIdent.offset);
+
+    return ExprTempValue(v, v.ty, lhsIdent);
   }
 
   @override

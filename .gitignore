@@ -3,9 +3,3 @@
 .dart_tool/
 /build/
 /.DS_Store
-/out.o
-/out.s
-/*.exe
-/main
-/base.ll
-/out.ll

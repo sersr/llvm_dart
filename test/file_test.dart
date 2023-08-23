@@ -29,5 +29,5 @@ void main() {
 
   test('c_array.kc', () => run('c_array.kc'));
 
-  test('debug', () => run('debug.kc', run: true));
+  test('debug', () => run('debug.kc', run: false));
 }

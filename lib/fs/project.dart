@@ -138,7 +138,8 @@ class Project {
   void build([void Function()? after]) {
     Identifier.run(() {
       llvm.initLLVM();
-      final root = buildContext = BuildContext.root('./test/src/debug.c');
+      final fileName = currentDir.childFile(path).basename;
+      final root = buildContext = BuildContext.root(fileName);
       root.currentPath = path;
       root.init(isDebug);
       root.importHandler = importBuild as dynamic;
@@ -165,11 +166,10 @@ class Project {
         }
       }
       root.finalize();
-      llvm.LLVMDumpModule(root.module);
-      llvm.LLVMPrintModuleToFile(root.module, 'out.ll'.toChar(), nullptr);
-      after?.call();
+      llvm.LLVMPrintModuleToFile(root.module, buildFile('out.ll'), nullptr);
       llvm.writeOutput(
-          root.kModule, LLVMCodeGenFileType.LLVMObjectFile, 'out.o'.toChar());
+          root.kModule, LLVMCodeGenFileType.LLVMObjectFile, buildFile('out.o'));
+      after?.call();
       root.dispose();
     });
   }
