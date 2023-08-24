@@ -1,7 +1,5 @@
 import 'dart:ffi';
 
-import 'package:nop/nop.dart';
-
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../ast.dart';
@@ -240,7 +238,6 @@ class LLVMLitVariable extends Variable {
       [BuiltInTy? tty]) {
     // 需要分配内存地址
     // final rty = tty ?? ty;
-    Log.w(ident.light, showTag: false);
     final rValue = load(c, ident.offset, ty: tty);
     final alloca = ty.llvmType.createAlloca(c, ident, rValue);
     // alloca.store(c, rValue);

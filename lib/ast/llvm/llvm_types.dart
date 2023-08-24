@@ -195,6 +195,14 @@ class LLVMTypeLit extends LLVMType {
   @override
   LLVMMetadataRef createDIType(covariant BuildContext c) {
     final name = ty.ty.name;
+
+    if (ty.ty == LitKind.kString) {
+      final base = llvm.LLVMDIBuilderCreateBasicType(
+          c.dBuilder!, 'char'.toChar(), 4, 8, 6, 0);
+      return llvm.LLVMDIBuilderCreatePointerType(
+          c.dBuilder!, base, c.pointerSize() * 8, 0, 0, unname, 0);
+    }
+
     return llvm.LLVMDIBuilderCreateBasicType(
         c.dBuilder!, name.toChar(), name.length, getBytes(c) * 8, 5, 0);
   }
