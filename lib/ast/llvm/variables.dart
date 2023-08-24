@@ -1,5 +1,7 @@
 import 'dart:ffi';
 
+import 'package:nop/nop.dart';
+
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../ast.dart';
@@ -42,7 +44,7 @@ abstract class StoreVariable extends Variable {
   /// 一般是未命名的，右表达式生成的
   bool isTemp = true;
   LLVMValueRef get alloca;
-  LLVMValueRef store(BuildContext c, LLVMValueRef val);
+  LLVMValueRef store(BuildContext c, LLVMValueRef val, Offset offset);
 
   @override
   LLVMValueRef getBaseValue(BuildContext c) {
@@ -151,16 +153,15 @@ class LLVMAllocaDelayVariable extends StoreVariable
   }
 
   @override
-  LLVMValueRef store(BuildContext c, LLVMValueRef val) {
+  LLVMValueRef store(BuildContext c, LLVMValueRef val, Offset offset) {
     create(c);
-
-    return llvm.LLVMBuildStore(c.builder, val, alloca);
+    return c.store(alloca, val, offset);
   }
 
   @override
   void storeInit(BuildContext c) {
     if (initAlloca == null) return;
-    llvm.LLVMBuildStore(c.builder, initAlloca!, alloca);
+    c.store(alloca, initAlloca!, Offset.zero);
   }
 }
 
@@ -185,8 +186,8 @@ class LLVMAllocaVariable extends StoreVariable implements Deref {
   }
 
   @override
-  LLVMValueRef store(BuildContext c, LLVMValueRef val) {
-    return llvm.LLVMBuildStore(c.builder, val, alloca);
+  LLVMValueRef store(BuildContext c, LLVMValueRef val, Offset offset) {
+    return c.store(alloca, val, offset);
   }
 
   @override
@@ -239,7 +240,8 @@ class LLVMLitVariable extends Variable {
       [BuiltInTy? tty]) {
     // 需要分配内存地址
     // final rty = tty ?? ty;
-    final rValue = load(c, Offset.zero, ty: tty);
+    Log.w(ident.light, showTag: false);
+    final rValue = load(c, ident.offset, ty: tty);
     final alloca = ty.llvmType.createAlloca(c, ident, rValue);
     // alloca.store(c, rValue);
 

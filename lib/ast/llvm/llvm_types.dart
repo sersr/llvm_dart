@@ -519,7 +519,7 @@ class LLVMStructType extends LLVMType {
       for (var p in ty.fields) {
         final srcVal = getField(v, c, p.ident)!;
         final destVal = getField(alloca, c, p.ident, useExtern: true)!;
-        destVal.store(c, srcVal.load(c, Offset.zero));
+        destVal.store(c, srcVal.load(c, Offset.zero), Offset.zero);
       }
     } else {
       alloca = v;
@@ -557,7 +557,7 @@ class LLVMStructType extends LLVMType {
     final extern = isExternFnParam;
     if (!extern) {
       final v = createAlloca(c, ident, null);
-      v.store(c, value);
+      v.store(c, value, ident.offset);
       c.setName(v.alloca, ident.src);
       // v.store(c, value);
       v.isTemp = false;
@@ -594,7 +594,7 @@ class LLVMStructType extends LLVMType {
     for (var p in ty.fields) {
       final srcVal = getField(calloca, c, p.ident, useExtern: true)!;
       final destVal = getField(alloca, c, p.ident)!;
-      destVal.store(c, srcVal.load(c, Offset.zero));
+      destVal.store(c, srcVal.load(c, Offset.zero), Offset.zero);
     }
     return alloca;
   }

@@ -3,8 +3,10 @@ import 'd.kc';
 fn main() i32 { 
   let y = 10;
   let x = 102;
-  let hhx = y + x;
-  0;
+  let hhx = y;
+  y = x;
+  print("hello\n");
+  return 0;
 }
 
 fn hh() i32 {

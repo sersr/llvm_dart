@@ -399,7 +399,7 @@ class BuildContext
           if (back) return false;
           // error
         }
-        bbContext.ret(null, Identifier.none);
+        bbContext.ret(null, Offset.zero);
         hasRet = true;
         return true;
       }
@@ -419,7 +419,7 @@ class BuildContext
               // error
             }
 
-            bbContext.ret(val, valTemp?.currentIdent ?? Identifier.none);
+            bbContext.ret(val, valTemp?.currentIdent.offset ?? Offset.zero);
           }
         }
       }
@@ -433,30 +433,34 @@ class BuildContext
   static bool mem2reg = false;
 
   bool _returned = false;
-  void ret(Variable? val, Identifier currentIdent) {
+  void ret(Variable? val, Offset currentOffset,
+      [Offset retOffset = Offset.zero]) {
     if (_returned) {
       // error
       return;
     }
     dropAll();
 
-    diSetCurrentLoc(currentIdent.offset);
+    diSetCurrentLoc(currentOffset);
 
     _returned = true;
     if (val == null) {
+      diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRetVoid(builder);
     } else {
       final sret = getLastFnContext()?._sret;
       final (sretV, _) = sretVariable(null, val);
 
       if (sret == null) {
-        final v = val.load(this, currentIdent.offset);
+        final v = val.load(this, currentOffset);
+        diSetCurrentLoc(retOffset);
         llvm.LLVMBuildRet(builder, v);
       } else {
         if (sretV == null) {
-          final v = val.load(this, currentIdent.offset);
-          sret.store(this, v);
+          final v = val.load(this, currentOffset);
+          sret.store(this, v, Offset.zero);
         }
+        diSetCurrentLoc(retOffset);
         llvm.LLVMBuildRetVoid(builder);
       }
     }
@@ -611,7 +615,7 @@ class BuildContext
       final allocaValue = alloctor(i1, name: 'op');
       final variable = LLVMAllocaVariable(BuiltInTy.kBool, allocaValue, i1);
 
-      variable.store(this, l);
+      variable.store(this, l, Offset.zero);
       appendBB(opBB);
 
       if (op == OpKind.And) {
@@ -626,7 +630,7 @@ class BuildContext
         // error
       }
 
-      variable.store(c, r!);
+      variable.store(c, r!, Offset.zero);
       c.br(after.context);
       insertPointBB(after);
       final ac = after.context;

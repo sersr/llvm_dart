@@ -41,6 +41,8 @@ class LetStmt extends Stmt {
       return rExpr?.build(context);
     }, realTy);
 
+    context.diSetCurrentLoc(nameIdent.offset);
+
     final tty = realTy ?? val?.ty;
     if (tty != null) {
       final variable = val?.variable;
@@ -53,8 +55,6 @@ class LetStmt extends Stmt {
 
           final alloca = variable.createAlloca(context, nameIdent, tty);
 
-          // FIXME: 在 store 方法中统一实现
-          context.diSetCurrentLoc(nameIdent.offset);
           alloca.create(context);
 
           alloca.isTemp = false;
@@ -109,12 +109,11 @@ class LetStmt extends Stmt {
         if (wrapRef) {
           rValue = variable.getBaseValue(context);
         } else {
-          rValue = variable.load(context, ident.offset);
+          rValue = variable.load(context, val!.currentIdent.offset);
         }
       }
       if (rValue != null) {
-        context.diSetCurrentLoc(nameIdent.offset);
-        alloca.store(context, rValue);
+        alloca.store(context, rValue, nameIdent.offset);
       }
 
       alloca.isTemp = false;

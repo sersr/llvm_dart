@@ -245,11 +245,18 @@ mixin BuildMethods {
 
   LLVMValueRef load2(
       LLVMTypeRef ty, LLVMValueRef alloca, String name, Offset offset) {
-    final value = llvm.LLVMBuildLoad2(builder, ty, alloca, name.toChar());
     if (offset.isValid) {
       diSetCurrentLoc(offset);
     }
+    final value = llvm.LLVMBuildLoad2(builder, ty, alloca, name.toChar());
     return value;
+  }
+
+  LLVMValueRef store(LLVMValueRef alloca, LLVMValueRef val, Offset offset) {
+    if (offset.isValid) {
+      diSetCurrentLoc(offset);
+    }
+    return llvm.LLVMBuildStore(builder, val, alloca);
   }
 
   void setLLVMAttr(LLVMValueRef value, int index, int kind, {int val = 0}) {

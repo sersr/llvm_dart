@@ -190,7 +190,7 @@ class IfExpr extends Expr {
               val.create(context, variable);
             } else {
               final v = val.load(context, temp!.currentIdent.offset);
-              variable.store(context, v);
+              variable.store(context, v, Offset.zero);
             }
           }
         }
@@ -431,7 +431,8 @@ class RetExpr extends Expr {
   ExprTempValue? buildExpr(BuildContext context) {
     final e = expr?.build(context);
 
-    context.ret(e?.variable, e?.currentIdent ?? ident);
+    context.ret(
+        e?.variable, e?.currentIdent.offset ?? Offset.zero, ident.offset);
     return e;
   }
 
@@ -643,7 +644,7 @@ class StructExpr extends Expr {
       }
 
       if (sortFields.length != fields.length) {
-        value.store(context, llvm.LLVMConstNull(structType));
+        value.store(context, llvm.LLVMConstNull(structType), Offset.zero);
         // final base = value.getBaseValue(context);
         // final len = struct.llvmType.getBytes(context);
         // final align = llvm.LLVMGetAlignment(base);
@@ -668,8 +669,8 @@ class StructExpr extends Expr {
           }
         }
 
-        final store =
-            vv.store(context, v.load(context, temp!.currentIdent.offset));
+        final store = vv.store(context,
+            v.load(context, temp!.currentIdent.offset), fd.ident.offset);
         llvm.LLVMSetAlignment(store, size);
       }
       return value.alloca;
@@ -746,7 +747,9 @@ class AssignExpr extends Expr {
 
     if (lVariable is StoreVariable && rVariable != null) {
       lVariable.store(
-          context, rVariable.load(context, lhs!.currentIdent.offset));
+          context,
+          rVariable.load(context, rhs!.currentIdent.offset),
+          lhs!.currentIdent.offset);
     }
 
     return null;
@@ -797,8 +800,8 @@ class AssignOpExpr extends AssignExpr {
           lVariable.ty);
       final rValue = val?.variable;
       if (rValue != null) {
-        lVariable.store(
-            context, rValue.load(context, val!.currentIdent.offset));
+        lVariable.store(context, rValue.load(context, val!.currentIdent.offset),
+            lhs!.currentIdent.offset);
       }
     }
 
@@ -1082,7 +1085,7 @@ mixin FnCallMixin {
       return ExprTempValue(v, v.ty, currentIdent);
     } else if (retTy is StructTy) {
       final v = retTy.llvmType.createAlloca(context, Identifier.none, null);
-      v.store(context, ret);
+      v.store(context, ret, Offset.zero);
       v.isTemp = false;
       return ExprTempValue(v, v.ty, currentIdent);
     }
