@@ -46,7 +46,9 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
         break;
       }
       if (fnContext != currentFn) {
-        currentFn?.catchVariables.add(last);
+        if (!last.isGlobal) {
+          currentFn?.catchVariables.add(last);
+        }
       }
       last.updateLifeCycle(ident);
       return last;
@@ -188,12 +190,19 @@ class AnalysisVariable extends LifeCycleVariable {
   @override
   Identifier get ident => _ident;
 
-  AnalysisVariable copy({Ty? ty, Identifier? ident, List<PointerKind>? kind}) {
+  AnalysisVariable copy(
+      {Ty? ty,
+      Identifier? ident,
+      List<PointerKind>? kind,
+      bool isGlobal = false}) {
     return AnalysisVariable._(
         ty ?? this.ty, ident ?? this.ident, kind ?? this.kind.toList())
       ..lifeCycle.from(lifeCycle)
+      ..isGlobal = isGlobal
       ..parent = this;
   }
+
+  bool isGlobal = false;
 
   AnalysisVariable? parent;
 
@@ -227,10 +236,12 @@ class AnalysisStructVariable extends AnalysisVariable {
       {Ty? ty,
       Identifier? ident,
       Map<Identifier, AnalysisVariable>? map,
-      List<PointerKind>? kind}) {
+      List<PointerKind>? kind,
+      bool isGlobal = false}) {
     return AnalysisStructVariable._(ty ?? this.ty, ident ?? this.ident,
         map ?? _params, kind ?? this.kind.toList())
       ..lifeCycle.from(lifeCycle)
+      ..isGlobal = isGlobal
       ..parent = this;
   }
 

@@ -115,6 +115,17 @@ mixin BuildMethods {
     return loadTy;
   }
 
+  int getAlignSize(Ty ty) {
+    final size = ty.llvmType.getBytes(this);
+    final max = pointerSize();
+    if (size >= max) {
+      return max;
+    } else if (size >= 4) {
+      return 4;
+    }
+    return 1;
+  }
+
   LLVMMetadataRef getStructExternDIType(int count) {
     LLVMMetadataRef loadTy;
     var size = pointerSize();
@@ -249,6 +260,10 @@ mixin BuildMethods {
       diSetCurrentLoc(offset);
     }
     final value = llvm.LLVMBuildLoad2(builder, ty, alloca, name.toChar());
+
+    if (llvm.LLVMGetTypeKind(ty) == LLVMTypeKind.LLVMFloatTypeKind) {
+      return llvm.LLVMBuildFPExt(builder, value, f64, unname);
+    }
     return value;
   }
 
@@ -291,12 +306,12 @@ mixin Consts on BuildMethods {
         i128, v.toChar(), signed ? LLVMTrue : LLVMFalse);
   }
 
-  LLVMValueRef constF32(double v) {
-    return llvm.LLVMConstReal(f32, v);
+  LLVMValueRef constF32(String v) {
+    return llvm.LLVMConstRealOfString(f32, v.toChar());
   }
 
-  LLVMValueRef constF64(double v) {
-    return llvm.LLVMConstReal(f64, v);
+  LLVMValueRef constF64(String v) {
+    return llvm.LLVMConstRealOfString(f64, v.toChar());
   }
 
   final _globalString = <String, LLVMValueRef>{};

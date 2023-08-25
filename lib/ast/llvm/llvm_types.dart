@@ -35,7 +35,7 @@ class LLVMRawValue {
 
 abstract class LLVMType {
   Ty get ty;
-  int getBytes(BuildContext c);
+  int getBytes(covariant BuildMethods c);
   LLVMTypeRef createType(BuildContext c);
 
   LLVMMetadataRef createDIType(covariant BuildMethods c);
@@ -132,10 +132,10 @@ class LLVMTypeLit extends LLVMType {
       switch (kind) {
         case LitKind.f32:
         case LitKind.kFloat:
-          return c.constF32(raw.value);
+          return c.constF32(raw.rawNumber);
         case LitKind.f64:
         case LitKind.kDouble:
-          return c.constF64(raw.value);
+          return c.constF64(raw.rawNumber);
         case LitKind.kString:
           return c.getString(raw.raw);
         case LitKind.kBool:
@@ -196,6 +196,7 @@ class LLVMTypeLit extends LLVMType {
   LLVMMetadataRef createDIType(covariant BuildContext c) {
     final name = ty.ty.name;
 
+    var encoding = 5;
     if (ty.ty == LitKind.kString) {
       final base = llvm.LLVMDIBuilderCreateBasicType(
           c.dBuilder!, 'char'.toChar(), 4, 8, 6, 0);
@@ -203,8 +204,12 @@ class LLVMTypeLit extends LLVMType {
           c.dBuilder!, base, c.pointerSize() * 8, 0, 0, unname, 0);
     }
 
+    if (ty.ty.isFp) {
+      encoding = 4;
+    }
+
     return llvm.LLVMDIBuilderCreateBasicType(
-        c.dBuilder!, name.toChar(), name.length, getBytes(c) * 8, 5, 0);
+        c.dBuilder!, name.toChar(), name.length, getBytes(c) * 8, encoding, 0);
   }
 }
 
@@ -357,8 +362,8 @@ class LLVMFnType extends LLVMType {
             c.unit,
             ident.toChar(),
             ident.length,
-            ident.toChar(),
-            ident.length,
+            unname,
+            0,
             file,
             offset.row,
             fnTy,
@@ -659,19 +664,19 @@ class LLVMStructType extends LLVMType {
       final lastIndex = count ~/ targetSize;
       final nextIndex = newCount / targetSize;
       if (lastIndex == nextIndex) {
+        map[field] = FieldIndex(0, index, count);
         count = newCount;
-        map[field] = FieldIndex(0, index);
         index += 1;
         continue;
       }
       final whiteSpace = newCount % targetSize;
       if (whiteSpace > 0) {
         final extra = targetSize - whiteSpace;
-        map[field] = FieldIndex(extra, index);
+        map[field] = FieldIndex(extra, index, count);
         index += 1;
-        count = newCount + extra;
+        count = newCount;
       } else {
-        map[field] = FieldIndex(0, index);
+        map[field] = FieldIndex(0, index, count);
         count = newCount;
         index += 1;
       }
@@ -688,15 +693,33 @@ class LLVMStructType extends LLVMType {
 
     final elements = <LLVMMetadataRef>[];
     final fields = size.map.keys.toList();
+    final file = llvm.LLVMDIScopeGetFile(c.scope);
 
     for (var field in fields) {
       var rty = field.grt(c);
+      LLVMMetadataRef ty;
+      int alignSize;
       if (rty is FnTy) {
-        elements.add(rty.llvmType.createDIType(c));
+        ty = rty.llvmType.createDIType(c);
+        alignSize = c.pointerSize() * 8;
       } else {
-        final ty = rty.llvmType.createDIType(c);
-        elements.add(ty);
+        ty = rty.llvmType.createDIType(c);
+        alignSize = rty.llvmType.getBytes(c) * 8;
       }
+      ty = llvm.LLVMDIBuilderCreateMemberType(
+        c.dBuilder!,
+        c.scope,
+        field.ident.src.toChar(),
+        field.ident.src.length,
+        file,
+        field.ident.offset.row,
+        alignSize,
+        alignSize,
+        size.map[field]!.offset * 8,
+        0,
+        ty,
+      );
+      elements.add(ty);
     }
     return llvm.LLVMDIBuilderCreateStructType(
       c.dBuilder!,
@@ -705,16 +728,16 @@ class LLVMStructType extends LLVMType {
       name.length,
       llvm.LLVMDIScopeGetFile(c.unit),
       offset.row,
-      getBytes(c),
-      size.alignSize,
+      getBytes(c) * 8,
+      size.alignSize * 8,
       0,
       nullptr,
       elements.toNative(),
       elements.length,
       0,
       nullptr,
-      nullptr,
-      0,
+      '0'.toChar(),
+      1,
     );
   }
 }
@@ -803,13 +826,13 @@ class LLVMEnumType extends LLVMType {
     final size = getRealIndexType(c);
     if (size == 8) {
       return llvm.LLVMDIBuilderCreateBasicType(
-          c.dBuilder!, 'i64'.toChar(), 3, 64, 1, 0);
+          c.dBuilder!, 'i64'.toChar(), 3, 64, 5, 0);
     } else if (size == 4) {
       return llvm.LLVMDIBuilderCreateBasicType(
-          c.dBuilder!, 'i32'.toChar(), 3, 32, 1, 0);
+          c.dBuilder!, 'i32'.toChar(), 3, 32, 5, 0);
     }
     return llvm.LLVMDIBuilderCreateBasicType(
-        c.dBuilder!, 'i8'.toChar(), 1, 8, 1, 0);
+        c.dBuilder!, 'i8'.toChar(), 1, 8, 5, 0);
   }
 
   int getItemBytes(BuildContext c) {
@@ -1023,7 +1046,7 @@ class LLVMEnumItemType extends LLVMStructType {
         } else {
           space = 0;
         }
-        map[field] = FieldIndex(space, index);
+        map[field] = FieldIndex(space, index, count);
         index += 1;
         count = newCount + space;
         continue;
@@ -1035,11 +1058,11 @@ class LLVMEnumItemType extends LLVMStructType {
         final extra = alignSize - whiteSpace;
         index += 1;
 
-        map[field] = FieldIndex(extra, index);
+        map[field] = FieldIndex(extra, index, count);
         index += 1;
-        count = newCount + extra;
+        count = newCount;
       } else {
-        map[field] = FieldIndex(0, index);
+        map[field] = FieldIndex(0, index, count);
         count = newCount;
         index += 1;
       }
@@ -1139,9 +1162,12 @@ class LLVMEnumItemType extends LLVMStructType {
 }
 
 class FieldIndex {
-  FieldIndex(this.space, this.index);
+  FieldIndex(this.space, this.index, this.offset);
   final int space;
   final int index;
+
+  /// 与起点的便宜量
+  final int offset;
 }
 
 class FieldsSize {

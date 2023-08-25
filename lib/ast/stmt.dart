@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'analysis_context.dart';
@@ -190,8 +192,11 @@ class StaticStmt extends Stmt {
   }
 
   bool _done = false;
+
+  bool _run = false;
   @override
   void build(BuildContext context) {
+    if (_run) return;
     final realTy = ty?.grtOrT(context);
     if (ty != null && realTy == null) return;
 
@@ -207,13 +212,45 @@ class StaticStmt extends Stmt {
     final y = rty ?? e.ty;
     final type = y.llvmType.createType(context);
 
+    context.diSetCurrentLoc(ident.offset);
+
     final llValue =
         llvm.LLVMAddGlobal(context.module, type, ident.src.toChar());
 
     final v = LLVMAllocaVariable(y, llValue, type);
+    llvm.LLVMSetLinkage(llValue, LLVMLinkage.LLVMInternalLinkage);
     llvm.LLVMSetGlobalConstant(llValue, isConst.llvmBool);
     llvm.LLVMSetInitializer(llValue, val.getBaseValue(context));
+
+    llvm.LLVMSetAlignment(llValue, context.getAlignSize(y));
+    final diBuilder = context.dBuilder;
+    if (diBuilder != null) {
+      final file = llvm.LLVMDIScopeGetFile(context.scope);
+      final diType = y.llvmType.createDIType(context);
+      final name = ident.src;
+      final expr = llvm.LLVMDIBuilderCreateExpression(diBuilder, nullptr, 0);
+
+      final globalExpr = llvm.LLVMDIBuilderCreateGlobalVariableExpression(
+          context.dBuilder!,
+          context.scope,
+          name.toChar(),
+          name.length,
+          unname,
+          0,
+          file,
+          ident.offset.row,
+          diType,
+          LLVMTrue,
+          expr,
+          nullptr,
+          0);
+
+      llvm.LLVMGlobalSetMetadata(
+          llValue, llvm.LLVMGetMDKindID("dbg".toChar(), 3), globalExpr);
+    }
+
     context.pushVariable(ident, v);
+    _run = true;
   }
 
   @override
@@ -225,7 +262,8 @@ class StaticStmt extends Stmt {
     final val = LiteralExpr.run(() => expr.analysis(context), realTy);
     final vTy = realTy ?? val?.ty;
     if (vTy == null || val == null) return;
-    context.pushVariable(ident, val.copy(ty: vTy, ident: ident));
+    context.pushVariable(
+        ident, val.copy(ty: vTy, ident: ident, isGlobal: true));
   }
 }
 

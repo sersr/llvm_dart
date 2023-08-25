@@ -643,6 +643,8 @@ class StructExpr extends Expr {
         }
       }
 
+      context.diSetCurrentLoc(ident.offset);
+
       if (sortFields.length != fields.length) {
         value.store(context, llvm.LLVMConstNull(structType), Offset.zero);
         // final base = value.getBaseValue(context);
@@ -669,8 +671,10 @@ class StructExpr extends Expr {
           }
         }
 
-        final store = vv.store(context,
-            v.load(context, temp!.currentIdent.offset), fd.ident.offset);
+        final loadOffset = temp!.currentIdent.offset;
+        var offset = f.ident?.offset ?? loadOffset;
+
+        final store = vv.store(context, v.load(context, loadOffset), offset);
         llvm.LLVMSetAlignment(store, size);
       }
       return value.alloca;

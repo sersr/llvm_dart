@@ -1,9 +1,15 @@
 #include <stdio.h>
 
-int main(int argc, char** argv) {
+
+int vvs = 0;
+void test_main()
+{
   int y = 10;
   int x = 11;
-  char* hh = "sss";
-  printf(hh);
+}
+
+int main(int argc, char **argv)
+{
+  test_main();
   return 0;
 }

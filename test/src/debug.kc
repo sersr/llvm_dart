@@ -1,11 +1,28 @@
 import 'd.kc';
 
-fn main() i32 { 
+
+static vv = 111;
+
+fn test_main() {
   let y = 10;
-  let x = 102;
-  let hhx = y;
-  y = x;
-  print("hello\n");
+  let x = 11;
+}
+
+struct Gen {
+  y: f64,
+  x: i8,
+  z: i32,
+}
+
+fn main() i32 { 
+  // let y = 10;
+  // let x = 120.015f32;
+  // let hhx = y;
+  // printf("hello %d\n", vv);
+  test_main();
+
+  let gg = Gen { 11, z: 11 , 22 };
+  
   return 0;
 }
 
