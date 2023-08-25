@@ -196,6 +196,10 @@ class LLVMTypeLit extends LLVMType {
   LLVMMetadataRef createDIType(covariant BuildContext c) {
     final name = ty.ty.name;
 
+    if (ty.ty == LitKind.kVoid) {
+      return nullptr;
+    }
+
     var encoding = 5;
     if (ty.ty == LitKind.kString) {
       final base = llvm.LLVMDIBuilderCreateBasicType(
@@ -354,6 +358,12 @@ class LLVMFnType extends LLVMType {
         final file = llvm.LLVMDIScopeGetFile(c.unit);
         final params = <Pointer>[];
         params.add(retTy.llvmType.createDIType(c));
+
+        for (var p in fn.fnSign.fnDecl.params) {
+          final realTy = fn.getRty(c, p);
+          final ty = realTy.llvmType.createDIType(c);
+          params.add(ty);
+        }
 
         final fnTy = llvm.LLVMDIBuilderCreateSubroutineType(
             dBuilder, file, params.toNative(), params.length, 0);
