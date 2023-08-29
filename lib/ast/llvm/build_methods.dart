@@ -261,9 +261,9 @@ mixin BuildMethods {
     }
     final value = llvm.LLVMBuildLoad2(builder, ty, alloca, name.toChar());
 
-    if (llvm.LLVMGetTypeKind(ty) == LLVMTypeKind.LLVMFloatTypeKind) {
-      return llvm.LLVMBuildFPExt(builder, value, f64, unname);
-    }
+    // if (llvm.LLVMGetTypeKind(ty) == LLVMTypeKind.LLVMFloatTypeKind) {
+    //   return llvm.LLVMBuildFPExt(builder, value, f64, unname);
+    // }
     return value;
   }
 
