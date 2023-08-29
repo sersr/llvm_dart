@@ -6,6 +6,13 @@ static vv = 111;
 fn test_main() {
   let y = 10;
   let x = 11;
+  let hh = 0;
+
+  if y > 10 {
+    hh = 111;
+  } else {
+    hh = 1;
+  }
 }
 
 struct Gen {
@@ -20,13 +27,14 @@ fn main() i32 {
   // let hhx = y;
   // printf("hello %d\n", vv);
   test_main();
-
+  printf("hello\n");
   let gg = Gen { 11, z: 11 , 22 };
-  
+  hh(gg);
   return 0;
 }
 
-fn hh() i32 {
+extern
+fn hh(gen: Gen) i32 {
   let hx = 10;
   hx
 }

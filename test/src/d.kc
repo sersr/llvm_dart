@@ -1,6 +1,6 @@
-extern fn printf(str: string, ...) i32;
+extern fn printf(str: *u8, ...) i32;
 
-fn print(str: string) {
+fn print(str: *u8) {
     printf("log: %s\n", str);
 }
 
@@ -15,7 +15,7 @@ impl Array<T> {
     fn elementAt(index: usize) &T;
 }
 
-impl Array<i8> {
+impl Array<u8> {
   fn toStr() &string;
 }
 

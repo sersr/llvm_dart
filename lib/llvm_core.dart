@@ -14004,191 +14004,6 @@ class LLVMCore {
   late final _LLVMIsMultithreaded =
       _LLVMIsMultithreadedPtr.asFunction<int Function()>();
 
-  void initLLVM() {
-    return _initLLVM();
-  }
-
-  late final _initLLVMPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function()>>('initLLVM');
-  late final _initLLVM = _initLLVMPtr.asFunction<void Function()>();
-
-  void destory(
-    KModuleRef module,
-  ) {
-    return _destory(
-      module,
-    );
-  }
-
-  late final _destoryPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(KModuleRef)>>('destory');
-  late final _destory = _destoryPtr.asFunction<void Function(KModuleRef)>();
-
-  LLVMValueRef getOrInsertFunction(
-    ffi.Pointer<ffi.Char> name,
-    LLVMModuleRef module,
-    LLVMTypeRef functionTy,
-  ) {
-    return _getOrInsertFunction(
-      name,
-      module,
-      functionTy,
-    );
-  }
-
-  late final _getOrInsertFunctionPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(ffi.Pointer<ffi.Char>, LLVMModuleRef,
-              LLVMTypeRef)>>('getOrInsertFunction');
-  late final _getOrInsertFunction = _getOrInsertFunctionPtr.asFunction<
-      LLVMValueRef Function(
-          ffi.Pointer<ffi.Char>, LLVMModuleRef, LLVMTypeRef)>();
-
-  KModuleRef createKModule(
-    ffi.Pointer<ffi.Char> name,
-  ) {
-    return _createKModule(
-      name,
-    );
-  }
-
-  late final _createKModulePtr =
-      _lookup<ffi.NativeFunction<KModuleRef Function(ffi.Pointer<ffi.Char>)>>(
-          'createKModule');
-  late final _createKModule = _createKModulePtr
-      .asFunction<KModuleRef Function(ffi.Pointer<ffi.Char>)>();
-
-  void kModuleInit(
-    KModuleRef module,
-  ) {
-    return _kModuleInit(
-      module,
-    );
-  }
-
-  late final _kModuleInitPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(KModuleRef)>>('kModuleInit');
-  late final _kModuleInit =
-      _kModuleInitPtr.asFunction<void Function(KModuleRef)>();
-
-  void writeOutput(
-    KModuleRef module,
-    int index,
-    ffi.Pointer<ffi.Char> name,
-  ) {
-    return _writeOutput(
-      module,
-      index,
-      name,
-    );
-  }
-
-  late final _writeOutputPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              KModuleRef, ffi.Int, ffi.Pointer<ffi.Char>)>>('writeOutput');
-  late final _writeOutput = _writeOutputPtr
-      .asFunction<void Function(KModuleRef, int, ffi.Pointer<ffi.Char>)>();
-
-  LLVMModuleRef getModule(
-    KModuleRef ref,
-  ) {
-    return _getModule(
-      ref,
-    );
-  }
-
-  late final _getModulePtr =
-      _lookup<ffi.NativeFunction<LLVMModuleRef Function(KModuleRef)>>(
-          'getModule');
-  late final _getModule =
-      _getModulePtr.asFunction<LLVMModuleRef Function(KModuleRef)>();
-
-  LLVMContextRef getLLVMContext(
-    KModuleRef ref,
-  ) {
-    return _getLLVMContext(
-      ref,
-    );
-  }
-
-  late final _getLLVMContextPtr =
-      _lookup<ffi.NativeFunction<LLVMContextRef Function(KModuleRef)>>(
-          'getLLVMContext');
-  late final _getLLVMContext =
-      _getLLVMContextPtr.asFunction<LLVMContextRef Function(KModuleRef)>();
-
-  LLVMPassManagerRef getFPM(
-    KModuleRef ref,
-  ) {
-    return _getFPM(
-      ref,
-    );
-  }
-
-  late final _getFPMPtr =
-      _lookup<ffi.NativeFunction<LLVMPassManagerRef Function(KModuleRef)>>(
-          'getFPM');
-  late final _getFPM =
-      _getFPMPtr.asFunction<LLVMPassManagerRef Function(KModuleRef)>();
-
-  LLVMAttributeRef LLVMCreateStructRetAttr(
-    LLVMContextRef C,
-    LLVMTypeRef Ty,
-  ) {
-    return _LLVMCreateStructRetAttr(
-      C,
-      Ty,
-    );
-  }
-
-  late final _LLVMCreateStructRetAttrPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMAttributeRef Function(
-              LLVMContextRef, LLVMTypeRef)>>('LLVMCreateStructRetAttr');
-  late final _LLVMCreateStructRetAttr = _LLVMCreateStructRetAttrPtr.asFunction<
-      LLVMAttributeRef Function(LLVMContextRef, LLVMTypeRef)>();
-
-  LLVMMetadataRef LLVMCreateCompileUnit(
-    LLVMDIBuilderRef builder,
-    ffi.Pointer<ffi.Char> fileName,
-    ffi.Pointer<ffi.Char> dirName,
-  ) {
-    return _LLVMCreateCompileUnit(
-      builder,
-      fileName,
-      dirName,
-    );
-  }
-
-  late final _LLVMCreateCompileUnitPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Char>,
-              ffi.Pointer<ffi.Char>)>>('LLVMCreateCompileUnit');
-  late final _LLVMCreateCompileUnit = _LLVMCreateCompileUnitPtr.asFunction<
-      LLVMMetadataRef Function(
-          LLVMDIBuilderRef, ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>();
-
-  void LLVMIRReader(
-    LLVMContextRef context,
-    ffi.Pointer<ffi.Char> name,
-    ffi.Pointer<ffi.Char> outName,
-  ) {
-    return _LLVMIRReader(
-      context,
-      name,
-      outName,
-    );
-  }
-
-  late final _LLVMIRReaderPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(LLVMContextRef, ffi.Pointer<ffi.Char>,
-              ffi.Pointer<ffi.Char>)>>('LLVMIRReader');
-  late final _LLVMIRReader = _LLVMIRReaderPtr.asFunction<
-      void Function(
-          LLVMContextRef, ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>();
-
   /// Obtain the data layout for a module.
   ///
   /// @see Module::getDataLayout()
@@ -15042,6 +14857,223 @@ class LLVMCore {
               LLVMPassManagerRef)>>('LLVMAddAnalysisPasses');
   late final _LLVMAddAnalysisPasses = _LLVMAddAnalysisPassesPtr.asFunction<
       void Function(LLVMTargetMachineRef, LLVMPassManagerRef)>();
+
+  void initLLVM() {
+    return _initLLVM();
+  }
+
+  late final _initLLVMPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>('initLLVM');
+  late final _initLLVM = _initLLVMPtr.asFunction<void Function()>();
+
+  void destory(
+    KModuleRef module,
+  ) {
+    return _destory(
+      module,
+    );
+  }
+
+  late final _destoryPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(KModuleRef)>>('destory');
+  late final _destory = _destoryPtr.asFunction<void Function(KModuleRef)>();
+
+  LLVMValueRef getOrInsertFunction(
+    ffi.Pointer<ffi.Char> name,
+    LLVMModuleRef module,
+    LLVMTypeRef functionTy,
+  ) {
+    return _getOrInsertFunction(
+      name,
+      module,
+      functionTy,
+    );
+  }
+
+  late final _getOrInsertFunctionPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMValueRef Function(ffi.Pointer<ffi.Char>, LLVMModuleRef,
+              LLVMTypeRef)>>('getOrInsertFunction');
+  late final _getOrInsertFunction = _getOrInsertFunctionPtr.asFunction<
+      LLVMValueRef Function(
+          ffi.Pointer<ffi.Char>, LLVMModuleRef, LLVMTypeRef)>();
+
+  KModuleRef createKModule(
+    ffi.Pointer<ffi.Char> name,
+  ) {
+    return _createKModule(
+      name,
+    );
+  }
+
+  late final _createKModulePtr =
+      _lookup<ffi.NativeFunction<KModuleRef Function(ffi.Pointer<ffi.Char>)>>(
+          'createKModule');
+  late final _createKModule = _createKModulePtr
+      .asFunction<KModuleRef Function(ffi.Pointer<ffi.Char>)>();
+
+  void kModuleInit(
+    KModuleRef module,
+  ) {
+    return _kModuleInit(
+      module,
+    );
+  }
+
+  late final _kModuleInitPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(KModuleRef)>>('kModuleInit');
+  late final _kModuleInit =
+      _kModuleInitPtr.asFunction<void Function(KModuleRef)>();
+
+  void writeOutput(
+    KModuleRef module,
+    int index,
+    ffi.Pointer<ffi.Char> name,
+  ) {
+    return _writeOutput(
+      module,
+      index,
+      name,
+    );
+  }
+
+  late final _writeOutputPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              KModuleRef, ffi.Int, ffi.Pointer<ffi.Char>)>>('writeOutput');
+  late final _writeOutput = _writeOutputPtr
+      .asFunction<void Function(KModuleRef, int, ffi.Pointer<ffi.Char>)>();
+
+  LLVMModuleRef getModule(
+    KModuleRef ref,
+  ) {
+    return _getModule(
+      ref,
+    );
+  }
+
+  late final _getModulePtr =
+      _lookup<ffi.NativeFunction<LLVMModuleRef Function(KModuleRef)>>(
+          'getModule');
+  late final _getModule =
+      _getModulePtr.asFunction<LLVMModuleRef Function(KModuleRef)>();
+
+  LLVMContextRef getLLVMContext(
+    KModuleRef ref,
+  ) {
+    return _getLLVMContext(
+      ref,
+    );
+  }
+
+  late final _getLLVMContextPtr =
+      _lookup<ffi.NativeFunction<LLVMContextRef Function(KModuleRef)>>(
+          'getLLVMContext');
+  late final _getLLVMContext =
+      _getLLVMContextPtr.asFunction<LLVMContextRef Function(KModuleRef)>();
+
+  LLVMAttributeRef LLVMCreateStructRetAttr(
+    LLVMContextRef C,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMCreateStructRetAttr(
+      C,
+      Ty,
+    );
+  }
+
+  late final _LLVMCreateStructRetAttrPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMAttributeRef Function(
+              LLVMContextRef, LLVMTypeRef)>>('LLVMCreateStructRetAttr');
+  late final _LLVMCreateStructRetAttr = _LLVMCreateStructRetAttrPtr.asFunction<
+      LLVMAttributeRef Function(LLVMContextRef, LLVMTypeRef)>();
+
+  LLVMMetadataRef LLVMCreateCompileUnit(
+    LLVMDIBuilderRef builder,
+    ffi.Pointer<ffi.Char> fileName,
+    ffi.Pointer<ffi.Char> dirName,
+  ) {
+    return _LLVMCreateCompileUnit(
+      builder,
+      fileName,
+      dirName,
+    );
+  }
+
+  late final _LLVMCreateCompileUnitPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMMetadataRef Function(LLVMDIBuilderRef, ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>)>>('LLVMCreateCompileUnit');
+  late final _LLVMCreateCompileUnit = _LLVMCreateCompileUnitPtr.asFunction<
+      LLVMMetadataRef Function(
+          LLVMDIBuilderRef, ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>();
+
+  void LLVMIRReader(
+    LLVMContextRef context,
+    ffi.Pointer<ffi.Char> name,
+    ffi.Pointer<ffi.Char> outName,
+  ) {
+    return _LLVMIRReader(
+      context,
+      name,
+      outName,
+    );
+  }
+
+  late final _LLVMIRReaderPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMContextRef, ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>)>>('LLVMIRReader');
+  late final _LLVMIRReader = _LLVMIRReaderPtr.asFunction<
+      void Function(
+          LLVMContextRef, ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>();
+
+  void optimize(
+    KModuleRef kModule,
+    int OptLevelRust,
+    int OptStage,
+    int NoPrepopulatePasses,
+    int VerifyIR,
+    int UseThinLTOBuffers,
+    int MergeFunctions,
+    int UnrollLoops,
+    int SLPVectorize,
+    int LoopVectorize,
+    int DisableSimplifyLibCalls,
+  ) {
+    return _optimize(
+      kModule,
+      OptLevelRust,
+      OptStage,
+      NoPrepopulatePasses,
+      VerifyIR,
+      UseThinLTOBuffers,
+      MergeFunctions,
+      UnrollLoops,
+      SLPVectorize,
+      LoopVectorize,
+      DisableSimplifyLibCalls,
+    );
+  }
+
+  late final _optimizePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              KModuleRef,
+              ffi.Int32,
+              ffi.Int32,
+              ffi.Int,
+              ffi.Int,
+              ffi.Int,
+              ffi.Int,
+              ffi.Int,
+              ffi.Int,
+              ffi.Int,
+              ffi.Int)>>('optimize');
+  late final _optimize = _optimizePtr.asFunction<
+      void Function(
+          KModuleRef, int, int, int, int, int, int, int, int, int, int)>();
 
   /// The current debug metadata version number.
   int LLVMDebugMetadataVersion() {
@@ -19116,17 +19148,6 @@ typedef LLVMPassManagerRef = ffi.Pointer<LLVMOpaquePassManager>;
 
 final class LLVMOpaquePassManager extends ffi.Opaque {}
 
-typedef KModuleRef = ffi.Pointer<KOpaqueModule>;
-
-final class KOpaqueModule extends ffi.Opaque {}
-
-/// Represents an LLVM debug info builder.
-///
-/// This models llvm::DIBuilder.
-typedef LLVMDIBuilderRef = ffi.Pointer<LLVMOpaqueDIBuilder>;
-
-final class LLVMOpaqueDIBuilder extends ffi.Opaque {}
-
 /// @defgroup LLVMCTarget Target information
 /// @ingroup LLVMC
 ///
@@ -19186,6 +19207,33 @@ typedef LLVMTargetRef = ffi.Pointer<LLVMTarget>;
 ///
 /// @{
 typedef LLVMTargetMachineRef = ffi.Pointer<LLVMOpaqueTargetMachine>;
+typedef KModuleRef = ffi.Pointer<KOpaqueModule>;
+
+final class KOpaqueModule extends ffi.Opaque {}
+
+/// Represents an LLVM debug info builder.
+///
+/// This models llvm::DIBuilder.
+typedef LLVMDIBuilderRef = ffi.Pointer<LLVMOpaqueDIBuilder>;
+
+final class LLVMOpaqueDIBuilder extends ffi.Opaque {}
+
+abstract class LLVMRustPassBuilderOptLevel {
+  static const int O0 = 0;
+  static const int O1 = 1;
+  static const int O2 = 2;
+  static const int O3 = 3;
+  static const int Os = 4;
+  static const int Oz = 5;
+}
+
+abstract class LLVMRustOptStage {
+  static const int PreLinkNoLTO = 0;
+  static const int PreLinkThinLTO = 1;
+  static const int PreLinkFatLTO = 2;
+  static const int ThinLTO = 3;
+  static const int FatLTO = 4;
+}
 
 /// Debug info flags.
 abstract class LLVMDIFlags {

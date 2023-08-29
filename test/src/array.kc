@@ -1,30 +1,25 @@
 import 'd.kc';
 
 
-fn main(argc: usize, argv: cArray<string>) i32 {
-
-    let arr = Array { argc , argv };
-    let size =  arr.getSize();
+fn main(argc: usize, argv:  **u8) i32 {
+    let arr = CArray { argc, argv };
+    let size = arr.getSize();
 
     let y = 0u64;
-    let max = size;
-    
-    while y < max {
-      let str = arr.elementAt(y);
-      printf('all size: %d, current: %d, str: %s\n', size, y, str);
-      y += 1;
-    }
-    print('new start');
+
+    printf('new start %d\n', size);
     let new_arr = Array<i32>.new(10);
 
-    let new_max = new_arr.size;
-    y = 0;
+    let new_max = new_arr.getSize() as i32;
+
+    let y = 0;
     printf('size: %d\n', new_max);
     while y < new_max {
         let yy = y + 1;
-        new_arr.elementAt(y) = yy;
-      printf("%d\n", new_arr.elementAt(y));
+       new_arr.elementAt(y) = yy;
+       printf("%d\n", new_arr.elementAt(y));
         y += 1;
+
         printf('y: %d\n', y);
     }
 

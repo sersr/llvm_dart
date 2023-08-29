@@ -99,7 +99,6 @@ class Project {
     });
   }
 
-  bool mem2reg = false;
   bool printAsm = false;
   bool enableBuild = true;
 
@@ -143,7 +142,6 @@ class Project {
       root.currentPath = path;
       root.init(isDebug);
       root.importHandler = importBuild as dynamic;
-      BuildContext.mem2reg = mem2reg;
 
       for (var val in parser.globalVar.values) {
         val.build(root);
@@ -166,6 +164,21 @@ class Project {
         }
       }
       root.finalize();
+
+      llvm.optimize(
+        root.kModule,
+        LLVMRustPassBuilderOptLevel.O0,
+        LLVMRustOptStage.PreLinkNoLTO,
+        LLVMFalse,
+        LLVMTrue,
+        LLVMTrue,
+        LLVMTrue,
+        LLVMTrue,
+        LLVMTrue,
+        LLVMTrue,
+        LLVMFalse,
+      );
+      llvm.LLVMDumpModule(root.module);
       llvm.LLVMPrintModuleToFile(root.module, buildFile('out.ll'), nullptr);
       llvm.writeOutput(
           root.kModule, LLVMCodeGenFileType.LLVMObjectFile, buildFile('out.o'));

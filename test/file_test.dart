@@ -7,8 +7,7 @@ void main() {
   Future<void> run(String name, {bool run = false}) {
     return runPrint(() {
       // final name = 'impl_fn.kc';
-      final project = Project(testSrcDir.childFile(name).path, isDebug: true);
-      // project.mem2reg = true;
+      final project = Project(testSrcDir.childFile(name).path, isDebug: false);
       // project.printAsm = true;
       // project.enableBuild = true;
       project.analysis();
@@ -21,7 +20,7 @@ void main() {
     });
   }
 
-  test('file', () => run('com_ty.kc'));
+  test('com_ty', () => run('com_ty.kc'));
 
   test('final', () => run('final.kc', run: true));
 
@@ -30,4 +29,7 @@ void main() {
   test('c_array.kc', () => run('c_array.kc'));
 
   test('debug', () => run('debug.kc', run: false));
+  test('array', () => run('array.kc'));
+
+  test('array_to_str', () => run('array_to_str.kc'));
 }

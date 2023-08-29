@@ -59,7 +59,7 @@ AnalysisContext testRun(String src,
           }
           return child;
         };
-        BuildContext.mem2reg = mem2reg;
+
         root.pushAllTy(m.globalTy);
         root.pushFn(SizeOfFn.ident, sizeOfFn);
         for (var val in m.globalVar.values) {

@@ -41,6 +41,11 @@ class Offset {
   bool get isValid => column > 0 && row > 0;
   final int column;
   final int row;
+
+  @override
+  String toString() {
+    return '{row: $row, column: $column}';
+  }
 }
 
 class Identifier with EquatableMixin {
@@ -299,11 +304,11 @@ enum LitKind {
   kDouble('double'),
   f32('f32'),
   f64('f64'),
+  kInt('int'),
   kString('string'),
 
   i8('i8'),
   i16('i16'),
-  kInt('int'),
   i32('i32'),
   i64('i64'),
   i128('i128'),
@@ -337,14 +342,15 @@ enum LitKind {
 
   LitKind get convert {
     if (index >= u8.index && index <= u128.index) {
-      return values[index - 5];
+      final diff = u8.index - i8.index;
+      return values[index - diff];
     }
     return this;
   }
 
   bool get signed {
     assert(isInt);
-    if (index >= i8.index && index <= i128.index) {
+    if (index >= i8.index && index <= i128.index || this == kInt) {
       return true;
     }
     return false;
@@ -1469,7 +1475,8 @@ class ArrayLLVMType extends LLVMType {
 
     final v = llvm.LLVMBuildInBoundsGEP2(
         c.builder, elementTy, p, indics.toNative(), indics.length, unname);
-    final vv = ty.elementType.llvmType.createAlloca(c, Identifier.none, v);
+
+    final vv = LLVMAllocaVariable(ty.elementType, v, elementTy);
     vv.isTemp = false;
     return vv;
   }

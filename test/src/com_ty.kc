@@ -20,7 +20,7 @@ fn hello<T>(y: &T) {
 }
 
 fn main() i32 {
-  let g = Gen { 10 , &"hello"};
+  let g = Gen { 10 , "hello"};
  hello(&g);
 
  let gg = g;

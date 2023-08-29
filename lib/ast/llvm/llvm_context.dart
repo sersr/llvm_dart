@@ -35,7 +35,6 @@ class BuildContext
     kModule = parent!.kModule;
     module = parent!.module;
     llvmContext = parent!.llvmContext;
-    fpm = parent!.fpm;
     builder = parent!.builder;
     fn = parent!.fn;
     _unit = parent!._unit;
@@ -48,7 +47,6 @@ class BuildContext
     kModule = p.kModule;
     module = p.module;
     llvmContext = p.llvmContext;
-    fpm = p.fpm;
     builder = llvm.LLVMCreateBuilderInContext(llvmContext);
     p.children.add(this);
   }
@@ -135,7 +133,6 @@ class BuildContext
   void _init() {
     module = llvm.getModule(kModule);
     llvmContext = llvm.getLLVMContext(kModule);
-    fpm = llvm.getFPM(kModule);
     builder = llvm.LLVMCreateBuilderInContext(llvmContext);
   }
 
@@ -146,8 +143,6 @@ class BuildContext
   late final LLVMContextRef llvmContext;
   @override
   late final LLVMBuilderRef builder;
-
-  late final LLVMPassManagerRef fpm;
 
   late LLVMConstVariable fn;
 
@@ -425,12 +420,8 @@ class BuildContext
       }
     }
     voidRet();
-    // mem2reg pass
-    if (mem2reg) llvm.LLVMRunFunctionPassManager(fpm, fv.value);
     return fv;
   }
-
-  static bool mem2reg = false;
 
   bool _returned = false;
   void ret(Variable? val, Offset currentOffset,

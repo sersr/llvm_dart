@@ -1300,6 +1300,8 @@ class MethodCallExpr extends Expr with FnCallMixin {
                 ety = ty.parent;
               }
 
+              c.diSetCurrentLoc(ident.offset);
+
               var v = llvm.LLVMBuildInBoundsGEP2(c.builder, elementTy, p,
                   indics.toNative(), indics.length, unname);
               v = llvm.LLVMBuildLoad2(c.builder, c.pointer(), v, unname);

@@ -1,21 +1,12 @@
 import 'd.kc'
 import 'stack_overflow.kc'
 
-fn main(argc: i32, ptr: **i8) i32 {
+fn main(argc: i32, ptr: **u8) i32 {
   init_sig_stack();
 
   let args = CArray {argc, ptr};
 
-  let index = 0
-
-  let y =  10 * (202 * (10 + 33) + 210)
-  loop {
-    if index >= argc {
-      break;
-    }
-    print(args.elementAt(index));
-    index += 1;
-  }
+    print(args.elementAt(0));
 
   let op = None();
 
