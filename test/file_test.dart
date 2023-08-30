@@ -37,4 +37,6 @@ void main() {
   test('array_to_str', () => run('array_to_str.kc'));
 
   test('debug', () => run('debug.kc', run: false));
+
+  test('type alias', () => run('type_alias.kc'));
 }

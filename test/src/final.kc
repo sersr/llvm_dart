@@ -18,6 +18,7 @@ fn main() i32 {
   let hh = HH {1, ha};
 
   printf("hh: %d\n", hh.y);
+  printf("hh: %p\n", hh.x);
 
   y = null;
   let yy = 10;
@@ -37,7 +38,9 @@ fn main() i32 {
   hh.x.print();
 
   let y = -1f32;
-  if y {
+  if y == null {
+    print("y == null");
+  }else {
     print("y == -1");
   }
   loopx();

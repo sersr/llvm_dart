@@ -1,10 +1,10 @@
 
 import 'd.kc';
 
-type voidPtr;
+
 extern
 struct stack_t {
-  ss_sp : voidPtr,
+  ss_sp : *void,
   ss_size: i64,
   ss_flags: i32,
 }
@@ -37,9 +37,9 @@ fn exit(code: i32);
 extern
 fn sigemptyset(mask: &u32);
 
-static sig_data:voidPtr = null;
+static sig_data: *void = null;
 extern
-fn sigaction(sig: i32, sa: &sigactionc, oss: voidPtr) i32;
+fn sigaction(sig: i32, sa: &sigactionc, oss: *void) i32;
 
 
 struct siginfo_t {
@@ -74,12 +74,12 @@ fn drop_handler() {
 
 extern
 struct sigactionc {
-  sa_sigaction: voidPtr,
+  sa_sigaction: *void,
   sa_mask: u32,
   sa_flags: i32,
 }
 
 extern fn sigaltstack(t: &stack_t, oss: &stack_t) i32;
 
-extern fn mmap(addr: voidPtr, size: usize, p: i32,pp: i32,  f: i32, offset: i64) voidPtr;
-extern fn munmap(addr: voidPtr, size: usize);
+extern fn mmap(addr: *void, size: usize, p: i32,pp: i32,  f: i32, offset: i64) *void;
+extern fn munmap(addr: *void, size: usize);

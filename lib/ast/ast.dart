@@ -693,19 +693,9 @@ class PathTy with EquatableMixin {
         }
       }
       rty = rty.newInst(gMap, c, gen: gen);
-    } else if (rty is CTypeTy) {
-      final gMap = <Identifier, Ty>{};
-      for (var i = 0; i < generics.length; i += 1) {
-        final g = generics[i];
-        final gg = rty.generics[i];
-        final gty = g.grtOrT(c, gen: gen);
-        if (gty != null) {
-          gMap[gg.ident] = gty;
-        }
-      }
-      rty = rty.grt(c, gen: (ident) {
-        return gMap[ident] ?? gen?.call(ident);
-      });
+    } else if (rty is TypeAliasTy) {
+      rty = rty.getTy(c, generics);
+
       // rty = rty.newInst(gMap, c, gen: gen);
     }
     if (rty == null) return null;
@@ -1155,6 +1145,18 @@ mixin NewInst<T> {
     });
   }
 
+  T newInstWithGenerics(Tys c, List<PathTy> realTypes, List<FieldDef> current,
+      {Map<Identifier, Ty> extra = const {}, GenTy? gen}) {
+    final types = <Identifier, Ty>{}..addAll(extra);
+    for (var i = 0; i < realTypes.length; i += 1) {
+      final g = realTypes[i];
+      final name = current[i];
+      types[name.ident] = g.grt(c);
+    }
+
+    return newInst(types, c, gen: gen);
+  }
+
   T newTy(List<FieldDef> fields);
 }
 
@@ -1501,58 +1503,64 @@ abstract class PathInterFace {
   Map<Identifier, Ty> get tys;
 }
 
-class CTypeTy extends Ty {
-  CTypeTy(this.pathTy, this.baseTy);
-  final PathTy pathTy;
+class TypeAliasTy extends Ty {
+  TypeAliasTy(this.ident, this.generics, this.baseTy);
+  final Identifier ident;
+
+  final List<FieldDef> generics;
   final PathTy? baseTy;
 
-  Identifier get ident => pathTy.ident;
+  // Identifier get ident => pathTy.ident;
 
-  List<PathTy> get generics => pathTy.generics;
+  // List<PathTy> get generics => pathTy.generics;
 
   Ty? grt(Tys c, {GenTy? gen}) {
     if (baseTy == null) return this;
     return baseTy!.grtOrT(c, gen: gen);
   }
 
-  // CTypeTy? _parent;
-  // CTypeTy get root => _parent ?? this;
-  // Map<Identifier, Ty>? _tys;
-  // @override
-  // Map<Identifier, Ty> get tys => _tys ?? const {};
-  // final _tyLists = <ListKey, CTypeTy>{};
+  T? getTy<T extends Ty>(Tys c, List<PathTy> gs, {GenTy? gen}) {
+    final gMap = <Identifier, Ty>{};
+    for (var i = 0; i < gs.length; i += 1) {
+      final gg = gs[i];
+      final g = generics[i];
+      gMap[g.ident] = gg.grt(c);
+    }
+    final t = grt(c, gen: (ident) {
+      return gMap[ident];
+    });
+    if (t is! T) return null;
 
-  // CTypeTy newInst(Map<Identifier, Ty> tys, Tys c, {GenTy? gen}) {
-  //   _parent ??= this;
-  //   return root._tyLists.putIfAbsent(ListKey(tys), () {
-  //     return CTypeTy(pathTy, baseTy)
-  //       .._tys = tys
-  //       .._parent = root;
-  //   });
-  // }
+    return t;
+  }
 
   @override
   void analysis(AnalysisContext context) {
-    context.pushCty(pathTy.ident, this);
+    context.pushCty(ident, this);
   }
 
   @override
   void build(BuildContext context) {
-    context.pushCty(pathTy.ident, this);
+    context.pushCty(ident, this);
   }
 
   @override
   late final CTypeLLVMType llvmType = CTypeLLVMType(this);
 
   @override
-  List<Object?> get props => [pathTy, baseTy];
+  List<Object?> get props => [ident, generics, baseTy];
 
   @override
   String toString() {
-    if (baseTy != null) {
-      return 'type $pathTy = $baseTy';
+    var g = '';
+    if (generics.isNotEmpty) {
+      g = generics.join(',');
+      g = '<$g>';
     }
-    return 'type $pathTy';
+    if (baseTy != null) {
+      return 'type $ident$g = $baseTy';
+    }
+    return 'type $ident$g';
   }
 }
 
@@ -1560,7 +1568,7 @@ class CTypeLLVMType extends LLVMType {
   CTypeLLVMType(this.ty);
 
   @override
-  final CTypeTy ty;
+  final TypeAliasTy ty;
 
   @override
   LLVMTypeRef createType(BuildContext c) {

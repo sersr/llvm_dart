@@ -570,31 +570,39 @@ class BuildContext
     llvm.LLVMBuildUnreachable(builder);
   }
 
-  LLVMTempOpVariable math(
-      Variable lhs,
-      ExprTempValue? Function(BuildContext context) rhsBuilder,
-      OpKind op,
-      bool isFloat,
-      {bool signed = true,
-      Offset lhsOffset = Offset.zero,
-      Offset opOffset = Offset.zero}) {
-    final lty = lhs.ty;
-    // 提供外部操作符实现接口
-    if (lty is! BuiltInTy) {
-      if (op == OpKind.Eq || op == OpKind.Ne) {
-        if (lhs.ty is CTypeTy) {
-          final l = lhs.load(this, lhsOffset);
-          final rvTemp = rhsBuilder(this);
-          final rv = rvTemp?.variable;
-          final r = rv?.load(this, rvTemp!.currentIdent.offset);
-          final id = op.getICmpId(false);
+  Variable math(Variable lhs,
+      ExprTempValue? Function(BuildContext context) rhsBuilder, OpKind op,
+      {Offset lhsOffset = Offset.zero, Offset opOffset = Offset.zero}) {
+    // final lty = lhs.ty;
+    // // 提供外部操作符实现接口
+    // if (lty is! BuiltInTy) {
+    //   if (op == OpKind.Eq || op == OpKind.Ne) {
+    //     if (lhs.ty is CTypeTy) {
+    //       final l = lhs.load(this, lhsOffset);
+    //       final rvTemp = rhsBuilder(this);
+    //       final rv = rvTemp?.variable;
+    //       final r = rv?.load(this, rvTemp!.currentIdent.offset);
+    //       final id = op.getICmpId(false);
 
-          if (r != null && id != null) {
-            diSetCurrentLoc(opOffset);
-            final v = llvm.LLVMBuildICmp(builder, id, l, r, unname);
-            return LLVMTempOpVariable(BuiltInTy.kBool, isFloat, signed, v);
-          }
-        }
+    //       if (r != null && id != null) {
+    //         diSetCurrentLoc(opOffset);
+    //         final v = llvm.LLVMBuildICmp(builder, id, l, r, unname);
+    //         return LLVMTempOpVariable(BuiltInTy.kBool, isFloat, signed, v);
+    //       }
+    //     }
+    //   }
+    // }
+
+    var isFloat = false;
+    var signed = false;
+    final ty = lhs.ty;
+
+    if (ty is BuiltInTy && ty.ty.isNum) {
+      final kind = ty.ty;
+      if (kind.isFp) {
+        isFloat = true;
+      } else if (kind.isInt) {
+        signed = kind.signed;
       }
     }
 
@@ -624,16 +632,34 @@ class BuildContext
       variable.store(c, r!, Offset.zero);
       c.br(after.context);
       insertPointBB(after);
-      final ac = after.context;
-      final con = variable.load(ac, Offset.zero);
-      return LLVMTempOpVariable(BuiltInTy.kBool, false, false, con);
+      return variable;
+      // final ac = after.context;
+
+      // final con = variable.load(ac, Offset.zero);
+      // return LLVMTempOpVariable(BuiltInTy.kBool, false, false, con);
     }
 
     final temp = rhsBuilder(this);
     final r = temp?.variable?.load(this, temp.currentIdent.offset);
     if (r == null) {
-      // error
-      return LLVMTempOpVariable(lhs.ty, isFloat, signed, l);
+      LLVMValueRef? value;
+      if (ty is! BuiltInTy) {
+        value = llvm.LLVMBuildIsNotNull(builder, l, unname);
+      } else {
+        if (ty.ty.isNum) {
+          final r = ty.llvmType.createValue(str: '0').getBaseValue(this);
+          assert(op == OpKind.Ne);
+          if (isFloat) {
+            value = llvm.LLVMBuildFCmp(
+                builder, OpKind.Ne.getFCmpId(false)!, l, r, unname);
+          } else {
+            value = llvm.LLVMBuildICmp(
+                builder, OpKind.Ne.getICmpId(false)!, l, r, unname);
+          }
+        }
+      }
+
+      return LLVMConstVariable(value ?? l, BuiltInTy.kBool);
     }
 
     LLVMValueRef Function(LLVMBuilderRef b, LLVMValueRef l, LLVMValueRef r,
@@ -645,7 +671,8 @@ class BuildContext
       final id = op.getFCmpId(signed);
       if (id != null) {
         final v = llvm.LLVMBuildFCmp(builder, id, l, r, unname);
-        return LLVMTempOpVariable(BuiltInTy.kBool, isFloat, signed, v);
+        return LLVMConstVariable(v, BuiltInTy.kBool);
+        // return LLVMTempOpVariable(BuiltInTy.kBool, isFloat, signed, v);
       }
       LLVMValueRef? value;
       switch (op) {
@@ -676,20 +703,20 @@ class BuildContext
         default:
       }
       if (value != null) {
-        return LLVMTempOpVariable(lhs.ty, isFloat, signed, value);
+        return LLVMConstVariable(value, BuiltInTy.kBool);
       }
     }
 
     final cmpId = op.getICmpId(signed);
     if (cmpId != null) {
       final v = llvm.LLVMBuildICmp(builder, cmpId, l, r, unname);
-      return LLVMTempOpVariable(BuiltInTy.kBool, isFloat, signed, v);
+      return LLVMConstVariable(v, BuiltInTy.kBool);
+      // return LLVMTempOpVariable(BuiltInTy.kBool, isFloat, signed, v);
     }
 
     LLVMValueRef? value;
 
     LLVMIntrisics? k;
-    final ty = lhs.ty;
     switch (op) {
       case OpKind.Add:
         k = LLVMIntrisics.getAdd(ty, signed);
@@ -739,12 +766,15 @@ class BuildContext
       panicBB.context.diSetCurrentLoc(opOffset);
       panicBB.context.painc();
       insertPointBB(after);
-      return LLVMTempOpVariable(ty, isFloat, signed, mathValue.value);
+
+      return LLVMConstVariable(mathValue.value, BuiltInTy.kBool);
+      // return LLVMTempOpVariable(ty, isFloat, signed, mathValue.value);
     }
     if (llfn != null) {
       value = llfn(builder, l, r, unname);
     }
 
-    return LLVMTempOpVariable(ty, isFloat, signed, value ?? l);
+    return LLVMConstVariable(value ?? l, BuiltInTy.kBool);
+    // return LLVMTempOpVariable(ty, isFloat, signed, value ?? l);
   }
 }

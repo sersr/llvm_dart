@@ -276,13 +276,22 @@ class TyStmt extends Stmt {
   }
 
   @override
-  void build(BuildContext context) {}
+  void build(BuildContext context) {
+    ty.build(context);
+  }
+
+  @override
+  void analysis(AnalysisContext context) {
+    ty.analysis(context);
+  }
+
+  @override
+  String toString() {
+    return '$pad$ty';
+  }
 
   @override
   List<Object?> get props => [ty];
-
-  @override
-  void analysis(AnalysisContext context) {}
 }
 
 class StructStmt extends Stmt {
@@ -307,7 +316,7 @@ class StructStmt extends Stmt {
 
   @override
   String toString() {
-    return '$ty';
+    return '$pad$ty';
   }
 
   @override

@@ -88,18 +88,27 @@ class Parser {
 
   Ty? parseType(TokenIterator it) {
     eatLfIfNeed(it);
-    final path = parsePathTy(it);
-    if (path != null) {
-      eatLfIfNeed(it);
-      PathTy? base;
-      if (it.moveNext()) {
-        if (getToken(it).kind == TokenKind.eq) {
-          base = parsePathTy(it);
-        } else {
-          it.moveBack();
-        }
+    it.moveNext();
+    final ident = getIdent(it);
+    final generics = parseGenerics(it);
+    eatLfIfNeed(it);
+    PathTy? base;
+
+    if (it.moveNext()) {
+      if (getToken(it).kind == TokenKind.eq) {
+        base = parsePathTy(it);
+      } else {
+        it.moveBack();
       }
-      return CTypeTy(path, base);
+    }
+
+    return TypeAliasTy(ident, generics, base);
+  }
+
+  Stmt? parseTypeStamt(TokenIterator it) {
+    if (getKey(it) == Key.kType) {
+      final ty = parseType(it);
+      if (ty != null) return TyStmt(ty);
     }
     return null;
   }
@@ -449,6 +458,7 @@ class Parser {
     stmt ??= parseWhileExpr(it);
     stmt ??= parseMatchStmt(it);
     stmt ??= parseImportStmt(it);
+    stmt ??= parseTypeStamt(it);
     stmt ??= parseStmtBase(it);
 
     return stmt;

@@ -81,12 +81,12 @@ class LLVMConstVariable extends Variable with Deref {
   }
 }
 
-class LLVMTempOpVariable extends LLVMConstVariable {
-  LLVMTempOpVariable(Ty ty, this.isFloat, this.isSigned, LLVMValueRef value)
-      : super(value, ty);
-  final bool isSigned;
-  final bool isFloat;
-}
+// class LLVMTempOpVariable extends LLVMConstVariable {
+//   LLVMTempOpVariable(Ty ty, this.isFloat, this.isSigned, LLVMValueRef value)
+//       : super(value, ty);
+//   final bool isSigned;
+//   final bool isFloat;
+// }
 
 mixin DelayVariableMixin {
   LLVMValueRef Function([StoreVariable? alloca]) get _create;

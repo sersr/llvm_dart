@@ -252,15 +252,15 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
     pushKV(structTy, ty, implForStructs);
   }
 
-  final cTys = <Identifier, List<CTypeTy>>{};
+  final cTys = <Identifier, List<TypeAliasTy>>{};
 
-  CTypeTy? getCty(Identifier ident) {
+  TypeAliasTy? getCty(Identifier ident) {
     return getKV(ident, (c) => c.cTys, importHandle: (c) {
       return c.getCty(ident);
     });
   }
 
-  void pushCty(Identifier ident, CTypeTy ty) {
+  void pushCty(Identifier ident, TypeAliasTy ty) {
     pushKV(ident, ty, cTys);
   }
 
@@ -277,7 +277,7 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
         pushComponent(ty.ident, ty);
       } else if (ty is ImplTy) {
         pushImpl(ty.struct.ident, ty);
-      } else if (ty is CTypeTy) {
+      } else if (ty is TypeAliasTy) {
         pushCty(ty.ident, ty);
       } else {
         print('unknown ty {${ty.runtimeType}}');

@@ -535,6 +535,10 @@ class LLVMStructType extends LLVMType {
       return llValue;
     }
 
+    if (ty.fields.isEmpty) {
+      return v.getBaseValue(c);
+    }
+
     Variable alloca;
 
     if (!ty.extern) {
@@ -548,14 +552,14 @@ class LLVMStructType extends LLVMType {
       alloca = v;
     }
 
-    final size = getCBytes(c);
-    if (size <= 16) {
-      final loadTy = c.getStructExternType(size);
-      final arr = c.alloctor(loadTy, ty: ty, name: 'struct_arr');
-      llvm.LLVMBuildMemCpy(
-          c.builder, arr, 4, alloca.getBaseValue(c), 4, c.constI64(size));
-      return llvm.LLVMBuildLoad2(c.builder, loadTy, arr, unname);
-    }
+    // final size = getCBytes(c);
+    // if (size <= 16) {
+    //   final loadTy = c.getStructExternType(size);
+    //   final arr = c.alloctor(loadTy, ty: ty, name: 'struct_arr');
+    //   llvm.LLVMBuildMemCpy(
+    //       c.builder, arr, 4, alloca.getBaseValue(c), 4, c.constI64(size));
+    //   return llvm.LLVMBuildLoad2(c.builder, loadTy, arr, unname);
+    // }
     return alloca.getBaseValue(c);
   }
 
