@@ -516,6 +516,14 @@ class StructExpr extends Expr {
       final gMap = <Identifier, Ty>{}..addAll(t.tys);
 
       final sg = generics;
+
+      // 从上下文中获取具体类型
+      for (var g in sg) {
+        final tyVal = context.getVariable(g.ident);
+        if (tyVal is TyVariable) {
+          gMap.putIfAbsent(g.ident, () => tyVal.ty);
+        }
+      }
       final sortFields = alignParam(
           params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
@@ -948,7 +956,7 @@ mixin FnCallMixin {
       args.add(sret.alloca);
     }
 
-    if (struct != null) {
+    if (struct != null && fn is ImplFn) {
       if (struct.ty is BuiltInTy) {
         args.add(struct.load(context, Offset.zero));
       } else {
@@ -1047,7 +1055,6 @@ mixin FnCallMixin {
     } else if (retTy is StructTy) {
       final v = retTy.llvmType.createAlloca(context, Identifier.none, null);
       v.store(context, ret, Offset.zero);
-      v.isTemp = false;
       return ExprTempValue(v, v.ty, currentIdent);
     }
     final v = LLVMConstVariable(ret, retTy);
@@ -1117,7 +1124,10 @@ class FnCallExpr extends Expr with FnCallMixin {
       final e = first.expr.build(context);
       Ty? ty = e?.ty;
       if (ty == null) {
-        final e = first.expr;
+        var e = first.expr;
+        if (e is RefExpr) {
+          e = e.current;
+        }
         if (e is VariableIdentExpr) {
           final p = PathTy(e.ident, e.generics);
           ty = p.grt(context);

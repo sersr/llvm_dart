@@ -3,6 +3,7 @@ import '../../llvm_dart.dart';
 import '../ast.dart';
 import '../memory.dart';
 import 'build_methods.dart';
+import 'llvm_context.dart';
 
 enum LLVMITy {
   i8,
@@ -48,16 +49,16 @@ enum LLVMIntrisics {
   final String name;
   const LLVMIntrisics(this.name);
 
-  static LLVMIntrisics? getAdd(Ty ty, bool isSigned) {
-    final t = getTypeFrom(ty);
+  static LLVMIntrisics? getAdd(Ty ty, bool isSigned, BuildContext context) {
+    final t = getTypeFrom(ty, context);
     if (t != null && !isSigned) {
       return values[t.index + 5];
     }
     return t;
   }
 
-  static LLVMIntrisics? getSub(Ty ty, bool isSigned) {
-    final t = getTypeFrom(ty);
+  static LLVMIntrisics? getSub(Ty ty, bool isSigned, BuildContext context) {
+    final t = getTypeFrom(ty, context);
     if (t != null) {
       if (isSigned) {
         return values[t.index + 10];
@@ -66,8 +67,8 @@ enum LLVMIntrisics {
     return t;
   }
 
-  static LLVMIntrisics? getMul(Ty ty, bool isSigned) {
-    final t = getTypeFrom(ty);
+  static LLVMIntrisics? getMul(Ty ty, bool isSigned, BuildContext context) {
+    final t = getTypeFrom(ty, context);
     if (t != null) {
       if (isSigned) {
         return values[t.index + 15];
@@ -78,7 +79,7 @@ enum LLVMIntrisics {
     return t;
   }
 
-  static LLVMIntrisics? getTypeFrom(Ty ty) {
+  static LLVMIntrisics? getTypeFrom(Ty ty, BuildContext context) {
     if (ty is! BuiltInTy) return null;
     switch (ty.ty.convert) {
       case LitKind.i8:
@@ -93,6 +94,17 @@ enum LLVMIntrisics {
       case LitKind.i128:
         return saddOI128;
       default:
+    }
+
+    if (ty.ty == LitKind.usize) {
+      final size = context.pointerSize();
+      if (size > 8) {
+        return saddOI128;
+      } else if (size > 4) {
+        return saddOI64;
+      } else {
+        return saddOI32;
+      }
     }
     return null;
   }

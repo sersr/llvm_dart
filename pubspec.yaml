@@ -20,5 +20,5 @@ dependencies:
   ffi: ^2.0.1
   file: any
   meta: ^1.9.0
-  nop: ^0.0.4+1
+  nop: ^0.1.0+1
   path: ^1.8.3

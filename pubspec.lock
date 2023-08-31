@@ -221,10 +221,10 @@ packages:
     dependency: "direct main"
     description:
       name: nop
-      sha256: "4c9f9ba87a4e03ddceca7a0f7f1f737e5f97d0012e13617e50f8f8167060bcb1"
+      sha256: ed3d7b1e635147d47a1ab0a7fad933ca921e8d9474c973b1d7311672d40935e9
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "0.0.4+1"
+    version: "0.1.0+1"
   package_config:
     dependency: transitive
     description:

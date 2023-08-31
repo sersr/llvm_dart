@@ -44,6 +44,18 @@ fn main() i32 {
     print("y == -1");
   }
   loopx();
+
+  let option = Some { 10 };
+  option = None{};
+
+  match option {
+    Some(x) => {
+      printf("x:%d\n", x);
+    }
+    None => {
+      printf("None\n");
+    }
+  }
   0;
 }
 
@@ -101,7 +113,7 @@ fn hhg(g: HH) {
 
 enum Option {
   Some(i32),
-  None(),
+  None,
 }
 
 extern fn malloc(size: usize) ptr;

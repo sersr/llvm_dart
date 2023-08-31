@@ -41,7 +41,8 @@ class Parser {
   }
 
   final globalTy = <Token, Ty>{};
-  final globalVar = <Token, Stmt>{};
+  final globalStmt = <Token, Stmt>{};
+  final globalImportStmt = <Token, Stmt>{};
 
   Ty? parseIdent(TokenIterator it, {bool global = true}) {
     final token = getToken(it);
@@ -61,7 +62,7 @@ class Parser {
           final token = getToken(it);
           final stmt = parseStaticExpr(it);
           if (stmt != null) {
-            globalVar[token] = stmt;
+            globalStmt[token] = stmt;
           }
         case Key.kComponent:
           ty = parseCom(it);
@@ -73,7 +74,7 @@ class Parser {
           final token = getToken(it);
           final stmt = parseImportStmt(it);
           if (stmt != null) {
-            globalVar[token] = stmt;
+            globalImportStmt[token] = stmt;
           }
         case Key.kType:
           ty = parseType(it);

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:nop/nop.dart';
+
 import 'ast/analysis_context.dart';
 import 'ast/ast.dart';
 import 'ast/buildin.dart';
@@ -13,6 +15,7 @@ import 'llvm_dart.dart';
 import 'parsers/parser.dart';
 
 T runPrint<T>(T Function() body) {
+  Log.logPathFn = (path) => path;
   return runZoned(body,
       zoneSpecification: ZoneSpecification(print: (self, parent, zone, line) {
     Zone.root.print(line.replaceAll('(package:llvm_dart/', '(./lib/'));
@@ -26,7 +29,7 @@ AnalysisContext testRun(String src,
   return Identifier.run(
     () {
       final m = parseTopItem(src);
-      print(m.globalVar.values.join('\n'));
+      print(m.globalStmt.values.join('\n'));
       print(m.globalTy.values.join('\n'));
       final root = AnalysisContext.root();
       root.pushAllTy(m.globalTy);
@@ -50,10 +53,10 @@ AnalysisContext testRun(String src,
           if (p.existsSync()) {
             final data = p.readAsStringSync();
             final mImport = parseTopItem(data);
-            print(mImport.globalVar.values.join('__\n__'));
+            print(mImport.globalStmt.values.join('__\n__'));
             print(mImport.globalTy.values.join('__\n__'));
             child.pushAllTy(mImport.globalTy);
-            for (var val in mImport.globalVar.values) {
+            for (var val in mImport.globalStmt.values) {
               val.build(child);
             }
           }
@@ -62,7 +65,7 @@ AnalysisContext testRun(String src,
 
         root.pushAllTy(m.globalTy);
         root.pushFn(SizeOfFn.ident, sizeOfFn);
-        for (var val in m.globalVar.values) {
+        for (var val in m.globalStmt.values) {
           val.build(root);
         }
         out:

@@ -84,6 +84,8 @@
         "cinttypes": "cpp",
         "__config_site": "cpp",
         "stdio.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "*.inc": "c",
+        "memory.h": "c"
     }
 }

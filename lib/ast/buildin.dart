@@ -25,6 +25,7 @@ class SizeOfFn extends Fn {
   LLVMConstVariable? build(BuildContext context,
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
+    context.pushFn(ident, this);
     return null;
   }
 

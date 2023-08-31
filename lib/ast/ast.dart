@@ -698,7 +698,13 @@ class PathTy with EquatableMixin {
 
       // rty = rty.newInst(gMap, c, gen: gen);
     }
-    if (rty == null) return null;
+    if (rty == null) {
+      final val = c.getVariable(ident);
+      if (val is! TyVariable) {
+        return null;
+      }
+      rty = val.ty;
+    }
     return kind.resolveTy(rty);
   }
 
@@ -888,8 +894,21 @@ class Fn extends Ty with NewInst<Fn> {
     final key = ListKey(vk);
 
     return root._cache.putIfAbsent(key, () {
-      return context.buildFnBB(this, variables, map ?? const {});
+      return context.buildFnBB(
+          this, variables, map ?? const {}, pushTyGenerics);
     });
+  }
+
+  void pushTyGenerics(BuildContext context) {
+    for (var MapEntry(:key, :value) in tys.entries) {
+      context.pushVariable(key, TyVariable(value));
+    }
+  }
+
+  void pushTyAnalysis(AnalysisContext context) {
+    for (var MapEntry(:key, :value) in tys.entries) {
+      context.pushVariable(key, context.createVal(value, Identifier.none, []));
+    }
   }
 
   Object? getKey() {
@@ -920,6 +939,8 @@ class Fn extends Ty with NewInst<Fn> {
 
     pushFnOnBuild(context);
     final child = context.childContext();
+    pushTyAnalysis(context);
+
     child.setFnContext(this);
     fnSign.fnDecl.analysis(child, this);
     analysisContext(child);
@@ -981,6 +1002,27 @@ mixin ImplFnMixin on Fn {
 
   @override
   void pushFnOnBuild(Tys context) {}
+
+  @override
+  void pushTyGenerics(BuildContext context) {
+    super.pushTyGenerics(context);
+    final structTy = ty;
+    if (structTy is! StructTy) return;
+
+    for (var MapEntry(:key, :value) in structTy.tys.entries) {
+      context.pushVariable(key, TyVariable(value));
+    }
+  }
+
+  @override
+  void pushTyAnalysis(AnalysisContext context) {
+    super.pushTyAnalysis(context);
+    final structTy = ty;
+    if (structTy is! StructTy) return;
+    for (var MapEntry(:key, :value) in structTy.tys.entries) {
+      context.pushVariable(key, context.createVal(value, Identifier.none, []));
+    }
+  }
 
   @override
   Object? getKey() {
@@ -1063,12 +1105,13 @@ class ImplStaticFn extends Fn with ImplFnMixin {
   }
 }
 
-class FieldDef {
-  FieldDef(this.ident, this._ty);
+class FieldDef with EquatableMixin {
+  FieldDef(this.ident, this._ty) : _rty = null;
+  FieldDef._internal(this.ident, this._ty, this._rty);
   final Identifier ident;
   final PathTy _ty;
   PathTy get rawTy => _ty;
-  Ty? _rty;
+  final Ty? _rty;
   Ty grt(Tys c) {
     if (_rty != null) return _rty!;
     return _ty.grt(c);
@@ -1088,6 +1131,10 @@ class FieldDef {
     return FieldDef(ident, _ty);
   }
 
+  FieldDef copyWithTy(Ty? ty) {
+    return FieldDef._internal(ident, _ty, ty);
+  }
+
   List<PointerKind> get kinds => _ty.kind;
   @override
   String toString() {
@@ -1096,6 +1143,9 @@ class FieldDef {
 
   bool? _isRef;
   bool get isRef => _isRef ??= kinds.isRef;
+
+  @override
+  List<Object?> get props => [_rty, _ty, ident];
 }
 
 typedef GenTy = Ty? Function(Identifier ident);
@@ -1115,10 +1165,10 @@ mixin NewInst<T> {
     _parent ??= this as T;
     if (tys.isEmpty) return _parent!;
     final key = ListKey(tys);
+
     return (_parent as NewInst)._tyLists.putIfAbsent(key, () {
       final newFields = <FieldDef>[];
       for (var f in fields) {
-        final nf = f.clone();
         final g = f.grtOrT(c, gen: (ident) {
           final data = tys[ident];
           if (data != null) {
@@ -1133,7 +1183,7 @@ mixin NewInst<T> {
           }
           return gen?.call(ident);
         });
-        nf._rty = g;
+        final nf = f.copyWithTy(g);
         newFields.add(nf);
       }
 

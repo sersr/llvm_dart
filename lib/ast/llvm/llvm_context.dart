@@ -106,7 +106,7 @@ class BuildContext
 
   bool _finalized = true;
   void _debugInit() {
-    if (this.currentPath == null) return;
+    if (this.currentPath == null || !_finalized) return;
     _finalized = false;
     _dBuilder = llvm.LLVMCreateDIBuilder(module);
     final currentPath = this.currentPath!;
@@ -365,7 +365,8 @@ class BuildContext
 
   LLVMConstVariable buildFnBB(Fn fn,
       [Set<AnalysisVariable>? extra,
-      Map<Identifier, Set<AnalysisVariable>> map = const {}]) {
+      Map<Identifier, Set<AnalysisVariable>> map = const {},
+      void Function(BuildContext context)? onCreated]) {
     final contains = fn.llvmType.contains(extra);
 
     final fv = fn.llvmType.createFunction(this, extra);
@@ -376,13 +377,14 @@ class BuildContext
     final block = fn.block?.clone();
     final isDecl = block == null;
     if (isDecl) return fv;
-    final bbContext = createChildContext();
-    bbContext.fn = fv;
-    bbContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
-    bbContext.isFnBBContext = true;
-    bbContext.instertFnEntryBB();
-    bbContext._build(fv.value, fn.fnSign.fnDecl, fn, extra, map: map);
-    block.build(bbContext);
+    final fnContext = createChildContext();
+    fnContext.fn = fv;
+    fnContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
+    fnContext.isFnBBContext = true;
+    fnContext.instertFnEntryBB();
+    onCreated?.call(fnContext);
+    fnContext._build(fv.value, fn.fnSign.fnDecl, fn, extra, map: map);
+    block.build(fnContext);
 
     bool hasRet = false;
     bool voidRet({bool back = false}) {
@@ -394,7 +396,7 @@ class BuildContext
           if (back) return false;
           // error
         }
-        bbContext.ret(null, Offset.zero);
+        fnContext.ret(null, Offset.zero);
         hasRet = true;
         return true;
       }
@@ -408,13 +410,13 @@ class BuildContext
         if (expr is! RetExpr) {
           if (!voidRet(back: true)) {
             // 获取缓存的value
-            final valTemp = expr.build(bbContext);
+            final valTemp = expr.build(fnContext);
             final val = valTemp?.variable;
             if (val == null) {
               // error
             }
 
-            bbContext.ret(val, valTemp?.currentIdent.offset ?? Offset.zero);
+            fnContext.ret(val, valTemp?.currentIdent.offset ?? Offset.zero);
           }
         }
       }
@@ -719,17 +721,17 @@ class BuildContext
     LLVMIntrisics? k;
     switch (op) {
       case OpKind.Add:
-        k = LLVMIntrisics.getAdd(ty, signed);
+        k = LLVMIntrisics.getAdd(ty, signed, this);
         break;
       case OpKind.Sub:
         if (!signed) {
           value = llvm.LLVMBuildSub(builder, l, r, unname);
         } else {
-          k = LLVMIntrisics.getSub(ty, signed);
+          k = LLVMIntrisics.getSub(ty, signed, this);
         }
         break;
       case OpKind.Mul:
-        k = LLVMIntrisics.getMul(ty, signed);
+        k = LLVMIntrisics.getMul(ty, signed, this);
         break;
       case OpKind.Div:
         llfn = signed ? llvm.LLVMBuildSDiv : llvm.LLVMBuildUDiv;
