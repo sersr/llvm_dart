@@ -505,8 +505,8 @@ class StructExpr extends Expr {
         struct, context, ident, fields, genericsInst, isNew);
   }
 
-  static T resolveGeneric<T>(NewInst<T> t, Tys context, List<FieldExpr> params,
-      List<PathTy> genericsInst) {
+  static T resolveGeneric<T extends Ty>(NewInst<T> t, Tys context,
+      List<FieldExpr> params, List<PathTy> genericsInst) {
     final fields = t.fields;
     final generics = t.generics;
     var nt = t as T;
@@ -865,7 +865,7 @@ class FnExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final fnV = fn.build(context);
+    final fnV = fn.build();
     if (fnV == null) return null;
 
     return ExprTempValue(fnV, fn, Identifier.none);
@@ -1028,7 +1028,7 @@ mixin FnCallMixin {
 
     final fnType = fn.llvmType.createFnType(context, extra);
 
-    final fnAlloca = fn.build(context, extra, map);
+    final fnAlloca = fn.build(extra, map);
     LLVMValueRef? fnValue;
     if (fnVariable is! UnimplVariable) {
       fnValue = fnVariable?.load(context, Offset.zero);
@@ -1906,8 +1906,8 @@ class VariableIdentExpr extends Expr {
       }
 
       if (enableBuild) {
-        final fnContext = context.getFnContext(ident);
-        final value = fn.build(fnContext!);
+        // final fnContext = context.getFnContext(ident);
+        final value = fn.build();
         if (value != null) {
           return ExprTempValue(value, value.ty, ident);
         }
@@ -2066,9 +2066,6 @@ class MatchItemExpr extends BuildMixin {
     super.incLevel(count);
     block.incLevel(count);
   }
-
-  @override
-  void build(BuildContext context) {}
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {

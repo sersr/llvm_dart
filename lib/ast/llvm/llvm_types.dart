@@ -35,10 +35,10 @@ class LLVMRawValue {
 
 abstract class LLVMType {
   Ty get ty;
-  int getBytes(covariant BuildMethods c);
+  int getBytes(covariant LLVMTypeMixin c);
   LLVMTypeRef createType(BuildContext c);
 
-  LLVMMetadataRef createDIType(covariant BuildMethods c);
+  LLVMMetadataRef createDIType(covariant LLVMTypeMixin c);
 
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {

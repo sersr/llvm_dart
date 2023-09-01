@@ -24,8 +24,21 @@ class LLVMBasicBlock {
   bool inserted = false;
 }
 
+class RootBuildContext with Tys<Variable> {
+  @override
+  Tys<LifeCycleVariable> defaultImport() {
+    throw UnimplementedError();
+  }
+}
+
 class BuildContext
-    with BuildMethods, Tys<BuildContext, Variable>, Consts, OverflowMath, Cast {
+    with
+        LLVMTypeMixin,
+        BuildMethods,
+        Tys<Variable>,
+        Consts,
+        OverflowMath,
+        Cast {
   BuildContext._(BuildContext this.parent) : isRoot = false {
     kModule = parent!.kModule;
     _dBuilder = parent!._dBuilder;
@@ -54,6 +67,16 @@ class BuildContext
   @override
   String? get currentPath => super.currentPath ?? parent?.currentPath;
 
+  @override
+  ImportMixin get importHandler => parent?.importHandler ?? super.importHandler;
+  void log(int level) {
+    print('${' ' * level}$currentPath');
+    level += 2;
+    for (var child in children) {
+      child.log(level);
+    }
+  }
+
   BuildContext.root([String name = 'root'])
       : parent = null,
         isRoot = true {
@@ -61,6 +84,22 @@ class BuildContext
     _init();
     _debugInit();
   }
+
+  /// override: Tys
+  @override
+  VA? getKVImpl<K, VA>(
+      K k, Map<K, List<VA>> Function(Tys<LifeCycleVariable> c) map,
+      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
+    return super.getKVImpl(k, map, handler: handler, test: test) ??
+        parent?.getKVImpl(k, map, handler: handler, test: test);
+  }
+
+  @override
+  Variable? getVariableImpl(Identifier ident) {
+    return super.getVariableImpl(ident) ?? parent?.getVariableImpl(ident);
+  }
+
+  /// ----
 
   LLVMMetadataRef? _unit;
   @override
@@ -160,19 +199,6 @@ class BuildContext
     }
   }
 
-  BuildContext? getFnContext(Identifier ident) {
-    final list = fns[ident];
-    if (list != null) {
-      return this;
-    }
-
-    for (var im in imports.values) {
-      final v = im.getFnContext(ident);
-      if (v != null) return v;
-    }
-    return parent?.getFnContext(ident);
-  }
-
   @override
   BuildContext? getLastFnContext() => super.getLastFnContext() as BuildContext?;
 
@@ -187,7 +213,7 @@ class BuildContext
   }
 
   @override
-  BuildContext import() {
+  BuildContext defaultImport() {
     return BuildContext._importRoot(this);
   }
 
@@ -344,7 +370,7 @@ class BuildContext
       final ident = Identifier.builtIn('drop');
       final impl = getImplForStruct(ty, ident);
       final fn = impl?.getFn(ident)?.copyFrom(ty);
-      final fnv = fn?.build(this);
+      final fnv = fn?.build();
       if (fn == null || fnv == null) continue;
       LLVMValueRef v;
       if (val.ty is BuiltInTy) {
@@ -705,7 +731,7 @@ class BuildContext
         default:
       }
       if (value != null) {
-        return LLVMConstVariable(value, BuiltInTy.kBool);
+        return LLVMConstVariable(value, ty);
       }
     }
 
@@ -769,14 +795,14 @@ class BuildContext
       panicBB.context.painc();
       insertPointBB(after);
 
-      return LLVMConstVariable(mathValue.value, BuiltInTy.kBool);
+      return LLVMConstVariable(mathValue.value, ty);
       // return LLVMTempOpVariable(ty, isFloat, signed, mathValue.value);
     }
     if (llfn != null) {
       value = llfn(builder, l, r, unname);
     }
 
-    return LLVMConstVariable(value ?? l, BuiltInTy.kBool);
+    return LLVMConstVariable(value ?? l, ty);
     // return LLVMTempOpVariable(ty, isFloat, signed, value ?? l);
   }
 }

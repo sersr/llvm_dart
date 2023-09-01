@@ -2,17 +2,25 @@ import 'ast.dart';
 import 'expr.dart';
 import 'tys.dart';
 
-class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
+class RootAnalysis with Tys<AnalysisVariable> {
+  @override
+  Tys<LifeCycleVariable> defaultImport() {
+    throw UnimplementedError();
+  }
+}
+
+class AnalysisContext with Tys<AnalysisVariable> {
   AnalysisContext.root() : parent = null;
 
   AnalysisContext._(AnalysisContext this.parent);
   @override
-  AnalysisContext import() {
+  AnalysisContext defaultImport() {
     return AnalysisContext.root();
   }
 
   AnalysisContext childContext() {
     final c = AnalysisContext._(this);
+    c.importHandler = importHandler;
     children.add(c);
     return c;
   }
@@ -94,7 +102,7 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
   }
 
   @override
-  AnalysisVariable? getVariable(Identifier ident, {bool prin = false}) {
+  AnalysisVariable? getVariableImpl(Identifier ident, {bool prin = false}) {
     final list = variables[ident];
     if (list != null) {
       var last = list.last;
@@ -140,8 +148,16 @@ class AnalysisContext with Tys<AnalysisContext, AnalysisVariable> {
     _currentFn = fn;
   }
 
-  @override
   final AnalysisContext? parent;
+
+  /// override: Tys
+  @override
+  VA? getKVImpl<K, VA>(
+      K k, Map<K, List<VA>> Function(Tys<LifeCycleVariable> c) map,
+      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
+    return super.getKVImpl(k, map, handler: handler, test: test) ??
+        parent?.getKVImpl(k, map, handler: handler, test: test);
+  }
 
   String tree() {
     final buf = StringBuffer();

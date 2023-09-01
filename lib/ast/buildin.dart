@@ -11,7 +11,7 @@ class SizeOfFn extends Fn {
           FnSign(
             true,
             FnDecl(
-              Identifier.none,
+              ident,
               [],
               [],
               PathTy.ty(BuiltInTy.lit(LitKind.usize)),
@@ -22,9 +22,11 @@ class SizeOfFn extends Fn {
         );
   static final ident = Identifier.builtIn('sizeOf');
   @override
-  LLVMConstVariable? build(BuildContext context,
+  LLVMConstVariable? build(
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
+    final context = currentContext;
+    if (context == null) return null;
     context.pushFn(ident, this);
     return null;
   }

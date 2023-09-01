@@ -9,11 +9,9 @@ import '../ast.dart';
 import '../memory.dart';
 import 'variables.dart';
 
-mixin BuildMethods {
+mixin LLVMTypeMixin {
   LLVMModuleRef get module;
   LLVMContextRef get llvmContext;
-  LLVMBuilderRef get builder;
-  BuildMethods? get parent;
 
   LLVMTypeRef get typeVoid {
     return llvm.LLVMVoidTypeInContext(llvmContext);
@@ -152,6 +150,24 @@ mixin BuildMethods {
     return loadTy;
   }
 
+  LLVMMetadataRef get unit;
+  LLVMMetadataRef get scope;
+
+  LLVMDIBuilderRef? get dBuilder;
+
+  void setName(LLVMValueRef ref, String name) {
+    llvm.LLVMSetValueName(ref, name.toChar());
+  }
+
+  void setLLVMAttr(LLVMValueRef value, int index, int kind, {int val = 0}) {
+    final attr = llvm.LLVMCreateEnumAttribute(llvmContext, kind, val);
+    llvm.LLVMAddAttributeAtIndex(value, index, attr);
+  }
+}
+mixin BuildMethods on LLVMTypeMixin {
+  LLVMBuilderRef get builder;
+  BuildMethods? get parent;
+
   bool isFnBBContext = false;
   LLVMValueRef? _allocaInst;
   BuildMethods? getLastFnContext() {
@@ -180,18 +196,6 @@ mixin BuildMethods {
     return null;
   }
 
-  void setLastAlloca(LLVMValueRef val) {
-    final fnContext = getLastFnContext();
-    if (fnContext != null) {
-      fnContext._allocaInst = val;
-    }
-  }
-
-  LLVMMetadataRef get unit;
-  LLVMMetadataRef get scope;
-
-  LLVMDIBuilderRef? get dBuilder;
-
   LLVMValueRef alloctor(LLVMTypeRef type, {Ty? ty, String name = '_'}) {
     final nb = allocaBuilder;
     llvm.LLVMSetCurrentDebugLocation2(nb ?? builder, nullptr);
@@ -207,8 +211,11 @@ mixin BuildMethods {
     return alloca;
   }
 
-  void setName(LLVMValueRef ref, String name) {
-    llvm.LLVMSetValueName(ref, name.toChar());
+  void setLastAlloca(LLVMValueRef val) {
+    final fnContext = getLastFnContext();
+    if (fnContext != null) {
+      fnContext._allocaInst = val;
+    }
   }
 
   void addFree(Variable val) {}
@@ -272,11 +279,6 @@ mixin BuildMethods {
       diSetCurrentLoc(offset);
     }
     return llvm.LLVMBuildStore(builder, val, alloca);
-  }
-
-  void setLLVMAttr(LLVMValueRef value, int index, int kind, {int val = 0}) {
-    final attr = llvm.LLVMCreateEnumAttribute(llvmContext, kind, val);
-    llvm.LLVMAddAttributeAtIndex(value, index, attr);
   }
 }
 

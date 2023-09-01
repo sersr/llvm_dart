@@ -10,6 +10,7 @@ fn main() i32 {
   let v = 502;
 
   let count = -1;
+  printf('v: %d\n', v);
   while v > 0 {
     count += 1;
     if(v < 10) {

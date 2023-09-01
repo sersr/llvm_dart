@@ -39,38 +39,41 @@ class ImportPath with EquatableMixin {
 typedef ImportHandler = Tys Function(Tys, ImportPath);
 typedef RunImport<T> = T Function(T Function());
 
-mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
-  T? get parent;
+abstract class ImportMixin {
+  Tys import(Tys current, ImportPath path);
+  V? getVariable<V>(Identifier ident);
+  VA? getKVImpl<K, VA, T>(K k, Map<K, List<VA>> Function(Tys c) map,
+      {ImportKV<VA>? handler, bool Function(VA v)? test});
+}
 
-  T import();
+mixin Tys<V extends LifeCycleVariable> {
+  Tys defaultImport();
   String? currentPath;
+  late ImportMixin importHandler;
 
-  final imports = <ImportPath, T>{};
+  final imports = <ImportPath, Tys>{};
 
-  /// TODO: 为每个[Ty]设置上下文
   R? runImport<R>(R Function() body) {
-    // if (_runImport) return null;
+    if (_runImport) return null;
     return runZoned(body, zoneValues: {#_runImport: true});
   }
 
-  ImportHandler? importHandler;
+  // ImportHandler? importHandler;
 
-  ImportHandler? getImportHandler() {
-    if (importHandler != null) return importHandler!;
-    return parent?.getImportHandler();
-  }
+  // ImportHandler? getImportHandler() {
+  //   if (importHandler != null) return importHandler!;
+  //   return parent?.getImportHandler();
+  // }
 
   void pushImport(ImportPath path, {Identifier? name}) {
     if (!imports.containsKey(path)) {
-      final im = getImportHandler()?.call(this, path);
-      if (im != null) {
-        imports[path] = im as T;
-        initImportContext(im);
-      }
+      final im = importHandler.import(this, path);
+      imports[path] = im;
+      initImportContext(im);
     }
   }
 
-  void initImportContext(T child) {}
+  void initImportContext(covariant Tys child) {}
 
   final variables = <Identifier, List<V>>{};
 
@@ -78,7 +81,10 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
     return Zone.current[#_runImport] == true;
   }
 
-  V? getVariable(Identifier ident) {
+  V? getVariable(Identifier ident) =>
+      getVariableImpl(ident) ?? importHandler.getVariable(ident);
+
+  V? getVariableImpl(Identifier ident) {
     final list = variables[ident];
     if (list != null) {
       var last = list.last;
@@ -110,10 +116,11 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
       }
     });
 
-    return v ?? parent?.getVariable(ident);
+    return v as V?;
   }
 
-  void pushVariable(Identifier ident, V variable, {bool isAlloca = true}) {
+  void pushVariable(Identifier ident, covariant V variable,
+      {bool isAlloca = true}) {
     final list = variables.putIfAbsent(ident, () => []);
     if (!list.contains(variable)) {
       variable.ident = ident;
@@ -152,8 +159,7 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
   // 当前范围内可获取的 struct
   final structs = <Identifier, List<StructTy>>{};
   StructTy? getStruct(Identifier ident) {
-    return getKV(ident, (c) => c.structs,
-        importHandle: (c) => c.getStruct(ident));
+    return getKV(ident, (c) => c.structs, handler: (c) => c.getStruct(ident));
   }
 
   void pushStruct(Identifier ident, StructTy ty) {
@@ -162,7 +168,7 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
 
   final enums = <Identifier, List<EnumTy>>{};
   EnumTy? getEnum(Identifier ident) {
-    return getKV(ident, (c) => c.enums, importHandle: (c) => c.getEnum(ident));
+    return getKV(ident, (c) => c.enums, handler: (c) => c.getEnum(ident));
   }
 
   void pushEnum(Identifier ident, EnumTy ty) {
@@ -173,7 +179,7 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
 
   final fns = <Identifier, List<Fn>>{};
   Fn? getFn(Identifier ident) {
-    return getKV(ident, (c) => c.fns, importHandle: (c) {
+    return getKV(ident, (c) => c.fns, handler: (c) {
       return c.getFn(ident);
     });
   }
@@ -185,7 +191,7 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
   final components = <Identifier, List<ComponentTy>>{};
   ComponentTy? getComponent(Identifier ident) {
     return getKV(ident, (c) => c.components,
-        importHandle: (c) => c.getComponent(ident));
+        handler: (c) => c.getComponent(ident));
   }
 
   void pushComponent(Identifier ident, ComponentTy com) {
@@ -194,7 +200,7 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
 
   final impls = <Identifier, List<ImplTy>>{};
   ImplTy? getImpl(Identifier ident) {
-    return getKV(ident, (c) => c.impls, importHandle: (c) {
+    return getKV(ident, (c) => c.impls, handler: (c) {
       return c.getImpl(ident);
     });
   }
@@ -210,7 +216,7 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
       structTy = structTy.parentOrCurrent;
     }
     final v = getKV(structTy, (c) => c.implForStructs,
-        importHandle: (c) => c.getImplForStruct(structTy, ident),
+        handler: (c) => c.getImplForStruct(structTy, ident),
         test: (v) {
           Ty? ty = v.struct.grtOrT(this, getTy: getStruct);
 
@@ -256,7 +262,7 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
   final cTys = <Identifier, List<TypeAliasTy>>{};
 
   TypeAliasTy? getCty(Identifier ident) {
-    return getKV(ident, (c) => c.cTys, importHandle: (c) {
+    return getKV(ident, (c) => c.cTys, handler: (c) {
       return c.getCty(ident);
     });
   }
@@ -309,7 +315,13 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
   void errorExpr(UnknownExpr unknownExpr) {}
 
   VA? getKV<K, VA>(K k, Map<K, List<VA>> Function(Tys c) map,
-      {ImportKV<VA, T>? importHandle, bool Function(VA v)? test}) {
+      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
+    return getKVImpl(k, map, handler: handler, test: test) ??
+        importHandler.getKVImpl<K, VA, V>(k, map, handler: handler, test: test);
+  }
+
+  VA? getKVImpl<K, VA>(K k, Map<K, List<VA>> Function(Tys c) map,
+      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
     final list = map(this)[k];
     final hasTest = test != null;
 
@@ -320,10 +332,10 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
         return item;
       }
     }
-    if (importHandle != null) {
+    if (handler != null) {
       final v = runImport(() {
         for (var imp in imports.values) {
-          final v = importHandle(imp);
+          final v = handler(imp);
           if (v != null) {
             if (hasTest && !test(v)) continue;
 
@@ -336,8 +348,8 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
         return v;
       }
     }
-
-    return parent?.getKV(k, map, importHandle: importHandle, test: test);
+    return null;
+    // return parent?.getKV(k, map, importHandle: importHandle, test: test);
   }
 
   bool pushKV<K, VA>(K k, VA v, Map<K, List<VA>> map) {
@@ -350,4 +362,4 @@ mixin Tys<T extends Tys<T, V>, V extends LifeCycleVariable> {
   }
 }
 
-typedef ImportKV<VA, T> = VA? Function(T c);
+typedef ImportKV<VA> = VA? Function(Tys c);

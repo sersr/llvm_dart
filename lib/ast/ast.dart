@@ -224,7 +224,6 @@ abstract class Expr extends BuildMixin {
     _ty = null;
   }
 
-  @override
   ExprTempValue? build(BuildContext context) {
     if (!_first) return _ty;
     _first = false;
@@ -282,8 +281,6 @@ abstract class BuildMixin {
 
   final extensions = <Object, dynamic>{};
 
-  void build(BuildContext context);
-
   void analysis(AnalysisContext context);
 
   static int padSize = 2;
@@ -296,6 +293,7 @@ abstract class BuildMixin {
 }
 
 abstract class Stmt extends BuildMixin with EquatableMixin {
+  void build(BuildContext context);
   Stmt clone();
 }
 
@@ -396,7 +394,6 @@ class Block extends BuildMixin with EquatableMixin {
     return '${ident ?? ''} {\n$s$p}';
   }
 
-  @override
   void build(BuildContext context) {
     final fnStmt = <Stmt>[];
 
@@ -531,8 +528,15 @@ abstract class Ty extends BuildMixin with EquatableMixin {
   Ty getRealTy(BuildContext c) => this;
 
   bool extern = false;
-  @override
-  void build(BuildContext context);
+  BuildContext? _buildContext;
+  // ignore: unnecessary_getters_setters
+  BuildContext? get currentContext => _buildContext;
+
+  set currentContext(BuildContext? context) {
+    _buildContext = context;
+  }
+
+  void build() {}
 }
 
 class RefTy extends Ty {
@@ -547,7 +551,6 @@ class RefTy extends Ty {
   }
 
   @override
-  void build(BuildContext context) {}
   @override
   void analysis(AnalysisContext context) {}
 
@@ -601,7 +604,6 @@ class BuiltInTy extends Ty {
   LLVMTypeLit get llvmType => LLVMTypeLit(this);
 
   @override
-  void build(BuildContext context) {}
   @override
   void analysis(AnalysisContext context) {}
 }
@@ -719,8 +721,7 @@ class ArrayPathTy extends PathTy {
   final Expr size;
 
   @override
-  Ty? grtOrT(Tys<Tys<dynamic, LifeCycleVariable>, LifeCycleVariable> c,
-      {GenTy? gen, GenTy? getTy}) {
+  Ty? grtOrT(Tys c, {GenTy? gen, GenTy? getTy}) {
     final e = elementTy.grtOrT(c, gen: gen, getTy: getTy);
     if (e == null) return null;
     Expr s = size;
@@ -770,7 +771,7 @@ class FnTy extends Fn {
   }
 
   @override
-  LLVMConstVariable? build(BuildContext context,
+  LLVMConstVariable? build(
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
     return null;
@@ -851,9 +852,12 @@ class Fn extends Ty with NewInst<Fn> {
   }
 
   @override
-  LLVMConstVariable? build(BuildContext context,
+  LLVMConstVariable? build(
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
+    final context = currentContext;
+    assert(context != null);
+    if (context == null) return null;
     pushFnOnBuild(context);
     return customBuild(context, variables, map);
   }
@@ -867,6 +871,7 @@ class Fn extends Ty with NewInst<Fn> {
     selfVariables = from.selfVariables;
     _get = from._get;
     sretVariables = from.sretVariables;
+    currentContext = from.currentContext;
   }
 
   Fn get root => _parent ?? this;
@@ -996,6 +1001,10 @@ mixin ImplFnMixin on Fn {
       },
     );
   }
+
+  @override
+  BuildContext? get currentContext =>
+      super.currentContext ?? implty.currentContext;
 
   @override
   ImplFnMixin newTy(List<FieldDef> fields);
@@ -1150,7 +1159,7 @@ class FieldDef with EquatableMixin {
 
 typedef GenTy = Ty? Function(Identifier ident);
 
-mixin NewInst<T> {
+mixin NewInst<T extends Ty> {
   List<FieldDef> get fields;
   List<FieldDef> get generics;
 
@@ -1166,7 +1175,7 @@ mixin NewInst<T> {
     if (tys.isEmpty) return _parent!;
     final key = ListKey(tys);
 
-    return (_parent as NewInst)._tyLists.putIfAbsent(key, () {
+    final newInst = (_parent as NewInst)._tyLists.putIfAbsent(key, () {
       final newFields = <FieldDef>[];
       for (var f in fields) {
         final g = f.grtOrT(c, gen: (ident) {
@@ -1193,6 +1202,10 @@ mixin NewInst<T> {
         .._tys = tys;
       return ty;
     });
+
+    newInst.currentContext = parentOrCurrent.currentContext;
+
+    return newInst as T;
   }
 
   T newInstWithGenerics(Tys c, List<PathTy> realTypes, List<FieldDef> current,
@@ -1240,7 +1253,13 @@ class StructTy extends Ty
   List<Object?> get props => [ident, fields, _tys];
 
   @override
-  void build(BuildContext context) {
+  void build() {
+    throw UnimplementedError('use buildItem instead.');
+  }
+
+  void buildItem(BuildContext context) {
+    final context = currentContext;
+    if (context == null) return;
     context.pushStruct(ident, this);
     context.pushVariable(ident, TyVariable(this));
   }
@@ -1285,10 +1304,12 @@ class EnumTy extends Ty {
   }
 
   @override
-  void build(BuildContext context) {
+  void build() {
+    final context = currentContext;
+    if (context == null) return;
     context.pushEnum(ident, this);
     for (var v in variants) {
-      v.build(context);
+      v.buildItem(context);
     }
   }
 
@@ -1326,7 +1347,9 @@ class ComponentTy extends Ty {
   List<FnSign> fns;
 
   @override
-  void build(BuildContext context) {
+  void build() {
+    final context = currentContext;
+    if (context == null) return;
     context.pushComponent(ident, this);
   }
 
@@ -1401,7 +1424,9 @@ class ImplTy extends Ty {
   }
 
   @override
-  void build(BuildContext context) {
+  void build() {
+    final context = currentContext;
+    if (context == null) return;
     context.pushImpl(struct.ident, this);
     initStructFns(context);
     // // check ty
@@ -1473,8 +1498,6 @@ class ArrayTy extends Ty {
   void analysis(AnalysisContext context) {}
 
   @override
-  void build(BuildContext context) {}
-
   @override
   late final ArrayLLVMType llvmType = ArrayLLVMType(this);
 
@@ -1590,7 +1613,9 @@ class TypeAliasTy extends Ty {
   }
 
   @override
-  void build(BuildContext context) {
+  void build() {
+    final context = currentContext;
+    if (context == null) return;
     context.pushCty(ident, this);
   }
 

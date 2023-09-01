@@ -277,7 +277,8 @@ class TyStmt extends Stmt {
 
   @override
   void build(BuildContext context) {
-    ty.build(context);
+    ty.currentContext ??= context;
+    ty.build();
   }
 
   @override
@@ -311,7 +312,8 @@ class StructStmt extends Stmt {
 
   @override
   void build(BuildContext context) {
-    ty.build(context);
+    ty.currentContext ??= context;
+    ty.build();
   }
 
   @override
@@ -345,7 +347,8 @@ class EnumStmt extends Stmt {
 
   @override
   void build(BuildContext context) {
-    ty.build(context);
+    ty.currentContext ??= context;
+    ty.build();
   }
 
   @override

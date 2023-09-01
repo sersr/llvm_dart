@@ -3,11 +3,11 @@ import '../ast/ast.dart';
 import '../ast/tys.dart';
 import 'manager_base.dart';
 
-class Analyzer with ManagerBase {
+class Analyzer extends ManagerBase {
   AnalysisContext addKcFile(String path) {
     return Identifier.run(() {
       final alc = AnalysisContext.root();
-      _baseProcess(
+      baseProcess(
         context: alc,
         path: path,
         action: (builder) {
@@ -20,36 +20,6 @@ class Analyzer with ManagerBase {
 
   final _currentFileAllImports = <String, List<String>>{};
   final _currentImportAllLinks = <String, List<String>>{};
-
-  void _baseProcess(
-      {required Tys context,
-      required String path,
-      required void Function(BuildMixin builder) action,
-      bool isRoot = true}) {
-    Tys linkImportBuild(Tys current, ImportPath childPath) {
-      final child = importBuild(current, childPath);
-      final allImports = _currentFileAllImports.putIfAbsent(path, () => []);
-      final cPath = child.currentPath!;
-      if (cPath == path) return child;
-
-      if (!allImports.contains(cPath)) {
-        allImports.add(cPath);
-        final currentImport =
-            _currentImportAllLinks.putIfAbsent(cPath, () => []);
-        assert(!currentImport.contains(path));
-        currentImport.add(path);
-      }
-      return child;
-    }
-
-    baseProcess(
-      context: context,
-      path: path,
-      action: action,
-      isRoot: isRoot,
-      importHandler: linkImportBuild,
-    );
-  }
 
   void removeKcFile(String path) {
     final currentFiles = _currentFileAllImports[path];
@@ -64,5 +34,18 @@ class Analyzer with ManagerBase {
         currentFiles.remove(import);
       }
     }
+  }
+
+  final rootAnalysis = RootAnalysis();
+  @override
+  VA? getKVImpl<K, VA, T>(
+      K k, Map<K, List<VA>> Function(Tys<LifeCycleVariable> c) map,
+      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
+    return rootAnalysis.getKVImpl(k, map, handler: handler, test: test);
+  }
+
+  @override
+  V? getVariable<V>(Identifier ident) {
+    return rootAnalysis.getVariableImpl(ident) as V?;
   }
 }

@@ -1,16 +1,15 @@
 import 'package:nop/nop.dart';
 import 'package:path/path.dart';
 
-import '../fs/fs.dart';
-import '../parsers/parser.dart';
 import '../ast/analysis_context.dart';
 import '../ast/ast.dart';
-import '../ast/buildin.dart';
 import '../ast/llvm/build_methods.dart';
 import '../ast/llvm/llvm_context.dart';
 import '../ast/tys.dart';
+import '../fs/fs.dart';
+import '../parsers/parser.dart';
 
-mixin ManagerBase {
+abstract class ManagerBase extends ImportMixin {
   static Parser? parserToken(String path) {
     final file = currentDir.childFile(path);
     if (file.existsSync()) {
@@ -24,7 +23,7 @@ mixin ManagerBase {
   final alcs = <String, AnalysisContext>{};
   final others = <String, Tys>{};
 
-  Map<String, Tys> getMap(Tys<dynamic, LifeCycleVariable> target) {
+  Map<String, Tys> getMap(Tys target) {
     return switch (target) {
       BuildContext _ => llvmCtxs,
       AnalysisContext _ => alcs,
@@ -56,7 +55,9 @@ mixin ManagerBase {
     }
   }
 
-  Tys importBuild<T>(Tys<dynamic, LifeCycleVariable> current, ImportPath path) {
+  @override
+  Tys<LifeCycleVariable> import(
+      Tys<LifeCycleVariable> current, ImportPath path) {
     final pname = Consts.regSrc(path.name.src);
     var pathName = '';
     final currentPath = current.currentPath;
@@ -72,7 +73,7 @@ mixin ManagerBase {
     final map = getMap(current);
     var child = map[pn];
     if (child == null) {
-      child = current.import() as Tys;
+      child = current.defaultImport();
       map[pn] = child;
       final parser = parserToken(pn);
       if (parser == null) {
@@ -86,10 +87,15 @@ mixin ManagerBase {
         isRoot: false,
         action: (builder) {
           switch (child) {
-            case BuildContext child:
-              builder.build(child);
+            case BuildContext context:
+              if (builder is Ty) {
+                builder.currentContext = context;
+                builder.build();
+              } else if (builder is Stmt) {
+                builder.build(context);
+              }
             case AnalysisContext child:
-              builder.analysis(child);
+              return builder.analysis(child);
           }
         },
       );
@@ -97,34 +103,32 @@ mixin ManagerBase {
     return child;
   }
 
-  void baseProcess(
-      {required Tys context,
-      required String path,
-      Parser? parser,
-      required void Function(BuildMixin builder) action,
-      bool isRoot = true,
-      ImportHandler? importHandler}) {
+  void baseProcess({
+    required Tys context,
+    required String path,
+    Parser? parser,
+    required void Function(BuildMixin builder) action,
+    bool isRoot = true,
+  }) {
     context.currentPath = path;
     parser ??= parserToken(path)!;
-    context.importHandler = importHandler ?? importBuild;
+    context.importHandler = this;
 
     parser.globalImportStmt.values.forEach(action);
 
     context.pushAllTy(parser.globalTy);
     parser.globalStmt.values.forEach(action);
 
-    if (!isRoot) return;
-    action(sizeOfFn);
     if (context is BuildContext) {
-      out:
-      for (var fns in context.fns.values) {
-        for (var fn in fns) {
-          if (fn.fnSign.fnDecl.ident.src == 'main') {
-            action(fn);
-            break out;
-          }
-        }
+      for (var ty in parser.globalTy.values) {
+        ty.currentContext = context;
       }
+
+      // for (var fns in context.fns.values) {
+      //   for (var fn in fns) {
+      //     fn.currentContext = context;
+      //   }
+      // }
     } else {
       for (var fns in context.fns.values) {
         for (var fn in fns) {
