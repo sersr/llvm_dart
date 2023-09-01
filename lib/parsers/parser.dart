@@ -346,19 +346,8 @@ class Parser {
 
     final pointerKind = getAllKind(it);
     PathTy? ty;
-    final state = it.cursor;
 
-    // if (k == TokenKind.ident) {
-    //       if (getKey(it) == Key.fn) {
-    //         it.moveNext();
-    //         final decl = parseFnDecl(it, Identifier.none);
-    //         ty = PathTy.ty(FnTy(decl));
-    //       } else {
-    //         ty = PathTy(ident);
-    //       }
-    //     } else {
-    //       ty = UnknownTy(ident);
-    //     }
+    final state = it.cursor;
     if (it.moveNext()) {
       if (getKey(it) == Key.fn) {
         it.moveNext();
@@ -466,7 +455,8 @@ class Parser {
   }
 
   ArrayExpr? parseArrayExpr(TokenIterator it) {
-    assert(getToken(it).kind == TokenKind.openBracket);
+    final isArrayKind = getToken(it).kind == TokenKind.openBracket;
+    if (!isArrayKind) return null;
 
     it.moveNext();
 
@@ -918,154 +908,191 @@ class Parser {
     return idents;
   }
 
-  Expr parseExpr(TokenIterator it, {bool runOp = false}) {
+  Expr? parseUnaryExpr(TokenIterator it, bool runOp) {
     eatLfIfNeed(it);
-    var pointerIdent = Identifier.none;
-    final pointerKind = getAllKind(it, runOp: runOp);
-    if (it.curentIsValid) pointerIdent = getIdent(it);
+    final state = it.cursor;
 
-    if (it.moveNext()) {
-      final t = getToken(it);
-      Expr? lhs;
-      if (t.kind == TokenKind.openParen) {
-        it.moveNext();
-        lhs = parseExpr(it.current.child.tokenIt);
-      } else if (t.kind == TokenKind.literal) {
-        final lit = t.literalKind!;
-        final lkd = LitKind.from(lit);
-
-        if (lkd != null) {
-          final ty = BuiltInTy.lit(lkd);
-          lhs = LiteralExpr(getIdent(it), ty);
-        }
-      } else if (t.kind == TokenKind.openBracket) {
-        lhs = parseArrayExpr(it);
+    final kind = getToken(it).kind;
+    final uOp = UnaryKind.from(kind.char);
+    if (uOp != null) {
+      final ident = getIdent(it);
+      return UnaryExpr(uOp, parseExpr(it, runOp: runOp), ident);
+    } else {
+      final pointer = PointerKind.from(kind);
+      if (pointer != null) {
+        final ident = getIdent(it);
+        return RefExpr(parseExpr(it, runOp: runOp), ident, pointer);
       }
+    }
 
-      lhs ??= parseIfExpr(it);
-      lhs ??= parseMatchExpr(it);
+    state.restore();
+    return null;
+  }
 
-      var isNew = false;
-      if (getKey(it) == Key.kNew) {
-        isNew = true;
-        it.moveNext();
-        eatLfIfNeed(it);
+  Expr? parserBaseExpr(TokenIterator it) {
+    Expr? expr;
+    eatLfIfNeed(it);
+
+    final t = getToken(it);
+    if (t.kind == TokenKind.openParen) {
+      it.moveNext();
+      expr = parseExpr(it.current.child.tokenIt);
+    } else if (t.kind == TokenKind.literal) {
+      final lit = t.literalKind!;
+      final lkd = LitKind.from(lit);
+
+      if (lkd != null) {
+        final ty = BuiltInTy.lit(lkd);
+        expr = LiteralExpr(getIdent(it), ty);
       }
+    }
 
-      if (lhs == null) {
-        if (t.kind == TokenKind.ident) {
-          final ident = getIdent(it);
-          final key = getKey(it);
-          if (key?.isBool == true) {
-            final ty = BuiltInTy.lit(LitKind.kBool);
-            lhs = LiteralExpr(getIdent(it), ty);
-          } else if (key == Key.kBreak) {
-            Identifier? label;
-            if (it.moveNext()) {
-              final t = getToken(it);
-              if (t.kind == TokenKind.ident) {
-                label = getIdent(it);
-              } else {
-                it.moveBack();
-              }
-            }
-            eatLine(it);
-            return BreakExpr(ident, label);
-          } else if (key == Key.kContinue) {
-            eatLine(it);
-            return ContinueExpr(ident);
-          } else if (key == Key.fn) {
-            final state = it.cursor;
+    expr ??= parseArrayExpr(it);
+    expr ??= parseIfExpr(it);
+    expr ??= parseMatchExpr(it);
+    expr ??= parserStructOrVariableExpr(it);
 
-            final fn = parseFn(it);
-            if (fn != null) {
-              return FnExpr(fn);
-            } else {
-              state.restore();
-            }
-          }
-          eatLfIfNeed(it);
+    return expr;
+  }
 
-          if (!onBrace) {
-            final cursor = it.cursor;
-            final generics = parseGenericsInstance(it);
-            if (it.moveNext()) {
-              final t = getToken(it);
-              if (t.kind == TokenKind.openBrace) {
-                if (hasIfBlock(it)) {
-                  final struct = parseStructExpr(it, ident, generics);
-                  if (struct.fields.any((e) => e.expr.hasUnknownExpr)) {
-                    cursor.restore();
-                  } else {
-                    lhs = struct;
-                    struct.isNew = isNew;
-                  }
-                } else {
-                  cursor.restore();
-                }
-              } else {
-                cursor.restore();
-              }
-            }
-          }
-          if (lhs == null) {
-            final generics = parseGenericsInstance(it);
-            lhs = VariableIdentExpr(ident, generics);
-          }
-        }
-      }
-      if (lhs != null) {
-        eatLfIfNeed(it);
-
-        Expr lhsss = lhs;
-        loop(it, () {
+  /// 解析关键字
+  Expr? parseKeyExpr(TokenIterator it) {
+    final t = getToken(it);
+    if (t.kind == TokenKind.ident) {
+      final ident = getIdent(it);
+      final key = getKey(it);
+      if (key == Key.kBreak) {
+        Identifier? label;
+        if (it.moveNext()) {
           final t = getToken(it);
-          if (t.kind == TokenKind.dot) {
-            lhsss = parseMethodCallExpr(it, [], lhsss);
-            return false;
-          } else if (t.kind == TokenKind.openParen) {
-            lhsss = parseCallExpr(it, lhsss)..isNew = isNew;
-            return false;
-          }
-          it.moveBack();
-          return true;
-        });
-        lhs = lhsss;
-
-        final state = it.cursor;
-        if (it.moveNext()) {
-          if (getKey(it) == Key.kAs) {
-            final asExpr = parsePathTy(it);
-            if (asExpr != null) {
-              lhs = AsExpr(lhs, asExpr);
-            }
-          }
-        }
-
-        if (lhs is! AsExpr) {
-          state.restore();
-        }
-
-        lhs = RefExpr(lhs, pointerIdent, pointerKind);
-        eatLfIfNeed(it);
-        // 遇到`)`结束本次表达式解析
-        if (it.moveNext()) {
-          if (getToken(it).kind == TokenKind.closeParen) {
-            return lhs;
+          if (t.kind == TokenKind.ident) {
+            label = getIdent(it);
           } else {
             it.moveBack();
           }
         }
-        if (!runOp) {
-          final op = parseOpExpr(it, lhs);
-          if (op != null) {
-            lhs = op;
-          }
+        eatLine(it);
+        return BreakExpr(ident, label);
+      } else if (key == Key.kContinue) {
+        eatLine(it);
+        return ContinueExpr(ident);
+      } else if (key == Key.fn) {
+        final state = it.cursor;
+
+        final fn = parseFn(it);
+        if (fn != null) {
+          return FnExpr(fn);
+        } else {
+          state.restore();
         }
-        return lhs;
       }
     }
-    return UnknownExpr(getIdent(it), '');
+    return null;
+  }
+
+  Expr? parserStructOrVariableExpr(TokenIterator it) {
+    eatLfIfNeed(it);
+    Expr? expr;
+
+    final t = getToken(it);
+    if (t.kind == TokenKind.ident) {
+      final ident = getIdent(it);
+      final key = getKey(it);
+      if (key?.isBool == true) {
+        final ty = BuiltInTy.lit(LitKind.kBool);
+        expr = LiteralExpr(ident, ty);
+      }
+      eatLfIfNeed(it);
+
+      if (!onBrace) {
+        final cursor = it.cursor;
+        final generics = parseGenericsInstance(it);
+        if (it.moveNext()) {
+          final t = getToken(it);
+          if (t.kind == TokenKind.openBrace) {
+            if (hasIfBlock(it)) {
+              final struct = parseStructExpr(it, ident, generics);
+              if (struct.fields.any((e) => e.expr.hasUnknownExpr)) {
+                cursor.restore();
+              } else {
+                expr = struct;
+              }
+            } else {
+              cursor.restore();
+            }
+          } else {
+            cursor.restore();
+          }
+        }
+      }
+      if (expr == null) {
+        final generics = parseGenericsInstance(it);
+        expr = VariableIdentExpr(ident, generics);
+      }
+    }
+    return expr;
+  }
+
+  Expr parseExpr(TokenIterator it, {bool runOp = false}) {
+    if (!it.moveNext()) return UnknownExpr(getIdent(it), '');
+
+    var baseExpr = parseKeyExpr(it);
+    if (baseExpr != null) return baseExpr;
+    baseExpr = parseUnaryExpr(it, runOp) ?? parserBaseExpr(it);
+    if (baseExpr == null) {
+      return UnknownExpr(getIdent(it), '');
+    }
+
+    /// 处理后缀
+
+    eatLfIfNeed(it);
+    Expr fnCalls = baseExpr;
+
+    // Function.call().call().call()
+    loop(it, () {
+      final t = getToken(it);
+      if (t.kind == TokenKind.dot) {
+        fnCalls = parseMethodCallExpr(it, fnCalls);
+        return false;
+      } else if (t.kind == TokenKind.openParen) {
+        fnCalls = parseCallExpr(it, fnCalls);
+        return false;
+      }
+      it.moveBack();
+      return true;
+    });
+    baseExpr = fnCalls;
+
+    final state = it.cursor;
+    if (it.moveNext()) {
+      if (getKey(it) == Key.kAs) {
+        final asExpr = parsePathTy(it);
+        if (asExpr != null) {
+          baseExpr = AsExpr(baseExpr, asExpr);
+        }
+      }
+    }
+
+    if (baseExpr is! AsExpr) {
+      state.restore();
+    }
+
+    eatLfIfNeed(it);
+    // 遇到`)`结束本次表达式解析
+    if (it.moveNext()) {
+      if (getToken(it).kind == TokenKind.closeParen) {
+        return baseExpr;
+      } else {
+        it.moveBack();
+      }
+    }
+    if (!runOp) {
+      final op = parseOpExpr(it, baseExpr);
+      if (op != null) {
+        baseExpr = op;
+      }
+    }
+    return baseExpr;
   }
 
   Expr? parseOpExpr(TokenIterator it, Expr lhs) {
@@ -1195,8 +1222,7 @@ class Parser {
     return fields;
   }
 
-  Expr parseMethodCallExpr(
-      TokenIterator it, List<PointerKind> kind, Expr structExpr) {
+  Expr parseMethodCallExpr(TokenIterator it, Expr structExpr) {
     eatLfIfNeed(it);
     it.moveNext(); // .
 
@@ -1205,12 +1231,12 @@ class Parser {
     if (it.moveNext()) {
       final t = getToken(it);
       if (t.kind != TokenKind.openParen) {
-        final expr = StructDotFieldExpr(structExpr, kind, fnOrFieldName);
+        final expr = StructDotFieldExpr(structExpr, fnOrFieldName);
         it.moveBack();
         return expr;
       }
     } else {
-      final expr = StructDotFieldExpr(structExpr, kind, fnOrFieldName);
+      final expr = StructDotFieldExpr(structExpr, fnOrFieldName);
       return expr;
     }
 

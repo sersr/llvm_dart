@@ -257,7 +257,7 @@ class UnknownExpr extends Expr {
 
   @override
   String toString() {
-    return 'UnknownExpr $ident($message)';
+    return 'UnknownExpr($message): $ident';
   }
 
   @override
@@ -598,7 +598,7 @@ class BuiltInTy extends Ty {
   }
 
   @override
-  List<Object?> get props => [ty];
+  List<Object?> get props => [_ty];
 
   @override
   LLVMTypeLit get llvmType => LLVMTypeLit(this);
@@ -680,9 +680,7 @@ class PathTy with EquatableMixin {
       rty ??= c.getTy(ident);
     }
     rty ??= gen?.call(ident);
-    if (rty == null) {
-      // error
-    }
+
     if (rty is StructTy && generics.isNotEmpty) {
       final gMap = <Identifier, Ty>{};
 
@@ -697,15 +695,9 @@ class PathTy with EquatableMixin {
       rty = rty.newInst(gMap, c, gen: gen);
     } else if (rty is TypeAliasTy) {
       rty = rty.getTy(c, generics);
-
-      // rty = rty.newInst(gMap, c, gen: gen);
     }
     if (rty == null) {
-      final val = c.getVariable(ident);
-      if (val is! TyVariable) {
-        return null;
-      }
-      rty = val.ty;
+      return null;
     }
     return kind.resolveTy(rty);
   }
@@ -905,15 +897,11 @@ class Fn extends Ty with NewInst<Fn> {
   }
 
   void pushTyGenerics(BuildContext context) {
-    for (var MapEntry(:key, :value) in tys.entries) {
-      context.pushVariable(key, TyVariable(value));
-    }
+    context.pushDyTys(tys);
   }
 
   void pushTyAnalysis(AnalysisContext context) {
-    for (var MapEntry(:key, :value) in tys.entries) {
-      context.pushVariable(key, context.createVal(value, Identifier.none, []));
-    }
+    context.pushDyTys(tys);
   }
 
   Object? getKey() {
@@ -1018,9 +1006,7 @@ mixin ImplFnMixin on Fn {
     final structTy = ty;
     if (structTy is! StructTy) return;
 
-    for (var MapEntry(:key, :value) in structTy.tys.entries) {
-      context.pushVariable(key, TyVariable(value));
-    }
+    context.pushDyTys(structTy.tys);
   }
 
   @override
@@ -1261,7 +1247,6 @@ class StructTy extends Ty
     final context = currentContext;
     if (context == null) return;
     context.pushStruct(ident, this);
-    context.pushVariable(ident, TyVariable(this));
   }
 
   void push(Tys context) {

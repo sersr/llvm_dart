@@ -1,0 +1,13 @@
+import 'd.kc'
+
+fn main() i32 {
+
+  let y = 10;
+  if !y {
+    print("y != 0");
+  } else {
+    print("!y == 0");
+  }
+
+  0;
+}

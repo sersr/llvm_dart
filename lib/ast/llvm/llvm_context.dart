@@ -68,12 +68,21 @@ class BuildContext
   String? get currentPath => super.currentPath ?? parent?.currentPath;
 
   @override
-  ImportMixin get importHandler => parent?.importHandler ?? super.importHandler;
+  GlobalContext get importHandler =>
+      parent?.importHandler ?? super.importHandler;
   void log(int level) {
     print('${' ' * level}$currentPath');
     level += 2;
     for (var child in children) {
       child.log(level);
+    }
+  }
+
+  @override
+  void pushAllTy(Map<Object, Ty> all) {
+    super.pushAllTy(all);
+    for (var item in all.values) {
+      item.currentContext = this;
     }
   }
 
@@ -676,13 +685,13 @@ class BuildContext
       } else {
         if (ty.ty.isNum) {
           final r = ty.llvmType.createValue(str: '0').getBaseValue(this);
-          assert(op == OpKind.Ne);
+          assert(op == OpKind.Ne || op == OpKind.Eq);
           if (isFloat) {
-            value = llvm.LLVMBuildFCmp(
-                builder, OpKind.Ne.getFCmpId(false)!, l, r, unname);
+            value =
+                llvm.LLVMBuildFCmp(builder, op.getFCmpId(false)!, l, r, unname);
           } else {
-            value = llvm.LLVMBuildICmp(
-                builder, OpKind.Ne.getICmpId(false)!, l, r, unname);
+            value =
+                llvm.LLVMBuildICmp(builder, op.getICmpId(false)!, l, r, unname);
           }
         }
       }

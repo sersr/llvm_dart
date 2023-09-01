@@ -9,7 +9,7 @@ import '../ast/tys.dart';
 import '../fs/fs.dart';
 import '../parsers/parser.dart';
 
-abstract class ManagerBase extends ImportMixin {
+abstract class ManagerBase extends GlobalContext {
   static Parser? parserToken(String path) {
     final file = currentDir.childFile(path);
     if (file.existsSync()) {

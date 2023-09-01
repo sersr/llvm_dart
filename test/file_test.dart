@@ -1,6 +1,6 @@
+import 'package:llvm_dart/fs/fs.dart';
 import 'package:llvm_dart/manager/build_run.dart';
 import 'package:llvm_dart/manager/manager.dart';
-import 'package:llvm_dart/fs/fs.dart';
 import 'package:llvm_dart/run.dart';
 import 'package:nop/nop.dart';
 import 'package:test/test.dart';
@@ -46,4 +46,6 @@ void main() {
   test('type alias', () => run('type_alias.kc'));
 
   test('vec', () => run('vec_main.kc'));
+
+  test('math', () => run('math.kc'));
 }

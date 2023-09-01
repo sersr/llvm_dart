@@ -519,9 +519,9 @@ class StructExpr extends Expr {
 
       // 从上下文中获取具体类型
       for (var g in sg) {
-        final tyVal = context.getVariable(g.ident);
-        if (tyVal is TyVariable) {
-          gMap.putIfAbsent(g.ident, () => tyVal.ty);
+        final tyVal = context.getTy(g.ident);
+        if (tyVal != null) {
+          gMap.putIfAbsent(g.ident, () => tyVal);
         }
       }
       final sortFields = alignParam(
@@ -1030,9 +1030,9 @@ mixin FnCallMixin {
 
     final fnAlloca = fn.build(extra, map);
     LLVMValueRef? fnValue;
-    if (fnVariable is! UnimplVariable) {
-      fnValue = fnVariable?.load(context, Offset.zero);
-    }
+    // if (fnVariable is! UnimplVariable) {
+    fnValue = fnVariable?.load(context, Offset.zero);
+    // }
     fnValue ??= fnAlloca?.load(context, Offset.zero);
     if (fnValue == null) return null;
 
@@ -1210,7 +1210,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     final fnName = ident.src;
 
     var val = variable?.variable;
-    if (variable == null) return null;
+
     // while (true) {
     //   if (val is! Deref) {
     //     break;
@@ -1222,14 +1222,15 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (val is Deref) {
       val = val.getDeref(context);
     }
-    if (val == null) return null;
+    var valTy = val?.ty ?? variable?.ty;
+    if (valTy == null) return null;
 
-    var valTy = val.ty;
     if (valTy is RefTy) {
       valTy = valTy.parent;
     }
 
-    if (valTy is ArrayTy) {
+    /// TODO: 将内部实现迁移到[GlobalContext]
+    if (valTy is ArrayTy && variable != null && val != null) {
       if (fnName == 'elementAt' && params.isNotEmpty) {
         final first = LiteralExpr.run(
             () => params.first.build(context)?.variable, BuiltInTy.usize);
@@ -1248,7 +1249,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
       }
     }
 
-    if (valTy is StructTy) {
+    if (valTy is StructTy && variable != null && val != null) {
       if (valTy.ident.src == 'CArray') {
         if (fnName == 'elementAt' && params.isNotEmpty) {
           final param = LiteralExpr.run(
@@ -1406,25 +1407,23 @@ class MethodCallExpr extends Expr with FnCallMixin {
 }
 
 class StructDotFieldExpr extends Expr {
-  StructDotFieldExpr(this.struct, this.kind, this.ident);
+  StructDotFieldExpr(this.struct, this.ident);
   final Identifier ident;
   final Expr struct;
-
-  final List<PointerKind> kind;
 
   @override
   bool get hasUnknownExpr => struct.hasUnknownExpr;
 
   @override
   Expr clone() {
-    return StructDotFieldExpr(struct.clone(), kind, ident);
+    return StructDotFieldExpr(struct.clone(), ident);
   }
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final structVal = struct.build(context);
     final val = structVal?.variable;
-    var newVal = PointerKind.refDerefs(val, context, kind);
+    var newVal = val;
 
     // while (true) {
     //   if (newVal is! Deref) {
@@ -1447,13 +1446,7 @@ class StructDotFieldExpr extends Expr {
 
   @override
   String toString() {
-    var e = struct;
-    if (e is RefExpr) {
-      if (e.kind.isNotEmpty) {
-        return '${kind.join('')}($struct).$ident';
-      }
-    }
-    return '${kind.join('')}$struct.$ident';
+    return '$struct.$ident';
   }
 
   @override
@@ -1492,58 +1485,61 @@ class StructDotFieldExpr extends Expr {
 
 enum OpKind {
   /// The `+` operator (addition)
-  Add('+', 60),
+  Add('+', 70),
 
   /// The `-` operator (subtraction)
-  Sub('-', 60),
+  Sub('-', 70),
 
   /// The `*` operator (multiplication)
-  Mul('*', 110),
+  Mul('*', 80),
 
   /// The `/` operator (division)
-  Div('/', 110),
+  Div('/', 80),
 
   /// The `%` operator (modulus)
-  Rem('%', 110),
+  Rem('%', 80),
 
   /// The `&&` operator (logical and)
-  And('&&', 0),
+  And('&&', 31),
 
   /// The `||` operator (logical or)
-  Or('||', 0),
+  Or('||', 30),
+
+  // /// The `!` operator (not)
+  // Not('!', 100),
 
   /// The `^` operator (bitwise xor)
-  BitXor('^', 1000),
+  BitXor('^', 41),
 
   /// The `&` operator (bitwise and)
-  BitAnd('&', 50),
+  BitAnd('&', 52),
 
   /// The `|` operator (bitwise or)
   BitOr('|', 50),
 
   /// The `<<` operator (shift left)
-  Shl('<<', 50),
+  Shl('<<', 60),
 
   /// The `>>` operator (shift right)
-  Shr('>>', 50),
+  Shr('>>', 60),
 
   /// The `==` operator (equality)
-  Eq('==', 10),
+  Eq('==', 40),
 
   /// The `<` operator (less than)
-  Lt('<', 10),
+  Lt('<', 41),
 
   /// The `<=` operator (less than or equal to)
-  Le('<=', 10),
+  Le('<=', 41),
 
   /// The `!=` operator (not equal to)
-  Ne('!=', 10),
+  Ne('!=', 40),
 
   /// The `>=` operator (greater than or equal to)
-  Ge('>=', 10),
+  Ge('>=', 41),
 
   /// The `>` operator (greater than)
-  Gt('>', 10),
+  Gt('>', 41),
   ;
 
   final String op;
@@ -1647,10 +1643,8 @@ class OpExpr extends Expr {
 
     var rc = rhs;
     if (rc is RefExpr) {
-      if (rc.kind.isEmpty) {
-        if (rc.current is OpExpr) {
-          rc = rc.current;
-        }
+      if (rc.current is OpExpr) {
+        rc = rc.current;
       }
     }
 
@@ -1661,10 +1655,8 @@ class OpExpr extends Expr {
     }
     var lc = lhs;
     if (lc is RefExpr) {
-      if (lc.kind.isEmpty) {
-        if (lc.current is OpExpr) {
-          lc = lc.current;
-        }
+      if (lc.current is OpExpr) {
+        lc = lc.current;
       }
     }
     if (lc is OpExpr) {
@@ -1692,11 +1684,11 @@ class OpExpr extends Expr {
   }
 
   static ExprTempValue? math(BuildContext context, OpKind op, Variable? l,
-      Expr rhs, Identifier opIdent, Identifier lhsIdent) {
+      Expr? rhs, Identifier opIdent, Identifier lhsIdent) {
     if (l == null) return null;
 
     final v = context.math(l, (context) {
-      return LiteralExpr.run(() => rhs.build(context), l.ty);
+      return LiteralExpr.run(() => rhs?.build(context), l.ty);
     }, op, lhsOffset: lhsIdent.offset, opOffset: opIdent.offset);
 
     return ExprTempValue(v, v.ty, lhsIdent);
@@ -1718,7 +1710,6 @@ class OpExpr extends Expr {
 enum PointerKind {
   deref('*'),
   none(''),
-  neg('-'),
   ref('&');
 
   final String char;
@@ -1729,8 +1720,6 @@ enum PointerKind {
       return PointerKind.ref;
     } else if (kind == TokenKind.star) {
       return PointerKind.deref;
-    } else if (kind == TokenKind.minus) {
-      return PointerKind.neg;
     }
     return null;
   }
@@ -1743,32 +1732,17 @@ enum PointerKind {
         inst = val.getDeref(c);
       } else if (this == PointerKind.ref) {
         inst = val.getRef(c);
-      } else if (this == PointerKind.neg) {
-        final va = val.load(c, Offset.zero);
-        final t = llvm.LLVMTypeOf(va);
-        final tyKind = llvm.LLVMGetTypeKind(t);
-        final isFloat = tyKind == LLVMTypeKind.LLVMFloatTypeKind ||
-            tyKind == LLVMTypeKind.LLVMDoubleTypeKind ||
-            tyKind == LLVMTypeKind.LLVMBFloatTypeKind;
-        LLVMValueRef llvmValue;
-        if (isFloat) {
-          llvmValue = llvm.LLVMBuildFNeg(c.builder, va, unname);
-        } else {
-          llvmValue = llvm.LLVMBuildNeg(c.builder, va, unname);
-        }
-        return LLVMConstVariable(llvmValue, val.ty);
       }
     }
     return inst ?? val;
   }
 
-  static Variable? refDerefs(
-      Variable? val, BuildContext c, List<PointerKind> kind) {
+  static Variable? refDerefs(Variable? val, BuildContext c, PointerKind kind) {
     if (val == null) return val;
     Variable? vv = val;
-    for (var k in kind.reversed) {
-      vv = k.refDeref(vv, c);
-    }
+    // for (var k in kind.reversed) {
+    vv = kind.refDeref(vv, c);
+    // }
     return vv;
   }
 
@@ -1880,7 +1854,7 @@ class VariableIdentExpr extends Expr {
         struct =
             struct.newInstWithGenerics(context, localGenerics, struct.generics);
       }
-      return ExprTempValue(TyVariable(struct), struct, ident);
+      return ExprTempValue(null, struct, ident);
     }
 
     var fn = context.getFn(ident);
@@ -1963,7 +1937,7 @@ class VariableIdentExpr extends Expr {
 class RefExpr extends Expr {
   RefExpr(this.current, this.pointerIdent, this.kind);
   final Expr current;
-  final List<PointerKind> kind;
+  final PointerKind kind;
   final Identifier pointerIdent;
   @override
   bool get hasUnknownExpr => current.hasUnknownExpr;
@@ -1984,9 +1958,9 @@ class RefExpr extends Expr {
     final val = current.build(context);
     var vv = PointerKind.refDerefs(val?.variable, context, kind);
     if (vv != null) {
-      if (kind.isEmpty) {
-        return ExprTempValue(vv, vv.ty, val!.currentIdent);
-      }
+      // if (kind.isEmpty) {
+      //   return ExprTempValue(vv, vv.ty, val!.currentIdent);
+      // }
       return ExprTempValue(vv, vv.ty, pointerIdent);
     }
     return val;
@@ -1994,24 +1968,14 @@ class RefExpr extends Expr {
 
   @override
   String toString() {
-    var s = kind.join('');
-    if (kind.isNotEmpty) {
-      var e = current;
-      if (e is RefExpr) {
-        e = e.current;
-      }
-      if (e is OpExpr) {
-        return '$s($current)';
-      }
-    }
-    return '$s$current';
+    return '$kind$current';
   }
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     final vv = current.analysis(context);
     if (vv == null) return null;
-    final newV = vv.copy()..kind.insertAll(0, kind);
+    final newV = vv.copy()..kind.add(kind);
     return newV;
     // return AnalysisVariable(vv.ty, vv.ident, [...kind, ...vv.kind]);
   }
@@ -2534,5 +2498,86 @@ class ArrayExpr extends Expr {
   @override
   String toString() {
     return '[${elements.join(',')}]';
+  }
+}
+
+enum UnaryKind {
+  /// The `!` operator (not)
+  Not('!'),
+  Neg('-'),
+  ;
+
+  final String op;
+  const UnaryKind(this.op);
+
+  static UnaryKind? from(String src) {
+    return values.firstWhereOrNull((element) => element.op == src);
+  }
+}
+
+class UnaryExpr extends Expr {
+  UnaryExpr(this.op, this.expr, this.opIdent);
+  final UnaryKind op;
+  final Expr expr;
+
+  final Identifier opIdent;
+
+  @override
+  bool get hasUnknownExpr => expr.hasUnknownExpr;
+
+  @override
+  UnaryExpr clone() {
+    return UnaryExpr(op, expr.clone(), opIdent);
+  }
+
+  @override
+  String toString() {
+    return '${op.op}$expr';
+  }
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context) {
+    final temp = expr.build(context);
+    var val = temp?.variable;
+    if (val == null) return null;
+    if (op == UnaryKind.Not) {
+      if (val.ty == BuiltInTy.kBool) {
+        final value = val.load(context, temp!.currentIdent.offset);
+        final notValue = llvm.LLVMBuildNot(context.builder, value, unname);
+        final variable = LLVMConstVariable(notValue, val.ty);
+        return ExprTempValue(variable, variable.ty, opIdent);
+      }
+
+      return OpExpr.math(
+          context, OpKind.Eq, val, null, opIdent, temp!.currentIdent);
+    } else if (op == UnaryKind.Neg) {
+      final va = val.load(context, Offset.zero);
+      final t = llvm.LLVMTypeOf(va);
+      final tyKind = llvm.LLVMGetTypeKind(t);
+      final isFloat = tyKind == LLVMTypeKind.LLVMFloatTypeKind ||
+          tyKind == LLVMTypeKind.LLVMDoubleTypeKind ||
+          tyKind == LLVMTypeKind.LLVMBFloatTypeKind;
+      LLVMValueRef llvmValue;
+      if (isFloat) {
+        llvmValue = llvm.LLVMBuildFNeg(context.builder, va, unname);
+      } else {
+        llvmValue = llvm.LLVMBuildNeg(context.builder, va, unname);
+      }
+      final variable = LLVMConstVariable(llvmValue, val.ty);
+      return ExprTempValue(variable, variable.ty, opIdent);
+    }
+    return null;
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    final temp = expr.analysis(context);
+    // final r = lhs.analysis(context);
+    if (temp == null) return null;
+    if (op.index >= OpKind.Eq.index && op.index <= OpKind.Gt.index ||
+        op.index >= OpKind.And.index && op.index <= OpKind.Or.index) {
+      return context.createVal(BuiltInTy.kBool, Identifier.none);
+    }
+    return context.createVal(temp.ty, Identifier.none);
   }
 }

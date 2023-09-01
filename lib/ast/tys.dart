@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:equatable/equatable.dart';
 
-import '../parsers/lexers/token_kind.dart';
 import 'ast.dart';
 
 abstract class LifeCycleVariable {
@@ -39,7 +38,7 @@ class ImportPath with EquatableMixin {
 typedef ImportHandler = Tys Function(Tys, ImportPath);
 typedef RunImport<T> = T Function(T Function());
 
-abstract class ImportMixin {
+abstract class GlobalContext {
   Tys import(Tys current, ImportPath path);
   V? getVariable<V>(Identifier ident);
   VA? getKVImpl<K, VA, T>(K k, Map<K, List<VA>> Function(Tys c) map,
@@ -49,7 +48,7 @@ abstract class ImportMixin {
 mixin Tys<V extends LifeCycleVariable> {
   Tys defaultImport();
   String? currentPath;
-  late ImportMixin importHandler;
+  late GlobalContext importHandler;
 
   final imports = <ImportPath, Tys>{};
 
@@ -271,7 +270,25 @@ mixin Tys<V extends LifeCycleVariable> {
     pushKV(ident, ty, cTys);
   }
 
-  void pushAllTy(Map<Token, Ty> all) {
+  final _dyTys = <Identifier, List<Ty>>{};
+
+  Ty? getDyTy(Identifier ident) {
+    return getKV(ident, (c) => c._dyTys, handler: (c) {
+      return c.getCty(ident);
+    });
+  }
+
+  void pushDyTy(Identifier ident, Ty ty) {
+    pushKV(ident, ty, _dyTys);
+  }
+
+  void pushDyTys(Map<Identifier, Ty> all) {
+    for (var MapEntry(:key, :value) in all.entries) {
+      pushKV(key, value, _dyTys);
+    }
+  }
+
+  void pushAllTy(Map<Object, Ty> all) {
     final impls = all.values.whereType<ImplTy>();
     for (var ty in all.values) {
       if (ty is StructTy) {
@@ -305,7 +322,8 @@ mixin Tys<V extends LifeCycleVariable> {
         getImpl(i) ??
         getFn(i) ??
         getEnum(i) ??
-        getCty(i);
+        getCty(i) ??
+        getDyTy(i);
   }
 
   Ty? getTyIgnoreImpl(Identifier i) {

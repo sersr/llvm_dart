@@ -182,16 +182,16 @@ class AnalysisContext with Tys<AnalysisVariable> {
   }
 
   AnalysisVariable createVal(Ty ty, Identifier ident,
-      [List<PointerKind> kind = const []]) {
-    final val = AnalysisVariable._(ty, ident, kind);
+      [List<PointerKind>? kind]) {
+    final val = AnalysisVariable._(ty, ident, kind ?? []);
     val.lifeCycle.fnContext = this;
     return val;
   }
 
   AnalysisStructVariable createStructVal(
       Ty ty, Identifier ident, Map<Identifier, AnalysisVariable> map,
-      [List<PointerKind> kind = const []]) {
-    final val = AnalysisStructVariable._(ty, ident, map, kind);
+      [List<PointerKind>? kind]) {
+    final val = AnalysisStructVariable._(ty, ident, map, kind ?? []);
     val.lifeCycle.fnContext = this;
     return val;
   }
@@ -241,9 +241,8 @@ class AnalysisVariable extends LifeCycleVariable {
 }
 
 class AnalysisStructVariable extends AnalysisVariable {
-  AnalysisStructVariable._(
-      Ty ty, Identifier ident, Map<Identifier, AnalysisVariable> map,
-      [List<PointerKind> kind = const []])
+  AnalysisStructVariable._(Ty ty, Identifier ident,
+      Map<Identifier, AnalysisVariable> map, List<PointerKind> kind)
       : _params = map,
         super._(ty, ident, kind);
 

@@ -250,31 +250,3 @@ class LLVMLitVariable extends Variable {
     return alloca;
   }
 }
-
-abstract class UnimplVariable extends Variable {
-  @override
-  LLVMTypeRef getDerefType(BuildContext c) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Variable getRef(BuildContext c) {
-    throw UnimplementedError();
-  }
-
-  @override
-  LLVMValueRef load(BuildContext c, Offset offset) {
-    throw UnimplementedError();
-  }
-
-  @override
-  LLVMValueRef getBaseValue(BuildContext c) {
-    throw UnimplementedError();
-  }
-}
-
-class TyVariable extends UnimplVariable {
-  TyVariable(this.ty);
-  @override
-  final Ty ty;
-}

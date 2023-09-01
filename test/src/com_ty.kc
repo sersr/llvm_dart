@@ -23,7 +23,7 @@ fn main() i32 {
   let g = Gen { 10 , "hello"};
  hello(&g);
 
- let gg = g;
+ // let gg = g;
 
   let hh = hello<Gen>;
   hh(&g);
@@ -35,7 +35,7 @@ fn main() i32 {
   let x =  Gen {3};
   let xx = x.xxx();
 
-  init_sig_stack();
+ // init_sig_stack();
   print("end");
   0;
 }

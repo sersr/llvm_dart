@@ -107,6 +107,9 @@ enum TokenKind {
   /// "?"
   question('?'),
 
+  /// "!"
+  not('!'),
+
   unknown(''),
 
   /// end
