@@ -23,6 +23,7 @@ class Parser {
   void parse() {
     final reader = TokenReader(src);
     final root = reader.parse(false);
+    // return;
     final it = root.child.tokenIt;
     loop(it, () {
       final token = getToken(it);
@@ -37,10 +38,6 @@ class Parser {
     });
   }
 
-  String getSrc(int s, int e) {
-    return src.substring(s, e);
-  }
-
   final globalTy = <Token, Ty>{};
   final globalStmt = <Token, Stmt>{};
   final globalImportStmt = <Token, Stmt>{};
@@ -49,7 +46,7 @@ class Parser {
     final token = getToken(it);
     assert(token.kind == TokenKind.ident);
 
-    final key = Key.from(getSrc(token.start, token.end));
+    final key = getKey(it);
     Ty? ty;
     if (key != null) {
       switch (key) {
@@ -403,8 +400,7 @@ class Parser {
   }
 
   Key? getKey(TokenIterator it) {
-    final t = it.current.token;
-    return Key.from(getSrc(t.start, t.end));
+    return Key.from(getIdent(it).src);
   }
 
   Token getToken(TokenIterator it) {
@@ -1063,7 +1059,7 @@ class Parser {
     baseExpr = parseUnaryExpr(it) ?? parserBaseExpr(it);
     if (baseExpr == null) {
       final ident = getIdent(it);
-      Log.e('${ident.light} ${ident.offset.row}');
+      Log.e('${ident.src} ${ident.offset}');
       return UnknownExpr(getIdent(it), '');
     }
 

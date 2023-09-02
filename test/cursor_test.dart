@@ -1,4 +1,6 @@
+import 'package:characters/characters.dart';
 import 'package:llvm_dart/parsers/lexers/token_kind.dart';
+import 'package:llvm_dart/parsers/token_it.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -9,6 +11,17 @@ void main() {
     expect(cursor.cursor, 0);
     cursor.moveBack();
     expect(cursor.cursor, -1);
+  });
+
+  test('cursor 😯', () {
+    const raw = "let 😯";
+    final cursor = raw.characters.toList().tokenIt;
+    while (cursor.moveNext()) {
+      print(cursor.stringCursor);
+      print(cursor.stringCursorEnd);
+      print(
+          'string:${cursor.current}|${raw.substring(cursor.stringCursor, cursor.stringCursorEnd)}|');
+    }
   });
 
   test('cursor all', () {

@@ -9,8 +9,8 @@ fn main() i32 {
     print("!y == 0");
   }
   
-  let 年后22 = 0;
-   if 年后22 {
+  let 😯 = 0;
+   if 😯 {
     print("y != 0");
   } else {
     print("y == 0");

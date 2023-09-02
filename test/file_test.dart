@@ -1,3 +1,4 @@
+import 'package:characters/characters.dart';
 import 'package:llvm_dart/fs/fs.dart';
 import 'package:llvm_dart/manager/build_run.dart';
 import 'package:llvm_dart/manager/manager.dart';
@@ -8,7 +9,7 @@ import 'package:test/test.dart';
 void main() {
   test('char', () {
     final char = '😯';
-    Log.i(char.codeUnits);
+    Log.i(char.characters.length);
   });
   final rq = TaskQueue();
 

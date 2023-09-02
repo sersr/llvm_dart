@@ -91,6 +91,9 @@ class Identifier with EquatableMixin {
     if (!isValid) return Offset.zero;
 
     var row = 1, column = 1;
+    if (start == 0) {
+      return _offset = Offset(1, end);
+    }
     final lineStart = data.substring(0, start).lastIndexOf('\n');
     if (lineStart != -1) {
       final before = data.substring(0, lineStart + 1);
@@ -163,12 +166,12 @@ class Identifier with EquatableMixin {
       lineEnd += start;
     }
 
-    if (lineStart != -1) {
-      final vs = src.substring(lineStart, lineEnd);
-      final s = ' ' * (start - lineStart);
-      final v = '^' * (end - start);
-      return '$vs\n$s$v';
-    }
+    // if (lineStart != -1) {
+    //   final vs = src.substring(lineStart, lineEnd);
+    //   final s = ' ' * (start - lineStart);
+    //   final v = '^' * (end - start + 1);
+    //   return '$vs\n$s$v';
+    // }
     return src.substring(start, end);
   }
 

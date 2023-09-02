@@ -135,12 +135,12 @@ enum TokenKind {
   final String char;
   const TokenKind(this.char);
 
-  static Token? parse(String char, int cursor) {
+  static Token? parse(String char, int cursor, int cursorEnd) {
     final kind = values.firstWhereOrNull((e) {
       return e.char == char;
     });
     if (kind == null) return null;
-    return Token(kind: kind, start: cursor);
+    return Token(kind: kind, start: cursor, end: cursorEnd);
   }
 }
 
@@ -227,15 +227,13 @@ enum LiteralKind {
 }
 
 class Token {
-  Token({required this.kind, required this.start, int? end})
-      : literalKind = null,
-        end = (end ?? start) + 1;
+  Token({required this.kind, required this.start, required this.end})
+      : literalKind = null;
   Token.literal({
     required LiteralKind this.literalKind,
     required this.start,
-    required int end,
-  })  : end = end + 1,
-        kind = TokenKind.literal;
+    required this.end,
+  }) : kind = TokenKind.literal;
 
   final TokenKind kind;
   final int start;
@@ -260,9 +258,10 @@ class Cursor {
 
   final String src;
 
-  late BackIterator<String> _it;
+  late BackIteratorString _it;
 
-  int get cursor => _it.cursor.cursor;
+  int get cursor => _it.stringCursor;
+  int get cursorEnd => _it.stringCursorEnd;
 
   void moveBack() {
     _it.moveBack();
@@ -293,8 +292,9 @@ class Cursor {
   Token advanceToken() {
     final char = nextChar;
     if (char.isEmpty) {
-      return Token(kind: TokenKind.eof, start: cursor);
+      return Token(kind: TokenKind.eof, start: cursor, end: cursorEnd);
     }
+
     if (whiteSpaceChars.contains(char)) {
       return whiteSpace();
     }
@@ -315,13 +315,13 @@ class Cursor {
       return doubleQuotedString();
     }
 
-    final tk = TokenKind.parse(char, cursor);
+    final tk = TokenKind.parse(char, cursor, cursorEnd);
     if (tk != null) return tk;
 
     if (isIdent(char)) {
       return ident();
     }
-    return Token(kind: TokenKind.unknown, start: cursor);
+    return Token(kind: TokenKind.unknown, start: cursor, end: cursorEnd);
   }
 
   Token? comment() {
@@ -329,7 +329,7 @@ class Cursor {
     final start = cursor;
     if (nextCharRead == '/') {
       eatLine();
-      return Token(kind: TokenKind.lineCommnet, start: start, end: cursor);
+      return Token(kind: TokenKind.lineCommnet, start: start, end: cursorEnd);
     }
     if (nextCharRead == '*') {
       String preChar = '';
@@ -340,7 +340,7 @@ class Cursor {
         preChar = char;
         return false;
       }, back: false);
-      return Token(kind: TokenKind.blockComment, start: start, end: cursor);
+      return Token(kind: TokenKind.blockComment, start: start, end: cursorEnd);
     }
     return null;
   }
@@ -364,12 +364,13 @@ class Cursor {
     final start = cursor;
     loop((char) {
       if (!whiteSpaceChars.contains(char) && isIdent(char, supportNum: true)) {
-        assert(TokenKind.parse(char, cursor) == null);
+        assert(TokenKind.parse(char, cursor, cursorEnd) == null);
         return false;
       }
       return true;
     });
-    return Token(kind: TokenKind.ident, start: start, end: cursor);
+
+    return Token(kind: TokenKind.ident, start: start, end: cursorEnd);
   }
 
   Token whiteSpace() {
@@ -377,7 +378,7 @@ class Cursor {
     loop((char) {
       return !whiteSpaceChars.contains(char);
     });
-    return Token(kind: TokenKind.whiteSpace, start: start, end: cursor);
+    return Token(kind: TokenKind.whiteSpace, start: start, end: cursorEnd);
   }
 
   Token singleQuotedString() {
@@ -398,7 +399,7 @@ class Cursor {
       return false;
     });
     return Token.literal(
-        literalKind: LiteralKind.kStr, start: start, end: cursor);
+        literalKind: LiteralKind.kStr, start: start, end: cursorEnd);
   }
 
   Token doubleQuotedString() {
@@ -422,7 +423,7 @@ class Cursor {
     });
 
     return Token.literal(
-        literalKind: LiteralKind.kStr, start: start, end: cursor);
+        literalKind: LiteralKind.kStr, start: start, end: cursorEnd);
   }
 
   Token number() {
@@ -455,14 +456,14 @@ class Cursor {
           nextChar;
           eatNumberLiteral();
         }
-        final c = cursor;
+        final c = cursorEnd;
         final k = getLitKind() ?? LiteralKind.f64;
 
         return Token.literal(literalKind: k, start: start, end: c);
       }
     }
 
-    final end = cursor;
+    final end = cursorEnd;
     LiteralKind lkd =
         getLitKind() ?? (isFloat ? LiteralKind.f32 : LiteralKind.i32);
 
@@ -510,9 +511,8 @@ class Cursor {
   }
 
   void loop(bool Function(String char) test, {bool back = true}) {
-    while (true) {
-      final next = nextChar;
-      if (next.isEmpty) return;
+    while (_it.moveNext()) {
+      final next = _it.current;
       if (test(next)) {
         if (back) moveBack();
         return;
