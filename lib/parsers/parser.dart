@@ -488,7 +488,7 @@ class Parser {
     final state = it.cursor;
     if (it.moveNext()) {
       final t = getToken(it);
-      if (t.kind == TokenKind.literal && t.literalKind == LiteralKind.kString) {
+      if (t.kind == TokenKind.literal && t.literalKind == LiteralKind.kStr) {
         final path = ImportPath(getIdent(it));
         eatLfIfNeed(it);
         if (it.moveNext() && getKey(it) == Key.kAs) {

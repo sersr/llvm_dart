@@ -54,6 +54,7 @@ class ProjectManager extends ManagerBase {
 
       baseProcess(context: alc, path: path, parser: parser, action: actionAlc);
       afterAnalysis?.call();
+      root.currentPath = path;
       root.init(isDebug);
       baseProcess(context: root, path: path, parser: parser, action: action);
 

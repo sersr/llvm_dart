@@ -42,6 +42,10 @@ class Offset {
   final int column;
   final int row;
 
+  String get pathStyle {
+    return '$row:$column';
+  }
+
   @override
   String toString() {
     return '{row: $row, column: $column}';
@@ -303,7 +307,7 @@ enum LitKind {
   f32('f32'),
   f64('f64'),
   kInt('int'),
-  kString('string'),
+  kStr('str'),
 
   i8('i8'),
   i16('i16'),
@@ -487,7 +491,7 @@ class FnDecl with EquatableMixin {
       final t = fn.getRty(context, p);
       context.pushVariable(
         p.ident,
-        context.createVal(t, p.ident, p.rawTy.kind)..lifeCycle.isOut = true,
+        context.createVal(t, p.ident, p.rawTy.kind)..lifecycle.isOut = true,
       );
     }
   }
@@ -571,7 +575,7 @@ class BuiltInTy extends Ty {
   static final i32 = BuiltInTy._(LitKind.i32);
   static final float = BuiltInTy._(LitKind.kFloat);
   static final double = BuiltInTy._(LitKind.kDouble);
-  static final string = BuiltInTy._(LitKind.kString);
+  static final string = BuiltInTy._(LitKind.kStr);
   static final kVoid = BuiltInTy._(LitKind.kVoid);
   static final kBool = BuiltInTy._(LitKind.kBool);
   static final usize = BuiltInTy._(LitKind.usize);
@@ -1076,7 +1080,7 @@ class ImplFn extends Fn with ImplFnMixin {
   void analysisContext(AnalysisContext context) {
     final ident = Identifier.builtIn('self');
     final v = context.createVal(ty, ident);
-    v.lifeCycle.isOut = true;
+    v.lifecycle.isOut = true;
     context.pushVariable(ident, v);
   }
 }
@@ -1594,14 +1598,14 @@ class TypeAliasTy extends Ty {
 
   @override
   void analysis(AnalysisContext context) {
-    context.pushCty(ident, this);
+    context.pushAliasTy(ident, this);
   }
 
   @override
   void build() {
     final context = currentContext;
     if (context == null) return;
-    context.pushCty(ident, this);
+    context.pushAliasTy(ident, this);
   }
 
   @override

@@ -1,7 +1,7 @@
-extern fn printf(str: *u8, ...) i32;
+extern fn printf(data: *u8, ...) i32;
 
-fn print(str: *u8) {
-    printf("log: %s\n", str);
+fn print(data: *u8) {
+    printf("log: %s\n", data);
 }
 
 struct Array<T>;
@@ -16,7 +16,7 @@ impl Array<T> {
 }
 
 impl Array<u8> {
-  fn toStr() &string;
+  fn toStr() &str;
 }
 
 type Ptr<T>;

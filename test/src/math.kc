@@ -2,11 +2,24 @@ import 'd.kc'
 
 fn main() i32 {
 
-  let y = 10;
-  if !y {
+  let 年后 = 10;
+  if !年后 {
     print("y != 0");
   } else {
     print("!y == 0");
+  }
+  
+  let 年后22 = 0;
+   if 年后22 {
+    print("y != 0");
+  } else {
+    print("y == 0");
+  }
+
+  if 1 {
+    print("1 != null");
+  } else {
+    print("1 == null");
   }
 
   0;

@@ -6,6 +6,10 @@ import 'package:nop/nop.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('char', () {
+    final char = '😯';
+    Log.i(char.codeUnits);
+  });
   final rq = TaskQueue();
 
   Future<void> run(String name, {bool run = false}) {
@@ -13,7 +17,7 @@ void main() {
           // final name = 'impl_fn.kc';
           final path = testSrcDir.childFile(name).path;
           final project = ProjectManager();
-
+          // project.isDebug = true;
           final root =
               project.build(path, afterAnalysis: () => project.printAst());
           buildRun(root);

@@ -109,7 +109,7 @@ class LLVMTypeLit extends LLVMType {
       case LitKind.i128:
         type = c.i128;
         break;
-      case LitKind.kString:
+      case LitKind.kStr:
         type = c.pointer();
         break;
       case LitKind.kVoid:
@@ -136,7 +136,7 @@ class LLVMTypeLit extends LLVMType {
         case LitKind.f64:
         case LitKind.kDouble:
           return c.constF64(raw.rawNumber);
-        case LitKind.kString:
+        case LitKind.kStr:
           return c.getString(raw.raw);
         case LitKind.kBool:
           return c.constI1(raw.raw == 'true' ? 1 : 0);
@@ -183,7 +183,7 @@ class LLVMTypeLit extends LLVMType {
         return 2;
       case LitKind.i128:
         return 16;
-      case LitKind.kString:
+      case LitKind.kStr:
       case LitKind.usize:
         return c.pointerSize();
       case LitKind.kVoid:
@@ -201,7 +201,7 @@ class LLVMTypeLit extends LLVMType {
     }
 
     var encoding = 5;
-    if (ty.ty == LitKind.kString) {
+    if (ty.ty == LitKind.kStr) {
       final base = llvm.LLVMDIBuilderCreateBasicType(
           c.dBuilder!, 'char'.toChar(), 4, 8, 6, 0);
       return llvm.LLVMDIBuilderCreatePointerType(

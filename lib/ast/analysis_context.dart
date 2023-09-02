@@ -25,6 +25,9 @@ class AnalysisContext with Tys<AnalysisVariable> {
     return c;
   }
 
+  @override
+  String? get currentPath => super.currentPath ??= parent?.currentPath;
+
   final children = <AnalysisContext>[];
 
   AnalysisContext? getLastFnContext() {
@@ -122,7 +125,7 @@ class AnalysisContext with Tys<AnalysisVariable> {
   @override
   void pushVariable(Identifier ident, AnalysisVariable variable,
       {bool isAlloca = true}) {
-    variable.lifeCycle.fnContext = getLastFnContext();
+    variable.lifecycle.fnContext = getLastFnContext();
     allLifeCycyle.add(variable);
 
     super.pushVariable(ident, variable, isAlloca: isAlloca);
@@ -184,7 +187,7 @@ class AnalysisContext with Tys<AnalysisVariable> {
   AnalysisVariable createVal(Ty ty, Identifier ident,
       [List<PointerKind>? kind]) {
     final val = AnalysisVariable._(ty, ident, kind ?? []);
-    val.lifeCycle.fnContext = this;
+    val.lifecycle.fnContext = this;
     return val;
   }
 
@@ -192,7 +195,7 @@ class AnalysisContext with Tys<AnalysisVariable> {
       Ty ty, Identifier ident, Map<Identifier, AnalysisVariable> map,
       [List<PointerKind>? kind]) {
     final val = AnalysisStructVariable._(ty, ident, map, kind ?? []);
-    val.lifeCycle.fnContext = this;
+    val.lifecycle.fnContext = this;
     return val;
   }
 }
@@ -213,7 +216,7 @@ class AnalysisVariable extends LifeCycleVariable {
       bool isGlobal = false}) {
     return AnalysisVariable._(
         ty ?? this.ty, ident ?? this.ident, kind ?? this.kind.toList())
-      ..lifeCycle.from(lifeCycle)
+      ..lifecycle.from(lifecycle)
       ..isGlobal = isGlobal
       ..parent = this;
   }
@@ -232,7 +235,7 @@ class AnalysisVariable extends LifeCycleVariable {
     return l;
   }
 
-  late final LifeCycle lifeCycle = LifeCycle();
+  late final LifeCycle lifecycle = LifeCycle();
 
   @override
   String toString() {
@@ -255,7 +258,7 @@ class AnalysisStructVariable extends AnalysisVariable {
       bool isGlobal = false}) {
     return AnalysisStructVariable._(ty ?? this.ty, ident ?? this.ident,
         map ?? _params, kind ?? this.kind.toList())
-      ..lifeCycle.from(lifeCycle)
+      ..lifecycle.from(lifecycle)
       ..isGlobal = isGlobal
       ..parent = this;
   }

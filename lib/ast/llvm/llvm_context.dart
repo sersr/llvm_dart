@@ -78,20 +78,20 @@ class BuildContext
     }
   }
 
-  @override
-  void pushAllTy(Map<Object, Ty> all) {
-    super.pushAllTy(all);
-    for (var item in all.values) {
-      item.currentContext = this;
-    }
-  }
-
   BuildContext.root([String name = 'root'])
       : parent = null,
         isRoot = true {
     kModule = llvm.createKModule(name.toChar());
     _init();
     _debugInit();
+  }
+
+  @override
+  void pushAllTy(Map<Object, Ty> all) {
+    super.pushAllTy(all);
+    for (var item in all.values) {
+      item.currentContext = this;
+    }
   }
 
   /// override: Tys
@@ -595,7 +595,7 @@ class BuildContext
     llvm.LLVMBuildBr(builder, getLoopBB(null).bb);
   }
 
-  void contine() {
+  void brContinue() {
     if (!canBr) return;
 
     _breaked = true;
@@ -670,33 +670,20 @@ class BuildContext
       c.br(after.context);
       insertPointBB(after);
       return variable;
-      // final ac = after.context;
-
-      // final con = variable.load(ac, Offset.zero);
-      // return LLVMTempOpVariable(BuiltInTy.kBool, false, false, con);
     }
 
     final temp = rhsBuilder(this);
     final r = temp?.variable?.load(this, temp.currentIdent.offset);
     if (r == null) {
       LLVMValueRef? value;
-      if (ty is! BuiltInTy) {
-        value = llvm.LLVMBuildIsNotNull(builder, l, unname);
-      } else {
-        if (ty.ty.isNum) {
-          final r = ty.llvmType.createValue(str: '0').getBaseValue(this);
-          assert(op == OpKind.Ne || op == OpKind.Eq);
-          if (isFloat) {
-            value =
-                llvm.LLVMBuildFCmp(builder, op.getFCmpId(false)!, l, r, unname);
-          } else {
-            value =
-                llvm.LLVMBuildICmp(builder, op.getICmpId(false)!, l, r, unname);
-          }
-        }
-      }
 
-      return LLVMConstVariable(value ?? l, BuiltInTy.kBool);
+      if (op == OpKind.Eq) {
+        value = llvm.LLVMBuildIsNull(builder, l, unname);
+      } else {
+        assert(op == OpKind.Ne);
+        value = llvm.LLVMBuildIsNotNull(builder, l, unname);
+      }
+      return LLVMConstVariable(value, BuiltInTy.kBool);
     }
 
     LLVMValueRef Function(LLVMBuilderRef b, LLVMValueRef l, LLVMValueRef r,
@@ -709,7 +696,6 @@ class BuildContext
       if (id != null) {
         final v = llvm.LLVMBuildFCmp(builder, id, l, r, unname);
         return LLVMConstVariable(v, BuiltInTy.kBool);
-        // return LLVMTempOpVariable(BuiltInTy.kBool, isFloat, signed, v);
       }
       LLVMValueRef? value;
       switch (op) {
@@ -748,7 +734,6 @@ class BuildContext
     if (cmpId != null) {
       final v = llvm.LLVMBuildICmp(builder, cmpId, l, r, unname);
       return LLVMConstVariable(v, BuiltInTy.kBool);
-      // return LLVMTempOpVariable(BuiltInTy.kBool, isFloat, signed, v);
     }
 
     LLVMValueRef? value;
@@ -805,13 +790,11 @@ class BuildContext
       insertPointBB(after);
 
       return LLVMConstVariable(mathValue.value, ty);
-      // return LLVMTempOpVariable(ty, isFloat, signed, mathValue.value);
     }
     if (llfn != null) {
       value = llfn(builder, l, r, unname);
     }
 
     return LLVMConstVariable(value ?? l, ty);
-    // return LLVMTempOpVariable(ty, isFloat, signed, value ?? l);
   }
 }

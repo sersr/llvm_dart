@@ -2,7 +2,7 @@ import 'd.kc';
 
 struct Gen {
     y: i32,
-    s: string,
+    s: str,
 }
 
 com Print {

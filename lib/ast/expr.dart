@@ -28,7 +28,7 @@ class LiteralExpr extends Expr {
 
   @override
   String toString() {
-    final isStr = ty.ty == LitKind.kString;
+    final isStr = ty.ty == LitKind.kStr;
     var v = isStr
         ? ident.src.replaceAll('\\\\', '\\').replaceAll('\n', '\\n')
         : ident.src;
@@ -313,7 +313,7 @@ class ContinueExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    context.contine();
+    context.brContinue();
     return null;
   }
 
@@ -417,18 +417,21 @@ class RetExpr extends Expr {
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     if (expr == null) return null;
-    return analysisAll(context, expr!);
+    return analysisAll(context, expr!, ident);
   }
 
-  static AnalysisVariable? analysisAll(AnalysisContext context, Expr expr) {
+  static AnalysisVariable? analysisAll(AnalysisContext context, Expr expr,
+      [Identifier? currentIdent]) {
     final val = expr.analysis(context);
     final current = context.getLastFnContext();
     if (val != null && current != null) {
-      final valLife = val.lifeCycle.fnContext;
+      final valLife = val.lifecycle.fnContext;
       if (valLife != null) {
         if (val.kind.isRef) {
-          if (val.lifeCycle.isInner && current.isChildOrCurrent(valLife)) {
-            Log.e('lifeCycle Error: ${val.ident}');
+          if (val.lifecycle.isInner && current.isChildOrCurrent(valLife)) {
+            final ident = currentIdent ?? val.lifeIdent ?? val.ident;
+            Log.e('lifecycle Error: (${context.currentPath}'
+                ':${ident.offset.pathStyle})\n${ident.light}');
           }
         }
       }
@@ -490,7 +493,7 @@ class StructExpr extends Expr {
     var struct = context.getStruct(ident);
     var genericsInst = generics;
     if (struct == null) {
-      final cty = context.getCty(ident);
+      final cty = context.getAliasTy(ident);
       final t = cty?.getTy(context, genericsInst);
       if (t is! StructTy) return null;
 
@@ -714,8 +717,10 @@ class AssignExpr extends Expr {
     if (lhs != null) {
       if (rhs != null) {
         if (rhs.kind.isRef) {
-          if (rhs.lifeCycle.isInner && lhs.lifeCycle.isOut) {
-            Log.e('lifeCycle Error: ${rhs.ident}');
+          if (rhs.lifecycle.isInner && lhs.lifecycle.isOut) {
+            final ident = rhs.lifeIdent ?? rhs.ident;
+            Log.e('lifecycle Error: (${context.currentPath}'
+                ':${ident.offset.pathStyle})\n${ident.light}');
           }
         }
       }
@@ -1451,7 +1456,7 @@ class StructDotFieldExpr extends Expr {
     }
 
     final vv = context.createVal(v.grt(context), ident);
-    vv.lifeCycle.fnContext = variable.lifeCycle.fnContext;
+    vv.lifecycle.fnContext = variable.lifecycle.fnContext;
     return vv;
   }
 }
@@ -1812,7 +1817,7 @@ class VariableIdentExpr extends Expr {
       return ExprTempValue(val, val.ty, ident);
     }
 
-    final typeAlias = context.getCty(ident);
+    final typeAlias = context.getAliasTy(ident);
     var struct = context.getStruct(ident);
     var localGenerics = generics;
     if (struct == null) {
@@ -1873,7 +1878,7 @@ class VariableIdentExpr extends Expr {
       _isCatch = fnContext.catchVariables.contains(v);
     }
 
-    if (v != null) return v;
+    if (v != null) return v.copy(ident: ident);
 
     var struct = context.getStruct(ident);
     if (struct != null) {
@@ -1948,9 +1953,7 @@ class RefExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     final vv = current.analysis(context);
     if (vv == null) return null;
-    final newV = vv.copy()..kind.add(kind);
-    return newV;
-    // return AnalysisVariable(vv.ty, vv.ident, [...kind, ...vv.kind]);
+    return vv.copy(ident: pointerIdent)..kind.add(kind);
   }
 }
 
@@ -2544,13 +2547,11 @@ class UnaryExpr extends Expr {
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
+    // todo
     final temp = expr.analysis(context);
     // final r = lhs.analysis(context);
     if (temp == null) return null;
-    if (op.index >= OpKind.Eq.index && op.index <= OpKind.Gt.index ||
-        op.index >= OpKind.And.index && op.index <= OpKind.Or.index) {
-      return context.createVal(BuiltInTy.kBool, Identifier.none);
-    }
+
     return context.createVal(temp.ty, Identifier.none);
   }
 }

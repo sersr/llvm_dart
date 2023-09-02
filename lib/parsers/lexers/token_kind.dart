@@ -170,7 +170,7 @@ enum LiteralKind {
   f32('f32'),
   f64('f64'),
   kInt('int'),
-  kString('string'),
+  kStr('str'),
 
   i8('i8'),
   i16('i16'),
@@ -290,9 +290,6 @@ class Cursor {
     return '';
   }
 
-  final idenStartKey = RegExp('[a-zA-Z_]');
-  final idenKey = RegExp('[a-zA-Z_0-9]');
-
   Token advanceToken() {
     final char = nextChar;
     if (char.isEmpty) {
@@ -308,9 +305,6 @@ class Cursor {
         return t;
       }
     }
-    if (idenStartKey.hasMatch(char)) {
-      return ident();
-    }
 
     if (rawNumbers.contains(char)) {
       return number();
@@ -321,20 +315,12 @@ class Cursor {
       return doubleQuotedString();
     }
 
-    // if (char == '>' && nextCharRead == '>') {
-    //   final start = cursor;
-    //   nextChar;
-    //   return Token(kind: TokenKind.shl, start: start, end: cursor);
-    // }
-
-    // if (char == '<' && nextCharRead == '<') {
-    //   final start = cursor;
-    //   nextChar;
-    //   return Token(kind: TokenKind.shr, start: start, end: cursor);
-    // }
     final tk = TokenKind.parse(char, cursor);
     if (tk != null) return tk;
 
+    if (isIdent(char)) {
+      return ident();
+    }
     return Token(kind: TokenKind.unknown, start: cursor);
   }
 
@@ -359,10 +345,26 @@ class Cursor {
     return null;
   }
 
+  /// a-z A-Z _ $
+  bool isIdent(String char, {bool supportNum = false}) {
+    if (char.codeUnits case [int unit]) {
+      return unit > 0x7F ||
+          unit >= 0x61 && unit <= 0x7A || // a-z
+          unit >= 0x41 && unit <= 0x5A || // A-Z
+          unit == 0x5F || // _
+          unit == 0x24 || // $
+          supportNum && // 0-9
+              unit >= 0x30 &&
+              unit <= 0x39;
+    }
+    return char.isNotEmpty;
+  }
+
   Token ident() {
     final start = cursor;
     loop((char) {
-      if (idenKey.hasMatch(char)) {
+      if (!whiteSpaceChars.contains(char) && isIdent(char, supportNum: true)) {
+        assert(TokenKind.parse(char, cursor) == null);
         return false;
       }
       return true;
@@ -396,7 +398,7 @@ class Cursor {
       return false;
     });
     return Token.literal(
-        literalKind: LiteralKind.kString, start: start, end: cursor);
+        literalKind: LiteralKind.kStr, start: start, end: cursor);
   }
 
   Token doubleQuotedString() {
@@ -420,7 +422,7 @@ class Cursor {
     });
 
     return Token.literal(
-        literalKind: LiteralKind.kString, start: start, end: cursor);
+        literalKind: LiteralKind.kStr, start: start, end: cursor);
   }
 
   Token number() {

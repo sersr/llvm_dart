@@ -86,8 +86,10 @@ fn loopx() {
   let y = malloc(10);
   free(y);
   let h = HH {};
-  if h.h.hh == null {
+  if !h.h.hh {
     print("h.h.hh == null");
+  }else {
+    print("h.h.hh != null");
   }
   h.h = null;
   let hb = false;

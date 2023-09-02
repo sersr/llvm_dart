@@ -9,7 +9,7 @@ abstract class LifeCycleVariable {
 
   Identifier? lifeEnd;
 
-  Identifier? get lifeCycyle => lifeEnd ?? ident;
+  Identifier? get lifeIdent => lifeEnd ?? ident;
 
   void updateLifeCycle(Identifier ident) {
     if (lifeEnd == null) {
@@ -260,21 +260,26 @@ mixin Tys<V extends LifeCycleVariable> {
 
   final cTys = <Identifier, List<TypeAliasTy>>{};
 
-  TypeAliasTy? getCty(Identifier ident) {
+  TypeAliasTy? getAliasTy(Identifier ident) {
     return getKV(ident, (c) => c.cTys, handler: (c) {
-      return c.getCty(ident);
+      return c.getAliasTy(ident);
     });
   }
 
-  void pushCty(Identifier ident, TypeAliasTy ty) {
+  void pushAliasTy(Identifier ident, TypeAliasTy ty) {
     pushKV(ident, ty, cTys);
   }
 
   final _dyTys = <Identifier, List<Ty>>{};
 
+  /// 在当前上下文中额外的类型，如：
+  ///
+  /// T: i32  => Identifier[T] : Ty[i32]
+  ///
+  /// 一般是函数，结构体泛型的具体类型
   Ty? getDyTy(Identifier ident) {
     return getKV(ident, (c) => c._dyTys, handler: (c) {
-      return c.getCty(ident);
+      return c.getAliasTy(ident);
     });
   }
 
@@ -302,7 +307,7 @@ mixin Tys<V extends LifeCycleVariable> {
       } else if (ty is ImplTy) {
         pushImpl(ty.struct.ident, ty);
       } else if (ty is TypeAliasTy) {
-        pushCty(ty.ident, ty);
+        pushAliasTy(ty.ident, ty);
       } else {
         print('unknown ty {${ty.runtimeType}}');
       }
@@ -322,12 +327,12 @@ mixin Tys<V extends LifeCycleVariable> {
         getImpl(i) ??
         getFn(i) ??
         getEnum(i) ??
-        getCty(i) ??
+        getAliasTy(i) ??
         getDyTy(i);
   }
 
   Ty? getTyIgnoreImpl(Identifier i) {
-    return getStruct(i) ?? getFn(i) ?? getEnum(i) ?? getCty(i);
+    return getStruct(i) ?? getFn(i) ?? getEnum(i) ?? getAliasTy(i);
   }
 
   void errorExpr(UnknownExpr unknownExpr) {}

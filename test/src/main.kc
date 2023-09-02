@@ -90,7 +90,7 @@ fn main() i32 {
 	0;
 }
 
-impl string {
+impl str {
 	fn print() {
 		print(&self);
 	}
