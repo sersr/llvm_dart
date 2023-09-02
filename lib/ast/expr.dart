@@ -475,12 +475,9 @@ class StructExpr extends Expr {
   final List<FieldExpr> fields;
   final List<PathTy> generics;
 
-  bool isNew = false;
-
   @override
   Expr clone() {
-    return StructExpr(ident, fields.map((e) => e.clone()).toList(), generics)
-      ..isNew = isNew;
+    return StructExpr(ident, fields.map((e) => e.clone()).toList(), generics);
   }
 
   @override
@@ -501,8 +498,7 @@ class StructExpr extends Expr {
       struct = t;
     }
 
-    return buildTupeOrStruct(
-        struct, context, ident, fields, genericsInst, isNew);
+    return buildTupeOrStruct(struct, context, ident, fields, genericsInst);
   }
 
   static T resolveGeneric<T extends Ty>(NewInst<T> t, Tys context,
@@ -581,13 +577,8 @@ class StructExpr extends Expr {
     return nt;
   }
 
-  static ExprTempValue? buildTupeOrStruct(
-      StructTy struct,
-      BuildContext context,
-      Identifier ident,
-      List<FieldExpr> params,
-      List<PathTy> genericsInst,
-      bool isNew) {
+  static ExprTempValue? buildTupeOrStruct(StructTy struct, BuildContext context,
+      Identifier ident, List<FieldExpr> params, List<PathTy> genericsInst) {
     struct = resolveGeneric(struct, context, params, genericsInst);
     final structType = struct.llvmType.createType(context);
     LLVMValueRef create([StoreVariable? alloca]) {
@@ -598,15 +589,7 @@ class StructExpr extends Expr {
           params, (p) => fields.indexWhere((e) => e.ident == p.ident));
       final size = min > 4 ? 8 : 4;
 
-      if (value == null) {
-        if (isNew) {
-          value = struct.llvmType.createMalloc(context, ident);
-          // final fnContext = context.getLastFnContext();
-          // fnContext?.addFree(value);
-        } else {
-          value = struct.llvmType.createAlloca(context, ident, null);
-        }
-      }
+      value ??= struct.llvmType.createAlloca(context, ident, null);
 
       context.diSetCurrentLoc(ident.offset);
 
@@ -1091,13 +1074,11 @@ class FnCallExpr extends Expr with FnCallMixin {
   @override
   bool get hasUnknownExpr => expr.hasUnknownExpr;
 
-  bool isNew = false;
   @override
   Expr clone() {
     final f = FnCallExpr(expr.clone(), params.map((e) => e.clone()).toList());
     f._catchFns.addAll(_catchFns);
     f._catchMapFns.addAll(_catchMapFns);
-    f.isNew = isNew;
     return f;
   }
 
@@ -1113,7 +1094,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     final fn = variable?.ty ?? fnV?.ty;
     if (fn is StructTy) {
       return StructExpr.buildTupeOrStruct(
-          fn, context, Identifier.none, params, const [], isNew);
+          fn, context, Identifier.none, params, const []);
     }
 
     if (fn is SizeOfFn) {
@@ -1211,14 +1192,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
     var val = variable?.variable;
 
-    // while (true) {
-    //   if (val is! Deref) {
-    //     break;
-    //   }
-    //   final v = val.getDeref(context);
-    //   if (v == val) break;
-    //   val = v;
-    // }
     if (val is Deref) {
       val = val.getDeref(context);
     }

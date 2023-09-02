@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:nop/nop.dart';
 
 import '../ast/ast.dart';
 import '../ast/expr.dart';
@@ -532,7 +533,8 @@ class Parser {
     if (!it.moveNext()) return [];
     it = it.current.child.tokenIt;
     final items = <MatchItemExpr>[];
-    void common(Expr expr, OpKind? op) {
+
+    bool isArrow() {
       if (it.moveNext()) {
         if (getToken(it).kind == TokenKind.eq) {
           eatLfIfNeed(it);
@@ -540,38 +542,56 @@ class Parser {
             eatLfIfNeed(it);
             if (getToken(it).kind == TokenKind.gt) {
               it.moveNext();
+              return true;
             }
           }
         }
       }
+      return false;
+    }
+
+    void jump() {
+      if (it.moveNext()) {
+        final kind = getToken(it).kind;
+        if (kind != TokenKind.comma || kind != TokenKind.lf) {
+          it.moveBack();
+        }
+      }
+    }
+
+    void common(Expr expr, OpKind? op) {
       eatLfIfNeed(it);
+      isArrow();
       if (getToken(it).kind == TokenKind.openBrace) {
         final block = parseBlock(it);
         items.add(MatchItemExpr(expr, block, op));
+        it.moveNext();
+        jump();
       } else {
         final stmt = parseStmt(it);
         if (stmt != null) {
           final block = Block([stmt], null);
           items.add(MatchItemExpr(expr, block, op));
+          jump();
         }
       }
     }
 
     loop(it, () {
       final t = getToken(it);
-      if (t.kind == TokenKind.openBrace || t.kind == TokenKind.comma) {
-        return false;
-      }
+
       if (t.kind == TokenKind.ident) {
         it.moveBack();
         final expr = parseExpr(it);
         eatLfIfNeed(it);
         common(expr, null);
       } else {
-        final op = resolveOp(it);
-        it.moveBack();
+        eatLfIfNeed(it);
+        OpKind? op;
+        op = resolveOp(it);
+        eatLfIfNeed(it);
         final expr = parseExpr(it);
-        if (op != null || expr is! UnknownExpr) {
+        if (op != null || !expr.hasUnknownExpr) {
           eatLfIfNeed(it);
           common(expr, op);
         }
@@ -908,7 +928,7 @@ class Parser {
     return idents;
   }
 
-  Expr? parseUnaryExpr(TokenIterator it, bool runOp) {
+  Expr? parseUnaryExpr(TokenIterator it) {
     eatLfIfNeed(it);
     final state = it.cursor;
 
@@ -916,12 +936,12 @@ class Parser {
     final uOp = UnaryKind.from(kind.char);
     if (uOp != null) {
       final ident = getIdent(it);
-      return UnaryExpr(uOp, parseExpr(it, runOp: runOp), ident);
+      return UnaryExpr(uOp, parseExpr(it), ident);
     } else {
       final pointer = PointerKind.from(kind);
       if (pointer != null) {
         final ident = getIdent(it);
-        return RefExpr(parseExpr(it, runOp: runOp), ident, pointer);
+        return RefExpr(parseExpr(it), ident, pointer);
       }
     }
 
@@ -931,7 +951,6 @@ class Parser {
 
   Expr? parserBaseExpr(TokenIterator it) {
     Expr? expr;
-    eatLfIfNeed(it);
 
     final t = getToken(it);
     if (t.kind == TokenKind.openParen) {
@@ -991,7 +1010,6 @@ class Parser {
   }
 
   Expr? parserStructOrVariableExpr(TokenIterator it) {
-    eatLfIfNeed(it);
     Expr? expr;
 
     final t = getToken(it);
@@ -1012,7 +1030,11 @@ class Parser {
           if (t.kind == TokenKind.openBrace) {
             if (hasIfBlock(it)) {
               final struct = parseStructExpr(it, ident, generics);
-              if (struct.fields.any((e) => e.expr.hasUnknownExpr)) {
+
+              /// 只需检查最后一个即可
+              if (struct.fields case [..., FieldExpr(expr: UnknownExpr expr)]) {
+                final ident = expr.ident;
+                Log.i('${ident.light} ${ident.offset.row}[ignore]');
                 cursor.restore();
               } else {
                 expr = struct;
@@ -1035,11 +1057,13 @@ class Parser {
 
   Expr parseExpr(TokenIterator it, {bool runOp = false}) {
     if (!it.moveNext()) return UnknownExpr(getIdent(it), '');
-
     var baseExpr = parseKeyExpr(it);
     if (baseExpr != null) return baseExpr;
-    baseExpr = parseUnaryExpr(it, runOp) ?? parserBaseExpr(it);
+
+    baseExpr = parseUnaryExpr(it) ?? parserBaseExpr(it);
     if (baseExpr == null) {
+      final ident = getIdent(it);
+      Log.e('${ident.light} ${ident.offset.row}');
       return UnknownExpr(getIdent(it), '');
     }
 
@@ -1267,11 +1291,12 @@ class Parser {
 
       if (t.kind == TokenKind.comma) return false;
 
-      void parseCommon() {
+      bool parseCommon() {
         it.moveBack();
         final expr = parseExpr(it);
         final f = FieldExpr(expr, null);
         fields.add(f);
+        return expr.hasUnknownExpr;
       }
 
       if (t.kind == TokenKind.ident) {
@@ -1286,14 +1311,13 @@ class Parser {
             fields.add(f);
           } else {
             state.restore();
-            parseCommon();
+            return parseCommon();
           }
           return false;
         }
       }
 
-      parseCommon();
-      return false;
+      return parseCommon();
     });
 
     final t = getToken(pIt);
@@ -1306,7 +1330,10 @@ class Parser {
   }
 
   OpKind? resolveOp(TokenIterator it) {
-    var chars = getIdent(it).src;
+    var chars = '';
+    if (getToken(it).kind != TokenKind.lf) {
+      chars = getIdent(it).src;
+    }
     OpKind? lastOp;
     final state = it.cursor;
     loop(it, () {
@@ -1494,6 +1521,7 @@ class Parser {
 
   /// 跳过换行符
   void eatLfIfNeed(TokenIterator it) {
+    if (it.curentIsValid && getToken(it).kind != TokenKind.lf) return;
     loop(it, () {
       final k = getToken(it).kind;
       if (k != TokenKind.lf) {
@@ -1525,7 +1553,6 @@ enum Key {
   kRet('return'),
   kExtern('extern'),
   kFinal('final'),
-  kNew('new'),
 
   kFalse('false'),
   kTrue('true'),

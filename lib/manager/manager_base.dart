@@ -43,7 +43,7 @@ abstract class ManagerBase extends GlobalContext {
     Identifier.run(() {
       for (var entry in alcs.entries) {
         final path = entry.key;
-        final parser = parserToken(path)!;
+        final parser = getParser(path)!;
         printParser(parser, path);
       }
     });
@@ -53,6 +53,18 @@ abstract class ManagerBase extends GlobalContext {
     for (var e in alcs.values) {
       e.forEach(action);
     }
+  }
+
+  final _mapParsers = <String, Parser>{};
+
+  Parser? getParser(String path) {
+    var parser = _mapParsers[path];
+    if (parser != null) return parser;
+    parser = parserToken(path);
+    if (parser != null) {
+      _mapParsers[path] = parser;
+    }
+    return parser;
   }
 
   @override
@@ -75,7 +87,7 @@ abstract class ManagerBase extends GlobalContext {
     if (child == null) {
       child = current.defaultImport();
       map[pn] = child;
-      final parser = parserToken(pn);
+      final parser = getParser(pn);
       if (parser == null) {
         //error
         return child;
@@ -111,7 +123,7 @@ abstract class ManagerBase extends GlobalContext {
     bool isRoot = true,
   }) {
     context.currentPath = path;
-    parser ??= parserToken(path)!;
+    parser ??= getParser(path)!;
     context.importHandler = this;
 
     parser.globalImportStmt.values.forEach(action);

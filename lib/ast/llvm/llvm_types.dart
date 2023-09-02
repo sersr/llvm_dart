@@ -57,11 +57,11 @@ abstract class LLVMType {
     return val;
   }
 
-  StoreVariable createMalloc(BuildContext c, Identifier ident) {
-    final type = createType(c);
-    final v = c.createMalloc(type, name: ident.src);
-    return LLVMAllocaVariable(ty, v, type);
-  }
+  // StoreVariable createMalloc(BuildContext c, Identifier ident) {
+  //   final type = createType(c);
+  //   final v = c.createMalloc(type, name: ident.src);
+  //   return LLVMAllocaVariable(ty, v, type);
+  // }
 }
 
 class LLVMTypeLit extends LLVMType {

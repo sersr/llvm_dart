@@ -13,8 +13,9 @@ void main() {
           // final name = 'impl_fn.kc';
           final path = testSrcDir.childFile(name).path;
           final project = ProjectManager();
-          final root = project.build(path);
-          project.printAst();
+
+          final root =
+              project.build(path, afterAnalysis: () => project.printAst());
           buildRun(root);
           // final project = Project(path, isDebug: false);
           // project.printAsm = true;

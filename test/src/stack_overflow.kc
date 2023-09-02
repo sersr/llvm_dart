@@ -42,17 +42,17 @@ extern
 fn sigaction(sig: i32, sa: &sigactionc, oss: *void) i32;
 
 
-struct siginfo_t {
-  si_signo: ::i32,
-  si_errno: ::i32,
-  si_code: ::c_int,
-  si_pid: ::pid_t,
-  si_uid: ::uid_t,
-  si_status: ::c_int,
-  si_addr: *mut ::c_void,
-  //Requires it to be union for tests
-  //pub si_value: ::sigval,
-  _pad: [usize; 9],
+// struct siginfo_t {
+//   si_signo: i32,
+//   si_errno: i32,
+//   si_code: c_int,
+//   si_pid: pid_t,
+//   si_uid: uid_t,
+//   si_status: c_int,
+//   si_addr: * c_void,
+//   //Requires it to be union for tests
+//   pub si_value: sigval,
+//   _pad: [usize; 9],
 }
 extern 
 fn sig_handler(sig: i32) {

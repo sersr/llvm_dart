@@ -6,22 +6,12 @@ import '../ast/llvm/variables.dart';
 import '../ast/tys.dart';
 import '../fs/fs.dart';
 import '../llvm_dart.dart';
-import '../parsers/parser.dart';
 import 'manager_base.dart';
 
 class ProjectManager extends ManagerBase {
   ProjectManager();
 
   bool isDebug = false;
-
-  static Parser? parserToken(String path) {
-    final file = currentDir.childFile(path);
-    if (file.existsSync()) {
-      final data = file.readAsStringSync();
-      return parseTopItem(data);
-    }
-    return null;
-  }
 
   AnalysisContext analysis(String path) {
     return Identifier.run(() {
@@ -39,13 +29,13 @@ class ProjectManager extends ManagerBase {
   final rootBuildContext = RootBuildContext();
   final rootAnalysisContext = RootAnalysis();
 
-  BuildContext build(String path) {
+  BuildContext build(String path, {void Function()? afterAnalysis}) {
     return Identifier.run(() {
       llvm.initLLVM();
       final fileName = currentDir.childFile(path).basename;
       final root = BuildContext.root(fileName);
       llvmCtxs[path] = root;
-      final parser = parserToken(path);
+      final parser = getParser(path);
       final alc = AnalysisContext.root();
       alcs[path] = alc;
 
@@ -63,7 +53,7 @@ class ProjectManager extends ManagerBase {
       }
 
       baseProcess(context: alc, path: path, parser: parser, action: actionAlc);
-
+      afterAnalysis?.call();
       root.init(isDebug);
       baseProcess(context: root, path: path, parser: parser, action: action);
 
