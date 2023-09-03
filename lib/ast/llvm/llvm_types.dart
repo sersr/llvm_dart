@@ -160,7 +160,7 @@ class LLVMTypeLit extends LLVMType {
   }
 
   @override
-  int getBytes(BuildContext c) {
+  int getBytes(LLVMTypeMixin c) {
     final kind = ty.ty;
     switch (kind) {
       case LitKind.kDouble:
@@ -190,7 +190,7 @@ class LLVMTypeLit extends LLVMType {
   }
 
   @override
-  LLVMMetadataRef createDIType(covariant BuildContext c) {
+  LLVMMetadataRef createDIType(LLVMTypeMixin c) {
     final name = ty.ty.name;
 
     if (ty.ty == LitKind.kVoid) {
@@ -200,17 +200,19 @@ class LLVMTypeLit extends LLVMType {
     var encoding = 5;
     if (ty.ty == LitKind.kStr) {
       final base = llvm.LLVMDIBuilderCreateBasicType(
-          c.dBuilder!, 'char'.toChar(), 4, 8, 7, 0);
+          c.dBuilder!, 'u8'.toChar(), 4, 8, 7, 0);
       return llvm.LLVMDIBuilderCreatePointerType(
           c.dBuilder!, base, c.pointerSize() * 8, 0, 0, unname, 0);
     }
 
     if (ty.ty.isFp) {
       encoding = 4;
+    } else if (!ty.ty.signed) {
+      encoding = 7;
     }
 
-    return llvm.LLVMDIBuilderCreateBasicType(
-        c.dBuilder!, name.toChar(), name.length, getBytes(c) * 8, encoding, 0);
+    return llvm.LLVMDIBuilderCreateBasicType(c.dBuilder!, name.toChar(),
+        name.nativeLength, getBytes(c) * 8, encoding, 0);
   }
 }
 
@@ -368,7 +370,7 @@ class LLVMFnType extends LLVMType {
             dBuilder,
             c.unit,
             ident.toChar(),
-            ident.length,
+            ident.nativeLength,
             unname,
             0,
             file,
@@ -721,7 +723,7 @@ class LLVMStructType extends LLVMType {
         c.dBuilder!,
         c.scope,
         field.ident.src.toChar(),
-        field.ident.src.length,
+        field.ident.src.nativeLength,
         file,
         field.ident.offset.row,
         alignSize,
@@ -736,7 +738,7 @@ class LLVMStructType extends LLVMType {
       c.dBuilder!,
       c.scope,
       name.toChar(),
-      name.length,
+      name.nativeLength,
       llvm.LLVMDIScopeGetFile(c.unit),
       offset.row,
       getBytes(c) * 8,
@@ -836,14 +838,11 @@ class LLVMEnumType extends LLVMType {
   LLVMMetadataRef getIndexDIType(BuildContext c) {
     final size = getRealIndexType(c);
     if (size == 8) {
-      return llvm.LLVMDIBuilderCreateBasicType(
-          c.dBuilder!, 'i64'.toChar(), 3, 64, 5, 0);
+      return BuiltInTy.i64.llvmType.createDIType(c);
     } else if (size == 4) {
-      return llvm.LLVMDIBuilderCreateBasicType(
-          c.dBuilder!, 'i32'.toChar(), 3, 32, 5, 0);
+      return BuiltInTy.i32.llvmType.createDIType(c);
     }
-    return llvm.LLVMDIBuilderCreateBasicType(
-        c.dBuilder!, 'i8'.toChar(), 1, 8, 5, 0);
+    return BuiltInTy.i8.llvmType.createDIType(c);
   }
 
   int getItemBytes(BuildContext c) {
@@ -915,8 +914,9 @@ class LLVMEnumType extends LLVMType {
           c.dBuilder!,
           size - 1,
           size,
-          llvm.LLVMDIBuilderCreateBasicType(
-              c.dBuilder!, 'i8'.toChar(), 2, 8, 1, 0),
+          BuiltInTy.i8.llvmType.createDIType(c),
+          // llvm.LLVMDIBuilderCreateBasicType(
+          //     c.dBuilder!, 'i8'.toChar(), 2, 8, 1, 0),
           nullptr,
           0);
     } else if (minSize == 4) {
@@ -925,8 +925,9 @@ class LLVMEnumType extends LLVMType {
           c.dBuilder!,
           fc,
           size,
-          llvm.LLVMDIBuilderCreateBasicType(
-              c.dBuilder!, 'i32'.toChar(), 3, 32, 1, 0),
+          BuiltInTy.i32.llvmType.createDIType(c),
+          // llvm.LLVMDIBuilderCreateBasicType(
+          //     c.dBuilder!, 'i32'.toChar(), 3, 32, 1, 0),
           nullptr,
           0);
     } else {
@@ -941,7 +942,7 @@ class LLVMEnumType extends LLVMType {
       c.dBuilder!,
       c.scope,
       name.toChar(),
-      name.length,
+      name.nativeLength,
       llvm.LLVMDIScopeGetFile(c.unit),
       offset.row,
       getBytes(c),

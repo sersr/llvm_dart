@@ -217,10 +217,6 @@ class StaticStmt extends Stmt {
     LLVMValueRef llValue;
     Variable v;
     final data = val.getBaseValue(context);
-    // final isStr = y is BuiltInTy && y.ty == LitKind.kStr;
-
-    // if (isStr) {
-    //     }
 
     llValue = llvm.LLVMAddGlobal(context.module, type, ident.src.toChar());
 
@@ -242,7 +238,7 @@ class StaticStmt extends Stmt {
           context.dBuilder!,
           context.scope,
           name.toChar(),
-          name.length,
+          name.nativeLength,
           unname,
           0,
           file,

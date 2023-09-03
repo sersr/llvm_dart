@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:ffi';
 
 import '../../llvm_core.dart';
@@ -129,21 +128,13 @@ mixin LLVMTypeMixin {
     if (count > size) {
       final d = count / size;
       count = d.ceil();
-      loadTy = llvm.LLVMDIBuilderCreateArrayType(
-          dBuilder!,
-          count,
-          size,
-          llvm.LLVMDIBuilderCreateBasicType(
-              dBuilder!, 'i64'.toChar(), 3, 64, 1, 0),
-          nullptr,
-          0);
+      loadTy = llvm.LLVMDIBuilderCreateArrayType(dBuilder!, count, size,
+          BuiltInTy.i64.llvmType.createDIType(this), nullptr, 0);
     } else {
       if (count > 4) {
-        loadTy = llvm.LLVMDIBuilderCreateBasicType(
-            dBuilder!, 'i64'.toChar(), 3, 64, 1, 0);
+        loadTy = BuiltInTy.i64.llvmType.createDIType(this);
       } else {
-        loadTy = llvm.LLVMDIBuilderCreateBasicType(
-            dBuilder!, 'i32'.toChar(), 3, 32, 1, 0);
+        loadTy = BuiltInTy.i32.llvmType.createDIType(this);
       }
     }
     return loadTy;
@@ -230,7 +221,7 @@ mixin BuildMethods on LLVMTypeMixin {
         dBuilder,
         scope,
         name.toChar(),
-        name.length,
+        name.nativeLength,
         0,
         llvm.LLVMDIScopeGetFile(unit),
         ident.offset.row,
@@ -343,7 +334,7 @@ mixin Consts on BuildMethods {
       if (!ident.isStr) {
         src = parseStr(src);
       }
-      final length = utf8.encode(src).length;
+      final length = src.nativeLength;
       final strData = constStr(src, length: length);
       final type = arrayType(BuiltInTy.u8.llvmType.litType(this), length);
       final value = llvm.LLVMAddGlobal(module, type, '.str'.toChar());
@@ -356,8 +347,8 @@ mixin Consts on BuildMethods {
   }
 
   LLVMValueRef constStr(String str, {int? length}) {
-    return llvm.LLVMConstStringInContext(llvmContext, str.toChar(),
-        length ?? utf8.encode(str).length, LLVMFalse);
+    return llvm.LLVMConstStringInContext(
+        llvmContext, str.toChar(), length ?? str.nativeLength, LLVMFalse);
   }
 
   LLVMValueRef constArray(LLVMTypeRef ty, List<LLVMValueRef> vals) {

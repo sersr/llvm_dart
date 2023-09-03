@@ -609,8 +609,10 @@ class RefTy extends Ty {
 
 class BuiltInTy extends Ty {
   BuiltInTy._(this._ty);
-  static final i32 = BuiltInTy._(LitKind.i32);
+  static final i8 = BuiltInTy._(LitKind.i8);
   static final u8 = BuiltInTy._(LitKind.u8);
+  static final i32 = BuiltInTy._(LitKind.i32);
+  static final i64 = BuiltInTy._(LitKind.i64);
   static final float = BuiltInTy._(LitKind.kFloat);
   static final double = BuiltInTy._(LitKind.kDouble);
   static final string = BuiltInTy._(LitKind.kStr);

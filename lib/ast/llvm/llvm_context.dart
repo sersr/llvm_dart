@@ -133,7 +133,7 @@ class BuildContext
     final framePointerV = constI32(1);
 
     void add(int lv, String name, LLVMValueRef value) {
-      llvm.LLVMAddModuleFlag(module, lv, name.toChar(), name.length,
+      llvm.LLVMAddModuleFlag(module, lv, name.toChar(), name.nativeLength,
           llvm.LLVMValueAsMetadata(value));
     }
 

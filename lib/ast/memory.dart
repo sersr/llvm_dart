@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
@@ -52,6 +53,10 @@ extension StringToChar on String {
     malloc ??= llvmMalloc;
     final u = toNativeUtf8(allocator: malloc);
     return u.cast();
+  }
+
+  int get nativeLength {
+    return utf8.encode(this).length;
   }
 }
 
