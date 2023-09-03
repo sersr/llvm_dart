@@ -1,7 +1,5 @@
 import 'd.kc'
 
-static global = 'hello world';
-
 
 struct HDD {
   s: str,
@@ -19,7 +17,6 @@ fn main() i32 {
   print('字符串\
     分开' "的两种方式。");
 
-  print(global);
   
   let 😯 = 0;
   if 😯 {

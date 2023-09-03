@@ -5,20 +5,22 @@ import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import '../ast/llvm/llvm_context.dart';
 
-void buildRun(BuildContext root) {
-  // llvm.optimize(
-  //   root.kModule,
-  //   LLVMRustPassBuilderOptLevel.O0,
-  //   LLVMRustOptStage.PreLinkNoLTO,
-  //   LLVMFalse,
-  //   LLVMTrue,
-  //   LLVMTrue,
-  //   LLVMTrue,
-  //   LLVMTrue,
-  //   LLVMTrue,
-  //   LLVMTrue,
-  //   LLVMFalse,
-  // );
+void buildRun(BuildContext root, {bool optimize = false}) {
+  if (optimize) {
+    llvm.optimize(
+      root.kModule,
+      LLVMRustPassBuilderOptLevel.O0,
+      LLVMRustOptStage.PreLinkNoLTO,
+      LLVMFalse,
+      LLVMTrue,
+      LLVMTrue,
+      LLVMTrue,
+      LLVMTrue,
+      LLVMTrue,
+      LLVMTrue,
+      LLVMFalse,
+    );
+  }
   llvm.LLVMDumpModule(root.module);
   llvm.LLVMPrintModuleToFile(root.module, buildFile('out.ll'), nullptr);
   llvm.writeOutput(

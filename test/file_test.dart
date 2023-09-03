@@ -1,4 +1,5 @@
 import 'package:characters/characters.dart';
+import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/fs/fs.dart';
 import 'package:llvm_dart/manager/build_run.dart';
 import 'package:llvm_dart/manager/manager.dart';
@@ -31,6 +32,7 @@ void main() {
           // project.printLifeCycle((v) {
           // Log.w(v.lifeCycyle?.light, showTag: false);
           // });
+          llvmMalloc.releaseAll();
           return runNativeCode(run: run, args: 'hello world');
         }));
   }

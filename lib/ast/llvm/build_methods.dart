@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ffi';
 
 import '../../llvm_core.dart';
@@ -334,9 +335,15 @@ mixin Consts on BuildMethods {
       if (!ident.isStr) {
         src = parseStr(src);
       }
-      final length = src.nativeLength;
-      final strData = constStr(src, length: length);
-      final type = arrayType(BuiltInTy.u8.llvmType.litType(this), length);
+
+      final units = utf8.encode(src);
+      final list = <LLVMValueRef>[];
+      for (var unit in units) {
+        list.add(constI8(unit));
+      }
+      list.add(constI8(0));
+      final strData = constArray(i8, list);
+      final type = arrayType(BuiltInTy.u8.llvmType.litType(this), list.length);
       final value = llvm.LLVMAddGlobal(module, type, '.str'.toChar());
       llvm.LLVMSetLinkage(value, LLVMLinkage.LLVMPrivateLinkage);
       llvm.LLVMSetGlobalConstant(value, LLVMTrue);
