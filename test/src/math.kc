@@ -2,6 +2,12 @@ import 'd.kc'
 
 static global = 'hello world';
 
+
+struct HDD {
+  s: str,
+  x: i32,
+}
+
 fn main() i32 {
   let 年后 = 10;
   if !年后 {
@@ -27,6 +33,8 @@ fn main() i32 {
   } else {
     print("1 == null");
   }
+  let h = HDD {"hello", 10};
+  printf("value: %s, %d\n", h.s, h.x);
 
   0;
 }

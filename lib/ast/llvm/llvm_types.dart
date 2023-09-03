@@ -199,8 +199,7 @@ class LLVMTypeLit extends LLVMType {
 
     var encoding = 5;
     if (ty.ty == LitKind.kStr) {
-      final base = llvm.LLVMDIBuilderCreateBasicType(
-          c.dBuilder!, 'u8'.toChar(), 4, 8, 7, 0);
+      final base = BuiltInTy.u8.llvmType.createDIType(c);
       return llvm.LLVMDIBuilderCreatePointerType(
           c.dBuilder!, base, c.pointerSize() * 8, 0, 0, unname, 0);
     }

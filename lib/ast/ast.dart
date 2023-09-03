@@ -629,7 +629,7 @@ class BuiltInTy extends Ty {
   BuiltInTy.lit(this._ty);
 
   final LitKind _ty;
-  LitKind get ty => _ty.convert;
+  LitKind get ty => _ty;
 
   static BuiltInTy? from(String src) {
     final lit = LitKind.values.firstWhereOrNull((e) => e.lit == src);
