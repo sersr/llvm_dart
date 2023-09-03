@@ -135,12 +135,17 @@ enum TokenKind {
   final String char;
   const TokenKind(this.char);
 
-  static Token? parse(String char, int cursor, int cursorEnd) {
+  static Token? parse(
+      String char,
+      (int, int, int) Function(int start) getLineStart,
+      int cursor,
+      int cursorEnd) {
     final kind = values.firstWhereOrNull((e) {
       return e.char == char;
     });
     if (kind == null) return null;
-    return Token(kind: kind, start: cursor, end: cursorEnd);
+    return Token(
+        kind: kind, getLineStart: getLineStart, start: cursor, end: cursorEnd);
   }
 }
 
@@ -227,17 +232,35 @@ enum LiteralKind {
 }
 
 class Token {
-  Token({required this.kind, required this.start, required this.end})
-      : literalKind = null;
+  Token(
+      {required this.kind,
+      required this.start,
+      (int, int, int) Function(int start)? getLineStart,
+      int? lineStart,
+      int? lineNumber,
+      required this.end})
+      : literalKind = null,
+        lineStart = getLineStart?.call(start).$1 ?? lineStart!,
+        lineNumber = getLineStart?.call(start).$3 ?? lineNumber ?? -1,
+        lineEnd = getLineStart?.call(start).$2 ?? end + 1;
   Token.literal({
     required LiteralKind this.literalKind,
     required this.start,
+    (int, int, int) Function(int start)? getLineStart,
+    int? lineStart,
+    int? lineNumber,
     required this.end,
-  }) : kind = TokenKind.literal;
+  })  : kind = TokenKind.literal,
+        lineStart = getLineStart?.call(start).$1 ?? lineStart!,
+        lineNumber = getLineStart?.call(start).$3 ?? lineNumber ?? -1,
+        lineEnd = getLineStart?.call(start).$2 ?? end + 1;
 
   final TokenKind kind;
   final int start;
   final int end;
+  final int lineStart;
+  final int lineEnd;
+  final int lineNumber;
   final LiteralKind? literalKind;
 
   @override
@@ -250,6 +273,7 @@ class Token {
 class Cursor {
   Cursor(this.src) {
     _reset();
+    lineStartCursors;
   }
   void _reset() {
     final pc = src.characters;
@@ -289,10 +313,84 @@ class Cursor {
     return '';
   }
 
+  List<int>? _lineStartCursors;
+
+  List<int> get lineStartCursors => _lineStartCursors ??= _computedLFCursors();
+
+  // ignore: constant_identifier_names
+  static const _CR = '\r';
+  // ignore: constant_identifier_names
+  static const _LF = '\n';
+
+  List<int> _computedLFCursors() {
+    final cursors = <int>[0];
+    final it = _it;
+    final state = it.cursor;
+    while (it.moveNext()) {
+      final current = it.current;
+      final firstCursor = it.stringCursor + 1;
+      final nextIsLF = it.moveNext() ? it.current == _LF : false;
+      if (current == _CR) {
+        if (nextIsLF) {
+          cursors.add(it.stringCursor + 1);
+        } else {
+          cursors.add(firstCursor);
+        }
+        continue;
+      } else if (current == _LF) {
+        cursors.add(firstCursor);
+      }
+      if (nextIsLF) {
+        cursors.add(it.stringCursor + 1);
+      }
+    }
+    // stringCursorEnd: 由于 cursor 并没有下移，所以要加上当前字符的长度
+    cursors.add(it.stringCursorEnd + 1);
+    state.restore();
+    return cursors;
+  }
+
+  /// 获取当前指针所在行的数据信息
+  (int start, int end, int lineNumber) getLineStart(int key) {
+    if (lineStartCursors.isEmpty) return (key, key + 1, 1);
+    var min = 0;
+    var max = lineStartCursors.length - 1;
+
+    if (key >= lineStartCursors.last) {
+      return (key, key + 1, lineStartCursors.length);
+    }
+
+    if (key <= lineStartCursors.first) {
+      if (lineStartCursors case [int first, int second, ...]) {
+        return (first, second, 1);
+      }
+      return (key, lineStartCursors.first, 1);
+    }
+
+    while (min < max) {
+      var mid = min + ((max - min) >> 1);
+      var element = lineStartCursors[mid];
+      if (element <= key) {
+        final nextId = mid + 1;
+        if (nextId <= max) {
+          final next = lineStartCursors[nextId];
+          if (next > key) {
+            return (element, next, mid + 1);
+          }
+        }
+        min = mid;
+      } else if (key < element) {
+        max = mid;
+      }
+    }
+    return (key, key + 1, 1);
+  }
+
   Token advanceToken() {
     final char = nextChar;
     if (char.isEmpty) {
-      return Token(kind: TokenKind.eof, start: cursor, end: cursorEnd);
+      return Token(
+          kind: TokenKind.eof, lineStart: -1, start: cursor, end: cursorEnd);
     }
 
     if (whiteSpaceChars.contains(char)) {
@@ -309,19 +407,28 @@ class Cursor {
     if (rawNumbers.contains(char)) {
       return number();
     }
-    if (char == '\'') {
-      return singleQuotedString();
-    } else if (char == '"') {
-      return doubleQuotedString();
+    if (char == "'" || char == '"') {
+      final start = cursor;
+      _eatStr(char);
+      return Token.literal(
+        literalKind: LiteralKind.kStr,
+        getLineStart: getLineStart,
+        start: start,
+        end: cursorEnd,
+      );
     }
 
-    final tk = TokenKind.parse(char, cursor, cursorEnd);
+    final tk = TokenKind.parse(char, getLineStart, cursor, cursorEnd);
     if (tk != null) return tk;
 
     if (isIdent(char)) {
       return ident();
     }
-    return Token(kind: TokenKind.unknown, start: cursor, end: cursorEnd);
+    return Token(
+        kind: TokenKind.unknown,
+        getLineStart: getLineStart,
+        start: cursor,
+        end: cursorEnd);
   }
 
   Token? comment() {
@@ -329,7 +436,11 @@ class Cursor {
     final start = cursor;
     if (nextCharRead == '/') {
       eatLine();
-      return Token(kind: TokenKind.lineCommnet, start: start, end: cursorEnd);
+      return Token(
+          kind: TokenKind.lineCommnet,
+          getLineStart: getLineStart,
+          start: start,
+          end: cursorEnd);
     }
     if (nextCharRead == '*') {
       String preChar = '';
@@ -340,7 +451,11 @@ class Cursor {
         preChar = char;
         return false;
       }, back: false);
-      return Token(kind: TokenKind.blockComment, start: start, end: cursorEnd);
+      return Token(
+          kind: TokenKind.blockComment,
+          getLineStart: getLineStart,
+          start: start,
+          end: cursorEnd);
     }
     return null;
   }
@@ -364,13 +479,17 @@ class Cursor {
     final start = cursor;
     loop((char) {
       if (!whiteSpaceChars.contains(char) && isIdent(char, supportNum: true)) {
-        assert(TokenKind.parse(char, cursor, cursorEnd) == null);
+        assert(TokenKind.parse(char, getLineStart, cursor, cursorEnd) == null);
         return false;
       }
       return true;
     });
 
-    return Token(kind: TokenKind.ident, start: start, end: cursorEnd);
+    return Token(
+        kind: TokenKind.ident,
+        getLineStart: getLineStart,
+        start: start,
+        end: cursorEnd);
   }
 
   Token whiteSpace() {
@@ -378,38 +497,20 @@ class Cursor {
     loop((char) {
       return !whiteSpaceChars.contains(char);
     });
-    return Token(kind: TokenKind.whiteSpace, start: start, end: cursorEnd);
+    return Token(
+        kind: TokenKind.whiteSpace,
+        getLineStart: getLineStart,
+        start: start,
+        end: cursorEnd);
   }
 
-  Token singleQuotedString() {
-    final start = cursor;
-
-    var lastChar = '';
-    // 字符串自带结尾
-    loop(back: false, (char) {
-      if (lastChar != '\\' && char == "'") return true;
-
-      // 两个反义符号
-      if (lastChar == '\\' && char == '\\') {
-        lastChar = '';
-        return false;
-      }
-      lastChar = char;
-
-      return false;
-    });
-    return Token.literal(
-        literalKind: LiteralKind.kStr, start: start, end: cursorEnd);
-  }
-
-  Token doubleQuotedString() {
-    final start = cursor;
-
+  void _eatStr(String pattern) {
+    assert(pattern == '"' || pattern == "'");
     var lastChar = '';
     // 字符串自带结尾
     loop(back: false, (char) {
       // if (char == '"') return true;
-      if (lastChar != '\\' && char == '"') return true;
+      if (lastChar != '\\' && char == pattern) return true;
 
       // 两个反义符号
       if (lastChar == '\\' && char == '\\') {
@@ -418,12 +519,8 @@ class Cursor {
       }
       lastChar = char;
 
-      // if(whiteSpaceChars.contains(char)) return true;
       return false;
     });
-
-    return Token.literal(
-        literalKind: LiteralKind.kStr, start: start, end: cursorEnd);
   }
 
   Token number() {
@@ -459,7 +556,8 @@ class Cursor {
         final c = cursorEnd;
         final k = getLitKind() ?? LiteralKind.f64;
 
-        return Token.literal(literalKind: k, start: start, end: c);
+        return Token.literal(
+            literalKind: k, getLineStart: getLineStart, start: start, end: c);
       }
     }
 
@@ -467,7 +565,8 @@ class Cursor {
     LiteralKind lkd =
         getLitKind() ?? (isFloat ? LiteralKind.f32 : LiteralKind.i32);
 
-    return Token.literal(literalKind: lkd, start: start, end: end);
+    return Token.literal(
+        literalKind: lkd, getLineStart: getLineStart, start: start, end: end);
   }
 
   LiteralKind? getLitKind() {

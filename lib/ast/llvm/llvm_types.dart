@@ -14,15 +14,12 @@ import 'llvm_context.dart';
 import 'variables.dart';
 
 class LLVMRawValue {
-  LLVMRawValue(this._raw);
-  final String _raw;
+  LLVMRawValue(this.ident);
+  final Identifier ident;
 
-  String get raw => _raw;
-  String get rawNumber => _raw.replaceAll('_', '');
-
-  Pointer<Char> toChar() {
-    return raw.toChar();
-  }
+  String get raw => ident.src;
+  String? _rawNumber;
+  String get rawNumber => _rawNumber ??= raw.replaceAll('_', '');
 
   double get value {
     return double.parse(rawNumber);
@@ -123,8 +120,8 @@ class LLVMTypeLit extends LLVMType {
     return type;
   }
 
-  LLVMLitVariable createValue({required String str}) {
-    final raw = LLVMRawValue(str);
+  LLVMLitVariable createValue({required Identifier ident}) {
+    final raw = LLVMRawValue(ident);
     LLVMValueRef v(Consts c, BuiltInTy? bty) {
       final rTy = bty ?? ty;
       final kind = rTy.ty.convert;
@@ -137,7 +134,7 @@ class LLVMTypeLit extends LLVMType {
         case LitKind.kDouble:
           return c.constF64(raw.rawNumber);
         case LitKind.kStr:
-          return c.getString(raw.raw);
+          return c.getString(raw.ident);
         case LitKind.kBool:
           return c.constI1(raw.raw == 'true' ? 1 : 0);
         case LitKind.i8:
@@ -203,7 +200,7 @@ class LLVMTypeLit extends LLVMType {
     var encoding = 5;
     if (ty.ty == LitKind.kStr) {
       final base = llvm.LLVMDIBuilderCreateBasicType(
-          c.dBuilder!, 'char'.toChar(), 4, 8, 6, 0);
+          c.dBuilder!, 'char'.toChar(), 4, 8, 7, 0);
       return llvm.LLVMDIBuilderCreatePointerType(
           c.dBuilder!, base, c.pointerSize() * 8, 0, 0, unname, 0);
     }

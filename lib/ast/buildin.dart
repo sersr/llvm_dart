@@ -54,8 +54,8 @@ class SizeOfType extends LLVMFnType {
     final size = c.typeSize(tyy);
 
     final t = BuiltInTy.lit(LitKind.usize);
-    final v = t.llvmType.createValue(str: '$size');
-    return LLVMConstVariable(v.getBaseValue(c), t);
+    final v = c.usizeValue(size);
+    return LLVMConstVariable(v, t);
   }
 }
 

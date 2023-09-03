@@ -9,6 +9,7 @@ import '../ast/stmt.dart';
 import '../ast/tys.dart';
 import 'lexers/token_kind.dart';
 import 'lexers/token_stream.dart';
+import 'str.dart';
 import 'token_it.dart';
 
 Parser parseTopItem(String src) {
@@ -401,6 +402,12 @@ class Parser {
 
   Key? getKey(TokenIterator it) {
     return Key.from(getIdent(it).src);
+  }
+
+  String getStr(TokenIterator it, {Token? token}) {
+    if (!it.curentIsValid) return '';
+    token ??= it.current.token;
+    return src.substring(token.start, token.end);
   }
 
   Token getToken(TokenIterator it) {
@@ -957,8 +964,36 @@ class Parser {
       final lkd = LitKind.from(lit);
 
       if (lkd != null) {
+        Identifier? ident;
+        if (lkd == LitKind.kStr) {
+          final tokens = <Token>[];
+          loop(it, () {
+            final t = getToken(it);
+            if (t.kind == TokenKind.literal) {
+              final lit = t.literalKind!;
+              final lkd = LitKind.from(lit);
+              if (lkd == LitKind.kStr) {
+                tokens.add(t);
+                return false;
+              }
+            }
+            it.moveBack();
+            return true;
+          });
+
+          if (tokens.isNotEmpty) {
+            final buffer = StringBuffer();
+            buffer.write(parseStr(getStr(it, token: t)));
+            for (var token in tokens) {
+              buffer.write(parseStr(getStr(it, token: token)));
+            }
+            Log.w(buffer);
+
+            ident = Identifier.str(t, tokens.last, buffer.toString());
+          }
+        }
         final ty = BuiltInTy.lit(lkd);
-        expr = LiteralExpr(getIdent(it), ty);
+        expr = LiteralExpr(ident ?? getIdent(it), ty);
       }
     }
 

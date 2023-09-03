@@ -1,16 +1,22 @@
 import 'd.kc'
 
-fn main() i32 {
+static global = 'hello world';
 
+fn main() i32 {
   let 年后 = 10;
   if !年后 {
     print("y != 0");
   } else {
     print("!y == 0");
   }
+
+  print('字符串\
+    分开' "的两种方式。");
+
+  print(global);
   
   let 😯 = 0;
-   if 😯 {
+  if 😯 {
     print("y != 0");
   } else {
     print("y == 0");

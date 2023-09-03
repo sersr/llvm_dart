@@ -3,11 +3,11 @@ import 'package:path/path.dart';
 
 import '../ast/analysis_context.dart';
 import '../ast/ast.dart';
-import '../ast/llvm/build_methods.dart';
 import '../ast/llvm/llvm_context.dart';
 import '../ast/tys.dart';
 import '../fs/fs.dart';
 import '../parsers/parser.dart';
+import '../parsers/str.dart';
 
 abstract class ManagerBase extends GlobalContext {
   static Parser? parserToken(String path) {
@@ -70,7 +70,7 @@ abstract class ManagerBase extends GlobalContext {
   @override
   Tys<LifeCycleVariable> import(
       Tys<LifeCycleVariable> current, ImportPath path) {
-    final pname = Consts.regSrc(path.name.src);
+    final pname = parseStr(path.name.src);
     var pathName = '';
     final currentPath = current.currentPath;
     if (currentPath != null) {

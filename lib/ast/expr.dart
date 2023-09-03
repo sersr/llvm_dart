@@ -60,7 +60,7 @@ class LiteralExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final v = realTy.llvmType.createValue(str: ident.src);
+    final v = realTy.llvmType.createValue(ident: ident);
 
     return ExprTempValue(v, ty, ident);
   }
@@ -1219,7 +1219,8 @@ class MethodCallExpr extends Expr with FnCallMixin {
           return ExprTempValue(element, element.ty, ident);
         }
       } else if (fnName == 'getSize') {
-        final size = BuiltInTy.usize.llvmType.createValue(str: '${valTy.size}');
+        final size = BuiltInTy.usize.llvmType
+            .createValue(ident: Identifier.builtIn('${valTy.size}'));
         return ExprTempValue(size, size.ty, ident);
       } else if (fnName == 'toStr') {
         final element = valTy.llvmType.toStr(context, val);

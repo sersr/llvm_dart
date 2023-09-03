@@ -214,15 +214,23 @@ class StaticStmt extends Stmt {
 
     context.diSetCurrentLoc(ident.offset);
 
-    final llValue =
-        llvm.LLVMAddGlobal(context.module, type, ident.src.toChar());
+    LLVMValueRef llValue;
+    Variable v;
+    final data = val.getBaseValue(context);
+    // final isStr = y is BuiltInTy && y.ty == LitKind.kStr;
 
-    final v = LLVMAllocaVariable(y, llValue, type);
+    // if (isStr) {
+    //     }
+
+    llValue = llvm.LLVMAddGlobal(context.module, type, ident.src.toChar());
+
+    v = LLVMAllocaVariable(y, llValue, type);
     llvm.LLVMSetLinkage(llValue, LLVMLinkage.LLVMInternalLinkage);
     llvm.LLVMSetGlobalConstant(llValue, isConst.llvmBool);
-    llvm.LLVMSetInitializer(llValue, val.getBaseValue(context));
 
+    llvm.LLVMSetInitializer(llValue, data);
     llvm.LLVMSetAlignment(llValue, context.getAlignSize(y));
+
     final diBuilder = context.dBuilder;
     if (diBuilder != null) {
       final file = llvm.LLVMDIScopeGetFile(context.scope);

@@ -61,19 +61,40 @@ class Identifier with EquatableMixin {
   Identifier.fromToken(Token token, this.data)
       : start = token.start,
         end = token.end,
-        builtInName = '',
+        lineStart = token.lineStart,
+        lineEnd = token.lineEnd,
+        lineNumber = token.lineNumber,
+        builtInValue = '',
+        isStr = false,
         name = '';
 
-  Identifier.builtIn(this.builtInName)
+  Identifier.builtIn(this.builtInValue)
       : name = '',
         start = 0,
+        lineStart = -1,
+        lineEnd = -1,
+        isStr = false,
+        lineNumber = 0,
         end = 0,
         data = '';
+  Identifier.str(Token tokenStart, Token tokenEnd, this.builtInValue)
+      : start = tokenStart.start,
+        end = tokenEnd.end,
+        lineStart = tokenStart.lineStart,
+        lineEnd = tokenEnd.lineEnd,
+        isStr = true,
+        lineNumber = tokenStart.lineNumber,
+        data = '',
+        name = '';
 
   final String name;
   final int start;
+  final int lineStart;
+  final int lineEnd;
+  final int lineNumber;
   final int end;
-  final String builtInName;
+  final String builtInValue;
+  final bool isStr;
 
   @protected
   final String data;
@@ -90,22 +111,24 @@ class Identifier with EquatableMixin {
     if (_offset != null) return _offset!;
     if (!isValid) return Offset.zero;
 
-    var row = 1, column = 1;
-    if (start == 0) {
-      return _offset = Offset(1, end);
-    }
-    final lineStart = data.substring(0, start).lastIndexOf('\n');
-    if (lineStart != -1) {
-      final before = data.substring(0, lineStart + 1);
-      row = '\n'.allMatches(before).length + 1;
-      // fn main() i32 {// <- lineStart
-      //  let y = 10;
-      // }
-      column = end - lineStart - 1;
-    } else {
-      column = end;
-    }
-    return _offset = Offset(row, column);
+    return _offset = Offset(lineNumber, start - lineStart + 1);
+
+    // var row = 1, column = 1;
+    // if (start == 0) {
+    //   return _offset = Offset(1, end);
+    // }
+    // final lineStart = data.substring(0, start).lastIndexOf('\n');
+    // if (lineStart != -1) {
+    //   final before = data.substring(0, lineStart + 1);
+    //   row = '\n'.allMatches(before).length + 1;
+    //   // fn main() i32 {// <- lineStart
+    //   //  let y = 10;
+    //   // }
+    //   column = end - lineStart - 1;
+    // } else {
+    //   column = end;
+    // }
+    // return _offset = Offset(row, column);
   }
 
   static final Identifier none = Identifier.builtIn('');
@@ -124,8 +147,8 @@ class Identifier with EquatableMixin {
     if (identical(this, none)) {
       return [''];
     }
-    if (builtInName.isNotEmpty) {
-      return [builtInName];
+    if (builtInValue.isNotEmpty) {
+      return [builtInValue];
     }
 
     if (enableIdentEq) {
@@ -138,15 +161,26 @@ class Identifier with EquatableMixin {
     if (identical(this, none)) {
       return '';
     }
-    if (builtInName.isNotEmpty) {
-      return builtInName;
+    if (builtInValue.isNotEmpty || isStr) {
+      return builtInValue;
+    }
+
+    if (lineStart == -1) {
+      return '';
     }
     return data.substring(start, end);
   }
 
   /// 指示当前的位置
   String get light {
-    return lightSrc(data, start, end);
+    if (lineStart == -1) {
+      return '';
+    }
+
+    final line = data.substring(lineStart, lineEnd - 1);
+    final space = ' ' * (start - lineStart);
+    final arrow = '^' * (end - start);
+    return '$line\n$space$arrow';
   }
 
   static String lightSrc(String src, int start, int end) {
@@ -166,22 +200,22 @@ class Identifier with EquatableMixin {
       lineEnd += start;
     }
 
-    // if (lineStart != -1) {
-    //   final vs = src.substring(lineStart, lineEnd);
-    //   final s = ' ' * (start - lineStart);
-    //   final v = '^' * (end - start + 1);
-    //   return '$vs\n$s$v';
-    // }
+    if (lineStart != -1) {
+      final vs = src.substring(lineStart, lineEnd);
+      final s = ' ' * (start - lineStart);
+      final v = '^' * (end - start);
+      return '$vs\n$s$v';
+    }
     return src.substring(start, end);
   }
 
   @override
   String toString() {
-    if (identical(this, none)) {
+    if (identical(this, none) || lineStart == -1) {
       return '';
     }
-    if (builtInName.isNotEmpty) {
-      return '[$builtInName]';
+    if (builtInValue.isNotEmpty) {
+      return '[$builtInValue]';
     }
 
     return data.substring(start, end);
@@ -576,6 +610,7 @@ class RefTy extends Ty {
 class BuiltInTy extends Ty {
   BuiltInTy._(this._ty);
   static final i32 = BuiltInTy._(LitKind.i32);
+  static final u8 = BuiltInTy._(LitKind.u8);
   static final float = BuiltInTy._(LitKind.kFloat);
   static final double = BuiltInTy._(LitKind.kDouble);
   static final string = BuiltInTy._(LitKind.kStr);
@@ -584,7 +619,9 @@ class BuiltInTy extends Ty {
   static final usize = BuiltInTy._(LitKind.usize);
 
   static LLVMValueRef constUsize(BuildContext context, int size) {
-    return usize.llvmType.createValue(str: '$size').load(context, Offset.zero);
+    return usize.llvmType
+        .createValue(ident: Identifier.builtIn('$size'))
+        .load(context, Offset.zero);
   }
 
   BuiltInTy.lit(this._ty);
@@ -728,7 +765,7 @@ class ArrayPathTy extends PathTy {
       s = s.current;
     }
     if (s is LiteralExpr) {
-      final raw = LLVMRawValue(s.ident.src);
+      final raw = LLVMRawValue(s.ident);
       return ArrayTy(e, raw.iValue);
     }
 
@@ -1517,7 +1554,7 @@ class ArrayLLVMType extends LLVMType {
       BuildContext c, Identifier ident, LLVMValueRef? base) {
     final val = LLVMAllocaDelayVariable(ty, base, ([alloca]) {
       final count = BuiltInTy.usize.llvmType
-          .createValue(str: '${ty.size}')
+          .createValue(ident: Identifier.builtIn('${ty.size}'))
           .load(c, ident.offset);
       return c.createArray(ty.elementType.llvmType.createType(c), count,
           name: ident.src);

@@ -1,10 +1,9 @@
+import 'dart:convert';
 import 'dart:ffi';
-
-import 'package:characters/characters.dart';
 
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
-import '../../parsers/token_it.dart';
+import '../../parsers/str.dart';
 import '../ast.dart';
 import '../memory.dart';
 import 'variables.dart';
@@ -332,79 +331,33 @@ mixin Consts on BuildMethods {
     return _root = c ?? this;
   }
 
-  LLVMValueRef getString(String v) {
-    final ss = v.substring(1, v.length - 1);
-    return root._globalString.putIfAbsent(ss, () {
-      final str = regSrc(v);
-      return llvm.LLVMBuildGlobalStringPtr(
-          builder, str.toChar(), 'str'.toChar());
-    });
-  }
+  LLVMValueRef getString(Identifier ident) {
+    var src = ident.src;
+    var key = src;
 
-  static String regSrc(String str) {
-    final buf = StringBuffer();
-    var lastChar = '';
-    final isSingle = str.characters.first == "'";
-    final slice = str.substring(1, str.length - 1);
-    final it = slice.characters.toList().tokenIt;
-    bool? eatLn;
-
-    void eatLine() {
-      loop(it, () {
-        final char = it.current;
-        if (char == ' ') {
-          return false;
-        }
-        it.moveBack();
-        return true;
-      });
+    if (!ident.isStr) {
+      key = key.substring(1, key.length - 1);
     }
 
-    loop(it, () {
-      final char = it.current;
-      // 两个反义符号
-      if (lastChar == '\\') {
-        if (isSingle && char == '"') {
-          buf.write('\\"');
-        } else if (!isSingle && char == "'") {
-          buf.write("\\'");
-        } else if (char == 'n') {
-          buf.write('\n');
-        } else if (char == '\n') {
-          if (eatLn != false) {
-            eatLn = true;
-            eatLine();
-          }
-        } else if (char == '\\') {
-          buf.write('\\');
-        }
-        lastChar = '';
-        return false;
+    return root._globalString.putIfAbsent(key, () {
+      if (!ident.isStr) {
+        src = parseStr(src);
       }
-
-      if (eatLn == null) {
-        if (char == '\n') {
-          eatLn = false;
-        }
-      }
-
-      if (eatLn == true && char == '\n') {
-        eatLine();
-        lastChar = '';
-      } else {
-        lastChar = char;
-        if (lastChar != '\\') buf.write(char);
-      }
-
-      return false;
+      final length = utf8.encode(src).length;
+      final strData = constStr(src, length: length);
+      final type = arrayType(BuiltInTy.u8.llvmType.litType(this), length);
+      final value = llvm.LLVMAddGlobal(module, type, '.str'.toChar());
+      llvm.LLVMSetLinkage(value, LLVMLinkage.LLVMPrivateLinkage);
+      llvm.LLVMSetGlobalConstant(value, LLVMTrue);
+      llvm.LLVMSetInitializer(value, strData);
+      llvm.LLVMSetUnnamedAddress(value, LLVMUnnamedAddr.LLVMGlobalUnnamedAddr);
+      return value;
     });
-    return buf.toString();
   }
 
-  LLVMValueRef constStr(String str) {
-    final ss = regSrc(str);
-    return llvm.LLVMConstStringInContext(
-        llvmContext, ss.toChar(), ss.length, LLVMFalse);
+  LLVMValueRef constStr(String str, {int? length}) {
+    return llvm.LLVMConstStringInContext(llvmContext, str.toChar(),
+        length ?? utf8.encode(str).length, LLVMFalse);
   }
 
   LLVMValueRef constArray(LLVMTypeRef ty, List<LLVMValueRef> vals) {
@@ -420,7 +373,7 @@ mixin Consts on BuildMethods {
   LLVMValueRef usizeValue(int size) {
     return BuiltInTy.lit(LitKind.usize)
         .llvmType
-        .createValue(str: '$size')
+        .createValue(ident: Identifier.builtIn('$size'))
         .getValue(this);
   }
 

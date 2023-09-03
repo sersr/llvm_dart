@@ -13,17 +13,19 @@ extension TokenItStringExt on List<String> {
 }
 
 class CursorState {
-  CursorState(this._it, this._cursor, this._stringCursor);
+  CursorState(this._it, this.cursor);
   final BackIterator _it;
-  final int? _stringCursor;
 
-  final int _cursor;
-
-  int get cursor => _stringCursor ?? _cursor;
+  final int cursor;
 
   void restore() {
     _it._restore(this);
   }
+}
+
+class StringCursorState extends CursorState {
+  StringCursorState(super._it, super.cursor, this.stringCursor);
+  final int stringCursor;
 }
 
 typedef TokenIterator = BackIterator<TokenTree>;
@@ -41,28 +43,29 @@ class BackIteratorString extends BackIterator<String> {
 
   int _stringCursor = -1;
 
+  StringCursorState? _cacheStringState;
   @override
-  CursorState get cursor {
-    if (_cacheState != null && _cursorState == _cursor) {
-      return _cacheState!;
+  StringCursorState get cursor {
+    if (_cacheStringState != null && _cursorState == _cursor) {
+      return _cacheStringState!;
     }
     _cursorState = _cursor;
-    return _cacheState = CursorState(this, _cursor, _stringCursor);
+    return _cacheStringState = StringCursorState(this, _cursor, _stringCursor);
   }
 
   @override
-  void _restore(CursorState cursor) {
-    _cursor = cursor._cursor;
-    _stringCursor = cursor._stringCursor!;
-    _cursorState = cursor._cursor;
-    _cacheState = cursor;
+  void _restore(StringCursorState cursor) {
+    _cursor = cursor.cursor;
+    _stringCursor = cursor.stringCursor;
+    _cursorState = cursor.cursor;
+    _cacheStringState = cursor;
   }
 
   @override
   bool moveBack() {
     if (_cursor <= -1) return false;
     final preCursor = _cursor - 1;
-    if (preCursor > 0) {
+    if (preCursor > -1 && preCursor < length) {
       _stringCursor -= _current[preCursor].length;
     } else {
       _stringCursor -= 1;
@@ -103,12 +106,12 @@ class BackIterator<T> implements Iterator<T> {
       return _cacheState!;
     }
     _cursorState = _cursor;
-    return _cacheState = CursorState(this, _cursor, null);
+    return _cacheState = CursorState(this, _cursor);
   }
 
-  void _restore(CursorState cursor) {
-    _cursor = cursor._cursor;
-    _cursorState = cursor._cursor;
+  void _restore(covariant CursorState cursor) {
+    _cursor = cursor.cursor;
+    _cursorState = cursor.cursor;
     _cacheState = cursor;
   }
 
