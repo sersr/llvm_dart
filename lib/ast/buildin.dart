@@ -14,7 +14,7 @@ class SizeOfFn extends Fn {
               ident,
               [],
               [],
-              PathTy.ty(BuiltInTy.lit(LitKind.usize)),
+              PathTy.ty(BuiltInTy.usize),
               false,
             ),
           ),
@@ -53,9 +53,8 @@ class SizeOfType extends LLVMFnType {
     // final size = llvm.LLVMSizeOf(tyy);
     final size = c.typeSize(tyy);
 
-    final t = BuiltInTy.lit(LitKind.usize);
     final v = c.usizeValue(size);
-    return LLVMConstVariable(v, t);
+    return LLVMConstVariable(v, BuiltInTy.usize);
   }
 }
 

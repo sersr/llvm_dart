@@ -1152,7 +1152,7 @@ class FnCallExpr extends Expr with FnCallMixin {
       return context.createStructVal(struct, struct.ident, all);
     }
     if (fn.ty is SizeOfFn) {
-      return context.createVal(BuiltInTy.lit(LitKind.usize), Identifier.none);
+      return context.createVal(BuiltInTy.usize, Identifier.none);
     }
     if (fnty is! Fn) return null;
     final fnnn = StructExpr.resolveGeneric(fnty, context, params, []);
@@ -1292,8 +1292,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
         if (fnName == 'new') {
           if (params.isNotEmpty) {
             final first = LiteralExpr.run(
-                () => params.first.build(context)?.variable,
-                BuiltInTy.lit(LitKind.usize));
+                () => params.first.build(context)?.variable, BuiltInTy.usize);
 
             if (first is LLVMLitVariable) {
               if (structTy.tys.isNotEmpty) {
@@ -2138,91 +2137,94 @@ class MatchExpr extends Expr {
     return null;
   }
 
+  ExprTempValue? commonExpr(BuildContext context, ExprTempValue variable) {
+    // match 表达式
+    MatchItemExpr? last;
+    MatchItemExpr? valIdentItem =
+        items.firstWhereOrNull((element) => element.isValIdent);
+    for (var item in items) {
+      if (last == null) {
+        last = item;
+        continue;
+      }
+      if (item == valIdentItem) continue;
+      last.child = item;
+      last = item;
+    }
+    last?.child = valIdentItem;
+    last = valIdentItem;
+
+    StoreVariable? retVariable;
+    final retTy = LiteralExpr.letTy;
+    if (retTy != null) {
+      retVariable = retTy.llvmType.createAlloca(context, Identifier.none, null);
+    }
+    void buildItem(MatchItemExpr item, BuildContext context) {
+      final then = context.buildSubBB(name: 'm_then');
+      final after = context.buildSubBB(name: 'm_after');
+      LLVMBasicBlock elseBB;
+      final child = item.child;
+      if (child != null) {
+        elseBB = context.buildSubBB(name: 'm_else');
+      } else {
+        elseBB = after;
+      }
+
+      context.appendBB(then);
+      final exprTempValue = item.build3(context, variable);
+      final val = exprTempValue?.variable;
+      item.block.build(then.context);
+      IfExpr._blockRetValue(item.block, then.context, retVariable);
+      if (then.context.canBr) {
+        then.context.br(after.context);
+      }
+
+      if (val != null) {
+        llvm.LLVMBuildCondBr(
+            context.builder,
+            val.load(context, exprTempValue!.currentIdent.offset),
+            then.bb,
+            elseBB.bb);
+      }
+
+      if (child != null) {
+        context.appendBB(elseBB);
+        if (child.isValIdent) {
+          child.build4(elseBB.context, variable);
+          IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
+        } else if (child.isOther) {
+          child.build2(elseBB.context, variable);
+          IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
+        } else {
+          buildItem(child, elseBB.context);
+        }
+
+        if (elseBB.context.canBr) {
+          elseBB.context.br(after.context);
+        }
+      }
+
+      context.insertPointBB(after);
+    }
+
+    buildItem(items.first, context);
+
+    if (retVariable == null) {
+      return null;
+    }
+    return ExprTempValue(retVariable, retVariable.ty, Identifier.none);
+  }
+
   @override
   ExprTempValue? buildExpr(BuildContext context) {
     final variable = expr.build(context);
     if (variable == null) return null;
     final ty = variable.ty;
     if (ty is! EnumItem) {
-      // match 表达式
-      MatchItemExpr? last;
-      MatchItemExpr? valIdentItem =
-          items.firstWhereOrNull((element) => element.isValIdent);
-      for (var item in items) {
-        if (last == null) {
-          last = item;
-          continue;
-        }
-        if (item == valIdentItem) continue;
-        last.child = item;
-        last = item;
-      }
-      last?.child = valIdentItem;
-      last = valIdentItem;
-
-      StoreVariable? retVariable;
-      final retTy = LiteralExpr.letTy;
-      if (retTy != null) {
-        retVariable =
-            retTy.llvmType.createAlloca(context, Identifier.none, null);
-      }
-      void buildItem(MatchItemExpr item, BuildContext context) {
-        final then = context.buildSubBB(name: 'm_then');
-        final after = context.buildSubBB(name: 'm_after');
-        LLVMBasicBlock elseBB;
-        final child = item.child;
-        if (child != null) {
-          elseBB = context.buildSubBB(name: 'm_else');
-        } else {
-          elseBB = after;
-        }
-
-        context.appendBB(then);
-        final exprTempValue = item.build3(context, variable);
-        final val = exprTempValue?.variable;
-        item.block.build(then.context);
-        IfExpr._blockRetValue(item.block, then.context, retVariable);
-        if (then.context.canBr) {
-          then.context.br(after.context);
-        }
-
-        if (val != null) {
-          llvm.LLVMBuildCondBr(
-              context.builder,
-              val.load(context, exprTempValue!.currentIdent.offset),
-              then.bb,
-              elseBB.bb);
-        }
-
-        if (child != null) {
-          context.appendBB(elseBB);
-          if (child.isValIdent) {
-            child.build4(elseBB.context, variable);
-            IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
-          } else if (child.isOther) {
-            child.build2(elseBB.context, variable);
-            IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
-          } else {
-            buildItem(child, elseBB.context);
-          }
-
-          if (elseBB.context.canBr) {
-            elseBB.context.br(after.context);
-          }
-        }
-
-        context.insertPointBB(after);
-      }
-
-      buildItem(items.first, context);
-
-      if (retVariable == null) {
-        return null;
-      }
-      return ExprTempValue(retVariable, retVariable.ty, Identifier.none);
+      return commonExpr(context, variable);
     }
 
-    final allCount = ty.parent.variants.length;
+    final itemLength = ty.parent.variants.length;
 
     final parent = variable.variable;
     if (parent == null) return null;
@@ -2268,7 +2270,7 @@ class MatchExpr extends Expr {
 
         if (child != null) {
           context.appendBB(elseBB);
-          if (child.isOther || allCount == 2) {
+          if (child.isOther || itemLength == 2) {
             child.build2(elseBB.context, variable);
             IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
           } else {

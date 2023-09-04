@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:ffi';
+import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
@@ -157,7 +158,9 @@ class Identifier with EquatableMixin {
     return [name, start, end];
   }
 
+  String? _src;
   String get src {
+    if (_src != null) return _src!;
     if (identical(this, none)) {
       return '';
     }
@@ -168,7 +171,7 @@ class Identifier with EquatableMixin {
     if (lineStart == -1) {
       return '';
     }
-    return data.substring(start, end);
+    return _src = data.substring(start, end);
   }
 
   /// 指示当前的位置
@@ -177,10 +180,10 @@ class Identifier with EquatableMixin {
       return '';
     }
 
-    final line = data.substring(lineStart, lineEnd - 1);
+    final line = data.substring(lineStart, lineEnd);
     final space = ' ' * (start - lineStart);
-    final arrow = '^' * (end - start);
-    return '$line\n$space$arrow';
+    final arrow = '^' * (math.min(end, lineEnd + 1) - start);
+    return '$line\n$space\x1B[31m$arrow\x1B[0m';
   }
 
   static String lightSrc(String src, int start, int end) {
@@ -221,32 +224,6 @@ class Identifier with EquatableMixin {
     return data.substring(start, end);
   }
 }
-
-// // foo( ... ), Gen{ ... }
-// class FieldDef with EquatableMixin {
-//   FieldDef(this.ident, this.ty);
-//   final Identifier ident;
-
-//   final PathTy ty;
-
-//   bool get isRef => ty.isRef;
-
-//   @override
-//   String toString() {
-//     return '$ident: $ty';
-//   }
-
-//   @override
-//   List<Object?> get props => [ident, ty];
-
-//   void analysis(AnalysisContext context, Fn fn) {
-//     context.pushVariable(
-//       ident,
-//       context.createVal(fn.getRty(context, ty), ident, ty.kind)
-//         ..lifeCycle.isOut = true,
-//     );
-//   }
-// }
 
 class ExprTempValue {
   ExprTempValue(this.variable, this.ty, this.currentIdent);
@@ -608,25 +585,26 @@ class RefTy extends Ty {
 }
 
 class BuiltInTy extends Ty {
-  BuiltInTy._(this._ty);
-  static final i8 = BuiltInTy._(LitKind.i8);
-  static final u8 = BuiltInTy._(LitKind.u8);
-  static final i32 = BuiltInTy._(LitKind.i32);
-  static final i64 = BuiltInTy._(LitKind.i64);
-  static final float = BuiltInTy._(LitKind.kFloat);
-  static final double = BuiltInTy._(LitKind.kDouble);
-  static final string = BuiltInTy._(LitKind.kStr);
-  static final kVoid = BuiltInTy._(LitKind.kVoid);
-  static final kBool = BuiltInTy._(LitKind.kBool);
-  static final usize = BuiltInTy._(LitKind.usize);
+  static final i8 = BuiltInTy.get(LitKind.i8);
+  static final u8 = BuiltInTy.get(LitKind.u8);
+  static final i32 = BuiltInTy.get(LitKind.i32);
+  static final i64 = BuiltInTy.get(LitKind.i64);
+  static final float = BuiltInTy.get(LitKind.kFloat);
+  static final double = BuiltInTy.get(LitKind.kDouble);
+  static final str = BuiltInTy.get(LitKind.kStr);
+  static final kVoid = BuiltInTy.get(LitKind.kVoid);
+  static final kBool = BuiltInTy.get(LitKind.kBool);
+  static final usize = BuiltInTy.get(LitKind.usize);
 
-  static LLVMValueRef constUsize(BuildContext context, int size) {
-    return usize.llvmType
-        .createValue(ident: Identifier.builtIn('$size'))
-        .load(context, Offset.zero);
+  static final _instances = <LitKind, BuiltInTy>{};
+
+  factory BuiltInTy.get(LitKind lit) {
+    return _instances.putIfAbsent(lit, () {
+      return BuiltInTy._lit(lit);
+    });
   }
 
-  BuiltInTy.lit(this._ty);
+  BuiltInTy._lit(this._ty);
 
   final LitKind _ty;
   LitKind get ty => _ty;
@@ -635,7 +613,7 @@ class BuiltInTy extends Ty {
     final lit = LitKind.values.firstWhereOrNull((e) => e.lit == src);
     if (lit == null) return null;
 
-    return BuiltInTy._(lit);
+    return BuiltInTy.get(lit);
   }
 
   @override
@@ -1588,7 +1566,7 @@ class ArrayLLVMType extends LLVMType {
   }
 
   Variable toStr(BuildContext c, Variable value) {
-    return LLVMConstVariable(value.getBaseValue(c), BuiltInTy.string);
+    return LLVMConstVariable(value.getBaseValue(c), BuiltInTy.str);
   }
 
   @override

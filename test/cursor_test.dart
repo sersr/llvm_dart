@@ -8,15 +8,6 @@ import 'package:nop/nop.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('cursor', () {
-    final cursor = Cursor("hello");
-    final char = cursor.nextChar;
-    expect(char, 'h');
-    expect(cursor.cursor, 0);
-    cursor.moveBack();
-    expect(cursor.cursor, -1);
-  });
-
   test('cursor 😯', () {
     const raw = "let 😯";
     final cursor = raw.characters.toList().tokenIt;
@@ -28,73 +19,54 @@ void main() {
     }
   });
 
-  test('cursor all', () {
-    final cursor = Cursor("hello");
-    // final char = cursor.nextChar;
-    cursor
-          ..nextChar // 'h'
-          ..nextChar // 'e'
-          ..nextChar // 'l'
-          ..nextChar // 'l'
-          ..nextChar // 'o'
-          ..nextChar // '', EOF
-        ;
-    expect(cursor.cursor, 4);
-    cursor.moveBack(); // 'h'
-
-    expect(cursor.cursor, 3);
-    expect(cursor.current, 'l');
-    cursor
-          ..moveBack() // 'l'
-          ..moveBack() // 'e'
-          ..moveBack() // 'h'
-        ;
-    expect(cursor.cursor, 0);
-    cursor.moveBack(); // ''
-    expect(cursor.cursor, -1);
-    cursor.moveBack(); // ''
-    expect(cursor.cursor, -1);
-  });
-
   test('light', () {
     final src = testSrcDir.childFile('math.kc').readAsStringSync();
     Log.logPathFn = (path) => path;
     final tokenReader = TokenReader(src);
 
-    final tree = tokenReader.parse(false);
-    void loop(TokenTree tree) {
-      if (tree.child.isNotEmpty) {
-        for (var token in tree.child) {
-          loop(token);
+    void test() {
+      final tree = tokenReader.parse(false);
+      void loop(TokenTree tree) {
+        if (tree.child.isNotEmpty) {
+          for (var token in tree.child) {
+            loop(token);
+          }
         }
+        final ident = Identifier.fromToken(tree.token, src);
+        Log.i(
+            '${ident.light} | ${ident.lineStart} <= ${ident.start} <= ${ident.end} ?? ${ident.lineEnd} | ${ident.offset.pathStyle}');
       }
-      final ident = Identifier.fromToken(tree.token, src);
-      Log.i('${ident.light} ${ident.offset.pathStyle}');
+
+      loop(tree);
     }
 
-    loop(tree);
+    test();
 
     final cursor = Cursor(src);
 
     final list = cursor.lineStartCursors;
 
     int? start;
-    for (var index in list) {
+    for (var i = 0; i < list.length; i++) {
+      final index = list[i];
       if (start == null) {
         start = index;
         continue;
       }
 
       final token = Token(
-          kind: TokenKind.ident,
-          getLineStart: cursor.getLineStart,
-          start: start,
-          end: index - 1);
+        kind: TokenKind.ident,
+        start: start,
+        lineStart: start,
+        lineNumber: i + 1,
+        lineEnd: index - 1,
+        end: index,
+      );
       final ident = Identifier.fromToken(token, src);
       start = index;
       Log.i(
-          '${ident.light} | ${token.start} <= ${token.lineStart} <= ${token.end}'
-          ' <= ${token.lineEnd} | ${ident.offset}');
+          '${ident.light} | ${token.lineStart} <= ${token.start} <= ${token.end}'
+          ' ?? ${token.lineEnd} | ${ident.offset.pathStyle}');
     }
   });
 }

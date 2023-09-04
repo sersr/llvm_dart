@@ -981,18 +981,20 @@ class Parser {
             return true;
           });
 
+          final buffer = StringBuffer();
+          buffer.write(parseStr(getStr(it, token: t)));
+          var tokenEnd = t;
+
           if (tokens.isNotEmpty) {
-            final buffer = StringBuffer();
-            buffer.write(parseStr(getStr(it, token: t)));
+            tokenEnd = tokens.last;
             for (var token in tokens) {
               buffer.write(parseStr(getStr(it, token: token)));
             }
-            Log.w(buffer);
-
-            ident = Identifier.str(t, tokens.last, buffer.toString());
           }
+
+          ident = Identifier.str(t, tokenEnd, buffer.toString());
         }
-        final ty = BuiltInTy.lit(lkd);
+        final ty = BuiltInTy.get(lkd);
         expr = LiteralExpr(ident ?? getIdent(it), ty);
       }
     }
@@ -1048,7 +1050,7 @@ class Parser {
       final ident = getIdent(it);
       final key = getKey(it);
       if (key?.isBool == true) {
-        final ty = BuiltInTy.lit(LitKind.kBool);
+        final ty = BuiltInTy.kBool;
         expr = LiteralExpr(ident, ty);
       }
       eatLfIfNeed(it);

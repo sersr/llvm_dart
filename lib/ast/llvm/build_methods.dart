@@ -369,8 +369,7 @@ mixin Consts on BuildMethods {
   }
 
   LLVMValueRef usizeValue(int size) {
-    return BuiltInTy.lit(LitKind.usize)
-        .llvmType
+    return BuiltInTy.usize.llvmType
         .createValue(ident: Identifier.builtIn('$size'))
         .getValue(this);
   }

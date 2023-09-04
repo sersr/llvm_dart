@@ -238,22 +238,24 @@ class Token {
       (int, int, int) Function(int start)? getLineStart,
       int? lineStart,
       int? lineNumber,
+      int? lineEnd,
       required this.end})
       : literalKind = null,
         lineStart = getLineStart?.call(start).$1 ?? lineStart!,
         lineNumber = getLineStart?.call(start).$3 ?? lineNumber ?? -1,
-        lineEnd = getLineStart?.call(start).$2 ?? end + 1;
+        lineEnd = getLineStart?.call(start).$2 ?? lineEnd ?? end;
   Token.literal({
     required LiteralKind this.literalKind,
     required this.start,
     (int, int, int) Function(int start)? getLineStart,
     int? lineStart,
     int? lineNumber,
+    int? lineEnd,
     required this.end,
   })  : kind = TokenKind.literal,
         lineStart = getLineStart?.call(start).$1 ?? lineStart!,
         lineNumber = getLineStart?.call(start).$3 ?? lineNumber ?? -1,
-        lineEnd = getLineStart?.call(start).$2 ?? end + 1;
+        lineEnd = getLineStart?.call(start).$2 ?? lineEnd ?? end;
 
   final TokenKind kind;
   final int start;
@@ -272,24 +274,24 @@ class Token {
 
 class Cursor {
   Cursor(this.src) {
-    _reset();
-    lineStartCursors;
-  }
-  void _reset() {
     final pc = src.characters;
     _it = pc.toList().tokenIt;
+    _state = _it.cursor;
+    lineStartCursors;
+  }
+
+  void reset() {
+    _state.restore();
+    _lastLineNumber = 0;
   }
 
   final String src;
 
+  late final CursorState _state;
   late BackIteratorString _it;
 
   int get cursor => _it.stringCursor;
   int get cursorEnd => _it.stringCursorEnd;
-
-  void moveBack() {
-    _it.moveBack();
-  }
 
   String get current {
     if (!_it.curentIsValid) return '';
@@ -347,43 +349,38 @@ class Cursor {
     // stringCursorEnd: 由于 cursor 并没有下移，所以要加上当前字符的长度
     cursors.add(it.stringCursorEnd + 1);
     state.restore();
+    _max = cursors.length - 1;
     return cursors;
   }
 
+  int _lastLineNumber = 0;
+  var _max = 0;
+
   /// 获取当前指针所在行的数据信息
+  ///
+  /// [_lastLineNumber] : [key]的值只会递增，提供缓存可减少循环次数
   (int start, int end, int lineNumber) getLineStart(int key) {
-    if (lineStartCursors.isEmpty) return (key, key + 1, 1);
-    var min = 0;
-    var max = lineStartCursors.length - 1;
+    var nextIndex = _lastLineNumber + 1;
+    final start = lineStartCursors[_lastLineNumber];
+    final end = lineStartCursors[nextIndex];
 
-    if (key >= lineStartCursors.last) {
-      return (key, key + 1, lineStartCursors.length);
+    if (key >= start && key < end) {
+      return (start, end - 1, _lastLineNumber);
     }
 
-    if (key <= lineStartCursors.first) {
-      if (lineStartCursors case [int first, int second, ...]) {
-        return (first, second, 1);
+    var index = nextIndex;
+    while (index < _max) {
+      final start = lineStartCursors[index];
+      final end = lineStartCursors[index + 1];
+
+      if (key >= start && key < end) {
+        _lastLineNumber = index;
+        return (start, end - 1, index);
       }
-      return (key, lineStartCursors.first, 1);
+      index += 1;
     }
 
-    while (min < max) {
-      var mid = min + ((max - min) >> 1);
-      var element = lineStartCursors[mid];
-      if (element <= key) {
-        final nextId = mid + 1;
-        if (nextId <= max) {
-          final next = lineStartCursors[nextId];
-          if (next > key) {
-            return (element, next, mid + 1);
-          }
-        }
-        min = mid;
-      } else if (key < element) {
-        max = mid;
-      }
-    }
-    return (key, key + 1, 1);
+    throw StateError('确保`key`是正向增长的，当前算法不支持获取`_lastLineNumber`之前的信息。');
   }
 
   Token advanceToken() {
@@ -613,7 +610,7 @@ class Cursor {
     while (_it.moveNext()) {
       final next = _it.current;
       if (test(next)) {
-        if (back) moveBack();
+        if (back) _it.moveBack();
         return;
       }
     }

@@ -606,8 +606,8 @@ class LLVMStructType extends LLVMType {
       final tl = llvm.LLVMGetAlignment(arrTy);
 
       // copy
-      llvm.LLVMBuildMemCpy(c.builder, calloca.alloca, al, arrTy, tl,
-          BuiltInTy.constUsize(c, size));
+      llvm.LLVMBuildMemCpy(
+          c.builder, calloca.alloca, al, arrTy, tl, c.usizeValue(size));
     } else {
       calloca = LLVMAllocaVariable(ty, value, cCreateType(c))..isTemp = false;
       c.setName(calloca.alloca, ident.src);

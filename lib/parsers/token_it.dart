@@ -97,7 +97,8 @@ class BackIterator<T> implements Iterator<T> {
   @override
   T get current => _current[_cursor];
 
-  bool get curentIsValid => _cursor > -1 && _cursor < length;
+  /// [moveNext]确定了不会超出[length]
+  bool get curentIsValid => _cursor > -1;
 
   var _cursorState = -1;
   CursorState? _cacheState;
@@ -126,8 +127,6 @@ class BackIterator<T> implements Iterator<T> {
   bool moveNext() {
     if (_cursor >= length - 1) return false;
     _cursor += 1;
-    // Log.i('current: ${Identifier.fromToken(current.token)}',
-    //     position: 1, showPath: false);
     return true;
   }
 }
