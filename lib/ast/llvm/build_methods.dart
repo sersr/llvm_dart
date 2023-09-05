@@ -214,6 +214,7 @@ mixin BuildMethods on LLVMTypeMixin {
   void dropAll() {}
 
   void diBuilderDeclare(Identifier ident, LLVMValueRef alloca, Ty ty) {
+    if (!ident.isValid) return;
     final name = ident.src;
     final dBuilder = this.dBuilder;
     if (dBuilder == null) return;

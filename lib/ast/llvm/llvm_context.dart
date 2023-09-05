@@ -2,6 +2,7 @@ import 'dart:ffi';
 
 import 'package:collection/collection.dart';
 
+import '../../abi/abi_fn.dart';
 import '../../fs/fs.dart';
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
@@ -258,25 +259,32 @@ class BuildContext
   StoreVariable? _sret;
   StoreVariable? get sret => _sret;
 
-  void _build(
+  void initFnParamsStart(
+      LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
+      {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
+    final sret = AbiFn.initFnParams(this, fn, decl, fnty, extra, map: map);
+    _sret = sret;
+  }
+
+  void initFnParams(
       LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
       {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
     // ignore: invalid_use_of_protected_member
     final params = decl.params;
     var index = 0;
 
-    var retTy = fnty.getRetTy(this);
+    // var retTy = fnty.getRetTy(this);
 
-    if (fnty.llvmType.isSret(this) && retTy is StructTy) {
-      final first = llvm.LLVMGetParam(fn, index);
-      final alloca = retTy.llvmType.createAlloca(this, Identifier.none, first);
-      alloca.isTemp = false;
-      index += 1;
-      // final rawIdent = fnty.sretVariables.last;
-      // final ident = Identifier('', rawIdent.start, rawIdent.end);
-      // setName(first, ident.src);
-      _sret = alloca;
-    }
+    // if (fnty.llvmType.isSret(this) && retTy is StructTy) {
+    //   final first = llvm.LLVMGetParam(fn, index);
+    //   final alloca = retTy.llvmType.createAlloca(this, Identifier.none, first);
+    //   alloca.isTemp = false;
+    //   index += 1;
+    //   // final rawIdent = fnty.sretVariables.last;
+    //   // final ident = Identifier('', rawIdent.start, rawIdent.end);
+    //   // setName(first, ident.src);
+    //   _sret = alloca;
+    // }
 
     if (fnty is ImplFn) {
       final p = fnty.ty;
@@ -307,7 +315,7 @@ class BuildContext
         }
       }
 
-      resolveParam(realTy, fnParam, p.ident, fnty.extern);
+      resolveParam(realTy, fnParam, p.ident);
     }
 
     index += params.length - 1;
@@ -344,11 +352,10 @@ class BuildContext
     }
   }
 
-  void resolveParam(
-      Ty ty, LLVMValueRef fnParam, Identifier ident, bool extern) {
+  void resolveParam(Ty ty, LLVMValueRef fnParam, Identifier ident) {
     Variable alloca;
     if (ty is StructTy) {
-      alloca = ty.llvmType.createAllocaFromParam(this, fnParam, ident, extern);
+      alloca = ty.llvmType.createAllocaFromParam(this, fnParam, ident);
       // } else if (ty is Fn) {
       //   alloca = ty.llvmType.createAllocaParam(this, ident, fnParam);
       // } else if (ty is! RefTy) {
@@ -402,61 +409,57 @@ class BuildContext
       [Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>> map = const {},
       void Function(BuildContext context)? onCreated]) {
-    final contains = fn.llvmType.contains(extra);
+    final fv = AbiFn.createFunction(this, fn, extra, (fv) {
+      final block = fn.block?.clone();
+      if (block == null) return;
 
-    final fv = fn.llvmType.createFunction(this, extra);
-    if (contains) {
-      return fv;
-    }
+      final fnContext = createChildContext();
+      fnContext.fn = fv;
+      fnContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
+      fnContext.isFnBBContext = true;
+      fnContext.instertFnEntryBB();
+      onCreated?.call(fnContext);
+      fnContext.initFnParamsStart(fv.value, fn.fnSign.fnDecl, fn, extra,
+          map: map);
+      block.build(fnContext);
 
-    final block = fn.block?.clone();
-    final isDecl = block == null;
-    if (isDecl) return fv;
-    final fnContext = createChildContext();
-    fnContext.fn = fv;
-    fnContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
-    fnContext.isFnBBContext = true;
-    fnContext.instertFnEntryBB();
-    onCreated?.call(fnContext);
-    fnContext._build(fv.value, fn.fnSign.fnDecl, fn, extra, map: map);
-    block.build(fnContext);
-
-    bool hasRet = false;
-    bool voidRet({bool back = false}) {
-      if (hasRet) return true;
-      final rty = fn.getRetTy(this);
-      if (rty is BuiltInTy) {
-        final lit = rty.ty;
-        if (lit != LitKind.kVoid) {
-          if (back) return false;
-          // error
+      bool hasRet = false;
+      bool voidRet({bool back = false}) {
+        if (hasRet) return true;
+        final rty = fn.getRetTy(this);
+        if (rty is BuiltInTy) {
+          final lit = rty.ty;
+          if (lit != LitKind.kVoid) {
+            if (back) return false;
+            // error
+          }
+          fnContext.ret(null, Offset.zero);
+          hasRet = true;
+          return true;
         }
-        fnContext.ret(null, Offset.zero);
-        hasRet = true;
-        return true;
+        return false;
       }
-      return false;
-    }
 
-    if (block.stmts.isNotEmpty) {
-      final lastStmt = block.stmts.last;
-      if (lastStmt is ExprStmt) {
-        final expr = lastStmt.expr;
-        if (expr is! RetExpr) {
-          if (!voidRet(back: true)) {
-            // 获取缓存的value
-            final valTemp = expr.build(fnContext);
-            final val = valTemp?.variable;
-            if (val == null) {
-              // error
+      if (block.stmts.isNotEmpty) {
+        final lastStmt = block.stmts.last;
+        if (lastStmt is ExprStmt) {
+          final expr = lastStmt.expr;
+          if (expr is! RetExpr) {
+            if (!voidRet(back: true)) {
+              // 获取缓存的value
+              final valTemp = expr.build(fnContext);
+              final val = valTemp?.variable;
+              if (val == null) {
+                // error
+              }
+
+              fnContext.ret(val, valTemp?.currentIdent.offset ?? Offset.zero);
             }
-
-            fnContext.ret(val, valTemp?.currentIdent.offset ?? Offset.zero);
           }
         }
       }
-    }
-    voidRet();
+      voidRet();
+    });
     return fv;
   }
 
@@ -511,7 +514,7 @@ class BuildContext
     }
 
     if (variable is LLVMAllocaDelayVariable) {
-      variable.create(this, alloca);
+      variable.create(this, alloca, nameIdent);
       if (alloca != null) {
         if (nameIdent != null) setName(alloca.alloca, nameIdent.src);
       }

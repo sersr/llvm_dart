@@ -11,7 +11,7 @@ struct stack_t {
 
 fn init_sig_stack() {
   let ss = stack_t {};
-    let addr = mmap(null, 131072, 3,4097, -1, 0);
+  let addr = mmap(null, 131072, 3,4097, -1, 0);
   ss.ss_sp = addr;
   ss.ss_flags = 0;
   ss.ss_size = 131072;

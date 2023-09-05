@@ -2,7 +2,6 @@
 import 'd.kc';
 import 'stack_overflow.kc';
 
-type ptr;
 
 fn main() i32 {
   final y = 10;
@@ -59,7 +58,7 @@ fn main() i32 {
   0;
 }
 
-static p:ptr = null;
+static p:*void = null;
 
 static y = 10;
 
@@ -118,6 +117,6 @@ enum Option {
   None,
 }
 
-extern fn malloc(size: usize) ptr;
-extern fn realloc(p: ptr, size: usize) ptr;
-extern fn free(p: ptr);
+extern fn malloc(size: usize) *void;
+extern fn realloc(p: *void, size: usize) *void;
+extern fn free(p: *void);

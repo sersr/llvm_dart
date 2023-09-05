@@ -56,4 +56,6 @@ void main() {
   test('vec', () => run('vec_main.kc'));
 
   test('math', () => run('math.kc'));
+
+  test('fn', () => run('fn.kc'));
 }

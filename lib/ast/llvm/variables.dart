@@ -89,15 +89,15 @@ class LLVMConstVariable extends Variable with Deref {
 // }
 
 mixin DelayVariableMixin {
-  LLVMValueRef Function([StoreVariable? alloca]) get _create;
+  LLVMValueRef Function([StoreVariable? alloca, Identifier? ident]) get _create;
 
   LLVMValueRef? _alloca;
 
   bool get created => _alloca != null;
 
-  bool create(BuildContext c, [StoreVariable? alloca]) {
+  bool create(BuildContext c, [StoreVariable? alloca, Identifier? ident]) {
     final result = _alloca == null;
-    _alloca ??= _create(alloca);
+    _alloca ??= _create(alloca, ident);
     if (result) {
       storeInit(c);
     }
@@ -114,7 +114,8 @@ class LLVMAllocaDelayVariable extends StoreVariable
     with DelayVariableMixin, Deref {
   LLVMAllocaDelayVariable(this.ty, this.initAlloca, this._create, this.type);
   @override
-  final LLVMValueRef Function([StoreVariable? alloca]) _create;
+  final LLVMValueRef Function([StoreVariable? alloca, Identifier? ident])
+      _create;
   @override
   final Ty ty;
 

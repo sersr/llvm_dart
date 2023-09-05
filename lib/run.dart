@@ -90,13 +90,14 @@ Future<void> runCode() async {
   return runCmd(['clang -g out.ll base.c -o main && ./build/main']);
 }
 
-Future<void> runNativeCode({String args = '', bool run = true}) async {
+Future<void> runNativeCode(
+    {String args = '', String files = '', bool run = true}) async {
   var runn = '';
   if (run) {
     runn = '&& ./main $args';
   }
 
-  return runCmd(['clang -g out.o -o main $runn']);
+  return runCmd(['clang -g out.o $files -o main $runn']);
 }
 
 Future<void> runCmd(List<String> cmd, {Directory? dir}) async {

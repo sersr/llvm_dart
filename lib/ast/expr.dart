@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:nop/nop.dart';
 
+import '../abi/abi_fn.dart';
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import '../parsers/lexers/token_kind.dart';
@@ -584,17 +585,22 @@ class StructExpr extends Expr {
       Identifier ident, List<FieldExpr> params, List<PathTy> genericsInst) {
     struct = resolveGeneric(struct, context, params, genericsInst);
     final structType = struct.llvmType.createType(context);
-    LLVMValueRef create([StoreVariable? alloca]) {
+    LLVMValueRef create([StoreVariable? alloca, Identifier? nIdent]) {
       var value = alloca;
-      final min = struct.llvmType.getMaxSize(context);
+      // final min = struct.llvmType.getMaxSize(context);
       var fields = struct.fields;
       final sortFields = alignParam(
           params, (p) => fields.indexWhere((e) => e.ident == p.ident));
-      final size = min > 4 ? 8 : 4;
+      // final size = min > 4 ? 8 : 4;
 
-      value ??= struct.llvmType.createAlloca(context, ident, null);
+      value ??= struct.llvmType
+          .createAlloca(context, nIdent ?? Identifier.none, null);
 
       context.diSetCurrentLoc(ident.offset);
+
+      if (value is LLVMAllocaDelayVariable) {
+        value.create(context, null, nIdent);
+      }
 
       if (sortFields.length != fields.length) {
         value.store(context, llvm.LLVMConstNull(structType), Offset.zero);
@@ -606,7 +612,9 @@ class StructExpr extends Expr {
         // llvm.LLVMBuildMemSet(context.builder, base, context.constI8(0),
         //     BuiltInTy.constUsize(context, len), align);
       }
-
+      if (value is LLVMAllocaDelayVariable) {
+        value.create(context, null, nIdent ?? ident);
+      }
       for (var i = 0; i < sortFields.length; i++) {
         final f = sortFields[i];
         final fd = fields[i];
@@ -625,8 +633,8 @@ class StructExpr extends Expr {
         final loadOffset = temp!.currentIdent.offset;
         var offset = f.ident?.offset ?? loadOffset;
 
-        final store = vv.store(context, v.load(context, loadOffset), offset);
-        llvm.LLVMSetAlignment(store, size);
+        vv.store(context, v.load(context, loadOffset), offset);
+        // llvm.LLVMSetAlignment(store, size);
       }
       return value.alloca;
     }
@@ -918,148 +926,14 @@ mixin FnCallMixin {
     }
   }
 
-  static ExprTempValue? _fnCall(
-      BuildContext context,
-      Fn fn,
-      List<FieldExpr> params,
-      Variable? fnVariable,
-      Variable? struct,
-      GenTy? gen,
-      Set<AnalysisVariable>? extra,
-      Map<Identifier, Set<AnalysisVariable>>? map,
-      Identifier currentIdent) {
-    fn = StructExpr.resolveGeneric(fn, context, params, []);
-    // ignore: invalid_use_of_protected_member
-    final fnParams = fn.fnSign.fnDecl.params;
-    final fnExtern = fn.extern;
-    final args = <LLVMValueRef>[];
-    final retTy = fn.getRetTy(context);
-    final isSret = fn.llvmType.isSret(context);
-
-    StoreVariable? sret;
-    if (isSret) {
-      sret = retTy.llvmType
-          .createAlloca(context, Identifier.builtIn('sret'), null);
-
-      args.add(sret.alloca);
-    }
-
-    if (struct != null && fn is ImplFn) {
-      if (struct.ty is BuiltInTy) {
-        args.add(struct.load(context, Offset.zero));
-      } else {
-        args.add(struct.getBaseValue(context));
-      }
-    }
-    final sortFields = alignParam(
-        params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
-
-    for (var i = 0; i < sortFields.length; i++) {
-      final p = sortFields[i];
-      Ty? c;
-      if (i < fnParams.length) {
-        c = fn.getRty(context, fnParams[i]);
-      }
-      final temp = LiteralExpr.run(() {
-        return p.build(context);
-      }, c);
-      final v = temp?.variable;
-      if (v != null) {
-        LLVMValueRef value;
-        final vty = v.ty;
-        if (vty is StructTy) {
-          value = vty.llvmType
-              .load2(context, v, fnExtern, temp!.currentIdent.offset);
-          // }
-          // if (v is LLVMRefAllocaVariable) {
-          //   value = v.load(context);
-        } else {
-          value = v.load(context, temp!.currentIdent.offset);
-        }
-
-        args.add(value);
-      }
-    }
-
-    void addArg(Variable? v, Identifier ident) {
-      if (v != null) {
-        LLVMValueRef value;
-        if (v is StoreVariable) {
-          value = v.alloca;
-        } else {
-          value = v.load(context, ident.offset);
-        }
-        args.add(value);
-      }
-    }
-
-    for (var variable in fn.variables) {
-      var v = context.getVariable(variable.ident);
-      addArg(v, variable.ident);
-    }
-
-    if (extra != null) {
-      for (var variable in extra) {
-        var v = context.getVariable(variable.ident);
-        addArg(v, variable.ident);
-      }
-    }
-
-    if (fn is FnTy) {
-      // ignore: invalid_use_of_protected_member
-      final params = fn.fnSign.fnDecl.params;
-      for (var p in params) {
-        var v = context.getVariable(p.ident);
-        addArg(v, p.ident);
-      }
-    }
-
-    final fnType = fn.llvmType.createFnType(context, extra);
-
-    final fnAlloca = fn.build(extra, map);
-    LLVMValueRef? fnValue;
-    // if (fnVariable is! UnimplVariable) {
-    fnValue = fnVariable?.load(context, Offset.zero);
-    // }
-    fnValue ??= fnAlloca?.load(context, Offset.zero);
-    if (fnValue == null) return null;
-
-    context.diSetCurrentLoc(currentIdent.offset);
-    final ret = llvm.LLVMBuildCall2(
-        context.builder, fnType, fnValue, args.toNative(), args.length, unname);
-
-    if (sret != null) {
-      return ExprTempValue(sret, retTy, currentIdent);
-    }
-    if (retTy is BuiltInTy) {
-      if (retTy.ty == LitKind.kVoid) {
-        return null;
-      }
-    }
-
-    if (retTy is RefTy) {
-      final v = LLVMConstVariable(ret, retTy);
-      return ExprTempValue(v, v.ty, currentIdent);
-    } else if (retTy is StructTy) {
-      final v = retTy.llvmType.createAlloca(context, Identifier.none, null);
-      v.store(context, ret, Offset.zero);
-      return ExprTempValue(v, v.ty, currentIdent);
-    }
-    final v = LLVMConstVariable(ret, retTy);
-
-    return ExprTempValue(v, v.ty, currentIdent);
-  }
-
   ExprTempValue? fnCall(
     BuildContext context,
     Fn fn,
     List<FieldExpr> params,
-    Variable? fnVariable,
     Identifier currentIdent, {
     Variable? struct,
-    GenTy? gen,
   }) {
-    return _fnCall(context, fn, params, fnVariable, struct, gen, catchVariables,
+    return AbiFn.fnCallInternal(context, fn, params, struct, catchVariables,
         childrenVariables, currentIdent);
   }
 }
@@ -1121,14 +995,14 @@ class FnCallExpr extends Expr with FnCallMixin {
       }
       if (ty == null) return null;
 
-      final v = fn.llvmType.createFunction(context, null, ty);
+      final v = fn.llvmType.build(context, ty);
       return ExprTempValue(v, BuiltInTy.i32, fnV!.currentIdent);
     }
     if (fn is! Fn) return null;
 
-    final fnnn = StructExpr.resolveGeneric(fn, context, params, []);
+    final fnInst = StructExpr.resolveGeneric(fn, context, params, []);
 
-    return fnCall(context, fnnn, params, variable, fnV!.currentIdent);
+    return fnCall(context, fnInst, params, fnV!.currentIdent);
   }
 
   @override
@@ -1269,10 +1143,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
     var structTy = valTy;
     final ty = LiteralExpr.letTy;
 
-    PathInterFace? letTy;
-    if (ty is PathInterFace) {
-      letTy = ty as PathInterFace;
-    }
     if (structTy is StructTy) {
       if (structTy.tys.isEmpty) {
         if (ty is StructTy && structTy.ident == ty.ident) {
@@ -1310,7 +1180,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
       }
     }
 
-    Variable? fnVariable;
     // 字段有可能是一个函数指针
     if (fn == null) {
       if (val is StoreVariable && structTy is StructTy) {
@@ -1319,7 +1188,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
           // 匿名函数作为参数要处理捕捉的变量
           if (field.ty is FnTy) {
             assert(_paramFn is Fn, 'ty: ${field.ty}, _paramFn: $_paramFn');
-            fnVariable = field;
             fn = _paramFn ?? field.ty as FnTy;
           }
         }
@@ -1327,11 +1195,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
     if (fn == null) return null;
 
-    return fnCall(context, fn, params, fnVariable, ident, struct: val,
-        gen: (ident) {
-      if (structTy is StructTy) return structTy.tys[ident] ?? letTy?.tys[ident];
-      return null;
-    });
+    return fnCall(context, fn, params, ident, struct: val);
   }
 
   Fn? _paramFn;
@@ -1785,6 +1649,9 @@ class VariableIdentExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
+    if (ident.src == 'print') {
+      Log.w('....');
+    }
     if (ident.src == 'null') {
       final letTy = LiteralExpr.letTy;
       final ty = letTy?.llvmType.createType(context);

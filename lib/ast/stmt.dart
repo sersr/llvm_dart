@@ -106,7 +106,7 @@ class LetStmt extends Stmt {
       LLVMValueRef? rValue;
       if (variable != null) {
         if (variable is LLVMAllocaDelayVariable) {
-          variable.create(context);
+          variable.create(context, null, nameIdent);
         }
         if (wrapRef) {
           rValue = variable.getBaseValue(context);

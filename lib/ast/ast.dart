@@ -113,23 +113,6 @@ class Identifier with EquatableMixin {
     if (!isValid) return Offset.zero;
 
     return _offset = Offset(lineNumber, start - lineStart + 1);
-
-    // var row = 1, column = 1;
-    // if (start == 0) {
-    //   return _offset = Offset(1, end);
-    // }
-    // final lineStart = data.substring(0, start).lastIndexOf('\n');
-    // if (lineStart != -1) {
-    //   final before = data.substring(0, lineStart + 1);
-    //   row = '\n'.allMatches(before).length + 1;
-    //   // fn main() i32 {// <- lineStart
-    //   //  let y = 10;
-    //   // }
-    //   column = end - lineStart - 1;
-    // } else {
-    //   column = end;
-    // }
-    // return _offset = Offset(row, column);
   }
 
   static final Identifier none = Identifier.builtIn('');
@@ -182,6 +165,7 @@ class Identifier with EquatableMixin {
 
     final line = data.substring(lineStart, lineEnd);
     final space = ' ' * (start - lineStart);
+    // lineEnd 没有包括换行符
     final arrow = '^' * (math.min(end, lineEnd + 1) - start);
     return '$line\n$space\x1B[31m$arrow\x1B[0m';
   }
@@ -361,11 +345,15 @@ enum LitKind {
       final diff = u8.index - i8.index;
       return values[index - diff];
     }
+    if (this == kFloat) {
+      return f32;
+    } else if (this == kDouble) {
+      return f64;
+    }
     return this;
   }
 
   bool get signed {
-    assert(isInt);
     if (index >= i8.index && index <= i128.index || this == kInt) {
       return true;
     }
@@ -589,8 +577,8 @@ class BuiltInTy extends Ty {
   static final u8 = BuiltInTy.get(LitKind.u8);
   static final i32 = BuiltInTy.get(LitKind.i32);
   static final i64 = BuiltInTy.get(LitKind.i64);
-  static final float = BuiltInTy.get(LitKind.kFloat);
-  static final double = BuiltInTy.get(LitKind.kDouble);
+  static final f32 = BuiltInTy.get(LitKind.f32);
+  static final f64 = BuiltInTy.get(LitKind.f64);
   static final str = BuiltInTy.get(LitKind.kStr);
   static final kVoid = BuiltInTy.get(LitKind.kVoid);
   static final kBool = BuiltInTy.get(LitKind.kBool);
@@ -599,6 +587,11 @@ class BuiltInTy extends Ty {
   static final _instances = <LitKind, BuiltInTy>{};
 
   factory BuiltInTy.get(LitKind lit) {
+    if (lit == LitKind.kFloat) {
+      lit = LitKind.f32;
+    } else if (lit == LitKind.kDouble) {
+      lit = LitKind.f64;
+    }
     return _instances.putIfAbsent(lit, () {
       return BuiltInTy._lit(lit);
     });
@@ -1532,12 +1525,13 @@ class ArrayLLVMType extends LLVMType {
   @override
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
-    final val = LLVMAllocaDelayVariable(ty, base, ([alloca]) {
+    final val = LLVMAllocaDelayVariable(ty, base, ([alloca, nIdent]) {
+      nIdent ??= ident;
       final count = BuiltInTy.usize.llvmType
           .createValue(ident: Identifier.builtIn('${ty.size}'))
-          .load(c, ident.offset);
+          .load(c, nIdent.offset);
       return c.createArray(ty.elementType.llvmType.createType(c), count,
-          name: ident.src);
+          name: nIdent.src);
     }, createType(c));
     if (ident.isValid) {
       val.ident = ident;
