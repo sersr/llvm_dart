@@ -54,11 +54,6 @@ class Offset {
 }
 
 class Identifier with EquatableMixin {
-  // Identifier(this.name, this.start, int? end)
-  //     : end = (end ?? start) + 1,
-  //       data = '',
-  //       builtInName = '';
-
   Identifier.fromToken(Token token, this.data)
       : start = token.start,
         end = token.end,
@@ -522,11 +517,6 @@ class FnSign with EquatableMixin {
 /// ----- Ty -----
 
 abstract class Ty extends BuildMixin with EquatableMixin {
-  // @override
-  // void build(BuildContext context) {
-  //   throw UnimplementedError('ty');
-  // }
-
   static final PathTy unknown = UnknownTy(Identifier.none);
 
   LLVMType get llvmType;
@@ -665,13 +655,8 @@ class PathTy with EquatableMixin {
     }
   }
 
-  // Ty getRty(Tys c) {
-  //   return kind.resolveTy(grt(c));
-  // }
-
   Ty? grtBase(Tys c) {
     var rty = ty;
-    // if (ty != null) return ty!;
 
     final tySrc = ident.src;
     rty ??= BuiltInTy.from(tySrc);
@@ -686,7 +671,6 @@ class PathTy with EquatableMixin {
 
   Ty? grtOrT(Tys c, {GenTy? gen, GenTy? getTy}) {
     var rty = ty;
-    // if (ty != null) return ty!;
 
     final tySrc = ident.src;
     rty ??= BuiltInTy.from(tySrc);
@@ -998,13 +982,8 @@ mixin ImplFnMixin on Fn {
     if (ty == other) return this;
     _parent ??= root;
 
-    return rootImpl._cachesImpl.putIfAbsent(
-      other,
-      () {
-        return cloneImpl(other).._parentImpl = this;
-        // return ImplFn(fnSign, block?.clone(), other, implty).._parent = root;
-      },
-    );
+    return rootImpl._cachesImpl
+        .putIfAbsent(other, () => cloneImpl(other).._parentImpl = this);
   }
 
   @override
@@ -1436,24 +1415,6 @@ class ImplTy extends Ty {
     if (context == null) return;
     context.pushImpl(struct.ident, this);
     initStructFns(context);
-    // // check ty
-    // final structTy = context.getStruct(ident);
-    // if (structTy == null) return;
-    // context.pushImplForStruct(structTy, this);
-    // final ty = context.getStruct(ident);
-    // if (ty == null) {
-    //   //error
-    //   return;
-    // }
-
-    // for (var fn in staticFns) {
-    //   fn.customBuild(context);
-    // }
-    // final ifns =
-    //     _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty)).toList();
-    // for (var fn in ifns) {
-    //   fn.customBuild(context);
-    // }
   }
 
   @override
@@ -1484,15 +1445,6 @@ class ImplTy extends Ty {
     final ident = struct.ident;
     context.pushImpl(ident, this);
     initStructFns(context);
-    // final structTy = context.getStruct(ident);
-
-    // if (structTy is! StructTy) return;
-    // context.pushImplForStruct(structTy, this);
-    // final ty = context.getStruct(ident);
-    // if (ty == null) {
-    //   //error
-    //   return;
-    // }
   }
 }
 
@@ -1591,10 +1543,6 @@ class TypeAliasTy extends Ty {
   final List<FieldDef> generics;
   final PathTy? baseTy;
 
-  // Identifier get ident => pathTy.ident;
-
-  // List<PathTy> get generics => pathTy.generics;
-
   Ty? grt(Tys c, {GenTy? gen}) {
     if (baseTy == null) return this;
     return baseTy!.grtOrT(c, gen: gen);
@@ -1628,7 +1576,7 @@ class TypeAliasTy extends Ty {
   }
 
   @override
-  late final CTypeLLVMType llvmType = CTypeLLVMType(this);
+  late final LLVMAliasType llvmType = LLVMAliasType(this);
 
   @override
   List<Object?> get props => [ident, generics, baseTy];
@@ -1647,8 +1595,8 @@ class TypeAliasTy extends Ty {
   }
 }
 
-class CTypeLLVMType extends LLVMType {
-  CTypeLLVMType(this.ty);
+class LLVMAliasType extends LLVMType {
+  LLVMAliasType(this.ty);
 
   @override
   final TypeAliasTy ty;

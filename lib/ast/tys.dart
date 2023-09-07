@@ -57,13 +57,6 @@ mixin Tys<V extends LifeCycleVariable> {
     return runZoned(body, zoneValues: {#_runImport: true});
   }
 
-  // ImportHandler? importHandler;
-
-  // ImportHandler? getImportHandler() {
-  //   if (importHandler != null) return importHandler!;
-  //   return parent?.getImportHandler();
-  // }
-
   void pushImport(ImportPath path, {Identifier? name}) {
     if (!imports.containsKey(path)) {
       final im = importHandler.import(this, path);
@@ -372,7 +365,6 @@ mixin Tys<V extends LifeCycleVariable> {
       }
     }
     return null;
-    // return parent?.getKV(k, map, importHandle: importHandle, test: test);
   }
 
   bool pushKV<K, VA>(K k, VA v, Map<K, List<VA>> map) {

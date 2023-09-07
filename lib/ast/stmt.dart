@@ -81,26 +81,9 @@ class LetStmt extends Stmt {
         context.setName(variable.alloca, nameIdent.src);
         context.pushVariable(nameIdent, variable);
         return;
-        // } else if (variable is LLVMAllocaVariable && variable.ty is StructTy) {
-        //   alloca = tty.llvmType.createAlloca(context, nameIdent);
-        //   final rValue = variable.load(context);
-        //   alloca.store(context, rValue);
       }
 
       bool wrapRef = variable?.isRef == true;
-      // if (alloca == null) {
-      //   if (wrapRef) {
-      //     if (tty is BuiltInTy) {
-      //       alloca = tty.llvmType.createAlloca(context, nameIdent);
-      //     } else {
-      //       alloca = RefTy(tty)
-      //           .llvmType
-      //           .createAlloca(context, nameIdent, isPointer: false);
-      //     }
-      //   } else {
-      //     alloca = tty.llvmType.createAlloca(context, nameIdent);
-      //   }
-      // }
       alloca ??= tty.llvmType.createAlloca(context, nameIdent, null);
 
       LLVMValueRef? rValue;
@@ -205,10 +188,7 @@ class StaticStmt extends Stmt {
     final rty = realTy ?? e?.ty;
     final val = e?.variable;
     if (e == null || val == null) return;
-    // if (rty != null && e.ty != rty) {
-    //   Log.e('$ty = ${e.ty}');
-    //   return;
-    // }
+
     final y = rty ?? e.ty;
     final type = y.llvmType.createType(context);
 

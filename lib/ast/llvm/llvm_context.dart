@@ -269,29 +269,13 @@ class BuildContext
   void initFnParams(
       LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
       {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
-    // ignore: invalid_use_of_protected_member
     final params = decl.params;
     var index = 0;
-
-    // var retTy = fnty.getRetTy(this);
-
-    // if (fnty.llvmType.isSret(this) && retTy is StructTy) {
-    //   final first = llvm.LLVMGetParam(fn, index);
-    //   final alloca = retTy.llvmType.createAlloca(this, Identifier.none, first);
-    //   alloca.isTemp = false;
-    //   index += 1;
-    //   // final rawIdent = fnty.sretVariables.last;
-    //   // final ident = Identifier('', rawIdent.start, rawIdent.end);
-    //   // setName(first, ident.src);
-    //   _sret = alloca;
-    // }
 
     if (fnty is ImplFn) {
       final p = fnty.ty;
       final selfParam = llvm.LLVMGetParam(fn, index);
       final ident = Identifier.builtIn('self');
-      // final alloca = RefTy(p).llvmType.createAlloca(this, ident);
-      // alloca.store(this, selfParam);
 
       // 只读引用
       final alloca =
@@ -305,8 +289,7 @@ class BuildContext
 
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
-
-      final fnParam = llvm.LLVMGetParam(fn, i + index);
+      final fnParam = llvm.LLVMGetParam(fn, index);
       var realTy = fnty.getRty(this, p);
       if (realTy is FnTy) {
         final extra = map[p.ident];
@@ -316,9 +299,8 @@ class BuildContext
       }
 
       resolveParam(realTy, fnParam, p.ident);
+      index += 1;
     }
-
-    index += params.length - 1;
 
     void fnCatchVariable(AnalysisVariable variable, int index) {
       final value = llvm.LLVMGetParam(fn, index);
@@ -330,7 +312,6 @@ class BuildContext
       }
 
       final ty = val.ty;
-      // final alloca = LLVMRefAllocaVariable.from(value, ty, this);
       final type = ty.llvmType.createType(this);
       final alloca = LLVMAllocaVariable(ty, value, type);
       alloca.isTemp = false;
@@ -353,22 +334,9 @@ class BuildContext
   }
 
   void resolveParam(Ty ty, LLVMValueRef fnParam, Identifier ident) {
-    Variable alloca;
-    if (ty is StructTy) {
-      alloca = ty.llvmType.createAllocaFromParam(this, fnParam, ident);
-      // } else if (ty is Fn) {
-      //   alloca = ty.llvmType.createAllocaParam(this, ident, fnParam);
-      // } else if (ty is! RefTy) {
-      //   alloca = LLVMConstVariable(fnParam, ty);
-      //   setName(fnParam, ident.src);
-    } else {
-      final a = alloca = ty.llvmType.createAlloca(this, ident, fnParam);
-      // final a = alloca = ty.llvmType.createAlloca(this, ident);
-      a.create(this);
-      setName(a.alloca, ident.src);
-      a.isTemp = false;
-    }
-    if (alloca is StoreVariable) alloca.isTemp = false;
+    final alloca = ty.llvmType.createAlloca(this, ident, fnParam);
+    alloca.create(this);
+    alloca.isTemp = false;
     pushVariable(ident, alloca);
   }
 

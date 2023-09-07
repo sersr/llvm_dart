@@ -48,7 +48,6 @@ class SizeOfType extends LLVMFnType {
       ty = ty.parent;
     }
     final tyy = ty.llvmType.createType(c);
-    // final size = llvm.LLVMSizeOf(tyy);
     final size = c.typeSize(tyy);
 
     final v = c.usizeValue(size);

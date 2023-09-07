@@ -6,7 +6,12 @@ fn main() i32 {
 
   let s = test_sret();
   printf('sret: %d, x: %d, z: %d, f: %d\n', s.y, s.x, s.z, s.f);
+
+  let baseValue = test_fn();
+  printf('baseValue: %d, x: %d\n', baseValue.y, baseValue.x);
+  test_fn_param(baseValue);
   0;
+
 }
 
 extern struct Base {
@@ -49,4 +54,16 @@ extern struct SRet {
 extern
 fn test_sret() SRet {
   SRet { 10, 20, 30, 40};
+}
+
+struct BaseValue {
+  y: i32,
+  x: i32,
+}
+fn test_fn() BaseValue {
+  BaseValue {10, 20}
+}
+
+fn test_fn_param(base: BaseValue) {
+  printf('test_fn_param: %d, x: %d\n', base.y, base.x);
 }

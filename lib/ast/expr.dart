@@ -1,5 +1,4 @@
 // ignore_for_file: constant_identifier_names
-
 import 'dart:async';
 
 import 'package:collection/collection.dart';
@@ -664,24 +663,6 @@ class StructExpr extends Expr {
   }
 }
 
-// class StructExprField {
-//   StructExprField(this.ident, this.expr);
-//   final Identifier? ident;
-//   final Expr expr;
-//   StructExprField clone() {
-//     return StructExprField(ident, expr.clone());
-//   }
-
-//   @override
-//   String toString() {
-//     return '$ident: $expr';
-//   }
-
-//   ExprTempValue? build(BuildContext context) {
-//     return expr.build(context);
-//   }
-// }
-
 class AssignExpr extends Expr {
   AssignExpr(this.ref, this.expr);
   final Expr ref;
@@ -1266,14 +1247,6 @@ class StructDotFieldExpr extends Expr {
     final val = structVal?.variable;
     var newVal = val;
 
-    // while (true) {
-    //   if (newVal is! Deref) {
-    //     break;
-    //   }
-    //   final v = newVal.getDeref(context);
-    //   if (v == newVal) break;
-    //   newVal = v;
-    // }
     if (newVal is Deref) {
       newVal = newVal.getDeref(context);
     }
@@ -1661,17 +1634,7 @@ class VariableIdentExpr extends Expr {
       final v = LLVMConstVariable(llvm.LLVMConstNull(ty), letTy!);
       return ExprTempValue(v, v.ty, ident);
     }
-    // if (ident.src == 'nullptr') {
-    //   final letTy = LiteralExpr.letTy;
-    //   final ty = letTy?.llvmType.createType(context);
 
-    //   if (ty == null) {
-    //     return ExprTempValue(null, BuiltInTy.kVoid);
-    //   }
-
-    //   final v = LLVMConstVariable(llvm.LLVMConstPointerNull(ty), letTy!);
-    //   return ExprTempValue(v, v.ty);
-    // }
     final val = context.getVariable(ident);
     if (val != null) {
       if (val is Deref) {
@@ -1724,7 +1687,6 @@ class VariableIdentExpr extends Expr {
       }
 
       if (enableBuild) {
-        // final fnContext = context.getFnContext(ident);
         final value = fn.build();
         if (value != null) {
           return ExprTempValue(value, value.ty, ident);
@@ -1802,9 +1764,6 @@ class RefExpr extends Expr {
     final val = current.build(context);
     var vv = PointerKind.refDerefs(val?.variable, context, kind);
     if (vv != null) {
-      // if (kind.isEmpty) {
-      //   return ExprTempValue(vv, vv.ty, val!.currentIdent);
-      // }
       return ExprTempValue(vv, vv.ty, pointerIdent);
     }
     return val;

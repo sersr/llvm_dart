@@ -24,14 +24,13 @@ class Parser {
   void parse() {
     final reader = TokenReader(src);
     final root = reader.parse(false);
-    // return;
+
     final it = root.child.tokenIt;
     loop(it, () {
       final token = getToken(it);
       if (token.kind == TokenKind.lf) return false;
       if (token.kind == TokenKind.semi) return false;
 
-      // print('item:\n${getIdent(it).light}');
       if (token.kind == TokenKind.ident) {
         parseIdent(it, global: true);
       }
@@ -675,8 +674,6 @@ class Parser {
         } else {
           return ExprStmt(AssignExpr(lhs, rhs));
         }
-        // } else if (e.kind != TokenKind.lf) {
-        //   it.moveBack();
       } else {
         state.restore();
         lhs = parseExpr(it);
@@ -1242,10 +1239,6 @@ class Parser {
         return true;
       }
 
-      // // eat `)`
-      // if (fields.isEmpty && t.kind == TokenKind.closeParen) {
-      //   return true;
-      // }
       if (t.kind == TokenKind.ident) {
         eatLfIfNeed(it);
         final name = getIdent(it);

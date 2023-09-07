@@ -16,12 +16,6 @@ abstract class Variable extends LifeCycleVariable {
     return RefTy(ty).llvmType.createAlloca(c, Identifier.none, getBaseValue(c));
   }
 
-  // void setCurrentLoc(BuildContext c) {
-  //   if (ident != null) {
-  //     c.diSetCurrentLoc(ident!.offset);
-  //   }
-  // }
-
   LLVMValueRef getBaseValue(BuildContext c) => load(c, Offset.zero);
   Ty get ty;
 
@@ -80,13 +74,6 @@ class LLVMConstVariable extends Variable with Deref {
     return RefTy(ty).llvmType.createAlloca(c, Identifier.none, alloca.alloca);
   }
 }
-
-// class LLVMTempOpVariable extends LLVMConstVariable {
-//   LLVMTempOpVariable(Ty ty, this.isFloat, this.isSigned, LLVMValueRef value)
-//       : super(value, ty);
-//   final bool isSigned;
-//   final bool isFloat;
-// }
 
 mixin DelayVariableMixin {
   LLVMValueRef Function([StoreVariable? alloca, Identifier? ident]) get _create;
@@ -237,16 +224,8 @@ class LLVMLitVariable extends Variable {
 
   LLVMAllocaDelayVariable createAlloca(BuildContext c, Identifier ident,
       [BuiltInTy? tty]) {
-    // 需要分配内存地址
-    // final rty = tty ?? ty;
     final rValue = load(c, ident.offset, ty: tty);
     final alloca = ty.llvmType.createAlloca(c, ident, rValue);
-    // alloca.store(c, rValue);
-
-    // string 以指针形式存在，访问一次[load]会加载指针，以引用作为基本形式
-    // if (rty.ty == LitKind.kString) {
-    //   return LLVMRefAllocaVariable.create(c, alloca)..store(c, alloca.load(c));
-    // }
 
     return alloca;
   }

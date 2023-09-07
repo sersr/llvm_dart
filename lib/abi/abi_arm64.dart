@@ -115,16 +115,17 @@ class AbiFnArm64 implements AbiFn {
     if (count > 16) {
       return context.pointer();
     }
+
     final onlyFloat = ty.fields.every((e) => e.grt(context) == BuiltInTy.f32);
-    final onlyDouble = ty.fields.every((e) => e.grt(context) == BuiltInTy.f64);
     if (onlyFloat) {
-      final d = count / 4;
-      count = d.ceil();
-      return context.arrayType(context.f32, count);
-    } else if (onlyDouble) {
-      final d = count / 8;
-      count = d.ceil();
-      return context.arrayType(context.f64, count);
+      final size = (count / 4).ceil();
+      return context.arrayType(context.f32, size);
+    }
+
+    final onlyDouble = ty.fields.every((e) => e.grt(context) == BuiltInTy.f64);
+    if (onlyDouble) {
+      final size = (count / 8).ceil();
+      return context.arrayType(context.f64, size);
     }
 
     final arrayCount = count ~/ 8;
@@ -345,24 +346,3 @@ enum Reg {
   none,
   byval,
 }
-
-abstract class StructParamBase {
-  void toParam(BuildContext context, StructTy ty, Variable src);
-
-  Variable fromParam(BuildContext context, Struct ty, LLVMValueRef src);
-}
-
-// class StructParamArray implements StructParamBase {
-//   StructParamArray(this.ty, this.count);
-//   final LLVMValueRef ty;
-//   final int count;
-//   @override
-//   Variable fromParam(BuildContext context, Struct ty, LLVMValueRef src) {
-
-//   }
-
-//   @override
-//   void toParam(BuildContext context, StructTy ty, Variable src) {
-//     // TODO: implement toParam
-//   }
-// }

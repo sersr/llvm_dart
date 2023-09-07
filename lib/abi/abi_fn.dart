@@ -74,18 +74,7 @@ abstract interface class AbiFn {
       }, c);
       final v = temp?.variable;
       if (v != null) {
-        LLVMValueRef value;
-        final vty = v.ty;
-        if (vty is StructTy) {
-          value = v.load(context, temp!.currentIdent.offset);
-          // value = vty.llvmType
-          //     .load2(context, v, fnExtern, temp!.currentIdent.offset);
-          // }
-          // if (v is LLVMRefAllocaVariable) {
-          //   value = v.load(context);
-        } else {
-          value = v.load(context, temp!.currentIdent.offset);
-        }
+        final value = v.load(context, temp!.currentIdent.offset);
 
         args.add(value);
       }

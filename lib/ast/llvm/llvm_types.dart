@@ -39,9 +39,6 @@ abstract class LLVMType {
 
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
-    // final type = createType(c);
-    // final v = c.createAlloca(type, name: ident.src);
-    // final val = LLVMAllocaVariable(ty, v, type);
     final type = createType(c);
     final val = LLVMAllocaDelayVariable(ty, base, ([alloca, nIdent]) {
       final value = c.alloctor(type, ty: ty, name: nIdent?.src ?? ident.src);
@@ -53,12 +50,6 @@ abstract class LLVMType {
     }
     return val;
   }
-
-  // StoreVariable createMalloc(BuildContext c, Identifier ident) {
-  //   final type = createType(c);
-  //   final v = c.createMalloc(type, name: ident.src);
-  //   return LLVMAllocaVariable(ty, v, type);
-  // }
 }
 
 class LLVMTypeLit extends LLVMType {
@@ -416,15 +407,6 @@ class LLVMStructType extends LLVMType {
     return val;
   }
 
-  StoreVariable createAllocaFromParam(
-      BuildContext c, LLVMValueRef value, Identifier ident) {
-    final v = createAlloca(c, ident, null);
-    v.store(c, value, ident.offset);
-    c.setName(v.alloca, ident.src);
-    v.isTemp = false;
-    return v;
-  }
-
   @override
   int getBytes(BuildContext c) {
     return c.typeSize(createType(c));
@@ -500,14 +482,6 @@ class LLVMRefType extends LLVMType {
   LLVMTypeRef ref(BuildContext c) {
     return c.typePointer(parent.llvmType.createType(c));
   }
-
-  // @override
-  // LLVMRefAllocaVariable createAlloca(BuildContext c, Identifier ident) {
-  //   return LLVMRefAllocaVariable.delay(ty, () {
-  //     final type = createType(c);
-  //     return c.alloctor(type, ty: ty, name: ident.src);
-  //   });
-  // }
 
   @override
   int getBytes(BuildContext c) {
@@ -642,26 +616,12 @@ class LLVMEnumType extends LLVMType {
     final minSize = getRealIndexType(c);
     LLVMMetadataRef tyx;
     if (minSize == 1) {
-      tyx = llvm.LLVMDIBuilderCreateArrayType(
-          c.dBuilder!,
-          size - 1,
-          size,
-          BuiltInTy.i8.llvmType.createDIType(c),
-          // llvm.LLVMDIBuilderCreateBasicType(
-          //     c.dBuilder!, 'i8'.toChar(), 2, 8, 1, 0),
-          nullptr,
-          0);
+      tyx = llvm.LLVMDIBuilderCreateArrayType(c.dBuilder!, size - 1, size,
+          BuiltInTy.i8.llvmType.createDIType(c), nullptr, 0);
     } else if (minSize == 4) {
       final fc = (size / 4).ceil();
-      tyx = llvm.LLVMDIBuilderCreateArrayType(
-          c.dBuilder!,
-          fc,
-          size,
-          BuiltInTy.i32.llvmType.createDIType(c),
-          // llvm.LLVMDIBuilderCreateBasicType(
-          //     c.dBuilder!, 'i32'.toChar(), 3, 32, 1, 0),
-          nullptr,
-          0);
+      tyx = llvm.LLVMDIBuilderCreateArrayType(c.dBuilder!, fc, size,
+          BuiltInTy.i32.llvmType.createDIType(c), nullptr, 0);
     } else {
       final item = c.getStructExternDIType(size);
       tyx = item;
@@ -794,13 +754,6 @@ class LLVMEnumItemType extends LLVMStructType {
 
     return FieldsSize(map, count, alignSize);
   }
-
-  // LLVMAllocaVariable _createAlloca(BuildContext c, Identifier ident) {
-  //   final type = pTy.createType(c);
-  //   final ctype = createType(c);
-  //   final alloca = c.alloctor(type, ident.src);
-  //   return LLVMAllocaVariable(ty, alloca, ctype);
-  // }
 
   @override
   LLVMAllocaDelayVariable createAlloca(
