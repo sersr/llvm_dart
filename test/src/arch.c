@@ -16,6 +16,11 @@ typedef struct Base32
   int y;
 } Base32;
 
+typedef struct Basef32
+{
+  float y;
+} Basef32;
+
 typedef struct Base32p
 {
   int y;
@@ -35,6 +40,7 @@ typedef struct Basef64
 typedef struct Base64Float
 {
   float y;
+  char z;
   float x;
 } Base64Float;
 
@@ -72,6 +78,10 @@ void apiFn32(Base32 base)
 {
   printf("fn32: y = %d\n", base.y);
 }
+void apiFnf32(Basef32 base)
+{
+  printf("fnf32: y = %f\n", base.y);
+}
 void apiFn32p(Base32p base)
 {
   printf("fn32p: y = %d, x = %d\n", base.y, base.x);
@@ -84,6 +94,7 @@ void apiFnf64(Basef64 base)
 {
   printf("fnf64: y = %f\n", base.y);
 }
+extern
 void apiFn64Float(Base64Float base)
 {
   printf("fn64Float: y = %f, x = %f\n", base.y, base.x);
@@ -102,14 +113,33 @@ void apiFnBig(BaseBig base)
   printf("fnBig: y = %d, x = %d, z = %d, s = %d, h = %d\n", base.y, base.x, base.z, base.s, base.h);
 }
 
+Base128 apiFnRet128()
+{
+  Base128 base = {128.00, 130.00};
+  return base;
+}
+
+Base64Float apiFnRet64Float()
+{
+  Base64Float base = {128.00, 11, 130.00};
+  return base;
+}
+
+void ii(int x)
+{
+}
+
 void run()
 {
   Base base = {1};
+  Base32 base32 = {1};
   Base128 b128 = {1, 2};
   BaseBig bbig = {1, 2, 3, 4, 6};
-
+  Base64Float b64float = {1.0, 2, 3.0};
+  ii(10);
   apiFn(base);
+  apiFn32(base32);
   apiFn128(b128);
   apiFnBig(bbig);
-  bbig.s = 112;
+  apiFn64Float(b64float);
 }

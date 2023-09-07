@@ -15,12 +15,18 @@ typedef struct
   int z;
 } Base;
 
+Base hh()
+{
+  Base b = {1, 2, 3};
+  return b;
+}
+
 void test_base(Base base)
 {
   base.x = 111;
 }
 
-char * global = "hello world";
+char *global = "hello world";
 
 int main(int argc, char **argv)
 {

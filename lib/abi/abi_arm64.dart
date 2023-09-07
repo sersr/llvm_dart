@@ -60,7 +60,7 @@ class AbiFnArm64 implements AbiFn {
         final vty = v.ty;
         if (vty is StructTy) {
           final (sfp, tyValue) = toFnParams(context, vty, v);
-          if (sfp == StructFnParam.byval) {
+          if (sfp == Reg.byval) {
             listNoundefs.add(i + 1);
           }
           value = tyValue;
@@ -100,47 +100,50 @@ class AbiFnArm64 implements AbiFn {
       return null;
     }
 
-    final v = LLVMConstVariable(ret, retTy);
+    Variable v;
+    if (retTy is StructTy) {
+      v = fromFnParamsOrRet(context, retTy, ret);
+    } else {
+      v = LLVMConstVariable(ret, retTy);
+    }
 
     return ExprTempValue(v, v.ty, currentIdent);
   }
 
   LLVMTypeRef getCStructFnParamTy(BuildContext context, StructTy ty) {
-    LLVMTypeRef loadTy;
     var count = ty.llvmType.getBytes(context);
     if (count > 16) {
       return context.pointer();
     }
     final onlyFloat = ty.fields.every((e) => e.grt(context) == BuiltInTy.f32);
     final onlyDouble = ty.fields.every((e) => e.grt(context) == BuiltInTy.f64);
-
-    if (count > 8) {
-      if (count == 12 && onlyFloat) {
-        final d = count / 4;
-        count = d.ceil();
-        loadTy = context.arrayType(context.f32, count);
-      } else {
-        final d = count / 8;
-        count = d.ceil();
-        LLVMTypeRef ety = context.i64;
-        if (onlyDouble) {
-          ety = context.f64;
-        }
-        loadTy = context.arrayType(ety, count);
-      }
-    } else {
-      if (onlyFloat) {
-        loadTy = context.arrayType(context.f32, 2);
-      } else if (onlyDouble) {
-        loadTy = context.f64;
-      } else {
-        loadTy = context.i64;
-      }
+    if (onlyFloat) {
+      final d = count / 4;
+      count = d.ceil();
+      return context.arrayType(context.f32, count);
+    } else if (onlyDouble) {
+      final d = count / 8;
+      count = d.ceil();
+      return context.arrayType(context.f64, count);
     }
-    return loadTy;
+
+    final arrayCount = count ~/ 8;
+
+    final extra = count % 8;
+    final loadTy = context.i64;
+    final list = <LLVMTypeRef>[];
+    for (var i = 0; i < arrayCount; i++) {
+      list.add(loadTy);
+    }
+
+    if (extra > 0) {
+      list.add(context.i32);
+    }
+
+    return context.typeStruct(list, null);
   }
 
-  (StructFnParam, LLVMValueRef) toFnParams(
+  (Reg, LLVMValueRef) toFnParams(
       BuildContext context, StructTy struct, Variable variable) {
     final byteSize = struct.llvmType.getBytes(context);
     if (byteSize > 16) {
@@ -148,31 +151,44 @@ class AbiFnArm64 implements AbiFn {
       final copyValue = context.alloctor(llType);
       llvm.LLVMBuildMemCpy(context.builder, copyValue, 0,
           variable.getBaseValue(context), 0, context.usizeValue(byteSize));
-      return (StructFnParam.byval, copyValue);
+      return (Reg.byval, copyValue);
     }
     final cTy = getCStructFnParamTy(context, struct);
+    final align = context.getBaseAlignSize(struct);
     final llValue = llvm.LLVMBuildLoad2(
         context.builder, cTy, variable.getBaseValue(context), unname);
-
-    return (StructFnParam.none, llValue);
+    llvm.LLVMSetAlignment(llValue, align);
+    return (Reg.none, llValue);
   }
 
-  Variable fromFnParams(
+  Variable fromFnParamsOrRet(
       BuildContext context, StructTy struct, LLVMValueRef src) {
     final byteSize = struct.llvmType.getBytes(context);
-    final cTy = getCStructFnParamTy(context, struct);
-    LLVMValueRef llValue;
+    final llType = struct.llvmType.createType(context);
 
-    if (byteSize > 16) {
-      llValue = context.alloctor(cTy);
-      llvm.LLVMBuildMemCpy(
-          context.builder, llValue, 0, src, 0, context.usizeValue(byteSize));
-    } else {
-      llValue = llvm.LLVMBuildLoad2(context.builder, cTy, src, nullptr);
+    if (byteSize <= 16) {
+      return struct.llvmType.createAlloca(context, Identifier.none, src);
     }
 
-    return LLVMAllocaVariable(
-        struct, llValue, struct.llvmType.createType(context));
+    // ptr
+    return LLVMAllocaVariable(struct, src, llType);
+  }
+
+  @override
+  LLVMValueRef classifyFnRet(
+      BuildContext context, Variable src, Offset offset) {
+    final ty = src.ty;
+    if (ty is! StructTy) return src.load(context, offset);
+    final byteSize = ty.llvmType.getBytes(context);
+
+    if (byteSize > 16) {
+      /// error: 已经经过sret 处理了
+      throw StateError('should use sret.');
+    }
+
+    final llType = getCStructFnParamTy(context, ty);
+    return llvm.LLVMBuildLoad2(
+        context.builder, llType, src.getBaseValue(context), unname);
   }
 
   late final _cacheFns = <Fn, LLVMConstVariable>{};
@@ -279,18 +295,19 @@ class AbiFnArm64 implements AbiFn {
   }
 
   @override
-  LLVMAllocaDelayVariable? initFnParamsImpl(
+  LLVMAllocaVariable? initFnParamsImpl(
       BuildContext context, LLVMValueRef fn, Fn fnty) {
     var index = 0;
+    assert(context.isFnBBContext);
 
-    LLVMAllocaDelayVariable? sret;
+    LLVMAllocaVariable? sret;
 
     var retTy = fnty.getRetTy(context);
 
     if (isSret(context, fnty)) {
       final first = llvm.LLVMGetParam(fn, index);
       final alloca =
-          retTy.llvmType.createAlloca(context, Identifier.none, first);
+          LLVMAllocaVariable(retTy, first, retTy.llvmType.createType(context));
       alloca.isTemp = false;
       index += 1;
       sret = alloca;
@@ -312,7 +329,7 @@ class AbiFnArm64 implements AbiFn {
       BuildContext context, Ty ty, LLVMValueRef fnParam, Identifier ident) {
     Variable alloca;
     if (ty is StructTy) {
-      alloca = fromFnParams(context, ty, fnParam);
+      alloca = fromFnParamsOrRet(context, ty, fnParam);
     } else {
       final a = ty.llvmType.createAlloca(context, ident, fnParam);
       a.create(context);
@@ -324,7 +341,28 @@ class AbiFnArm64 implements AbiFn {
   }
 }
 
-enum StructFnParam {
+enum Reg {
   none,
   byval,
 }
+
+abstract class StructParamBase {
+  void toParam(BuildContext context, StructTy ty, Variable src);
+
+  Variable fromParam(BuildContext context, Struct ty, LLVMValueRef src);
+}
+
+// class StructParamArray implements StructParamBase {
+//   StructParamArray(this.ty, this.count);
+//   final LLVMValueRef ty;
+//   final int count;
+//   @override
+//   Variable fromParam(BuildContext context, Struct ty, LLVMValueRef src) {
+
+//   }
+
+//   @override
+//   void toParam(BuildContext context, StructTy ty, Variable src) {
+//     // TODO: implement toParam
+//   }
+// }

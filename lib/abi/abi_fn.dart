@@ -33,6 +33,8 @@ abstract interface class AbiFn {
 
   bool isSret(BuildContext c, Fn fn);
 
+  LLVMValueRef classifyFnRet(BuildContext context, Variable src, Offset offset);
+
   static ExprTempValue? fnCallInternal(
       BuildContext context,
       Fn fn,
@@ -151,7 +153,7 @@ abstract interface class AbiFn {
     return fn.llvmType.createFunction(c, variables, after);
   }
 
-  LLVMAllocaDelayVariable? initFnParamsImpl(
+  LLVMAllocaVariable? initFnParamsImpl(
       BuildContext context, LLVMValueRef fn, Fn fnty);
 
   static StoreVariable? initFnParams(BuildContext context, LLVMValueRef fn,
@@ -161,6 +163,14 @@ abstract interface class AbiFn {
       return AbiFn.get(Abi.arm64).initFnParamsImpl(context, fn, fnty);
     }
     context.initFnParams(fn, decl, fnty, extra, map: map);
-    return null;
+    return context.sret;
+  }
+
+  static LLVMValueRef fnRet(
+      BuildContext context, Fn fn, Variable src, Offset offset) {
+    if (fn.extern) {
+      return AbiFn.get(Abi.arm64).classifyFnRet(context, src, offset);
+    }
+    return src.load(context, offset);
   }
 }

@@ -33,7 +33,7 @@ class LLVMRawValue {
 abstract class LLVMType {
   Ty get ty;
   int getBytes(covariant LLVMTypeMixin c);
-  LLVMTypeRef createType(BuildContext c);
+  LLVMTypeRef createType(covariant LLVMTypeMixin c);
 
   LLVMMetadataRef createDIType(covariant LLVMTypeMixin c);
 
@@ -308,7 +308,7 @@ class LLVMFnType extends LLVMType {
           extern
               ? LLVMLinkage.LLVMExternalLinkage
               : LLVMLinkage.LLVMInternalLinkage);
-      // llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
+      llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
 
       var retTy = fn.getRetTy(c);
 
@@ -380,46 +380,13 @@ class LLVMStructType extends LLVMType {
 
   FieldsSize? _size;
 
-  FieldsSize getFieldsSize(BuildContext c) => _size ??= alignType(c, ty.fields);
-
-  int getMinSize(BuildContext c) {
-    return ty.fields.fold<int>(100, (p, e) {
-      final size = e.grt(c).llvmType.getBytes(c);
-      return p > size ? size : p;
-    });
-  }
-
-  int getMaxSize(BuildContext c) {
-    return ty.fields.fold<int>(100, (p, e) {
-      final size = e.grt(c).llvmType.getBytes(c);
-      return p < size ? size : p;
-    });
-  }
+  FieldsSize getFieldsSize(BuildContext c) =>
+      _size ??= LLVMEnumItemType.alignType(c, ty.fields, sort: !ty.extern);
 
   @override
   LLVMTypeRef createType(BuildContext c) {
-    final size = getFieldsSize(c);
     if (_type != null) return _type!;
-
-    final vals = <LLVMTypeRef>[];
-
-    final fields = size.map.keys.toList();
-
-    for (var field in fields) {
-      var rty = field.grt(c);
-      if (rty is FnTy) {
-        vals.add(c.pointer());
-      } else {
-        final ty = rty.llvmType.createType(c);
-        if (field.isRef) {
-          vals.add(c.typePointer(ty));
-        } else {
-          vals.add(ty);
-        }
-      }
-    }
-
-    return _type = c.typeStruct(vals, ty.ident.src);
+    return _type = getFieldsSize(c).getTypeStruct(c, ty.ident.src, null);
   }
 
   StoreVariable? getField(
@@ -463,67 +430,6 @@ class LLVMStructType extends LLVMType {
     return c.typeSize(createType(c));
   }
 
-  static FieldsSize alignType(BuildContext c, List<FieldDef> fields) {
-    var alignSize = fields.fold<int>(0, (previousValue, element) {
-      final size = element.grt(c).llvmType.getBytes(c);
-      if (previousValue > size) return previousValue;
-      return size;
-    });
-    final targetSize = c.pointerSize();
-
-    if (alignSize > targetSize) {
-      alignSize = targetSize;
-    }
-
-    final newList = List.of(fields);
-
-    newList.sort((p, n) {
-      final pre = p.grt(c).llvmType.getBytes(c);
-      final next = n.grt(c).llvmType.getBytes(c);
-      return pre < next ? 1 : -1;
-    });
-
-    var count = 0;
-    final map = <FieldDef, FieldIndex>{};
-    var index = 0;
-    for (var field in newList) {
-      var rty = field.grt(c);
-      var currentSize = 0;
-      if (rty is FnTy) {
-        currentSize = c.pointerSize();
-      } else {
-        final ty = rty.llvmType.createType(c);
-        if (field.isRef) {
-          currentSize = c.pointerSize();
-        } else {
-          currentSize = c.typeSize(ty);
-        }
-      }
-      var newCount = count + currentSize;
-      final lastIndex = count ~/ targetSize;
-      final nextIndex = newCount / targetSize;
-      if (lastIndex == nextIndex) {
-        map[field] = FieldIndex(0, index, count);
-        count = newCount;
-        index += 1;
-        continue;
-      }
-      final whiteSpace = newCount % targetSize;
-      if (whiteSpace > 0) {
-        final extra = targetSize - whiteSpace;
-        map[field] = FieldIndex(extra, index, count);
-        index += 1;
-        count = newCount;
-      } else {
-        map[field] = FieldIndex(0, index, count);
-        count = newCount;
-        index += 1;
-      }
-    }
-
-    return FieldsSize(map, count, alignSize);
-  }
-
   @override
   LLVMMetadataRef createDIType(covariant BuildContext c) {
     final name = ty.ident.src;
@@ -554,7 +460,7 @@ class LLVMStructType extends LLVMType {
         field.ident.offset.row,
         alignSize,
         alignSize,
-        size.map[field]!.offset * 8,
+        size.map[field]!.diOffset * 8,
         0,
         ty,
       );
@@ -791,46 +697,26 @@ class LLVMEnumItemType extends LLVMStructType {
   EnumItem get ty => super.ty as EnumItem;
   LLVMEnumType get pTy => ty.parent.llvmType;
 
+  int getMinSize(BuildContext c) {
+    return ty.fields.fold<int>(100, (p, e) {
+      final size = e.grt(c).llvmType.getBytes(c);
+      return p > size ? size : p;
+    });
+  }
+
   @override
   LLVMTypeRef createType(BuildContext c) {
     if (_type != null) return _type!;
-    final vals = <LLVMTypeRef>[];
-    final struct = ty;
+
     final m = pTy.getRealIndexType(c);
-    final size = _size ??=
-        alignType(c, struct.ident, struct.fields, initValue: m, sort: true);
-    final fields = size.map.keys.toList();
+    final size = _size ??= alignType(c, ty.fields, initValue: m, sort: true);
 
     // 以数组的形式表示占位符
-    vals.add(c.arrayType(pTy.getIndexType(c), 1));
-
-    for (var field in fields) {
-      var rty = field.grt(c);
-      final space = size.map[field]!.space;
-      if (space > 0) {
-        if (space % 4 == 0) {
-          vals.add(c.arrayType(c.i32, space ~/ 4));
-        } else {
-          vals.add(c.arrayType(c.i8, space));
-        }
-      }
-      if (rty is FnTy) {
-        vals.add(c.pointer());
-      } else {
-        final ty = rty.llvmType.createType(c);
-        if (field.isRef) {
-          vals.add(c.typePointer(ty));
-        } else {
-          vals.add(ty);
-        }
-      }
-    }
-
-    return _type = c.typeStruct(vals, ty.ident.src);
+    final idnexType = c.arrayType(pTy.getIndexType(c), 1);
+    return _type = size.getTypeStruct(c, ty.ident.src, idnexType);
   }
 
-  static FieldsSize alignType(
-      BuildContext c, Identifier ident, List<FieldDef> fields,
+  static FieldsSize alignType(BuildContext c, List<FieldDef> fields,
       {int initValue = 0, bool sort = false}) {
     final targetSize = c.pointerSize();
     var alignSize = fields.fold<int>(0, (previousValue, element) {
@@ -1006,6 +892,8 @@ class FieldIndex {
 
   /// 与起点的便宜量
   final int offset;
+
+  int get diOffset => space + offset;
 }
 
 class FieldsSize {
@@ -1013,4 +901,37 @@ class FieldsSize {
   final Map<FieldDef, FieldIndex> map;
   final int count;
   final int alignSize;
+
+  LLVMTypeRef getTypeStruct(
+      BuildContext c, String? ident, LLVMTypeRef? enumIndexTy) {
+    final vals = <LLVMTypeRef>[];
+    final fields = map.keys.toList();
+    if (enumIndexTy != null) {
+      // 以数组的形式表示占位符
+      vals.add(c.arrayType(enumIndexTy, 1));
+    }
+
+    for (var field in fields) {
+      var rty = field.grt(c);
+      final space = map[field]!.space;
+      if (space > 0) {
+        if (space % 4 == 0) {
+          vals.add(c.arrayType(c.i32, space ~/ 4));
+        } else {
+          vals.add(c.arrayType(c.i8, space));
+        }
+      }
+      if (rty is FnTy) {
+        vals.add(c.pointer());
+      } else {
+        final ty = rty.llvmType.createType(c);
+        if (field.isRef) {
+          vals.add(c.typePointer(ty));
+        } else {
+          vals.add(ty);
+        }
+      }
+    }
+    return c.typeStruct(vals, ident);
+  }
 }

@@ -123,6 +123,12 @@ mixin LLVMTypeMixin {
     return 1;
   }
 
+  int getBaseAlignSize(Ty ty) {
+    final type = ty.llvmType.createType(this);
+    final td = llvm.LLVMGetModuleDataLayout(module);
+    return llvm.LLVMABIAlignmentOfType(td, type);
+  }
+
   LLVMMetadataRef getStructExternDIType(int count) {
     LLVMMetadataRef loadTy;
     var size = pointerSize();

@@ -1249,6 +1249,11 @@ class StructTy extends Ty
       g = generics.join(',');
       g = '<$g>';
     }
+
+    if (extern) {
+      return '${pad}extern struct $ident$g {${fields.join(',')}}';
+    }
+
     return '${pad}struct $ident$g {${fields.join(',')}}';
   }
 

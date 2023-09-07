@@ -6,14 +6,17 @@ import 'package:llvm_dart/run.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('test extern fn', () => run('arch_fn.kc', files: '../test/src/arch.c'));
+  test('test extern fn', () => run('arch_fn.kc'));
+
+  test('c fn', () => run('c_fn.kc'));
 }
 
-Future<void> run(String name, {String files = '', bool run = false}) {
+Future<void> run(String name,
+    {String files = '../test/src/arch.c', bool run = false}) {
   return runPrint(() {
     final path = testSrcDir.childFile(name).path;
     final project = ProjectManager();
-    project.isDebug = true;
+    project.isDebug = false;
     final root = project.build(path, afterAnalysis: () => project.printAst());
     buildRun(root);
 

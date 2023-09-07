@@ -67,7 +67,7 @@ class LetStmt extends Stmt {
       }
 
       StoreVariable? alloca;
-      final (sret, delayAlloca) = context.sretVariable(nameIdent, variable);
+      final (sret, delayAlloca) = context.sretFromVariable(nameIdent, variable);
 
       /// 当前的变量是 sret 时才有效
       if (sret != null) {

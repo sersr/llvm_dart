@@ -114,8 +114,8 @@ class Parser {
   }
 
   Ty? parseExtern(TokenIterator it) {
-    eatLfIfNeed(it);
     if (it.moveNext()) {
+      eatLfIfNeed(it, back: false);
       final t = getToken(it);
       if (t.kind == TokenKind.openBrace) {
         it.moveNext(); // {
@@ -1552,13 +1552,13 @@ class Parser {
     return EnumItem(ident, fields, types);
   }
 
-  /// 跳过换行符
-  void eatLfIfNeed(TokenIterator it) {
+  /// 跳过中间的换行符
+  void eatLfIfNeed(TokenIterator it, {bool back = true}) {
     if (it.curentIsValid && getToken(it).kind != TokenKind.lf) return;
     loop(it, () {
       final k = getToken(it).kind;
       if (k != TokenKind.lf) {
-        it.moveBack();
+        if (back) it.moveBack();
         return true;
       }
       return false;

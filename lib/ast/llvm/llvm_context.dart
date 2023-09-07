@@ -433,7 +433,7 @@ class BuildContext
             if (back) return false;
             // error
           }
-          fnContext.ret(null, Offset.zero);
+          fnContext.ret(null, null);
           hasRet = true;
           return true;
         }
@@ -453,7 +453,7 @@ class BuildContext
                 // error
               }
 
-              fnContext.ret(val, valTemp?.currentIdent.offset ?? Offset.zero);
+              fnContext.ret(val, valTemp?.currentIdent);
             }
           }
         }
@@ -464,33 +464,30 @@ class BuildContext
   }
 
   bool _returned = false;
-  void ret(Variable? val, Offset currentOffset,
-      [Offset retOffset = Offset.zero]) {
+  void ret(Variable? val, Identifier? ident, [Offset retOffset = Offset.zero]) {
     if (_returned) {
       // error
       return;
     }
     dropAll();
+    ident ??= Identifier.none;
 
-    diSetCurrentLoc(currentOffset);
+    diSetCurrentLoc(ident.offset);
 
     _returned = true;
     if (val == null) {
       diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRetVoid(builder);
     } else {
-      final sret = getLastFnContext()?._sret;
-      final (sretV, _) = sretVariable(null, val);
+      final fn = getLastFnContext();
+      final sret = fn?._sret;
 
       if (sret == null) {
-        final v = val.load(this, currentOffset);
+        final v = AbiFn.fnRet(this, fn!.fn.ty as Fn, val, ident.offset);
         diSetCurrentLoc(retOffset);
         llvm.LLVMBuildRet(builder, v);
       } else {
-        if (sretV == null) {
-          final v = val.load(this, currentOffset);
-          sret.store(this, v, Offset.zero);
-        }
+        sretFromVariable(null, val);
         diSetCurrentLoc(retOffset);
         llvm.LLVMBuildRetVoid(builder);
       }
@@ -499,7 +496,7 @@ class BuildContext
 
   /// [return]:
   /// (sret,  variable)
-  (Variable?, StoreVariable?) sretVariable(
+  (Variable?, StoreVariable?) sretFromVariable(
       Identifier? nameIdent, Variable? variable) {
     final fnContext = getLastFnContext();
     final fnty = fnContext?.fn.ty as Fn?;

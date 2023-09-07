@@ -410,8 +410,7 @@ class RetExpr extends Expr {
   ExprTempValue? buildExpr(BuildContext context) {
     final e = expr?.build(context);
 
-    context.ret(
-        e?.variable, e?.currentIdent.offset ?? Offset.zero, ident.offset);
+    context.ret(e?.variable, e?.currentIdent, ident.offset);
     return e;
   }
 
