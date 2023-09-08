@@ -1,5 +1,3 @@
-import 'package:characters/characters.dart';
-import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/fs/fs.dart';
 import 'package:llvm_dart/manager/build_run.dart';
 import 'package:llvm_dart/manager/manager.dart';
@@ -8,20 +6,17 @@ import 'package:nop/nop.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('char', () {
-    final char = '😯';
-    Log.i(char.characters.length);
-  });
   final rq = TaskQueue();
 
   Future<void> run(String name, {bool run = false}) {
     return rq.run(() => runPrint(() {
-          // final name = 'impl_fn.kc';
           final path = testSrcDir.childFile(name).path;
           final project = ProjectManager();
           project.isDebug = true;
-          final root =
-              project.build(path, afterAnalysis: () => project.printAst());
+          final root = project.build(path, target: 'arm64-apple-darwin22.4.0',
+              afterAnalysis: () {
+            project.printAst();
+          });
           buildRun(root);
           // final project = Project(path, isDebug: false);
           // project.printAsm = true;
@@ -32,7 +27,6 @@ void main() {
           // project.printLifeCycle((v) {
           // Log.w(v.lifeCycyle?.light, showTag: false);
           // });
-          llvmMalloc.releaseAll();
           return runNativeCode(run: run, args: 'hello world');
         }));
   }

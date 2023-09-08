@@ -13,14 +13,18 @@ void main() {
 
 Future<void> run(String name,
     {String files = '../test/src/arch.c', bool run = false}) {
-  return runPrint(() {
+  return runPrint(() async {
     final path = testSrcDir.childFile(name).path;
     final project = ProjectManager();
-    project.isDebug = false;
-    final root = project.build(path, afterAnalysis: () => project.printAst());
+    final arch = 'arm64';
+    project.isDebug = true;
+    final root = project.build(path,
+        target: '$arch-apple-darwin22.4.0',
+        afterAnalysis: () => project.printAst());
     buildRun(root);
 
     llvmMalloc.releaseAll();
-    return runNativeCode(run: run, files: files, args: 'hello world');
+    return runNativeCode(
+        run: run, pre: '-arch $arch $files', args: 'hello world');
   });
 }

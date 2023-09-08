@@ -46,7 +46,7 @@ abstract class GlobalContext {
 }
 
 mixin Tys<V extends LifeCycleVariable> {
-  Tys defaultImport();
+  Tys defaultImport(String path);
   String? currentPath;
   late GlobalContext importHandler;
 

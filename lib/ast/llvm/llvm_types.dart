@@ -200,9 +200,10 @@ class LLVMTypeLit extends LLVMType {
     } else if (!ty.ty.signed) {
       encoding = 7;
     }
+    final (namePointer, nameLength) = name.toNativeUtf8WithLength();
 
-    return llvm.LLVMDIBuilderCreateBasicType(c.dBuilder!, name.toChar(),
-        name.nativeLength, getBytes(c) * 8, encoding, 0);
+    return llvm.LLVMDIBuilderCreateBasicType(
+        c.dBuilder!, namePointer, nameLength, getBytes(c) * 8, encoding, 0);
   }
 }
 
@@ -285,6 +286,8 @@ class LLVMFnType extends LLVMType {
     return _cacheFns.putIfAbsent(key, () {
       final ty = fn.llvmType.createFnType(c, variables);
       var ident = fn.fnSign.fnDecl.ident.src;
+      final (namePointer, nameLength) = ident.toNativeUtf8WithLength();
+
       if (ident.isEmpty) {
         ident = '_fn';
       }
@@ -322,8 +325,8 @@ class LLVMFnType extends LLVMType {
         final fnScope = llvm.LLVMDIBuilderCreateFunction(
             dBuilder,
             c.unit,
-            ident.toChar(),
-            ident.nativeLength,
+            namePointer,
+            nameLength,
             unname,
             0,
             file,
@@ -433,11 +436,15 @@ class LLVMStructType extends LLVMType {
         ty = rty.llvmType.createDIType(c);
         alignSize = rty.llvmType.getBytes(c) * 8;
       }
+      final fieldName = field.ident.src;
+
+      final (namePointer, nameLength) = fieldName.toNativeUtf8WithLength();
+
       ty = llvm.LLVMDIBuilderCreateMemberType(
         c.dBuilder!,
         c.scope,
-        field.ident.src.toChar(),
-        field.ident.src.nativeLength,
+        namePointer,
+        nameLength,
         file,
         field.ident.offset.row,
         alignSize,
@@ -448,11 +455,13 @@ class LLVMStructType extends LLVMType {
       );
       elements.add(ty);
     }
+    final (namePointer, nameLength) = name.toNativeUtf8WithLength();
+
     return llvm.LLVMDIBuilderCreateStructType(
       c.dBuilder!,
       c.scope,
-      name.toChar(),
-      name.nativeLength,
+      namePointer,
+      nameLength,
       llvm.LLVMDIScopeGetFile(c.unit),
       offset.row,
       getBytes(c) * 8,
@@ -628,13 +637,15 @@ class LLVMEnumType extends LLVMType {
     }
 
     final name = ty.ident.src;
+    final (namePointer, nameLength) = name.toNativeUtf8WithLength();
+
     final offset = ty.ident.offset;
     final elements = [index, tyx];
     return llvm.LLVMDIBuilderCreateStructType(
       c.dBuilder!,
       c.scope,
-      name.toChar(),
-      name.nativeLength,
+      namePointer,
+      nameLength,
       llvm.LLVMDIScopeGetFile(c.unit),
       offset.row,
       getBytes(c),

@@ -29,15 +29,20 @@ class ProjectManager extends ManagerBase {
   final rootBuildContext = RootBuildContext();
   final rootAnalysisContext = RootAnalysis();
 
-  BuildContext build(String path, {void Function()? afterAnalysis}) {
+  BuildContext build(String path,
+      {String? target, void Function()? afterAnalysis}) {
     return Identifier.run(() {
       llvm.initLLVM();
       final fileName = currentDir.childFile(path).basename;
-      final root = BuildContext.root(fileName);
+      final root = BuildContext.root(targetTriple: target, name: fileName);
       llvmCtxs[path] = root;
       final parser = getParser(path);
       final alc = AnalysisContext.root();
       alcs[path] = alc;
+
+      /// set path
+      alc.currentPath = path;
+      root.currentPath = path;
 
       rootAnalysisContext.pushFn(sizeOfFn.fnName, sizeOfFn);
       rootBuildContext.pushFn(sizeOfFn.fnName, sizeOfFn);
@@ -54,8 +59,8 @@ class ProjectManager extends ManagerBase {
 
       baseProcess(context: alc, path: path, parser: parser, action: actionAlc);
       afterAnalysis?.call();
-      root.currentPath = path;
       root.init(isDebug);
+
       baseProcess(context: root, path: path, parser: parser, action: action);
 
       Fn? mainFn;

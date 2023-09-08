@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:ffi';
 
 import '../../llvm_core.dart';
@@ -222,14 +221,15 @@ mixin BuildMethods on LLVMTypeMixin {
   void diBuilderDeclare(Identifier ident, LLVMValueRef alloca, Ty ty) {
     if (!ident.isValid) return;
     final name = ident.src;
+    final (namePointer, length) = name.toNativeUtf8WithLength();
     final dBuilder = this.dBuilder;
     if (dBuilder == null) return;
     final dTy = ty.llvmType.createDIType(this);
     final dvariable = llvm.LLVMDIBuilderCreateParameterVariable(
         dBuilder,
         scope,
-        name.toChar(),
-        name.nativeLength,
+        namePointer,
+        length,
         0,
         llvm.LLVMDIScopeGetFile(unit),
         ident.offset.row,
@@ -340,14 +340,9 @@ mixin Consts on BuildMethods {
         src = parseStr(src);
       }
 
-      final units = utf8.encode(src);
-      final list = <LLVMValueRef>[];
-      for (var unit in units) {
-        list.add(constI8(unit));
-      }
-      list.add(constI8(0));
-      final strData = constArray(i8, list);
-      final type = arrayType(BuiltInTy.u8.llvmType.litType(this), list.length);
+      final length = src.nativeLength;
+      final strData = constStr(src, length: length);
+      final type = arrayType(BuiltInTy.u8.llvmType.litType(this), length + 1);
       final value = llvm.LLVMAddGlobal(module, type, '.str'.toChar());
       llvm.LLVMSetLinkage(value, LLVMLinkage.LLVMPrivateLinkage);
       llvm.LLVMSetGlobalConstant(value, LLVMTrue);

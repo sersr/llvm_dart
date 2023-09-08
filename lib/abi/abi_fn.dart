@@ -24,6 +24,12 @@ abstract interface class AbiFn {
       BuildContext c, Fn fn, void Function(LLVMConstVariable fnValue) after);
 
   static final _instances = <Abi, AbiFn>{};
+  void clear();
+  static void clearAll() {
+    for (var instance in _instances.values) {
+      instance.clear();
+    }
+  }
 
   factory AbiFn.get(Abi abi) {
     return _instances.putIfAbsent(abi, () {

@@ -1128,6 +1128,859 @@ class LLVMCore {
   late final _LLVMInitializeXCoreDisassembler =
       _LLVMInitializeXCoreDisassemblerPtr.asFunction<void Function()>();
 
+  /// Obtain the data layout for a module.
+  ///
+  /// @see Module::getDataLayout()
+  LLVMTargetDataRef LLVMGetModuleDataLayout(
+    LLVMModuleRef M,
+  ) {
+    return _LLVMGetModuleDataLayout(
+      M,
+    );
+  }
+
+  late final _LLVMGetModuleDataLayoutPtr =
+      _lookup<ffi.NativeFunction<LLVMTargetDataRef Function(LLVMModuleRef)>>(
+          'LLVMGetModuleDataLayout');
+  late final _LLVMGetModuleDataLayout = _LLVMGetModuleDataLayoutPtr.asFunction<
+      LLVMTargetDataRef Function(LLVMModuleRef)>();
+
+  /// Set the data layout for a module.
+  ///
+  /// @see Module::setDataLayout()
+  void LLVMSetModuleDataLayout(
+    LLVMModuleRef M,
+    LLVMTargetDataRef DL,
+  ) {
+    return _LLVMSetModuleDataLayout(
+      M,
+      DL,
+    );
+  }
+
+  late final _LLVMSetModuleDataLayoutPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              LLVMModuleRef, LLVMTargetDataRef)>>('LLVMSetModuleDataLayout');
+  late final _LLVMSetModuleDataLayout = _LLVMSetModuleDataLayoutPtr.asFunction<
+      void Function(LLVMModuleRef, LLVMTargetDataRef)>();
+
+  /// Creates target data from a target layout string.
+  /// See the constructor llvm::DataLayout::DataLayout.
+  LLVMTargetDataRef LLVMCreateTargetData(
+    ffi.Pointer<ffi.Char> StringRep,
+  ) {
+    return _LLVMCreateTargetData(
+      StringRep,
+    );
+  }
+
+  late final _LLVMCreateTargetDataPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMTargetDataRef Function(
+              ffi.Pointer<ffi.Char>)>>('LLVMCreateTargetData');
+  late final _LLVMCreateTargetData = _LLVMCreateTargetDataPtr.asFunction<
+      LLVMTargetDataRef Function(ffi.Pointer<ffi.Char>)>();
+
+  /// Deallocates a TargetData.
+  /// See the destructor llvm::DataLayout::~DataLayout.
+  void LLVMDisposeTargetData(
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMDisposeTargetData(
+      TD,
+    );
+  }
+
+  late final _LLVMDisposeTargetDataPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMTargetDataRef)>>(
+          'LLVMDisposeTargetData');
+  late final _LLVMDisposeTargetData =
+      _LLVMDisposeTargetDataPtr.asFunction<void Function(LLVMTargetDataRef)>();
+
+  /// Adds target library information to a pass manager. This does not take
+  /// ownership of the target library info.
+  /// See the method llvm::PassManagerBase::add.
+  void LLVMAddTargetLibraryInfo(
+    LLVMTargetLibraryInfoRef TLI,
+    LLVMPassManagerRef PM,
+  ) {
+    return _LLVMAddTargetLibraryInfo(
+      TLI,
+      PM,
+    );
+  }
+
+  late final _LLVMAddTargetLibraryInfoPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMTargetLibraryInfoRef,
+              LLVMPassManagerRef)>>('LLVMAddTargetLibraryInfo');
+  late final _LLVMAddTargetLibraryInfo =
+      _LLVMAddTargetLibraryInfoPtr.asFunction<
+          void Function(LLVMTargetLibraryInfoRef, LLVMPassManagerRef)>();
+
+  /// Converts target data to a target layout string. The string must be disposed
+  /// with LLVMDisposeMessage.
+  /// See the constructor llvm::DataLayout::DataLayout.
+  ffi.Pointer<ffi.Char> LLVMCopyStringRepOfTargetData(
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMCopyStringRepOfTargetData(
+      TD,
+    );
+  }
+
+  late final _LLVMCopyStringRepOfTargetDataPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              LLVMTargetDataRef)>>('LLVMCopyStringRepOfTargetData');
+  late final _LLVMCopyStringRepOfTargetData = _LLVMCopyStringRepOfTargetDataPtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetDataRef)>();
+
+  /// Returns the byte order of a target, either LLVMBigEndian or
+  /// LLVMLittleEndian.
+  /// See the method llvm::DataLayout::isLittleEndian.
+  int LLVMByteOrder(
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMByteOrder(
+      TD,
+    );
+  }
+
+  late final _LLVMByteOrderPtr =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(LLVMTargetDataRef)>>(
+          'LLVMByteOrder');
+  late final _LLVMByteOrder =
+      _LLVMByteOrderPtr.asFunction<int Function(LLVMTargetDataRef)>();
+
+  /// Returns the pointer size in bytes for a target.
+  /// See the method llvm::DataLayout::getPointerSize.
+  int LLVMPointerSize(
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMPointerSize(
+      TD,
+    );
+  }
+
+  late final _LLVMPointerSizePtr =
+      _lookup<ffi.NativeFunction<ffi.UnsignedInt Function(LLVMTargetDataRef)>>(
+          'LLVMPointerSize');
+  late final _LLVMPointerSize =
+      _LLVMPointerSizePtr.asFunction<int Function(LLVMTargetDataRef)>();
+
+  /// Returns the pointer size in bytes for a target for a specified
+  /// address space.
+  /// See the method llvm::DataLayout::getPointerSize.
+  int LLVMPointerSizeForAS(
+    LLVMTargetDataRef TD,
+    int AS,
+  ) {
+    return _LLVMPointerSizeForAS(
+      TD,
+      AS,
+    );
+  }
+
+  late final _LLVMPointerSizeForASPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+              LLVMTargetDataRef, ffi.UnsignedInt)>>('LLVMPointerSizeForAS');
+  late final _LLVMPointerSizeForAS = _LLVMPointerSizeForASPtr.asFunction<
+      int Function(LLVMTargetDataRef, int)>();
+
+  /// Returns the integer type that is the same size as a pointer on a target.
+  /// See the method llvm::DataLayout::getIntPtrType.
+  LLVMTypeRef LLVMIntPtrType(
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMIntPtrType(
+      TD,
+    );
+  }
+
+  late final _LLVMIntPtrTypePtr =
+      _lookup<ffi.NativeFunction<LLVMTypeRef Function(LLVMTargetDataRef)>>(
+          'LLVMIntPtrType');
+  late final _LLVMIntPtrType =
+      _LLVMIntPtrTypePtr.asFunction<LLVMTypeRef Function(LLVMTargetDataRef)>();
+
+  /// Returns the integer type that is the same size as a pointer on a target.
+  /// This version allows the address space to be specified.
+  /// See the method llvm::DataLayout::getIntPtrType.
+  LLVMTypeRef LLVMIntPtrTypeForAS(
+    LLVMTargetDataRef TD,
+    int AS,
+  ) {
+    return _LLVMIntPtrTypeForAS(
+      TD,
+      AS,
+    );
+  }
+
+  late final _LLVMIntPtrTypeForASPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMTypeRef Function(
+              LLVMTargetDataRef, ffi.UnsignedInt)>>('LLVMIntPtrTypeForAS');
+  late final _LLVMIntPtrTypeForAS = _LLVMIntPtrTypeForASPtr.asFunction<
+      LLVMTypeRef Function(LLVMTargetDataRef, int)>();
+
+  /// Returns the integer type that is the same size as a pointer on a target.
+  /// See the method llvm::DataLayout::getIntPtrType.
+  LLVMTypeRef LLVMIntPtrTypeInContext(
+    LLVMContextRef C,
+    LLVMTargetDataRef TD,
+  ) {
+    return _LLVMIntPtrTypeInContext(
+      C,
+      TD,
+    );
+  }
+
+  late final _LLVMIntPtrTypeInContextPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMTypeRef Function(
+              LLVMContextRef, LLVMTargetDataRef)>>('LLVMIntPtrTypeInContext');
+  late final _LLVMIntPtrTypeInContext = _LLVMIntPtrTypeInContextPtr.asFunction<
+      LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef)>();
+
+  /// Returns the integer type that is the same size as a pointer on a target.
+  /// This version allows the address space to be specified.
+  /// See the method llvm::DataLayout::getIntPtrType.
+  LLVMTypeRef LLVMIntPtrTypeForASInContext(
+    LLVMContextRef C,
+    LLVMTargetDataRef TD,
+    int AS,
+  ) {
+    return _LLVMIntPtrTypeForASInContext(
+      C,
+      TD,
+      AS,
+    );
+  }
+
+  late final _LLVMIntPtrTypeForASInContextPtr = _lookup<
+      ffi.NativeFunction<
+          LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef,
+              ffi.UnsignedInt)>>('LLVMIntPtrTypeForASInContext');
+  late final _LLVMIntPtrTypeForASInContext =
+      _LLVMIntPtrTypeForASInContextPtr.asFunction<
+          LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef, int)>();
+
+  /// Computes the size of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeSizeInBits.
+  int LLVMSizeOfTypeInBits(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMSizeOfTypeInBits(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMSizeOfTypeInBitsPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedLongLong Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMSizeOfTypeInBits');
+  late final _LLVMSizeOfTypeInBits = _LLVMSizeOfTypeInBitsPtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  /// Computes the storage size of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeStoreSize.
+  int LLVMStoreSizeOfType(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMStoreSizeOfType(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMStoreSizeOfTypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedLongLong Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMStoreSizeOfType');
+  late final _LLVMStoreSizeOfType = _LLVMStoreSizeOfTypePtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  /// Computes the ABI size of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeAllocSize.
+  int LLVMABISizeOfType(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMABISizeOfType(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMABISizeOfTypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedLongLong Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMABISizeOfType');
+  late final _LLVMABISizeOfType = _LLVMABISizeOfTypePtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  /// Computes the ABI alignment of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeABISize.
+  int LLVMABIAlignmentOfType(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMABIAlignmentOfType(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMABIAlignmentOfTypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMABIAlignmentOfType');
+  late final _LLVMABIAlignmentOfType = _LLVMABIAlignmentOfTypePtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  /// Computes the call frame alignment of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeABISize.
+  int LLVMCallFrameAlignmentOfType(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMCallFrameAlignmentOfType(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMCallFrameAlignmentOfTypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMCallFrameAlignmentOfType');
+  late final _LLVMCallFrameAlignmentOfType = _LLVMCallFrameAlignmentOfTypePtr
+      .asFunction<int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  /// Computes the preferred alignment of a type in bytes for a target.
+  /// See the method llvm::DataLayout::getTypeABISize.
+  int LLVMPreferredAlignmentOfType(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef Ty,
+  ) {
+    return _LLVMPreferredAlignmentOfType(
+      TD,
+      Ty,
+    );
+  }
+
+  late final _LLVMPreferredAlignmentOfTypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMPreferredAlignmentOfType');
+  late final _LLVMPreferredAlignmentOfType = _LLVMPreferredAlignmentOfTypePtr
+      .asFunction<int Function(LLVMTargetDataRef, LLVMTypeRef)>();
+
+  /// Computes the preferred alignment of a global variable in bytes for a target.
+  /// See the method llvm::DataLayout::getPreferredAlignment.
+  int LLVMPreferredAlignmentOfGlobal(
+    LLVMTargetDataRef TD,
+    LLVMValueRef GlobalVar,
+  ) {
+    return _LLVMPreferredAlignmentOfGlobal(
+      TD,
+      GlobalVar,
+    );
+  }
+
+  late final _LLVMPreferredAlignmentOfGlobalPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(LLVMTargetDataRef,
+              LLVMValueRef)>>('LLVMPreferredAlignmentOfGlobal');
+  late final _LLVMPreferredAlignmentOfGlobal =
+      _LLVMPreferredAlignmentOfGlobalPtr.asFunction<
+          int Function(LLVMTargetDataRef, LLVMValueRef)>();
+
+  /// Computes the structure element that contains the byte offset for a target.
+  /// See the method llvm::StructLayout::getElementContainingOffset.
+  int LLVMElementAtOffset(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef StructTy,
+    int Offset,
+  ) {
+    return _LLVMElementAtOffset(
+      TD,
+      StructTy,
+      Offset,
+    );
+  }
+
+  late final _LLVMElementAtOffsetPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(LLVMTargetDataRef, LLVMTypeRef,
+              ffi.UnsignedLongLong)>>('LLVMElementAtOffset');
+  late final _LLVMElementAtOffset = _LLVMElementAtOffsetPtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef, int)>();
+
+  /// Computes the byte offset of the indexed struct element for a target.
+  /// See the method llvm::StructLayout::getElementContainingOffset.
+  int LLVMOffsetOfElement(
+    LLVMTargetDataRef TD,
+    LLVMTypeRef StructTy,
+    int Element,
+  ) {
+    return _LLVMOffsetOfElement(
+      TD,
+      StructTy,
+      Element,
+    );
+  }
+
+  late final _LLVMOffsetOfElementPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedLongLong Function(LLVMTargetDataRef, LLVMTypeRef,
+              ffi.UnsignedInt)>>('LLVMOffsetOfElement');
+  late final _LLVMOffsetOfElement = _LLVMOffsetOfElementPtr.asFunction<
+      int Function(LLVMTargetDataRef, LLVMTypeRef, int)>();
+
+  /// Returns the first llvm::Target in the registered targets list.
+  LLVMTargetRef LLVMGetFirstTarget() {
+    return _LLVMGetFirstTarget();
+  }
+
+  late final _LLVMGetFirstTargetPtr =
+      _lookup<ffi.NativeFunction<LLVMTargetRef Function()>>(
+          'LLVMGetFirstTarget');
+  late final _LLVMGetFirstTarget =
+      _LLVMGetFirstTargetPtr.asFunction<LLVMTargetRef Function()>();
+
+  /// Returns the next llvm::Target given a previous one (or null if there's none)
+  LLVMTargetRef LLVMGetNextTarget(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMGetNextTarget(
+      T,
+    );
+  }
+
+  late final _LLVMGetNextTargetPtr =
+      _lookup<ffi.NativeFunction<LLVMTargetRef Function(LLVMTargetRef)>>(
+          'LLVMGetNextTarget');
+  late final _LLVMGetNextTarget =
+      _LLVMGetNextTargetPtr.asFunction<LLVMTargetRef Function(LLVMTargetRef)>();
+
+  /// Finds the target corresponding to the given name and stores it in \p T.
+  /// Returns 0 on success.
+  LLVMTargetRef LLVMGetTargetFromName(
+    ffi.Pointer<ffi.Char> Name,
+  ) {
+    return _LLVMGetTargetFromName(
+      Name,
+    );
+  }
+
+  late final _LLVMGetTargetFromNamePtr = _lookup<
+          ffi.NativeFunction<LLVMTargetRef Function(ffi.Pointer<ffi.Char>)>>(
+      'LLVMGetTargetFromName');
+  late final _LLVMGetTargetFromName = _LLVMGetTargetFromNamePtr.asFunction<
+      LLVMTargetRef Function(ffi.Pointer<ffi.Char>)>();
+
+  /// Finds the target corresponding to the given triple and stores it in \p T.
+  /// Returns 0 on success. Optionally returns any error in ErrorMessage.
+  /// Use LLVMDisposeMessage to dispose the message.
+  int LLVMGetTargetFromTriple(
+    ffi.Pointer<ffi.Char> Triple,
+    ffi.Pointer<LLVMTargetRef> T,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> ErrorMessage,
+  ) {
+    return _LLVMGetTargetFromTriple(
+      Triple,
+      T,
+      ErrorMessage,
+    );
+  }
+
+  late final _LLVMGetTargetFromTriplePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<ffi.Char>, ffi.Pointer<LLVMTargetRef>,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>)>>('LLVMGetTargetFromTriple');
+  late final _LLVMGetTargetFromTriple = _LLVMGetTargetFromTriplePtr.asFunction<
+      int Function(ffi.Pointer<ffi.Char>, ffi.Pointer<LLVMTargetRef>,
+          ffi.Pointer<ffi.Pointer<ffi.Char>>)>();
+
+  /// Returns the name of a target. See llvm::Target::getName
+  ffi.Pointer<ffi.Char> LLVMGetTargetName(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMGetTargetName(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetNamePtr = _lookup<
+          ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>>(
+      'LLVMGetTargetName');
+  late final _LLVMGetTargetName = _LLVMGetTargetNamePtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>();
+
+  /// Returns the description  of a target. See llvm::Target::getDescription
+  ffi.Pointer<ffi.Char> LLVMGetTargetDescription(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMGetTargetDescription(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetDescriptionPtr = _lookup<
+          ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>>(
+      'LLVMGetTargetDescription');
+  late final _LLVMGetTargetDescription = _LLVMGetTargetDescriptionPtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>();
+
+  /// Returns if the target has a JIT
+  int LLVMTargetHasJIT(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMTargetHasJIT(
+      T,
+    );
+  }
+
+  late final _LLVMTargetHasJITPtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMTargetRef)>>(
+          'LLVMTargetHasJIT');
+  late final _LLVMTargetHasJIT =
+      _LLVMTargetHasJITPtr.asFunction<int Function(LLVMTargetRef)>();
+
+  /// Returns if the target has a TargetMachine associated
+  int LLVMTargetHasTargetMachine(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMTargetHasTargetMachine(
+      T,
+    );
+  }
+
+  late final _LLVMTargetHasTargetMachinePtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMTargetRef)>>(
+          'LLVMTargetHasTargetMachine');
+  late final _LLVMTargetHasTargetMachine =
+      _LLVMTargetHasTargetMachinePtr.asFunction<int Function(LLVMTargetRef)>();
+
+  /// Returns if the target as an ASM backend (required for emitting output)
+  int LLVMTargetHasAsmBackend(
+    LLVMTargetRef T,
+  ) {
+    return _LLVMTargetHasAsmBackend(
+      T,
+    );
+  }
+
+  late final _LLVMTargetHasAsmBackendPtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMTargetRef)>>(
+          'LLVMTargetHasAsmBackend');
+  late final _LLVMTargetHasAsmBackend =
+      _LLVMTargetHasAsmBackendPtr.asFunction<int Function(LLVMTargetRef)>();
+
+  /// Creates a new llvm::TargetMachine. See llvm::Target::createTargetMachine
+  LLVMTargetMachineRef LLVMCreateTargetMachine(
+    LLVMTargetRef T,
+    ffi.Pointer<ffi.Char> Triple,
+    ffi.Pointer<ffi.Char> CPU,
+    ffi.Pointer<ffi.Char> Features,
+    int Level,
+    int Reloc,
+    int CodeModel,
+  ) {
+    return _LLVMCreateTargetMachine(
+      T,
+      Triple,
+      CPU,
+      Features,
+      Level,
+      Reloc,
+      CodeModel,
+    );
+  }
+
+  late final _LLVMCreateTargetMachinePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMTargetMachineRef Function(
+              LLVMTargetRef,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int32,
+              ffi.Int32,
+              ffi.Int32)>>('LLVMCreateTargetMachine');
+  late final _LLVMCreateTargetMachine = _LLVMCreateTargetMachinePtr.asFunction<
+      LLVMTargetMachineRef Function(LLVMTargetRef, ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>, int, int, int)>();
+
+  /// Dispose the LLVMTargetMachineRef instance generated by
+  /// LLVMCreateTargetMachine.
+  void LLVMDisposeTargetMachine(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMDisposeTargetMachine(
+      T,
+    );
+  }
+
+  late final _LLVMDisposeTargetMachinePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMTargetMachineRef)>>(
+          'LLVMDisposeTargetMachine');
+  late final _LLVMDisposeTargetMachine = _LLVMDisposeTargetMachinePtr
+      .asFunction<void Function(LLVMTargetMachineRef)>();
+
+  /// Returns the Target used in a TargetMachine
+  LLVMTargetRef LLVMGetTargetMachineTarget(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMGetTargetMachineTarget(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetMachineTargetPtr =
+      _lookup<ffi.NativeFunction<LLVMTargetRef Function(LLVMTargetMachineRef)>>(
+          'LLVMGetTargetMachineTarget');
+  late final _LLVMGetTargetMachineTarget = _LLVMGetTargetMachineTargetPtr
+      .asFunction<LLVMTargetRef Function(LLVMTargetMachineRef)>();
+
+  /// Returns the triple used creating this target machine. See
+  /// llvm::TargetMachine::getTriple. The result needs to be disposed with
+  /// LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetTargetMachineTriple(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMGetTargetMachineTriple(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetMachineTriplePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              LLVMTargetMachineRef)>>('LLVMGetTargetMachineTriple');
+  late final _LLVMGetTargetMachineTriple = _LLVMGetTargetMachineTriplePtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetMachineRef)>();
+
+  /// Returns the cpu used creating this target machine. See
+  /// llvm::TargetMachine::getCPU. The result needs to be disposed with
+  /// LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetTargetMachineCPU(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMGetTargetMachineCPU(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetMachineCPUPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              LLVMTargetMachineRef)>>('LLVMGetTargetMachineCPU');
+  late final _LLVMGetTargetMachineCPU = _LLVMGetTargetMachineCPUPtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(LLVMTargetMachineRef)>();
+
+  /// Returns the feature string used creating this target machine. See
+  /// llvm::TargetMachine::getFeatureString. The result needs to be disposed with
+  /// LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetTargetMachineFeatureString(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMGetTargetMachineFeatureString(
+      T,
+    );
+  }
+
+  late final _LLVMGetTargetMachineFeatureStringPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              LLVMTargetMachineRef)>>('LLVMGetTargetMachineFeatureString');
+  late final _LLVMGetTargetMachineFeatureString =
+      _LLVMGetTargetMachineFeatureStringPtr.asFunction<
+          ffi.Pointer<ffi.Char> Function(LLVMTargetMachineRef)>();
+
+  /// Create a DataLayout based on the targetMachine.
+  LLVMTargetDataRef LLVMCreateTargetDataLayout(
+    LLVMTargetMachineRef T,
+  ) {
+    return _LLVMCreateTargetDataLayout(
+      T,
+    );
+  }
+
+  late final _LLVMCreateTargetDataLayoutPtr = _lookup<
+          ffi.NativeFunction<LLVMTargetDataRef Function(LLVMTargetMachineRef)>>(
+      'LLVMCreateTargetDataLayout');
+  late final _LLVMCreateTargetDataLayout = _LLVMCreateTargetDataLayoutPtr
+      .asFunction<LLVMTargetDataRef Function(LLVMTargetMachineRef)>();
+
+  /// Set the target machine's ASM verbosity.
+  void LLVMSetTargetMachineAsmVerbosity(
+    LLVMTargetMachineRef T,
+    int VerboseAsm,
+  ) {
+    return _LLVMSetTargetMachineAsmVerbosity(
+      T,
+      VerboseAsm,
+    );
+  }
+
+  late final _LLVMSetTargetMachineAsmVerbosityPtr = _lookup<
+          ffi.NativeFunction<ffi.Void Function(LLVMTargetMachineRef, ffi.Int)>>(
+      'LLVMSetTargetMachineAsmVerbosity');
+  late final _LLVMSetTargetMachineAsmVerbosity =
+      _LLVMSetTargetMachineAsmVerbosityPtr.asFunction<
+          void Function(LLVMTargetMachineRef, int)>();
+
+  /// Emits an asm or object file for the given module to the filename. This
+  /// wraps several c++ only classes (among them a file stream). Returns any
+  /// error in ErrorMessage. Use LLVMDisposeMessage to dispose the message.
+  int LLVMTargetMachineEmitToFile(
+    LLVMTargetMachineRef T,
+    LLVMModuleRef M,
+    ffi.Pointer<ffi.Char> Filename,
+    int codegen,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> ErrorMessage,
+  ) {
+    return _LLVMTargetMachineEmitToFile(
+      T,
+      M,
+      Filename,
+      codegen,
+      ErrorMessage,
+    );
+  }
+
+  late final _LLVMTargetMachineEmitToFilePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(
+                  LLVMTargetMachineRef,
+                  LLVMModuleRef,
+                  ffi.Pointer<ffi.Char>,
+                  ffi.Int32,
+                  ffi.Pointer<ffi.Pointer<ffi.Char>>)>>(
+      'LLVMTargetMachineEmitToFile');
+  late final _LLVMTargetMachineEmitToFile =
+      _LLVMTargetMachineEmitToFilePtr.asFunction<
+          int Function(
+              LLVMTargetMachineRef,
+              LLVMModuleRef,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>)>();
+
+  /// Compile the LLVM IR stored in \p M and store the result in \p OutMemBuf.
+  int LLVMTargetMachineEmitToMemoryBuffer(
+    LLVMTargetMachineRef T,
+    LLVMModuleRef M,
+    int codegen,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> ErrorMessage,
+    ffi.Pointer<LLVMMemoryBufferRef> OutMemBuf,
+  ) {
+    return _LLVMTargetMachineEmitToMemoryBuffer(
+      T,
+      M,
+      codegen,
+      ErrorMessage,
+      OutMemBuf,
+    );
+  }
+
+  late final _LLVMTargetMachineEmitToMemoryBufferPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(
+                  LLVMTargetMachineRef,
+                  LLVMModuleRef,
+                  ffi.Int32,
+                  ffi.Pointer<ffi.Pointer<ffi.Char>>,
+                  ffi.Pointer<LLVMMemoryBufferRef>)>>(
+      'LLVMTargetMachineEmitToMemoryBuffer');
+  late final _LLVMTargetMachineEmitToMemoryBuffer =
+      _LLVMTargetMachineEmitToMemoryBufferPtr.asFunction<
+          int Function(
+              LLVMTargetMachineRef,
+              LLVMModuleRef,
+              int,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>,
+              ffi.Pointer<LLVMMemoryBufferRef>)>();
+
+  /// Get a triple for the host machine as a string. The result needs to be
+  /// disposed with LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetDefaultTargetTriple() {
+    return _LLVMGetDefaultTargetTriple();
+  }
+
+  late final _LLVMGetDefaultTargetTriplePtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+          'LLVMGetDefaultTargetTriple');
+  late final _LLVMGetDefaultTargetTriple = _LLVMGetDefaultTargetTriplePtr
+      .asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  /// Normalize a target triple. The result needs to be disposed with
+  /// LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMNormalizeTargetTriple(
+    ffi.Pointer<ffi.Char> triple,
+  ) {
+    return _LLVMNormalizeTargetTriple(
+      triple,
+    );
+  }
+
+  late final _LLVMNormalizeTargetTriplePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              ffi.Pointer<ffi.Char>)>>('LLVMNormalizeTargetTriple');
+  late final _LLVMNormalizeTargetTriple = _LLVMNormalizeTargetTriplePtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)>();
+
+  /// Get the host CPU as a string. The result needs to be disposed with
+  /// LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetHostCPUName() {
+    return _LLVMGetHostCPUName();
+  }
+
+  late final _LLVMGetHostCPUNamePtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+          'LLVMGetHostCPUName');
+  late final _LLVMGetHostCPUName =
+      _LLVMGetHostCPUNamePtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  /// Get the host CPU's features as a string. The result needs to be disposed
+  /// with LLVMDisposeMessage.
+  ffi.Pointer<ffi.Char> LLVMGetHostCPUFeatures() {
+    return _LLVMGetHostCPUFeatures();
+  }
+
+  late final _LLVMGetHostCPUFeaturesPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+          'LLVMGetHostCPUFeatures');
+  late final _LLVMGetHostCPUFeatures =
+      _LLVMGetHostCPUFeaturesPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  /// Adds the target-specific analysis passes to the pass manager.
+  void LLVMAddAnalysisPasses(
+    LLVMTargetMachineRef T,
+    LLVMPassManagerRef PM,
+  ) {
+    return _LLVMAddAnalysisPasses(
+      T,
+      PM,
+    );
+  }
+
+  late final _LLVMAddAnalysisPassesPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMTargetMachineRef,
+              LLVMPassManagerRef)>>('LLVMAddAnalysisPasses');
+  late final _LLVMAddAnalysisPasses = _LLVMAddAnalysisPassesPtr.asFunction<
+      void Function(LLVMTargetMachineRef, LLVMPassManagerRef)>();
+
   void LLVMInitializeAMDGPUTargetMCA() {
     return _LLVMInitializeAMDGPUTargetMCA();
   }
@@ -1354,7 +2207,7 @@ class LLVMCore {
   }
 
   late final _LLVMContextShouldDiscardValueNamesPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMContextRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMContextRef)>>(
           'LLVMContextShouldDiscardValueNames');
   late final _LLVMContextShouldDiscardValueNames =
       _LLVMContextShouldDiscardValueNamesPtr.asFunction<
@@ -1377,7 +2230,7 @@ class LLVMCore {
   }
 
   late final _LLVMContextSetDiscardValueNamesPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMContextRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMContextRef, ffi.Int)>>(
           'LLVMContextSetDiscardValueNames');
   late final _LLVMContextSetDiscardValueNames =
       _LLVMContextSetDiscardValueNamesPtr.asFunction<
@@ -1397,7 +2250,7 @@ class LLVMCore {
   }
 
   late final _LLVMContextSetOpaquePointersPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMContextRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMContextRef, ffi.Int)>>(
           'LLVMContextSetOpaquePointers');
   late final _LLVMContextSetOpaquePointers = _LLVMContextSetOpaquePointersPtr
       .asFunction<void Function(LLVMContextRef, int)>();
@@ -1695,7 +2548,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsEnumAttributePtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMAttributeRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMAttributeRef)>>(
           'LLVMIsEnumAttribute');
   late final _LLVMIsEnumAttribute =
       _LLVMIsEnumAttributePtr.asFunction<int Function(LLVMAttributeRef)>();
@@ -1709,7 +2562,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsStringAttributePtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMAttributeRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMAttributeRef)>>(
           'LLVMIsStringAttribute');
   late final _LLVMIsStringAttribute =
       _LLVMIsStringAttributePtr.asFunction<int Function(LLVMAttributeRef)>();
@@ -1723,7 +2576,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsTypeAttributePtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMAttributeRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMAttributeRef)>>(
           'LLVMIsTypeAttribute');
   late final _LLVMIsTypeAttribute =
       _LLVMIsTypeAttributePtr.asFunction<int Function(LLVMAttributeRef)>();
@@ -2206,7 +3059,7 @@ class LLVMCore {
 
   late final _LLVMPrintModuleToFilePtr = _lookup<
       ffi.NativeFunction<
-          LLVMBool Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
+          ffi.Int Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
               ffi.Pointer<ffi.Pointer<ffi.Char>>)>>('LLVMPrintModuleToFile');
   late final _LLVMPrintModuleToFile = _LLVMPrintModuleToFilePtr.asFunction<
       int Function(LLVMModuleRef, ffi.Pointer<ffi.Char>,
@@ -2329,10 +3182,10 @@ class LLVMCore {
               ffi.Size,
               ffi.Pointer<ffi.Char>,
               ffi.Size,
-              LLVMBool,
-              LLVMBool,
+              ffi.Int,
+              ffi.Int,
               ffi.Int32,
-              LLVMBool)>>('LLVMGetInlineAsm');
+              ffi.Int)>>('LLVMGetInlineAsm');
   late final _LLVMGetInlineAsm = _LLVMGetInlineAsmPtr.asFunction<
       LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>, int,
           ffi.Pointer<ffi.Char>, int, int, int, int, int)>();
@@ -2838,7 +3691,7 @@ class LLVMCore {
   }
 
   late final _LLVMTypeIsSizedPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTypeRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMTypeRef)>>(
           'LLVMTypeIsSized');
   late final _LLVMTypeIsSized =
       _LLVMTypeIsSizedPtr.asFunction<int Function(LLVMTypeRef)>();
@@ -3274,7 +4127,7 @@ class LLVMCore {
   late final _LLVMFunctionTypePtr = _lookup<
       ffi.NativeFunction<
           LLVMTypeRef Function(LLVMTypeRef, ffi.Pointer<LLVMTypeRef>,
-              ffi.UnsignedInt, LLVMBool)>>('LLVMFunctionType');
+              ffi.UnsignedInt, ffi.Int)>>('LLVMFunctionType');
   late final _LLVMFunctionType = _LLVMFunctionTypePtr.asFunction<
       LLVMTypeRef Function(LLVMTypeRef, ffi.Pointer<LLVMTypeRef>, int, int)>();
 
@@ -3288,7 +4141,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsFunctionVarArgPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTypeRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMTypeRef)>>(
           'LLVMIsFunctionVarArg');
   late final _LLVMIsFunctionVarArg =
       _LLVMIsFunctionVarArgPtr.asFunction<int Function(LLVMTypeRef)>();
@@ -3372,7 +4225,7 @@ class LLVMCore {
   late final _LLVMStructTypeInContextPtr = _lookup<
       ffi.NativeFunction<
           LLVMTypeRef Function(LLVMContextRef, ffi.Pointer<LLVMTypeRef>,
-              ffi.UnsignedInt, LLVMBool)>>('LLVMStructTypeInContext');
+              ffi.UnsignedInt, ffi.Int)>>('LLVMStructTypeInContext');
   late final _LLVMStructTypeInContext = _LLVMStructTypeInContextPtr.asFunction<
       LLVMTypeRef Function(
           LLVMContextRef, ffi.Pointer<LLVMTypeRef>, int, int)>();
@@ -3395,7 +4248,7 @@ class LLVMCore {
   late final _LLVMStructTypePtr = _lookup<
       ffi.NativeFunction<
           LLVMTypeRef Function(ffi.Pointer<LLVMTypeRef>, ffi.UnsignedInt,
-              LLVMBool)>>('LLVMStructType');
+              ffi.Int)>>('LLVMStructType');
   late final _LLVMStructType = _LLVMStructTypePtr.asFunction<
       LLVMTypeRef Function(ffi.Pointer<LLVMTypeRef>, int, int)>();
 
@@ -3456,7 +4309,7 @@ class LLVMCore {
   late final _LLVMStructSetBodyPtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(LLVMTypeRef, ffi.Pointer<LLVMTypeRef>,
-              ffi.UnsignedInt, LLVMBool)>>('LLVMStructSetBody');
+              ffi.UnsignedInt, ffi.Int)>>('LLVMStructSetBody');
   late final _LLVMStructSetBody = _LLVMStructSetBodyPtr.asFunction<
       void Function(LLVMTypeRef, ffi.Pointer<LLVMTypeRef>, int, int)>();
 
@@ -3534,7 +4387,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsPackedStructPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTypeRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMTypeRef)>>(
           'LLVMIsPackedStruct');
   late final _LLVMIsPackedStruct =
       _LLVMIsPackedStructPtr.asFunction<int Function(LLVMTypeRef)>();
@@ -3551,7 +4404,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsOpaqueStructPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTypeRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMTypeRef)>>(
           'LLVMIsOpaqueStruct');
   late final _LLVMIsOpaqueStruct =
       _LLVMIsOpaqueStructPtr.asFunction<int Function(LLVMTypeRef)>();
@@ -3568,7 +4421,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsLiteralStructPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTypeRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMTypeRef)>>(
           'LLVMIsLiteralStruct');
   late final _LLVMIsLiteralStruct =
       _LLVMIsLiteralStructPtr.asFunction<int Function(LLVMTypeRef)>();
@@ -3707,7 +4560,7 @@ class LLVMCore {
   }
 
   late final _LLVMPointerTypeIsOpaquePtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTypeRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMTypeRef)>>(
           'LLVMPointerTypeIsOpaque');
   late final _LLVMPointerTypeIsOpaque =
       _LLVMPointerTypeIsOpaquePtr.asFunction<int Function(LLVMTypeRef)>();
@@ -4124,7 +4977,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsConstantPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsConstant');
   late final _LLVMIsConstant =
       _LLVMIsConstantPtr.asFunction<int Function(LLVMValueRef)>();
@@ -4139,7 +4992,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsUndefPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsUndef');
   late final _LLVMIsUndef =
       _LLVMIsUndefPtr.asFunction<int Function(LLVMValueRef)>();
@@ -4154,7 +5007,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsPoisonPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsPoison');
   late final _LLVMIsPoison =
       _LLVMIsPoisonPtr.asFunction<int Function(LLVMValueRef)>();
@@ -5690,8 +6543,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsNullPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
-          'LLVMIsNull');
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>('LLVMIsNull');
   late final _LLVMIsNull =
       _LLVMIsNullPtr.asFunction<int Function(LLVMValueRef)>();
 
@@ -5735,7 +6587,7 @@ class LLVMCore {
   late final _LLVMConstIntPtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(
-              LLVMTypeRef, ffi.UnsignedLongLong, LLVMBool)>>('LLVMConstInt');
+              LLVMTypeRef, ffi.UnsignedLongLong, ffi.Int)>>('LLVMConstInt');
   late final _LLVMConstInt = _LLVMConstIntPtr.asFunction<
       LLVMValueRef Function(LLVMTypeRef, int, int)>();
 
@@ -5784,7 +6636,7 @@ class LLVMCore {
   late final _LLVMConstIntOfStringPtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>,
-              ffi.Uint8)>>('LLVMConstIntOfString');
+              ffi.Int)>>('LLVMConstIntOfString');
   late final _LLVMConstIntOfString = _LLVMConstIntOfStringPtr.asFunction<
       LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>, int)>();
 
@@ -5809,7 +6661,7 @@ class LLVMCore {
   late final _LLVMConstIntOfStringAndSizePtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>,
-              ffi.UnsignedInt, ffi.Uint8)>>('LLVMConstIntOfStringAndSize');
+              ffi.UnsignedInt, ffi.Int)>>('LLVMConstIntOfStringAndSize');
   late final _LLVMConstIntOfStringAndSize =
       _LLVMConstIntOfStringAndSizePtr.asFunction<
           LLVMValueRef Function(
@@ -5914,7 +6766,7 @@ class LLVMCore {
   /// @see llvm::ConstantFP::getDoubleValue
   double LLVMConstRealGetDouble(
     LLVMValueRef ConstantVal,
-    ffi.Pointer<LLVMBool> losesInfo,
+    ffi.Pointer<ffi.Int> losesInfo,
   ) {
     return _LLVMConstRealGetDouble(
       ConstantVal,
@@ -5925,9 +6777,9 @@ class LLVMCore {
   late final _LLVMConstRealGetDoublePtr = _lookup<
       ffi.NativeFunction<
           ffi.Double Function(
-              LLVMValueRef, ffi.Pointer<LLVMBool>)>>('LLVMConstRealGetDouble');
+              LLVMValueRef, ffi.Pointer<ffi.Int>)>>('LLVMConstRealGetDouble');
   late final _LLVMConstRealGetDouble = _LLVMConstRealGetDoublePtr.asFunction<
-      double Function(LLVMValueRef, ffi.Pointer<LLVMBool>)>();
+      double Function(LLVMValueRef, ffi.Pointer<ffi.Int>)>();
 
   /// Create a ConstantDataSequential and initialize it with a string.
   ///
@@ -5949,7 +6801,7 @@ class LLVMCore {
   late final _LLVMConstStringInContextPtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(LLVMContextRef, ffi.Pointer<ffi.Char>,
-              ffi.UnsignedInt, LLVMBool)>>('LLVMConstStringInContext');
+              ffi.UnsignedInt, ffi.Int)>>('LLVMConstStringInContext');
   late final _LLVMConstStringInContext =
       _LLVMConstStringInContextPtr.asFunction<
           LLVMValueRef Function(
@@ -5977,7 +6829,7 @@ class LLVMCore {
   late final _LLVMConstStringPtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(ffi.Pointer<ffi.Char>, ffi.UnsignedInt,
-              LLVMBool)>>('LLVMConstString');
+              ffi.Int)>>('LLVMConstString');
   late final _LLVMConstString = _LLVMConstStringPtr.asFunction<
       LLVMValueRef Function(ffi.Pointer<ffi.Char>, int, int)>();
 
@@ -5993,7 +6845,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsConstantStringPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsConstantString');
   late final _LLVMIsConstantString =
       _LLVMIsConstantStringPtr.asFunction<int Function(LLVMValueRef)>();
@@ -6038,7 +6890,7 @@ class LLVMCore {
   late final _LLVMConstStructInContextPtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(LLVMContextRef, ffi.Pointer<LLVMValueRef>,
-              ffi.UnsignedInt, LLVMBool)>>('LLVMConstStructInContext');
+              ffi.UnsignedInt, ffi.Int)>>('LLVMConstStructInContext');
   late final _LLVMConstStructInContext =
       _LLVMConstStructInContextPtr.asFunction<
           LLVMValueRef Function(
@@ -6065,7 +6917,7 @@ class LLVMCore {
   late final _LLVMConstStructPtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(ffi.Pointer<LLVMValueRef>, ffi.UnsignedInt,
-              LLVMBool)>>('LLVMConstStruct');
+              ffi.Int)>>('LLVMConstStruct');
   late final _LLVMConstStruct = _LLVMConstStructPtr.asFunction<
       LLVMValueRef Function(ffi.Pointer<LLVMValueRef>, int, int)>();
 
@@ -6896,7 +7748,7 @@ class LLVMCore {
   late final _LLVMConstIntCastPtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(
-              LLVMValueRef, LLVMTypeRef, LLVMBool)>>('LLVMConstIntCast');
+              LLVMValueRef, LLVMTypeRef, ffi.Int)>>('LLVMConstIntCast');
   late final _LLVMConstIntCast = _LLVMConstIntCastPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, LLVMTypeRef, int)>();
 
@@ -7026,12 +7878,8 @@ class LLVMCore {
 
   late final _LLVMConstInlineAsmPtr = _lookup<
       ffi.NativeFunction<
-          LLVMValueRef Function(
-              LLVMTypeRef,
-              ffi.Pointer<ffi.Char>,
-              ffi.Pointer<ffi.Char>,
-              LLVMBool,
-              LLVMBool)>>('LLVMConstInlineAsm');
+          LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>, ffi.Int, ffi.Int)>>('LLVMConstInlineAsm');
   late final _LLVMConstInlineAsm = _LLVMConstInlineAsmPtr.asFunction<
       LLVMValueRef Function(LLVMTypeRef, ffi.Pointer<ffi.Char>,
           ffi.Pointer<ffi.Char>, int, int)>();
@@ -7067,7 +7915,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsDeclarationPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsDeclaration');
   late final _LLVMIsDeclaration =
       _LLVMIsDeclarationPtr.asFunction<int Function(LLVMValueRef)>();
@@ -7251,7 +8099,7 @@ class LLVMCore {
   }
 
   late final _LLVMHasUnnamedAddrPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMHasUnnamedAddr');
   late final _LLVMHasUnnamedAddr =
       _LLVMHasUnnamedAddrPtr.asFunction<int Function(LLVMValueRef)>();
@@ -7268,7 +8116,7 @@ class LLVMCore {
   }
 
   late final _LLVMSetUnnamedAddrPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, ffi.Int)>>(
           'LLVMSetUnnamedAddr');
   late final _LLVMSetUnnamedAddr =
       _LLVMSetUnnamedAddrPtr.asFunction<void Function(LLVMValueRef, int)>();
@@ -7635,7 +8483,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsThreadLocalPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsThreadLocal');
   late final _LLVMIsThreadLocal =
       _LLVMIsThreadLocalPtr.asFunction<int Function(LLVMValueRef)>();
@@ -7651,7 +8499,7 @@ class LLVMCore {
   }
 
   late final _LLVMSetThreadLocalPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, ffi.Int)>>(
           'LLVMSetThreadLocal');
   late final _LLVMSetThreadLocal =
       _LLVMSetThreadLocalPtr.asFunction<void Function(LLVMValueRef, int)>();
@@ -7665,7 +8513,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsGlobalConstantPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsGlobalConstant');
   late final _LLVMIsGlobalConstant =
       _LLVMIsGlobalConstantPtr.asFunction<int Function(LLVMValueRef)>();
@@ -7681,7 +8529,7 @@ class LLVMCore {
   }
 
   late final _LLVMSetGlobalConstantPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, ffi.Int)>>(
           'LLVMSetGlobalConstant');
   late final _LLVMSetGlobalConstant =
       _LLVMSetGlobalConstantPtr.asFunction<void Function(LLVMValueRef, int)>();
@@ -7725,7 +8573,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsExternallyInitializedPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsExternallyInitialized');
   late final _LLVMIsExternallyInitialized =
       _LLVMIsExternallyInitializedPtr.asFunction<int Function(LLVMValueRef)>();
@@ -7741,7 +8589,7 @@ class LLVMCore {
   }
 
   late final _LLVMSetExternallyInitializedPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, ffi.Int)>>(
           'LLVMSetExternallyInitialized');
   late final _LLVMSetExternallyInitialized = _LLVMSetExternallyInitializedPtr
       .asFunction<void Function(LLVMValueRef, int)>();
@@ -7928,7 +8776,7 @@ class LLVMCore {
   }
 
   late final _LLVMHasPersonalityFnPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMHasPersonalityFn');
   late final _LLVMHasPersonalityFn =
       _LLVMHasPersonalityFnPtr.asFunction<int Function(LLVMValueRef)>();
@@ -8159,7 +9007,7 @@ class LLVMCore {
   }
 
   late final _LLVMIntrinsicIsOverloadedPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(ffi.UnsignedInt)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.UnsignedInt)>>(
           'LLVMIntrinsicIsOverloaded');
   late final _LLVMIntrinsicIsOverloaded =
       _LLVMIntrinsicIsOverloadedPtr.asFunction<int Function(int)>();
@@ -9041,7 +9889,7 @@ class LLVMCore {
   }
 
   late final _LLVMValueIsBasicBlockPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMValueIsBasicBlock');
   late final _LLVMValueIsBasicBlock =
       _LLVMValueIsBasicBlockPtr.asFunction<int Function(LLVMValueRef)>();
@@ -10086,7 +10934,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsTailCallPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsTailCall');
   late final _LLVMIsTailCall =
       _LLVMIsTailCallPtr.asFunction<int Function(LLVMValueRef)>();
@@ -10107,7 +10955,7 @@ class LLVMCore {
   }
 
   late final _LLVMSetTailCallPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, ffi.Int)>>(
           'LLVMSetTailCall');
   late final _LLVMSetTailCall =
       _LLVMSetTailCallPtr.asFunction<void Function(LLVMValueRef, int)>();
@@ -10273,7 +11121,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsConditionalPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsConditional');
   late final _LLVMIsConditional =
       _LLVMIsConditionalPtr.asFunction<int Function(LLVMValueRef)>();
@@ -10362,7 +11210,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsInBoundsPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsInBounds');
   late final _LLVMIsInBounds =
       _LLVMIsInBoundsPtr.asFunction<int Function(LLVMValueRef)>();
@@ -10379,7 +11227,7 @@ class LLVMCore {
   }
 
   late final _LLVMSetIsInBoundsPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, ffi.Int)>>(
           'LLVMSetIsInBounds');
   late final _LLVMSetIsInBounds =
       _LLVMSetIsInBoundsPtr.asFunction<void Function(LLVMValueRef, int)>();
@@ -11263,7 +12111,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsCleanupPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsCleanup');
   late final _LLVMIsCleanup =
       _LLVMIsCleanupPtr.asFunction<int Function(LLVMValueRef)>();
@@ -11279,7 +12127,7 @@ class LLVMCore {
   }
 
   late final _LLVMSetCleanupPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, ffi.Int)>>(
           'LLVMSetCleanup');
   late final _LLVMSetCleanup =
       _LLVMSetCleanupPtr.asFunction<void Function(LLVMValueRef, int)>();
@@ -12482,7 +13330,7 @@ class LLVMCore {
   }
 
   late final _LLVMGetVolatilePtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMGetVolatile');
   late final _LLVMGetVolatile =
       _LLVMGetVolatilePtr.asFunction<int Function(LLVMValueRef)>();
@@ -12498,7 +13346,7 @@ class LLVMCore {
   }
 
   late final _LLVMSetVolatilePtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, ffi.Int)>>(
           'LLVMSetVolatile');
   late final _LLVMSetVolatile =
       _LLVMSetVolatilePtr.asFunction<void Function(LLVMValueRef, int)>();
@@ -12512,7 +13360,7 @@ class LLVMCore {
   }
 
   late final _LLVMGetWeakPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMGetWeak');
   late final _LLVMGetWeak =
       _LLVMGetWeakPtr.asFunction<int Function(LLVMValueRef)>();
@@ -12528,7 +13376,7 @@ class LLVMCore {
   }
 
   late final _LLVMSetWeakPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, ffi.Int)>>(
           'LLVMSetWeak');
   late final _LLVMSetWeak =
       _LLVMSetWeakPtr.asFunction<void Function(LLVMValueRef, int)>();
@@ -13010,7 +13858,7 @@ class LLVMCore {
   late final _LLVMBuildIntCast2Ptr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(LLVMBuilderRef, LLVMValueRef, LLVMTypeRef,
-              LLVMBool, ffi.Pointer<ffi.Char>)>>('LLVMBuildIntCast2');
+              ffi.Int, ffi.Pointer<ffi.Char>)>>('LLVMBuildIntCast2');
   late final _LLVMBuildIntCast2 = _LLVMBuildIntCast2Ptr.asFunction<
       LLVMValueRef Function(LLVMBuilderRef, LLVMValueRef, LLVMTypeRef, int,
           ffi.Pointer<ffi.Char>)>();
@@ -13076,8 +13924,8 @@ class LLVMCore {
 
   late final _LLVMGetCastOpcodePtr = _lookup<
       ffi.NativeFunction<
-          ffi.Int32 Function(LLVMValueRef, LLVMBool, LLVMTypeRef,
-              LLVMBool)>>('LLVMGetCastOpcode');
+          ffi.Int32 Function(LLVMValueRef, ffi.Int, LLVMTypeRef,
+              ffi.Int)>>('LLVMGetCastOpcode');
   late final _LLVMGetCastOpcode = _LLVMGetCastOpcodePtr.asFunction<
       int Function(LLVMValueRef, int, LLVMTypeRef, int)>();
 
@@ -13442,7 +14290,7 @@ class LLVMCore {
 
   late final _LLVMBuildFencePtr = _lookup<
       ffi.NativeFunction<
-          LLVMValueRef Function(LLVMBuilderRef, ffi.Int32, LLVMBool,
+          LLVMValueRef Function(LLVMBuilderRef, ffi.Int32, ffi.Int,
               ffi.Pointer<ffi.Char>)>>('LLVMBuildFence');
   late final _LLVMBuildFence = _LLVMBuildFencePtr.asFunction<
       LLVMValueRef Function(LLVMBuilderRef, int, int, ffi.Pointer<ffi.Char>)>();
@@ -13468,7 +14316,7 @@ class LLVMCore {
   late final _LLVMBuildAtomicRMWPtr = _lookup<
       ffi.NativeFunction<
           LLVMValueRef Function(LLVMBuilderRef, ffi.Int32, LLVMValueRef,
-              LLVMValueRef, ffi.Int32, LLVMBool)>>('LLVMBuildAtomicRMW');
+              LLVMValueRef, ffi.Int32, ffi.Int)>>('LLVMBuildAtomicRMW');
   late final _LLVMBuildAtomicRMW = _LLVMBuildAtomicRMWPtr.asFunction<
       LLVMValueRef Function(
           LLVMBuilderRef, int, LLVMValueRef, LLVMValueRef, int, int)>();
@@ -13502,7 +14350,7 @@ class LLVMCore {
               LLVMValueRef,
               ffi.Int32,
               ffi.Int32,
-              LLVMBool)>>('LLVMBuildAtomicCmpXchg');
+              ffi.Int)>>('LLVMBuildAtomicCmpXchg');
   late final _LLVMBuildAtomicCmpXchg = _LLVMBuildAtomicCmpXchgPtr.asFunction<
       LLVMValueRef Function(LLVMBuilderRef, LLVMValueRef, LLVMValueRef,
           LLVMValueRef, int, int, int)>();
@@ -13563,7 +14411,7 @@ class LLVMCore {
   }
 
   late final _LLVMIsAtomicSingleThreadPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMValueRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMValueRef)>>(
           'LLVMIsAtomicSingleThread');
   late final _LLVMIsAtomicSingleThread =
       _LLVMIsAtomicSingleThreadPtr.asFunction<int Function(LLVMValueRef)>();
@@ -13579,7 +14427,7 @@ class LLVMCore {
   }
 
   late final _LLVMSetAtomicSingleThreadPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBool)>>(
+      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMValueRef, ffi.Int)>>(
           'LLVMSetAtomicSingleThread');
   late final _LLVMSetAtomicSingleThread = _LLVMSetAtomicSingleThreadPtr
       .asFunction<void Function(LLVMValueRef, int)>();
@@ -13693,7 +14541,7 @@ class LLVMCore {
 
   late final _LLVMCreateMemoryBufferWithContentsOfFilePtr = _lookup<
           ffi.NativeFunction<
-              LLVMBool Function(
+              ffi.Int Function(
                   ffi.Pointer<ffi.Char>,
                   ffi.Pointer<LLVMMemoryBufferRef>,
                   ffi.Pointer<ffi.Pointer<ffi.Char>>)>>(
@@ -13715,7 +14563,7 @@ class LLVMCore {
 
   late final _LLVMCreateMemoryBufferWithSTDINPtr = _lookup<
           ffi.NativeFunction<
-              LLVMBool Function(ffi.Pointer<LLVMMemoryBufferRef>,
+              ffi.Int Function(ffi.Pointer<LLVMMemoryBufferRef>,
                   ffi.Pointer<ffi.Pointer<ffi.Char>>)>>(
       'LLVMCreateMemoryBufferWithSTDIN');
   late final _LLVMCreateMemoryBufferWithSTDIN =
@@ -13743,7 +14591,7 @@ class LLVMCore {
               ffi.Pointer<ffi.Char>,
               ffi.Size,
               ffi.Pointer<ffi.Char>,
-              LLVMBool)>>('LLVMCreateMemoryBufferWithMemoryRange');
+              ffi.Int)>>('LLVMCreateMemoryBufferWithMemoryRange');
   late final _LLVMCreateMemoryBufferWithMemoryRange =
       _LLVMCreateMemoryBufferWithMemoryRangePtr.asFunction<
           LLVMMemoryBufferRef Function(
@@ -13890,7 +14738,7 @@ class LLVMCore {
 
   late final _LLVMRunPassManagerPtr = _lookup<
       ffi.NativeFunction<
-          LLVMBool Function(
+          ffi.Int Function(
               LLVMPassManagerRef, LLVMModuleRef)>>('LLVMRunPassManager');
   late final _LLVMRunPassManager = _LLVMRunPassManagerPtr.asFunction<
       int Function(LLVMPassManagerRef, LLVMModuleRef)>();
@@ -13907,7 +14755,7 @@ class LLVMCore {
   }
 
   late final _LLVMInitializeFunctionPassManagerPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMPassManagerRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMPassManagerRef)>>(
           'LLVMInitializeFunctionPassManager');
   late final _LLVMInitializeFunctionPassManager =
       _LLVMInitializeFunctionPassManagerPtr.asFunction<
@@ -13929,7 +14777,7 @@ class LLVMCore {
 
   late final _LLVMRunFunctionPassManagerPtr = _lookup<
       ffi.NativeFunction<
-          LLVMBool Function(
+          ffi.Int Function(
               LLVMPassManagerRef, LLVMValueRef)>>('LLVMRunFunctionPassManager');
   late final _LLVMRunFunctionPassManager = _LLVMRunFunctionPassManagerPtr
       .asFunction<int Function(LLVMPassManagerRef, LLVMValueRef)>();
@@ -13946,7 +14794,7 @@ class LLVMCore {
   }
 
   late final _LLVMFinalizeFunctionPassManagerPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMPassManagerRef)>>(
+      _lookup<ffi.NativeFunction<ffi.Int Function(LLVMPassManagerRef)>>(
           'LLVMFinalizeFunctionPassManager');
   late final _LLVMFinalizeFunctionPassManager =
       _LLVMFinalizeFunctionPassManagerPtr.asFunction<
@@ -13977,8 +14825,7 @@ class LLVMCore {
   }
 
   late final _LLVMStartMultithreadedPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function()>>(
-          'LLVMStartMultithreaded');
+      _lookup<ffi.NativeFunction<ffi.Int Function()>>('LLVMStartMultithreaded');
   late final _LLVMStartMultithreaded =
       _LLVMStartMultithreadedPtr.asFunction<int Function()>();
 
@@ -14000,863 +14847,15 @@ class LLVMCore {
   }
 
   late final _LLVMIsMultithreadedPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function()>>('LLVMIsMultithreaded');
+      _lookup<ffi.NativeFunction<ffi.Int Function()>>('LLVMIsMultithreaded');
   late final _LLVMIsMultithreaded =
       _LLVMIsMultithreadedPtr.asFunction<int Function()>();
 
-  /// Obtain the data layout for a module.
-  ///
-  /// @see Module::getDataLayout()
-  LLVMTargetDataRef LLVMGetModuleDataLayout(
-    LLVMModuleRef M,
-  ) {
-    return _LLVMGetModuleDataLayout(
-      M,
-    );
-  }
+  late final ffi.Pointer<ffi.Int> _namespace = _lookup<ffi.Int>('namespace');
 
-  late final _LLVMGetModuleDataLayoutPtr =
-      _lookup<ffi.NativeFunction<LLVMTargetDataRef Function(LLVMModuleRef)>>(
-          'LLVMGetModuleDataLayout');
-  late final _LLVMGetModuleDataLayout = _LLVMGetModuleDataLayoutPtr.asFunction<
-      LLVMTargetDataRef Function(LLVMModuleRef)>();
+  int get namespace => _namespace.value;
 
-  /// Set the data layout for a module.
-  ///
-  /// @see Module::setDataLayout()
-  void LLVMSetModuleDataLayout(
-    LLVMModuleRef M,
-    LLVMTargetDataRef DL,
-  ) {
-    return _LLVMSetModuleDataLayout(
-      M,
-      DL,
-    );
-  }
-
-  late final _LLVMSetModuleDataLayoutPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              LLVMModuleRef, LLVMTargetDataRef)>>('LLVMSetModuleDataLayout');
-  late final _LLVMSetModuleDataLayout = _LLVMSetModuleDataLayoutPtr.asFunction<
-      void Function(LLVMModuleRef, LLVMTargetDataRef)>();
-
-  /// Creates target data from a target layout string.
-  /// See the constructor llvm::DataLayout::DataLayout.
-  LLVMTargetDataRef LLVMCreateTargetData(
-    ffi.Pointer<ffi.Char> StringRep,
-  ) {
-    return _LLVMCreateTargetData(
-      StringRep,
-    );
-  }
-
-  late final _LLVMCreateTargetDataPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMTargetDataRef Function(
-              ffi.Pointer<ffi.Char>)>>('LLVMCreateTargetData');
-  late final _LLVMCreateTargetData = _LLVMCreateTargetDataPtr.asFunction<
-      LLVMTargetDataRef Function(ffi.Pointer<ffi.Char>)>();
-
-  /// Deallocates a TargetData.
-  /// See the destructor llvm::DataLayout::~DataLayout.
-  void LLVMDisposeTargetData(
-    LLVMTargetDataRef TD,
-  ) {
-    return _LLVMDisposeTargetData(
-      TD,
-    );
-  }
-
-  late final _LLVMDisposeTargetDataPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMTargetDataRef)>>(
-          'LLVMDisposeTargetData');
-  late final _LLVMDisposeTargetData =
-      _LLVMDisposeTargetDataPtr.asFunction<void Function(LLVMTargetDataRef)>();
-
-  /// Adds target library information to a pass manager. This does not take
-  /// ownership of the target library info.
-  /// See the method llvm::PassManagerBase::add.
-  void LLVMAddTargetLibraryInfo(
-    LLVMTargetLibraryInfoRef TLI,
-    LLVMPassManagerRef PM,
-  ) {
-    return _LLVMAddTargetLibraryInfo(
-      TLI,
-      PM,
-    );
-  }
-
-  late final _LLVMAddTargetLibraryInfoPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(LLVMTargetLibraryInfoRef,
-              LLVMPassManagerRef)>>('LLVMAddTargetLibraryInfo');
-  late final _LLVMAddTargetLibraryInfo =
-      _LLVMAddTargetLibraryInfoPtr.asFunction<
-          void Function(LLVMTargetLibraryInfoRef, LLVMPassManagerRef)>();
-
-  /// Converts target data to a target layout string. The string must be disposed
-  /// with LLVMDisposeMessage.
-  /// See the constructor llvm::DataLayout::DataLayout.
-  ffi.Pointer<ffi.Char> LLVMCopyStringRepOfTargetData(
-    LLVMTargetDataRef TD,
-  ) {
-    return _LLVMCopyStringRepOfTargetData(
-      TD,
-    );
-  }
-
-  late final _LLVMCopyStringRepOfTargetDataPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              LLVMTargetDataRef)>>('LLVMCopyStringRepOfTargetData');
-  late final _LLVMCopyStringRepOfTargetData = _LLVMCopyStringRepOfTargetDataPtr
-      .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetDataRef)>();
-
-  /// Returns the byte order of a target, either LLVMBigEndian or
-  /// LLVMLittleEndian.
-  /// See the method llvm::DataLayout::isLittleEndian.
-  int LLVMByteOrder(
-    LLVMTargetDataRef TD,
-  ) {
-    return _LLVMByteOrder(
-      TD,
-    );
-  }
-
-  late final _LLVMByteOrderPtr =
-      _lookup<ffi.NativeFunction<ffi.Int32 Function(LLVMTargetDataRef)>>(
-          'LLVMByteOrder');
-  late final _LLVMByteOrder =
-      _LLVMByteOrderPtr.asFunction<int Function(LLVMTargetDataRef)>();
-
-  /// Returns the pointer size in bytes for a target.
-  /// See the method llvm::DataLayout::getPointerSize.
-  int LLVMPointerSize(
-    LLVMTargetDataRef TD,
-  ) {
-    return _LLVMPointerSize(
-      TD,
-    );
-  }
-
-  late final _LLVMPointerSizePtr =
-      _lookup<ffi.NativeFunction<ffi.UnsignedInt Function(LLVMTargetDataRef)>>(
-          'LLVMPointerSize');
-  late final _LLVMPointerSize =
-      _LLVMPointerSizePtr.asFunction<int Function(LLVMTargetDataRef)>();
-
-  /// Returns the pointer size in bytes for a target for a specified
-  /// address space.
-  /// See the method llvm::DataLayout::getPointerSize.
-  int LLVMPointerSizeForAS(
-    LLVMTargetDataRef TD,
-    int AS,
-  ) {
-    return _LLVMPointerSizeForAS(
-      TD,
-      AS,
-    );
-  }
-
-  late final _LLVMPointerSizeForASPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedInt Function(
-              LLVMTargetDataRef, ffi.UnsignedInt)>>('LLVMPointerSizeForAS');
-  late final _LLVMPointerSizeForAS = _LLVMPointerSizeForASPtr.asFunction<
-      int Function(LLVMTargetDataRef, int)>();
-
-  /// Returns the integer type that is the same size as a pointer on a target.
-  /// See the method llvm::DataLayout::getIntPtrType.
-  LLVMTypeRef LLVMIntPtrType(
-    LLVMTargetDataRef TD,
-  ) {
-    return _LLVMIntPtrType(
-      TD,
-    );
-  }
-
-  late final _LLVMIntPtrTypePtr =
-      _lookup<ffi.NativeFunction<LLVMTypeRef Function(LLVMTargetDataRef)>>(
-          'LLVMIntPtrType');
-  late final _LLVMIntPtrType =
-      _LLVMIntPtrTypePtr.asFunction<LLVMTypeRef Function(LLVMTargetDataRef)>();
-
-  /// Returns the integer type that is the same size as a pointer on a target.
-  /// This version allows the address space to be specified.
-  /// See the method llvm::DataLayout::getIntPtrType.
-  LLVMTypeRef LLVMIntPtrTypeForAS(
-    LLVMTargetDataRef TD,
-    int AS,
-  ) {
-    return _LLVMIntPtrTypeForAS(
-      TD,
-      AS,
-    );
-  }
-
-  late final _LLVMIntPtrTypeForASPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMTypeRef Function(
-              LLVMTargetDataRef, ffi.UnsignedInt)>>('LLVMIntPtrTypeForAS');
-  late final _LLVMIntPtrTypeForAS = _LLVMIntPtrTypeForASPtr.asFunction<
-      LLVMTypeRef Function(LLVMTargetDataRef, int)>();
-
-  /// Returns the integer type that is the same size as a pointer on a target.
-  /// See the method llvm::DataLayout::getIntPtrType.
-  LLVMTypeRef LLVMIntPtrTypeInContext(
-    LLVMContextRef C,
-    LLVMTargetDataRef TD,
-  ) {
-    return _LLVMIntPtrTypeInContext(
-      C,
-      TD,
-    );
-  }
-
-  late final _LLVMIntPtrTypeInContextPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMTypeRef Function(
-              LLVMContextRef, LLVMTargetDataRef)>>('LLVMIntPtrTypeInContext');
-  late final _LLVMIntPtrTypeInContext = _LLVMIntPtrTypeInContextPtr.asFunction<
-      LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef)>();
-
-  /// Returns the integer type that is the same size as a pointer on a target.
-  /// This version allows the address space to be specified.
-  /// See the method llvm::DataLayout::getIntPtrType.
-  LLVMTypeRef LLVMIntPtrTypeForASInContext(
-    LLVMContextRef C,
-    LLVMTargetDataRef TD,
-    int AS,
-  ) {
-    return _LLVMIntPtrTypeForASInContext(
-      C,
-      TD,
-      AS,
-    );
-  }
-
-  late final _LLVMIntPtrTypeForASInContextPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef,
-              ffi.UnsignedInt)>>('LLVMIntPtrTypeForASInContext');
-  late final _LLVMIntPtrTypeForASInContext =
-      _LLVMIntPtrTypeForASInContextPtr.asFunction<
-          LLVMTypeRef Function(LLVMContextRef, LLVMTargetDataRef, int)>();
-
-  /// Computes the size of a type in bytes for a target.
-  /// See the method llvm::DataLayout::getTypeSizeInBits.
-  int LLVMSizeOfTypeInBits(
-    LLVMTargetDataRef TD,
-    LLVMTypeRef Ty,
-  ) {
-    return _LLVMSizeOfTypeInBits(
-      TD,
-      Ty,
-    );
-  }
-
-  late final _LLVMSizeOfTypeInBitsPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedLongLong Function(
-              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMSizeOfTypeInBits');
-  late final _LLVMSizeOfTypeInBits = _LLVMSizeOfTypeInBitsPtr.asFunction<
-      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
-
-  /// Computes the storage size of a type in bytes for a target.
-  /// See the method llvm::DataLayout::getTypeStoreSize.
-  int LLVMStoreSizeOfType(
-    LLVMTargetDataRef TD,
-    LLVMTypeRef Ty,
-  ) {
-    return _LLVMStoreSizeOfType(
-      TD,
-      Ty,
-    );
-  }
-
-  late final _LLVMStoreSizeOfTypePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedLongLong Function(
-              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMStoreSizeOfType');
-  late final _LLVMStoreSizeOfType = _LLVMStoreSizeOfTypePtr.asFunction<
-      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
-
-  /// Computes the ABI size of a type in bytes for a target.
-  /// See the method llvm::DataLayout::getTypeAllocSize.
-  int LLVMABISizeOfType(
-    LLVMTargetDataRef TD,
-    LLVMTypeRef Ty,
-  ) {
-    return _LLVMABISizeOfType(
-      TD,
-      Ty,
-    );
-  }
-
-  late final _LLVMABISizeOfTypePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedLongLong Function(
-              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMABISizeOfType');
-  late final _LLVMABISizeOfType = _LLVMABISizeOfTypePtr.asFunction<
-      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
-
-  /// Computes the ABI alignment of a type in bytes for a target.
-  /// See the method llvm::DataLayout::getTypeABISize.
-  int LLVMABIAlignmentOfType(
-    LLVMTargetDataRef TD,
-    LLVMTypeRef Ty,
-  ) {
-    return _LLVMABIAlignmentOfType(
-      TD,
-      Ty,
-    );
-  }
-
-  late final _LLVMABIAlignmentOfTypePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedInt Function(
-              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMABIAlignmentOfType');
-  late final _LLVMABIAlignmentOfType = _LLVMABIAlignmentOfTypePtr.asFunction<
-      int Function(LLVMTargetDataRef, LLVMTypeRef)>();
-
-  /// Computes the call frame alignment of a type in bytes for a target.
-  /// See the method llvm::DataLayout::getTypeABISize.
-  int LLVMCallFrameAlignmentOfType(
-    LLVMTargetDataRef TD,
-    LLVMTypeRef Ty,
-  ) {
-    return _LLVMCallFrameAlignmentOfType(
-      TD,
-      Ty,
-    );
-  }
-
-  late final _LLVMCallFrameAlignmentOfTypePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedInt Function(
-              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMCallFrameAlignmentOfType');
-  late final _LLVMCallFrameAlignmentOfType = _LLVMCallFrameAlignmentOfTypePtr
-      .asFunction<int Function(LLVMTargetDataRef, LLVMTypeRef)>();
-
-  /// Computes the preferred alignment of a type in bytes for a target.
-  /// See the method llvm::DataLayout::getTypeABISize.
-  int LLVMPreferredAlignmentOfType(
-    LLVMTargetDataRef TD,
-    LLVMTypeRef Ty,
-  ) {
-    return _LLVMPreferredAlignmentOfType(
-      TD,
-      Ty,
-    );
-  }
-
-  late final _LLVMPreferredAlignmentOfTypePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedInt Function(
-              LLVMTargetDataRef, LLVMTypeRef)>>('LLVMPreferredAlignmentOfType');
-  late final _LLVMPreferredAlignmentOfType = _LLVMPreferredAlignmentOfTypePtr
-      .asFunction<int Function(LLVMTargetDataRef, LLVMTypeRef)>();
-
-  /// Computes the preferred alignment of a global variable in bytes for a target.
-  /// See the method llvm::DataLayout::getPreferredAlignment.
-  int LLVMPreferredAlignmentOfGlobal(
-    LLVMTargetDataRef TD,
-    LLVMValueRef GlobalVar,
-  ) {
-    return _LLVMPreferredAlignmentOfGlobal(
-      TD,
-      GlobalVar,
-    );
-  }
-
-  late final _LLVMPreferredAlignmentOfGlobalPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedInt Function(LLVMTargetDataRef,
-              LLVMValueRef)>>('LLVMPreferredAlignmentOfGlobal');
-  late final _LLVMPreferredAlignmentOfGlobal =
-      _LLVMPreferredAlignmentOfGlobalPtr.asFunction<
-          int Function(LLVMTargetDataRef, LLVMValueRef)>();
-
-  /// Computes the structure element that contains the byte offset for a target.
-  /// See the method llvm::StructLayout::getElementContainingOffset.
-  int LLVMElementAtOffset(
-    LLVMTargetDataRef TD,
-    LLVMTypeRef StructTy,
-    int Offset,
-  ) {
-    return _LLVMElementAtOffset(
-      TD,
-      StructTy,
-      Offset,
-    );
-  }
-
-  late final _LLVMElementAtOffsetPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedInt Function(LLVMTargetDataRef, LLVMTypeRef,
-              ffi.UnsignedLongLong)>>('LLVMElementAtOffset');
-  late final _LLVMElementAtOffset = _LLVMElementAtOffsetPtr.asFunction<
-      int Function(LLVMTargetDataRef, LLVMTypeRef, int)>();
-
-  /// Computes the byte offset of the indexed struct element for a target.
-  /// See the method llvm::StructLayout::getElementContainingOffset.
-  int LLVMOffsetOfElement(
-    LLVMTargetDataRef TD,
-    LLVMTypeRef StructTy,
-    int Element,
-  ) {
-    return _LLVMOffsetOfElement(
-      TD,
-      StructTy,
-      Element,
-    );
-  }
-
-  late final _LLVMOffsetOfElementPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedLongLong Function(LLVMTargetDataRef, LLVMTypeRef,
-              ffi.UnsignedInt)>>('LLVMOffsetOfElement');
-  late final _LLVMOffsetOfElement = _LLVMOffsetOfElementPtr.asFunction<
-      int Function(LLVMTargetDataRef, LLVMTypeRef, int)>();
-
-  /// Returns the first llvm::Target in the registered targets list.
-  LLVMTargetRef LLVMGetFirstTarget() {
-    return _LLVMGetFirstTarget();
-  }
-
-  late final _LLVMGetFirstTargetPtr =
-      _lookup<ffi.NativeFunction<LLVMTargetRef Function()>>(
-          'LLVMGetFirstTarget');
-  late final _LLVMGetFirstTarget =
-      _LLVMGetFirstTargetPtr.asFunction<LLVMTargetRef Function()>();
-
-  /// Returns the next llvm::Target given a previous one (or null if there's none)
-  LLVMTargetRef LLVMGetNextTarget(
-    LLVMTargetRef T,
-  ) {
-    return _LLVMGetNextTarget(
-      T,
-    );
-  }
-
-  late final _LLVMGetNextTargetPtr =
-      _lookup<ffi.NativeFunction<LLVMTargetRef Function(LLVMTargetRef)>>(
-          'LLVMGetNextTarget');
-  late final _LLVMGetNextTarget =
-      _LLVMGetNextTargetPtr.asFunction<LLVMTargetRef Function(LLVMTargetRef)>();
-
-  /// Finds the target corresponding to the given name and stores it in \p T.
-  /// Returns 0 on success.
-  LLVMTargetRef LLVMGetTargetFromName(
-    ffi.Pointer<ffi.Char> Name,
-  ) {
-    return _LLVMGetTargetFromName(
-      Name,
-    );
-  }
-
-  late final _LLVMGetTargetFromNamePtr = _lookup<
-          ffi.NativeFunction<LLVMTargetRef Function(ffi.Pointer<ffi.Char>)>>(
-      'LLVMGetTargetFromName');
-  late final _LLVMGetTargetFromName = _LLVMGetTargetFromNamePtr.asFunction<
-      LLVMTargetRef Function(ffi.Pointer<ffi.Char>)>();
-
-  /// Finds the target corresponding to the given triple and stores it in \p T.
-  /// Returns 0 on success. Optionally returns any error in ErrorMessage.
-  /// Use LLVMDisposeMessage to dispose the message.
-  int LLVMGetTargetFromTriple(
-    ffi.Pointer<ffi.Char> Triple,
-    ffi.Pointer<LLVMTargetRef> T,
-    ffi.Pointer<ffi.Pointer<ffi.Char>> ErrorMessage,
-  ) {
-    return _LLVMGetTargetFromTriple(
-      Triple,
-      T,
-      ErrorMessage,
-    );
-  }
-
-  late final _LLVMGetTargetFromTriplePtr = _lookup<
-      ffi.NativeFunction<
-          LLVMBool Function(ffi.Pointer<ffi.Char>, ffi.Pointer<LLVMTargetRef>,
-              ffi.Pointer<ffi.Pointer<ffi.Char>>)>>('LLVMGetTargetFromTriple');
-  late final _LLVMGetTargetFromTriple = _LLVMGetTargetFromTriplePtr.asFunction<
-      int Function(ffi.Pointer<ffi.Char>, ffi.Pointer<LLVMTargetRef>,
-          ffi.Pointer<ffi.Pointer<ffi.Char>>)>();
-
-  /// Returns the name of a target. See llvm::Target::getName
-  ffi.Pointer<ffi.Char> LLVMGetTargetName(
-    LLVMTargetRef T,
-  ) {
-    return _LLVMGetTargetName(
-      T,
-    );
-  }
-
-  late final _LLVMGetTargetNamePtr = _lookup<
-          ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>>(
-      'LLVMGetTargetName');
-  late final _LLVMGetTargetName = _LLVMGetTargetNamePtr.asFunction<
-      ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>();
-
-  /// Returns the description  of a target. See llvm::Target::getDescription
-  ffi.Pointer<ffi.Char> LLVMGetTargetDescription(
-    LLVMTargetRef T,
-  ) {
-    return _LLVMGetTargetDescription(
-      T,
-    );
-  }
-
-  late final _LLVMGetTargetDescriptionPtr = _lookup<
-          ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>>(
-      'LLVMGetTargetDescription');
-  late final _LLVMGetTargetDescription = _LLVMGetTargetDescriptionPtr
-      .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetRef)>();
-
-  /// Returns if the target has a JIT
-  int LLVMTargetHasJIT(
-    LLVMTargetRef T,
-  ) {
-    return _LLVMTargetHasJIT(
-      T,
-    );
-  }
-
-  late final _LLVMTargetHasJITPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTargetRef)>>(
-          'LLVMTargetHasJIT');
-  late final _LLVMTargetHasJIT =
-      _LLVMTargetHasJITPtr.asFunction<int Function(LLVMTargetRef)>();
-
-  /// Returns if the target has a TargetMachine associated
-  int LLVMTargetHasTargetMachine(
-    LLVMTargetRef T,
-  ) {
-    return _LLVMTargetHasTargetMachine(
-      T,
-    );
-  }
-
-  late final _LLVMTargetHasTargetMachinePtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTargetRef)>>(
-          'LLVMTargetHasTargetMachine');
-  late final _LLVMTargetHasTargetMachine =
-      _LLVMTargetHasTargetMachinePtr.asFunction<int Function(LLVMTargetRef)>();
-
-  /// Returns if the target as an ASM backend (required for emitting output)
-  int LLVMTargetHasAsmBackend(
-    LLVMTargetRef T,
-  ) {
-    return _LLVMTargetHasAsmBackend(
-      T,
-    );
-  }
-
-  late final _LLVMTargetHasAsmBackendPtr =
-      _lookup<ffi.NativeFunction<LLVMBool Function(LLVMTargetRef)>>(
-          'LLVMTargetHasAsmBackend');
-  late final _LLVMTargetHasAsmBackend =
-      _LLVMTargetHasAsmBackendPtr.asFunction<int Function(LLVMTargetRef)>();
-
-  /// Creates a new llvm::TargetMachine. See llvm::Target::createTargetMachine
-  LLVMTargetMachineRef LLVMCreateTargetMachine(
-    LLVMTargetRef T,
-    ffi.Pointer<ffi.Char> Triple,
-    ffi.Pointer<ffi.Char> CPU,
-    ffi.Pointer<ffi.Char> Features,
-    int Level,
-    int Reloc,
-    int CodeModel,
-  ) {
-    return _LLVMCreateTargetMachine(
-      T,
-      Triple,
-      CPU,
-      Features,
-      Level,
-      Reloc,
-      CodeModel,
-    );
-  }
-
-  late final _LLVMCreateTargetMachinePtr = _lookup<
-      ffi.NativeFunction<
-          LLVMTargetMachineRef Function(
-              LLVMTargetRef,
-              ffi.Pointer<ffi.Char>,
-              ffi.Pointer<ffi.Char>,
-              ffi.Pointer<ffi.Char>,
-              ffi.Int32,
-              ffi.Int32,
-              ffi.Int32)>>('LLVMCreateTargetMachine');
-  late final _LLVMCreateTargetMachine = _LLVMCreateTargetMachinePtr.asFunction<
-      LLVMTargetMachineRef Function(LLVMTargetRef, ffi.Pointer<ffi.Char>,
-          ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>, int, int, int)>();
-
-  /// Dispose the LLVMTargetMachineRef instance generated by
-  /// LLVMCreateTargetMachine.
-  void LLVMDisposeTargetMachine(
-    LLVMTargetMachineRef T,
-  ) {
-    return _LLVMDisposeTargetMachine(
-      T,
-    );
-  }
-
-  late final _LLVMDisposeTargetMachinePtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(LLVMTargetMachineRef)>>(
-          'LLVMDisposeTargetMachine');
-  late final _LLVMDisposeTargetMachine = _LLVMDisposeTargetMachinePtr
-      .asFunction<void Function(LLVMTargetMachineRef)>();
-
-  /// Returns the Target used in a TargetMachine
-  LLVMTargetRef LLVMGetTargetMachineTarget(
-    LLVMTargetMachineRef T,
-  ) {
-    return _LLVMGetTargetMachineTarget(
-      T,
-    );
-  }
-
-  late final _LLVMGetTargetMachineTargetPtr =
-      _lookup<ffi.NativeFunction<LLVMTargetRef Function(LLVMTargetMachineRef)>>(
-          'LLVMGetTargetMachineTarget');
-  late final _LLVMGetTargetMachineTarget = _LLVMGetTargetMachineTargetPtr
-      .asFunction<LLVMTargetRef Function(LLVMTargetMachineRef)>();
-
-  /// Returns the triple used creating this target machine. See
-  /// llvm::TargetMachine::getTriple. The result needs to be disposed with
-  /// LLVMDisposeMessage.
-  ffi.Pointer<ffi.Char> LLVMGetTargetMachineTriple(
-    LLVMTargetMachineRef T,
-  ) {
-    return _LLVMGetTargetMachineTriple(
-      T,
-    );
-  }
-
-  late final _LLVMGetTargetMachineTriplePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              LLVMTargetMachineRef)>>('LLVMGetTargetMachineTriple');
-  late final _LLVMGetTargetMachineTriple = _LLVMGetTargetMachineTriplePtr
-      .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetMachineRef)>();
-
-  /// Returns the cpu used creating this target machine. See
-  /// llvm::TargetMachine::getCPU. The result needs to be disposed with
-  /// LLVMDisposeMessage.
-  ffi.Pointer<ffi.Char> LLVMGetTargetMachineCPU(
-    LLVMTargetMachineRef T,
-  ) {
-    return _LLVMGetTargetMachineCPU(
-      T,
-    );
-  }
-
-  late final _LLVMGetTargetMachineCPUPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              LLVMTargetMachineRef)>>('LLVMGetTargetMachineCPU');
-  late final _LLVMGetTargetMachineCPU = _LLVMGetTargetMachineCPUPtr.asFunction<
-      ffi.Pointer<ffi.Char> Function(LLVMTargetMachineRef)>();
-
-  /// Returns the feature string used creating this target machine. See
-  /// llvm::TargetMachine::getFeatureString. The result needs to be disposed with
-  /// LLVMDisposeMessage.
-  ffi.Pointer<ffi.Char> LLVMGetTargetMachineFeatureString(
-    LLVMTargetMachineRef T,
-  ) {
-    return _LLVMGetTargetMachineFeatureString(
-      T,
-    );
-  }
-
-  late final _LLVMGetTargetMachineFeatureStringPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              LLVMTargetMachineRef)>>('LLVMGetTargetMachineFeatureString');
-  late final _LLVMGetTargetMachineFeatureString =
-      _LLVMGetTargetMachineFeatureStringPtr.asFunction<
-          ffi.Pointer<ffi.Char> Function(LLVMTargetMachineRef)>();
-
-  /// Create a DataLayout based on the targetMachine.
-  LLVMTargetDataRef LLVMCreateTargetDataLayout(
-    LLVMTargetMachineRef T,
-  ) {
-    return _LLVMCreateTargetDataLayout(
-      T,
-    );
-  }
-
-  late final _LLVMCreateTargetDataLayoutPtr = _lookup<
-          ffi.NativeFunction<LLVMTargetDataRef Function(LLVMTargetMachineRef)>>(
-      'LLVMCreateTargetDataLayout');
-  late final _LLVMCreateTargetDataLayout = _LLVMCreateTargetDataLayoutPtr
-      .asFunction<LLVMTargetDataRef Function(LLVMTargetMachineRef)>();
-
-  /// Set the target machine's ASM verbosity.
-  void LLVMSetTargetMachineAsmVerbosity(
-    LLVMTargetMachineRef T,
-    int VerboseAsm,
-  ) {
-    return _LLVMSetTargetMachineAsmVerbosity(
-      T,
-      VerboseAsm,
-    );
-  }
-
-  late final _LLVMSetTargetMachineAsmVerbosityPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(LLVMTargetMachineRef,
-              LLVMBool)>>('LLVMSetTargetMachineAsmVerbosity');
-  late final _LLVMSetTargetMachineAsmVerbosity =
-      _LLVMSetTargetMachineAsmVerbosityPtr.asFunction<
-          void Function(LLVMTargetMachineRef, int)>();
-
-  /// Emits an asm or object file for the given module to the filename. This
-  /// wraps several c++ only classes (among them a file stream). Returns any
-  /// error in ErrorMessage. Use LLVMDisposeMessage to dispose the message.
-  int LLVMTargetMachineEmitToFile(
-    LLVMTargetMachineRef T,
-    LLVMModuleRef M,
-    ffi.Pointer<ffi.Char> Filename,
-    int codegen,
-    ffi.Pointer<ffi.Pointer<ffi.Char>> ErrorMessage,
-  ) {
-    return _LLVMTargetMachineEmitToFile(
-      T,
-      M,
-      Filename,
-      codegen,
-      ErrorMessage,
-    );
-  }
-
-  late final _LLVMTargetMachineEmitToFilePtr = _lookup<
-          ffi.NativeFunction<
-              LLVMBool Function(
-                  LLVMTargetMachineRef,
-                  LLVMModuleRef,
-                  ffi.Pointer<ffi.Char>,
-                  ffi.Int32,
-                  ffi.Pointer<ffi.Pointer<ffi.Char>>)>>(
-      'LLVMTargetMachineEmitToFile');
-  late final _LLVMTargetMachineEmitToFile =
-      _LLVMTargetMachineEmitToFilePtr.asFunction<
-          int Function(
-              LLVMTargetMachineRef,
-              LLVMModuleRef,
-              ffi.Pointer<ffi.Char>,
-              int,
-              ffi.Pointer<ffi.Pointer<ffi.Char>>)>();
-
-  /// Compile the LLVM IR stored in \p M and store the result in \p OutMemBuf.
-  int LLVMTargetMachineEmitToMemoryBuffer(
-    LLVMTargetMachineRef T,
-    LLVMModuleRef M,
-    int codegen,
-    ffi.Pointer<ffi.Pointer<ffi.Char>> ErrorMessage,
-    ffi.Pointer<LLVMMemoryBufferRef> OutMemBuf,
-  ) {
-    return _LLVMTargetMachineEmitToMemoryBuffer(
-      T,
-      M,
-      codegen,
-      ErrorMessage,
-      OutMemBuf,
-    );
-  }
-
-  late final _LLVMTargetMachineEmitToMemoryBufferPtr = _lookup<
-          ffi.NativeFunction<
-              LLVMBool Function(
-                  LLVMTargetMachineRef,
-                  LLVMModuleRef,
-                  ffi.Int32,
-                  ffi.Pointer<ffi.Pointer<ffi.Char>>,
-                  ffi.Pointer<LLVMMemoryBufferRef>)>>(
-      'LLVMTargetMachineEmitToMemoryBuffer');
-  late final _LLVMTargetMachineEmitToMemoryBuffer =
-      _LLVMTargetMachineEmitToMemoryBufferPtr.asFunction<
-          int Function(
-              LLVMTargetMachineRef,
-              LLVMModuleRef,
-              int,
-              ffi.Pointer<ffi.Pointer<ffi.Char>>,
-              ffi.Pointer<LLVMMemoryBufferRef>)>();
-
-  /// Get a triple for the host machine as a string. The result needs to be
-  /// disposed with LLVMDisposeMessage.
-  ffi.Pointer<ffi.Char> LLVMGetDefaultTargetTriple() {
-    return _LLVMGetDefaultTargetTriple();
-  }
-
-  late final _LLVMGetDefaultTargetTriplePtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
-          'LLVMGetDefaultTargetTriple');
-  late final _LLVMGetDefaultTargetTriple = _LLVMGetDefaultTargetTriplePtr
-      .asFunction<ffi.Pointer<ffi.Char> Function()>();
-
-  /// Normalize a target triple. The result needs to be disposed with
-  /// LLVMDisposeMessage.
-  ffi.Pointer<ffi.Char> LLVMNormalizeTargetTriple(
-    ffi.Pointer<ffi.Char> triple,
-  ) {
-    return _LLVMNormalizeTargetTriple(
-      triple,
-    );
-  }
-
-  late final _LLVMNormalizeTargetTriplePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              ffi.Pointer<ffi.Char>)>>('LLVMNormalizeTargetTriple');
-  late final _LLVMNormalizeTargetTriple = _LLVMNormalizeTargetTriplePtr
-      .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)>();
-
-  /// Get the host CPU as a string. The result needs to be disposed with
-  /// LLVMDisposeMessage.
-  ffi.Pointer<ffi.Char> LLVMGetHostCPUName() {
-    return _LLVMGetHostCPUName();
-  }
-
-  late final _LLVMGetHostCPUNamePtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
-          'LLVMGetHostCPUName');
-  late final _LLVMGetHostCPUName =
-      _LLVMGetHostCPUNamePtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
-
-  /// Get the host CPU's features as a string. The result needs to be disposed
-  /// with LLVMDisposeMessage.
-  ffi.Pointer<ffi.Char> LLVMGetHostCPUFeatures() {
-    return _LLVMGetHostCPUFeatures();
-  }
-
-  late final _LLVMGetHostCPUFeaturesPtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
-          'LLVMGetHostCPUFeatures');
-  late final _LLVMGetHostCPUFeatures =
-      _LLVMGetHostCPUFeaturesPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
-
-  /// Adds the target-specific analysis passes to the pass manager.
-  void LLVMAddAnalysisPasses(
-    LLVMTargetMachineRef T,
-    LLVMPassManagerRef PM,
-  ) {
-    return _LLVMAddAnalysisPasses(
-      T,
-      PM,
-    );
-  }
-
-  late final _LLVMAddAnalysisPassesPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(LLVMTargetMachineRef,
-              LLVMPassManagerRef)>>('LLVMAddAnalysisPasses');
-  late final _LLVMAddAnalysisPasses = _LLVMAddAnalysisPassesPtr.asFunction<
-      void Function(LLVMTargetMachineRef, LLVMPassManagerRef)>();
+  set namespace(int value) => _namespace.value = value;
 
   void initLLVM() {
     return _initLLVM();
@@ -14865,18 +14864,6 @@ class LLVMCore {
   late final _initLLVMPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function()>>('initLLVM');
   late final _initLLVM = _initLLVMPtr.asFunction<void Function()>();
-
-  void destory(
-    KModuleRef module,
-  ) {
-    return _destory(
-      module,
-    );
-  }
-
-  late final _destoryPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(KModuleRef)>>('destory');
-  late final _destory = _destoryPtr.asFunction<void Function(KModuleRef)>();
 
   LLVMValueRef getOrInsertFunction(
     ffi.Pointer<ffi.Char> name,
@@ -14898,97 +14885,6 @@ class LLVMCore {
       LLVMValueRef Function(
           ffi.Pointer<ffi.Char>, LLVMModuleRef, LLVMTypeRef)>();
 
-  KModuleRef createKModule(
-    ffi.Pointer<ffi.Char> name,
-  ) {
-    return _createKModule(
-      name,
-    );
-  }
-
-  late final _createKModulePtr =
-      _lookup<ffi.NativeFunction<KModuleRef Function(ffi.Pointer<ffi.Char>)>>(
-          'createKModule');
-  late final _createKModule = _createKModulePtr
-      .asFunction<KModuleRef Function(ffi.Pointer<ffi.Char>)>();
-
-  void kModuleInit(
-    KModuleRef module,
-  ) {
-    return _kModuleInit(
-      module,
-    );
-  }
-
-  late final _kModuleInitPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(KModuleRef)>>('kModuleInit');
-  late final _kModuleInit =
-      _kModuleInitPtr.asFunction<void Function(KModuleRef)>();
-
-  void writeOutput(
-    KModuleRef module,
-    int index,
-    ffi.Pointer<ffi.Char> name,
-  ) {
-    return _writeOutput(
-      module,
-      index,
-      name,
-    );
-  }
-
-  late final _writeOutputPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              KModuleRef, ffi.Int, ffi.Pointer<ffi.Char>)>>('writeOutput');
-  late final _writeOutput = _writeOutputPtr
-      .asFunction<void Function(KModuleRef, int, ffi.Pointer<ffi.Char>)>();
-
-  LLVMModuleRef getModule(
-    KModuleRef ref,
-  ) {
-    return _getModule(
-      ref,
-    );
-  }
-
-  late final _getModulePtr =
-      _lookup<ffi.NativeFunction<LLVMModuleRef Function(KModuleRef)>>(
-          'getModule');
-  late final _getModule =
-      _getModulePtr.asFunction<LLVMModuleRef Function(KModuleRef)>();
-
-  LLVMContextRef getLLVMContext(
-    KModuleRef ref,
-  ) {
-    return _getLLVMContext(
-      ref,
-    );
-  }
-
-  late final _getLLVMContextPtr =
-      _lookup<ffi.NativeFunction<LLVMContextRef Function(KModuleRef)>>(
-          'getLLVMContext');
-  late final _getLLVMContext =
-      _getLLVMContextPtr.asFunction<LLVMContextRef Function(KModuleRef)>();
-
-  LLVMAttributeRef LLVMCreateStructRetAttr(
-    LLVMContextRef C,
-    LLVMTypeRef Ty,
-  ) {
-    return _LLVMCreateStructRetAttr(
-      C,
-      Ty,
-    );
-  }
-
-  late final _LLVMCreateStructRetAttrPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMAttributeRef Function(
-              LLVMContextRef, LLVMTypeRef)>>('LLVMCreateStructRetAttr');
-  late final _LLVMCreateStructRetAttr = _LLVMCreateStructRetAttrPtr.asFunction<
-      LLVMAttributeRef Function(LLVMContextRef, LLVMTypeRef)>();
-
   LLVMMetadataRef LLVMCreateCompileUnit(
     LLVMDIBuilderRef builder,
     ffi.Pointer<ffi.Char> fileName,
@@ -15009,28 +14905,26 @@ class LLVMCore {
       LLVMMetadataRef Function(
           LLVMDIBuilderRef, ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>();
 
-  void LLVMIRReader(
-    LLVMContextRef context,
-    ffi.Pointer<ffi.Char> name,
-    ffi.Pointer<ffi.Char> outName,
+  LLVMTargetMachineRef createTarget(
+    LLVMModuleRef M,
+    ffi.Pointer<ffi.Char> tripleStr,
   ) {
-    return _LLVMIRReader(
-      context,
-      name,
-      outName,
+    return _createTarget(
+      M,
+      tripleStr,
     );
   }
 
-  late final _LLVMIRReaderPtr = _lookup<
+  late final _createTargetPtr = _lookup<
       ffi.NativeFunction<
-          ffi.Void Function(LLVMContextRef, ffi.Pointer<ffi.Char>,
-              ffi.Pointer<ffi.Char>)>>('LLVMIRReader');
-  late final _LLVMIRReader = _LLVMIRReaderPtr.asFunction<
-      void Function(
-          LLVMContextRef, ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>();
+          LLVMTargetMachineRef Function(
+              LLVMModuleRef, ffi.Pointer<ffi.Char>)>>('createTarget');
+  late final _createTarget = _createTargetPtr.asFunction<
+      LLVMTargetMachineRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>)>();
 
   void optimize(
-    KModuleRef kModule,
+    LLVMModuleRef M,
+    LLVMTargetMachineRef target,
     int OptLevelRust,
     int OptStage,
     int NoPrepopulatePasses,
@@ -15043,7 +14937,8 @@ class LLVMCore {
     int DisableSimplifyLibCalls,
   ) {
     return _optimize(
-      kModule,
+      M,
+      target,
       OptLevelRust,
       OptStage,
       NoPrepopulatePasses,
@@ -15060,7 +14955,8 @@ class LLVMCore {
   late final _optimizePtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(
-              KModuleRef,
+              LLVMModuleRef,
+              LLVMTargetMachineRef,
               ffi.Int32,
               ffi.Int32,
               ffi.Int,
@@ -15072,8 +14968,30 @@ class LLVMCore {
               ffi.Int,
               ffi.Int)>>('optimize');
   late final _optimize = _optimizePtr.asFunction<
+      void Function(LLVMModuleRef, LLVMTargetMachineRef, int, int, int, int,
+          int, int, int, int, int, int)>();
+
+  void writeOutput(
+    LLVMModuleRef M,
+    LLVMTargetMachineRef target,
+    int index,
+    ffi.Pointer<ffi.Char> name,
+  ) {
+    return _writeOutput(
+      M,
+      target,
+      index,
+      name,
+    );
+  }
+
+  late final _writeOutputPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMModuleRef, LLVMTargetMachineRef, ffi.Int,
+              ffi.Pointer<ffi.Char>)>>('writeOutput');
+  late final _writeOutput = _writeOutputPtr.asFunction<
       void Function(
-          KModuleRef, int, int, int, int, int, int, int, int, int, int)>();
+          LLVMModuleRef, LLVMTargetMachineRef, int, ffi.Pointer<ffi.Char>)>();
 
   /// The current debug metadata version number.
   int LLVMDebugMetadataVersion() {
@@ -18369,6 +18287,106 @@ class LLVMCore {
       _LLVMGetMetadataKindPtr.asFunction<int Function(LLVMMetadataRef)>();
 }
 
+final class LLVMOpaqueTargetData extends ffi.Opaque {}
+
+final class LLVMOpaqueTargetLibraryInfotData extends ffi.Opaque {}
+
+typedef LLVMTargetDataRef = ffi.Pointer<LLVMOpaqueTargetData>;
+
+/// The top-level container for all other LLVM Intermediate Representation (IR)
+/// objects.
+///
+/// @see llvm::Module
+typedef LLVMModuleRef = ffi.Pointer<LLVMOpaqueModule>;
+
+final class LLVMOpaqueModule extends ffi.Opaque {}
+
+typedef LLVMTargetLibraryInfoRef
+    = ffi.Pointer<LLVMOpaqueTargetLibraryInfotData>;
+
+/// @see llvm::PassManagerBase
+typedef LLVMPassManagerRef = ffi.Pointer<LLVMOpaquePassManager>;
+
+final class LLVMOpaquePassManager extends ffi.Opaque {}
+
+/// @defgroup LLVMCTarget Target information
+/// @ingroup LLVMC
+///
+/// @{
+abstract class LLVMByteOrdering {
+  static const int LLVMBigEndian = 0;
+  static const int LLVMLittleEndian = 1;
+}
+
+/// Each value in the LLVM IR has a type, an LLVMTypeRef.
+///
+/// @see llvm::Type
+typedef LLVMTypeRef = ffi.Pointer<LLVMOpaqueType>;
+
+final class LLVMOpaqueType extends ffi.Opaque {}
+
+/// The top-level container for all LLVM global data. See the LLVMContext class.
+typedef LLVMContextRef = ffi.Pointer<LLVMOpaqueContext>;
+
+final class LLVMOpaqueContext extends ffi.Opaque {}
+
+/// Represents an individual value in LLVM IR.
+///
+/// This models llvm::Value.
+typedef LLVMValueRef = ffi.Pointer<LLVMOpaqueValue>;
+
+final class LLVMOpaqueValue extends ffi.Opaque {}
+
+final class LLVMOpaqueTargetMachine extends ffi.Opaque {}
+
+final class LLVMTarget extends ffi.Opaque {}
+
+abstract class LLVMCodeGenOptLevel {
+  static const int LLVMCodeGenLevelNone = 0;
+  static const int LLVMCodeGenLevelLess = 1;
+  static const int LLVMCodeGenLevelDefault = 2;
+  static const int LLVMCodeGenLevelAggressive = 3;
+}
+
+abstract class LLVMRelocMode {
+  static const int LLVMRelocDefault = 0;
+  static const int LLVMRelocStatic = 1;
+  static const int LLVMRelocPIC = 2;
+  static const int LLVMRelocDynamicNoPic = 3;
+  static const int LLVMRelocROPI = 4;
+  static const int LLVMRelocRWPI = 5;
+  static const int LLVMRelocROPI_RWPI = 6;
+}
+
+abstract class LLVMCodeModel {
+  static const int LLVMCodeModelDefault = 0;
+  static const int LLVMCodeModelJITDefault = 1;
+  static const int LLVMCodeModelTiny = 2;
+  static const int LLVMCodeModelSmall = 3;
+  static const int LLVMCodeModelKernel = 4;
+  static const int LLVMCodeModelMedium = 5;
+  static const int LLVMCodeModelLarge = 6;
+}
+
+abstract class LLVMCodeGenFileType {
+  static const int LLVMAssemblyFile = 0;
+  static const int LLVMObjectFile = 1;
+}
+
+typedef LLVMTargetRef = ffi.Pointer<LLVMTarget>;
+
+/// @addtogroup LLVMCTarget
+///
+/// @{
+typedef LLVMTargetMachineRef = ffi.Pointer<LLVMOpaqueTargetMachine>;
+
+/// Used to pass regions of memory through LLVM interfaces.
+///
+/// @see llvm::MemoryBuffer
+typedef LLVMMemoryBufferRef = ffi.Pointer<LLVMOpaqueMemoryBuffer>;
+
+final class LLVMOpaqueMemoryBuffer extends ffi.Opaque {}
+
 abstract class LLVMAttr {
   static const int FirstEnumAttr = 1;
   static const int AllocAlign = 1;
@@ -19019,11 +19037,6 @@ typedef LLVMPassRegistryRef = ffi.Pointer<LLVMOpaquePassRegistry>;
 
 final class LLVMOpaquePassRegistry extends ffi.Opaque {}
 
-/// The top-level container for all LLVM global data. See the LLVMContext class.
-typedef LLVMContextRef = ffi.Pointer<LLVMOpaqueContext>;
-
-final class LLVMOpaqueContext extends ffi.Opaque {}
-
 /// @defgroup LLVMCCoreContext Contexts
 ///
 /// Contexts are execution states for the core LLVM IR system.
@@ -19046,32 +19059,12 @@ typedef LLVMYieldCallback = ffi.Pointer<
     ffi.NativeFunction<
         ffi.Void Function(LLVMContextRef, ffi.Pointer<ffi.Void>)>>;
 
-/// @defgroup LLVMCSupportTypes Types and Enumerations
-///
-/// @{
-typedef LLVMBool = ffi.Int;
-
 /// Used to represent an attributes.
 ///
 /// @see llvm::Attribute
 typedef LLVMAttributeRef = ffi.Pointer<LLVMOpaqueAttributeRef>;
 
 final class LLVMOpaqueAttributeRef extends ffi.Opaque {}
-
-/// Each value in the LLVM IR has a type, an LLVMTypeRef.
-///
-/// @see llvm::Type
-typedef LLVMTypeRef = ffi.Pointer<LLVMOpaqueType>;
-
-final class LLVMOpaqueType extends ffi.Opaque {}
-
-/// The top-level container for all other LLVM Intermediate Representation (IR)
-/// objects.
-///
-/// @see llvm::Module
-typedef LLVMModuleRef = ffi.Pointer<LLVMOpaqueModule>;
-
-final class LLVMOpaqueModule extends ffi.Opaque {}
 
 /// @see llvm::Module::ModuleFlagEntry
 typedef LLVMModuleFlagEntry = LLVMOpaqueModuleFlagEntry;
@@ -19084,13 +19077,6 @@ final class LLVMOpaqueModuleFlagEntry extends ffi.Opaque {}
 typedef LLVMMetadataRef = ffi.Pointer<LLVMOpaqueMetadata>;
 
 final class LLVMOpaqueMetadata extends ffi.Opaque {}
-
-/// Represents an individual value in LLVM IR.
-///
-/// This models llvm::Value.
-typedef LLVMValueRef = ffi.Pointer<LLVMOpaqueValue>;
-
-final class LLVMOpaqueValue extends ffi.Opaque {}
 
 /// Represents an LLVM Named Metadata Node.
 ///
@@ -19136,88 +19122,6 @@ typedef LLVMModuleProviderRef = ffi.Pointer<LLVMOpaqueModuleProvider>;
 
 final class LLVMOpaqueModuleProvider extends ffi.Opaque {}
 
-/// Used to pass regions of memory through LLVM interfaces.
-///
-/// @see llvm::MemoryBuffer
-typedef LLVMMemoryBufferRef = ffi.Pointer<LLVMOpaqueMemoryBuffer>;
-
-final class LLVMOpaqueMemoryBuffer extends ffi.Opaque {}
-
-/// @see llvm::PassManagerBase
-typedef LLVMPassManagerRef = ffi.Pointer<LLVMOpaquePassManager>;
-
-final class LLVMOpaquePassManager extends ffi.Opaque {}
-
-/// @defgroup LLVMCTarget Target information
-/// @ingroup LLVMC
-///
-/// @{
-abstract class LLVMByteOrdering {
-  static const int LLVMBigEndian = 0;
-  static const int LLVMLittleEndian = 1;
-}
-
-final class LLVMOpaqueTargetData extends ffi.Opaque {}
-
-final class LLVMOpaqueTargetLibraryInfotData extends ffi.Opaque {}
-
-typedef LLVMTargetDataRef = ffi.Pointer<LLVMOpaqueTargetData>;
-typedef LLVMTargetLibraryInfoRef
-    = ffi.Pointer<LLVMOpaqueTargetLibraryInfotData>;
-
-final class LLVMOpaqueTargetMachine extends ffi.Opaque {}
-
-final class LLVMTarget extends ffi.Opaque {}
-
-abstract class LLVMCodeGenOptLevel {
-  static const int LLVMCodeGenLevelNone = 0;
-  static const int LLVMCodeGenLevelLess = 1;
-  static const int LLVMCodeGenLevelDefault = 2;
-  static const int LLVMCodeGenLevelAggressive = 3;
-}
-
-abstract class LLVMRelocMode {
-  static const int LLVMRelocDefault = 0;
-  static const int LLVMRelocStatic = 1;
-  static const int LLVMRelocPIC = 2;
-  static const int LLVMRelocDynamicNoPic = 3;
-  static const int LLVMRelocROPI = 4;
-  static const int LLVMRelocRWPI = 5;
-  static const int LLVMRelocROPI_RWPI = 6;
-}
-
-abstract class LLVMCodeModel {
-  static const int LLVMCodeModelDefault = 0;
-  static const int LLVMCodeModelJITDefault = 1;
-  static const int LLVMCodeModelTiny = 2;
-  static const int LLVMCodeModelSmall = 3;
-  static const int LLVMCodeModelKernel = 4;
-  static const int LLVMCodeModelMedium = 5;
-  static const int LLVMCodeModelLarge = 6;
-}
-
-abstract class LLVMCodeGenFileType {
-  static const int LLVMAssemblyFile = 0;
-  static const int LLVMObjectFile = 1;
-}
-
-typedef LLVMTargetRef = ffi.Pointer<LLVMTarget>;
-
-/// @addtogroup LLVMCTarget
-///
-/// @{
-typedef LLVMTargetMachineRef = ffi.Pointer<LLVMOpaqueTargetMachine>;
-typedef KModuleRef = ffi.Pointer<KOpaqueModule>;
-
-final class KOpaqueModule extends ffi.Opaque {}
-
-/// Represents an LLVM debug info builder.
-///
-/// This models llvm::DIBuilder.
-typedef LLVMDIBuilderRef = ffi.Pointer<LLVMOpaqueDIBuilder>;
-
-final class LLVMOpaqueDIBuilder extends ffi.Opaque {}
-
 abstract class LLVMRustPassBuilderOptLevel {
   static const int O0 = 0;
   static const int O1 = 1;
@@ -19234,6 +19138,13 @@ abstract class LLVMRustOptStage {
   static const int ThinLTO = 3;
   static const int FatLTO = 4;
 }
+
+/// Represents an LLVM debug info builder.
+///
+/// This models llvm::DIBuilder.
+typedef LLVMDIBuilderRef = ffi.Pointer<LLVMOpaqueDIBuilder>;
+
+final class LLVMOpaqueDIBuilder extends ffi.Opaque {}
 
 /// Debug info flags.
 abstract class LLVMDIFlags {
@@ -19345,6 +19256,11 @@ abstract class LLVMDWARFMacinfoRecordType {
   static const int LLVMDWARFMacinfoRecordTypeVendorExt = 255;
 }
 
+/// @defgroup LLVMCSupportTypes Types and Enumerations
+///
+/// @{
+typedef LLVMBool = ffi.Int;
+
 /// An LLVM DWARF type encoding.
 typedef LLVMDWARFTypeEncoding = ffi.UnsignedInt;
 typedef LLVMMetadataKind = ffi.UnsignedInt;
@@ -19425,6 +19341,10 @@ const int LLVMDIArgListMetadataKind = 34;
 
 const int LLVMDIAssignIDMetadataKind = 35;
 
+const int LLVM_ENABLE_ABI_BREAKING_CHECKS = 0;
+
+const int LLVM_ENABLE_REVERSE_ITERATION = 0;
+
 const String LLVM_DEFAULT_TARGET_TRIPLE = 'arm64-apple-darwin22.4.0';
 
 const int LLVM_ENABLE_THREADS = 1;
@@ -19464,7 +19384,3 @@ const int LLVM_HAVE_LIBXAR = 1;
 const int LLVM_UNREACHABLE_OPTIMIZE = 1;
 
 const int LLVM_ENABLE_DIA_SDK = 0;
-
-const int LLVM_ENABLE_ABI_BREAKING_CHECKS = 0;
-
-const int LLVM_ENABLE_REVERSE_ITERATION = 0;

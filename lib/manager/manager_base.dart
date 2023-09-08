@@ -73,25 +73,17 @@ abstract class ManagerBase extends GlobalContext {
     final pname = parseStr(path.name.src);
     var pathName = '';
     final currentPath = current.currentPath;
-    if (currentPath != null) {
-      pathName =
-          join(currentDir.childDirectory(currentPath).parent.path, pname);
-    } else {
-      final p = currentDir.childFile(pname);
-      pathName = p.path;
-    }
+    assert(currentPath != null, 'current == null.');
+
+    pathName = join(currentDir.childDirectory(currentPath!).parent.path, pname);
 
     final pn = normalize(pathName);
     final map = getMap(current);
     var child = map[pn];
     if (child == null) {
-      child = current.defaultImport();
+      child = current.defaultImport(pn);
+
       map[pn] = child;
-      final parser = getParser(pn);
-      if (parser == null) {
-        //error
-        return child;
-      }
 
       baseProcess(
         context: child,
@@ -122,7 +114,6 @@ abstract class ManagerBase extends GlobalContext {
     required void Function(BuildMixin builder) action,
     bool isRoot = true,
   }) {
-    context.currentPath = path;
     parser ??= getParser(path)!;
     context.importHandler = this;
 

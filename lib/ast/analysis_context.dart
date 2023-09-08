@@ -4,7 +4,7 @@ import 'tys.dart';
 
 class RootAnalysis with Tys<AnalysisVariable> {
   @override
-  Tys<LifeCycleVariable> defaultImport() {
+  Tys<LifeCycleVariable> defaultImport(String path) {
     throw UnimplementedError();
   }
 }
@@ -14,8 +14,8 @@ class AnalysisContext with Tys<AnalysisVariable> {
 
   AnalysisContext._(AnalysisContext this.parent);
   @override
-  AnalysisContext defaultImport() {
-    return AnalysisContext.root();
+  AnalysisContext defaultImport(String path) {
+    return AnalysisContext.root()..currentPath = path;
   }
 
   AnalysisContext childContext() {

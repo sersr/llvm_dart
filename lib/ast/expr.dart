@@ -1621,9 +1621,6 @@ class VariableIdentExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    if (ident.src == 'print') {
-      Log.w('....');
-    }
     if (ident.src == 'null') {
       final letTy = LiteralExpr.letTy;
       final ty = letTy?.llvmType.createType(context);
@@ -1802,9 +1799,7 @@ class BlockExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context) {
-    final child = context.clone();
-    block.build(child);
-    return null;
+    throw StateError('use block.build(context) instead.');
   }
 
   @override

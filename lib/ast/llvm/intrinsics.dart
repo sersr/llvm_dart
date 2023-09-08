@@ -111,12 +111,13 @@ enum LLVMIntrisics {
 }
 
 mixin OverflowMath on Consts {
-  static final maps = <String, FunctionDeclare>{};
+  final maps = <String, FunctionDeclare>{};
 
   late final typeList = [i8, i16, i32, i64, i128];
-
+  @override
+  OverflowMath get root => super.root as OverflowMath;
   LLVMValueRef expect(LLVMValueRef lhs) {
-    final fn = maps
+    final fn = root.maps
         .putIfAbsent("llvm.expect.i1",
             () => FunctionDeclare([i1, i1], 'llvm.expect.i1', i1))
         .build(this);

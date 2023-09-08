@@ -27,7 +27,7 @@ class LLVMBasicBlock {
 
 class RootBuildContext with Tys<Variable> {
   @override
-  Tys<LifeCycleVariable> defaultImport() {
+  Tys<LifeCycleVariable> defaultImport(String path) {
     throw UnimplementedError();
   }
 }
@@ -41,28 +41,37 @@ class BuildContext
         OverflowMath,
         Cast {
   BuildContext._(BuildContext this.parent) : isRoot = false {
-    kModule = parent!.kModule;
-    _dBuilder = parent!._dBuilder;
-    _init();
-  }
-  BuildContext._clone(BuildContext this.parent) : isRoot = false {
-    kModule = parent!.kModule;
-    module = parent!.module;
-    llvmContext = parent!.llvmContext;
-    builder = parent!.builder;
-    fn = parent!.fn;
-    _unit = parent!._unit;
-    _dBuilder = parent!._dBuilder;
+    _from(parent!);
   }
 
   BuildContext._importRoot(BuildContext p)
       : parent = null,
-        isRoot = false {
-    kModule = p.kModule;
-    module = p.module;
-    llvmContext = p.llvmContext;
+        isRoot = false;
+
+  BuildContext.root({String? targetTriple, String name = 'root'})
+      : parent = null,
+        isRoot = true {
+    llvmContext = llvm.LLVMContextCreate();
+    module = llvm.LLVMModuleCreateWithNameInContext(name.toChar(), llvmContext);
+    if (targetTriple != null) {
+      tm = llvm.createTarget(module, targetTriple.toChar());
+    } else {
+      final tt = llvm.LLVMGetDefaultTargetTriple();
+      tm = llvm.createTarget(module, tt);
+      llvm.LLVMDisposeMessage(tt);
+    }
+    final datalayout = llvm.LLVMCreateTargetDataLayout(tm);
+    llvm.LLVMSetModuleDataLayout(module, datalayout);
+
     builder = llvm.LLVMCreateBuilderInContext(llvmContext);
-    p.children.add(this);
+  }
+
+  void _from(BuildContext parent, {bool isImport = false}) {
+    llvmContext = parent.llvmContext;
+    module = parent.module;
+    tm = parent.tm;
+    builder = llvm.LLVMCreateBuilderInContext(llvmContext);
+    if (!isImport) _dBuilder = parent._dBuilder;
   }
 
   @override
@@ -71,20 +80,13 @@ class BuildContext
   @override
   GlobalContext get importHandler =>
       parent?.importHandler ?? super.importHandler;
+
   void log(int level) {
     print('${' ' * level}$currentPath');
     level += 2;
     for (var child in children) {
       child.log(level);
     }
-  }
-
-  BuildContext.root([String name = 'root'])
-      : parent = null,
-        isRoot = true {
-    kModule = llvm.createKModule(name.toChar());
-    _init();
-    _debugInit();
   }
 
   @override
@@ -114,12 +116,13 @@ class BuildContext
   LLVMMetadataRef? _unit;
   @override
   LLVMMetadataRef get unit => _unit ??= parent!.unit;
+
   LLVMDIBuilderRef? _dBuilder;
 
   @override
   LLVMDIBuilderRef? get dBuilder => _dBuilder;
 
-  void init([bool isDebug = true]) {
+  void init(bool isDebug) {
     if (!isDebug) return;
     final info = "Debug Info Version";
     final version = "Dwarf Version";
@@ -134,8 +137,9 @@ class BuildContext
     final framePointerV = constI32(1);
 
     void add(int lv, String name, LLVMValueRef value) {
-      llvm.LLVMAddModuleFlag(module, lv, name.toChar(), name.nativeLength,
-          llvm.LLVMValueAsMetadata(value));
+      final (namePointer, nameLength) = name.toNativeUtf8WithLength();
+      llvm.LLVMAddModuleFlag(
+          module, lv, namePointer, nameLength, llvm.LLVMValueAsMetadata(value));
     }
 
     add(1, info, infoV);
@@ -147,17 +151,12 @@ class BuildContext
     _debugInit();
   }
 
-  @override
-  void initImportContext(BuildContext child) {
-    if (dBuilder == null) return;
-    child._debugInit();
-  }
+  final _dBuilders = <LLVMDIBuilderRef>[];
 
-  bool _finalized = true;
   void _debugInit() {
-    if (this.currentPath == null || !_finalized) return;
-    _finalized = false;
+    assert(this.currentPath != null && _unit == null && _dBuilder == null);
     _dBuilder = llvm.LLVMCreateDIBuilder(module);
+    _dBuilders.add(_dBuilder!);
     final currentPath = this.currentPath!;
     final path = currentDir.childFile(currentPath);
     final dir = path.parent.path;
@@ -166,12 +165,19 @@ class BuildContext
         _dBuilder!, path.basename.toChar(), dir.toChar());
   }
 
+  @override
+  BuildContext defaultImport(String path) {
+    final child = BuildContext._importRoot(this);
+    child._from(this, isImport: true);
+    child.currentPath = path;
+    children.add(child);
+    child._debugInit();
+    return child;
+  }
+
   void finalize() {
-    if (!_finalized && _dBuilder != null) {
-      llvm.LLVMDIBuilderFinalize(_dBuilder!);
-    }
-    for (var child in children) {
-      child.finalize();
+    for (var builder in _dBuilders) {
+      llvm.LLVMDIBuilderFinalize(builder);
     }
   }
 
@@ -179,15 +185,10 @@ class BuildContext
   final BuildContext? parent;
   final List<BuildContext> children = [];
 
-  void _init() {
-    module = llvm.getModule(kModule);
-    llvmContext = llvm.getLLVMContext(kModule);
-    builder = llvm.LLVMCreateBuilderInContext(llvmContext);
-  }
-
-  late final KModuleRef kModule;
   @override
   late final LLVMModuleRef module;
+
+  late final LLVMTargetMachineRef tm;
   @override
   late final LLVMContextRef llvmContext;
   @override
@@ -200,12 +201,28 @@ class BuildContext
 
   final bool isRoot;
   void dispose() {
+    _dispose();
+    for (var builder in _dBuilders) {
+      llvm.LLVMDisposeDIBuilder(builder);
+    }
+    _dBuilders.clear();
+    if (_dBuilder != null) {
+      _dBuilder = null;
+    }
+
+    llvmMalloc.releaseAll();
+    AbiFn.clearAll();
+  }
+
+  void _dispose() {
     llvm.LLVMDisposeBuilder(builder);
     for (var child in children) {
-      child.dispose();
+      child._dispose();
     }
     if (isRoot) {
-      llvm.destory(kModule);
+      llvm.LLVMDisposeModule(module);
+      llvm.LLVMDisposeTargetMachine(tm);
+      llvm.LLVMContextDispose(llvmContext);
     }
   }
 
@@ -216,15 +233,6 @@ class BuildContext
     final child = BuildContext._(this);
     children.add(child);
     return child;
-  }
-
-  BuildContext clone() {
-    return BuildContext._clone(this);
-  }
-
-  @override
-  BuildContext defaultImport() {
-    return BuildContext._importRoot(this);
   }
 
   void instertFnEntryBB({String name = 'entry'}) {

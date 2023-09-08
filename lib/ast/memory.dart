@@ -58,6 +58,17 @@ extension StringToChar on String {
   int get nativeLength {
     return utf8.encode(this).length;
   }
+
+  (Pointer<Char>, int length) toNativeUtf8WithLength({Allocator? malloc}) {
+    final units = utf8.encode(this);
+    malloc ??= llvmMalloc;
+    final length = units.length + 1;
+    final Pointer<Uint8> result = malloc<Uint8>(length);
+    final nativeString = result.asTypedList(length);
+    nativeString.setAll(0, units);
+    nativeString[units.length] = 0;
+    return (result.cast(), units.length);
+  }
 }
 
 extension ArrayExt<T extends NativeType> on List<Pointer<T>> {

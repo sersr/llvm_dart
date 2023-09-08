@@ -194,6 +194,11 @@ class AbiFnArm64 implements AbiFn {
 
   late final _cacheFns = <Fn, LLVMConstVariable>{};
 
+  @override
+  void clear() {
+    _cacheFns.clear();
+  }
+
   LLVMTypeRef createFnType(BuildContext c, Fn fn) {
     final params = fn.fnSign.fnDecl.params;
     final list = <LLVMTypeRef>[];
@@ -262,14 +267,15 @@ class AbiFnArm64 implements AbiFn {
           final ty = realTy.llvmType.createDIType(c);
           params.add(ty);
         }
+        final (namePointer, nameLength) = ident.toNativeUtf8WithLength();
 
         final fnTy = llvm.LLVMDIBuilderCreateSubroutineType(
             dBuilder, file, params.toNative(), params.length, 0);
         final fnScope = llvm.LLVMDIBuilderCreateFunction(
             dBuilder,
             c.unit,
-            ident.toChar(),
-            ident.nativeLength,
+            namePointer,
+            nameLength,
             unname,
             0,
             file,

@@ -91,13 +91,13 @@ Future<void> runCode() async {
 }
 
 Future<void> runNativeCode(
-    {String args = '', String files = '', bool run = true}) async {
+    {String args = '', String pre = '', bool run = true}) async {
   var runn = '';
   if (run) {
     runn = '&& ./main $args';
   }
 
-  return runCmd(['clang -g out.o $files -o main $runn']);
+  return runCmd(['clang -g out.o $pre -o main $runn']);
 }
 
 Future<void> runCmd(List<String> cmd, {Directory? dir}) async {

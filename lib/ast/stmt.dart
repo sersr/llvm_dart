@@ -212,22 +212,24 @@ class StaticStmt extends Stmt {
       final file = llvm.LLVMDIScopeGetFile(context.scope);
       final diType = y.llvmType.createDIType(context);
       final name = ident.src;
-      final expr = llvm.LLVMDIBuilderCreateExpression(diBuilder, nullptr, 0);
+      final (namePointer, nameLength) = name.toNativeUtf8WithLength();
 
+      final expr = llvm.LLVMDIBuilderCreateExpression(diBuilder, nullptr, 0);
+      final align = context.getAlignSize(y);
       final globalExpr = llvm.LLVMDIBuilderCreateGlobalVariableExpression(
           context.dBuilder!,
           context.scope,
-          name.toChar(),
-          name.nativeLength,
-          unname,
-          0,
+          namePointer,
+          nameLength,
+          namePointer,
+          nameLength,
           file,
           ident.offset.row,
           diType,
           LLVMTrue,
           expr,
           nullptr,
-          0);
+          align);
 
       llvm.LLVMGlobalSetMetadata(
           llValue, llvm.LLVMGetMDKindID("dbg".toChar(), 3), globalExpr);
