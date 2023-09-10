@@ -275,6 +275,12 @@ mixin BuildMethods on LLVMTypeMixin {
     }
     return llvm.LLVMBuildStore(builder, val, alloca);
   }
+
+  void memcopy(Variable dst, Variable src, LLVMValueRef size) {
+    final dstValue = dst.getBaseValue(this);
+    final srcValue = src.getBaseValue(this);
+    llvm.LLVMBuildMemCpy(builder, dstValue, 0, srcValue, 0, size);
+  }
 }
 
 mixin Consts on BuildMethods {

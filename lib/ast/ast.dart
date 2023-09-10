@@ -218,13 +218,14 @@ abstract class Expr extends BuildMixin {
 
   void reset() {
     _first = true;
-    _ty = null;
+    _temp = null;
   }
 
-  ExprTempValue? build(BuildContext context) {
-    if (!_first) return _ty;
+  ExprTempValue? _temp;
+  ExprTempValue? build(BuildContext context, {Ty? baseTy}) {
+    if (!_first) return _temp;
     _first = false;
-    return _ty ??= buildExpr(context);
+    return _temp ??= buildExpr(context, baseTy);
   }
 
   Expr clone();
@@ -232,11 +233,8 @@ abstract class Expr extends BuildMixin {
   @override
   AnalysisVariable? analysis(AnalysisContext context);
 
-  ExprTempValue? _ty;
-  ExprTempValue? get currentTy => _ty;
-
   @protected
-  ExprTempValue? buildExpr(BuildContext context);
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy);
 }
 
 class UnknownExpr extends Expr {
@@ -258,7 +256,7 @@ class UnknownExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     context.errorExpr(this);
     return null;
   }
@@ -364,7 +362,26 @@ enum LitKind {
 }
 
 class Block extends BuildMixin with EquatableMixin {
-  Block(this.stmts, this.ident) {
+  Block(this.stmts, this.ident, this.blockStart, this.blockEnd) {
+    _init();
+    final fnStmt = <FnExpr>[];
+    final others = <Stmt>[];
+    // 函数声明前置
+    for (var stmt in stmts) {
+      if (stmt is ExprStmt) {
+        final expr = stmt.expr;
+        if (expr is FnExpr) {
+          fnStmt.add(expr);
+          continue;
+        }
+      }
+      others.add(stmt);
+    }
+    _fnExprs = fnStmt;
+    _stmts = others;
+  }
+
+  void _init() {
     // {
     //   stmt
     // }
@@ -372,8 +389,14 @@ class Block extends BuildMixin with EquatableMixin {
       s.incLevel();
     }
   }
+
   final Identifier? ident;
   final List<Stmt> stmts;
+
+  late List<FnExpr> _fnExprs;
+  late List<Stmt> _stmts;
+  final Identifier blockStart;
+  final Identifier blockEnd;
 
   @override
   void incLevel([int count = 1]) {
@@ -385,7 +408,8 @@ class Block extends BuildMixin with EquatableMixin {
   }
 
   Block clone() {
-    return Block(stmts.map((e) => e.clone()).toList(), ident);
+    return Block(
+        stmts.map((e) => e.clone()).toList(), ident, blockStart, blockEnd);
   }
 
   @override
@@ -395,30 +419,36 @@ class Block extends BuildMixin with EquatableMixin {
     return '${ident ?? ''} {\n$s$p}';
   }
 
-  void build(BuildContext context) {
-    final fnStmt = <Stmt>[];
-
-    // 函数声明前置
-    for (var stmt in stmts) {
+  void ret(BuildContext context) {
+    if (stmts.isNotEmpty) {
+      final stmt = stmts.last;
       if (stmt is ExprStmt) {
         final expr = stmt.expr;
-        if (expr is FnExpr) {
-          expr.fn.pushFn(context);
-          fnStmt.add(stmt);
-          continue;
+        if (expr is! RetExpr) {
+          // 获取缓存的value
+          final valTemp = expr.build(context);
+          final val = valTemp?.variable;
+          context.ret(val, valTemp?.currentIdent);
         }
       }
+    } else {
+      context.ret(null, null);
+    }
+  }
+
+  void build(BuildContext context) {
+    for (var expr in _fnExprs) {
+      expr.fn.pushFn(context);
     }
 
     // 先处理普通语句，在内部函数中可能会引用到变量等
-    for (var stmt in stmts) {
-      if (fnStmt.contains(stmt)) continue;
+    for (var stmt in _stmts) {
       stmt.build(context);
     }
 
-    for (var fn in fnStmt) {
-      fn.build(context);
-    }
+    // for (var fn in _fnExprs) {
+    //   fn.build(context);
+    // }
   }
 
   @override
@@ -426,28 +456,19 @@ class Block extends BuildMixin with EquatableMixin {
 
   @override
   void analysis(AnalysisContext context) {
-    final fnStmt = <Stmt>[];
-    for (var stmt in stmts) {
-      if (stmt is ExprStmt) {
-        final expr = stmt.expr;
-        if (expr is FnExpr) {
-          expr.fn.pushFn(context);
-          fnStmt.add(stmt);
-          continue;
-        }
-      }
+    for (var expr in _fnExprs) {
+      expr.fn.pushFn(context);
     }
 
-    for (var i = 0; i < stmts.length; i += 1) {
+    for (var i = 0; i < _stmts.length; i += 1) {
       final stmt = stmts[i];
-      if (fnStmt.contains(stmt)) continue;
       stmt.analysis(context);
       if (i == stmts.length - 1 && stmt is ExprStmt) {
         final expr = stmt.expr;
         RetExpr.analysisAll(context, expr);
       }
     }
-    for (var fn in fnStmt) {
+    for (var fn in _fnExprs) {
       fn.analysis(context);
     }
   }
@@ -1612,7 +1633,6 @@ class LLVMAliasType extends LLVMType {
   @override
   int getBytes(BuildContext c) {
     final base = ty.baseTy;
-    Log.w(base);
     if (base == null) return c.pointerSize();
     final bty = base.grt(c);
     return bty.llvmType.getBytes(c);
@@ -1626,5 +1646,42 @@ class LLVMAliasType extends LLVMType {
           c.dBuilder!, 'ptr'.toChar(), 3, c.pointerSize() * 8, 1, 0);
     }
     return base.grt(c).llvmType.createDIType(c);
+  }
+}
+
+class HeapTy extends RefTy {
+  HeapTy(super.parent, this.heapStructTy);
+
+  final StructTy heapStructTy;
+
+  @override
+  String toString() {
+    return 'HeapTy($parent)';
+  }
+
+  @override
+  late LLVMHeapType llvmType = LLVMHeapType(this);
+}
+
+class LLVMHeapType extends LLVMRefType {
+  LLVMHeapType(HeapTy super.ty);
+
+  @override
+  HeapTy get ty => super.ty as HeapTy;
+  StructTy get heapStructTy => ty.heapStructTy;
+
+  StoreVariable getData(BuildContext context, Variable variable) {
+    final data = heapStructTy.llvmType
+        .getField(variable, context, Identifier.builtIn('data'));
+    return data!;
+  }
+
+  StoreVariable getCount(
+    BuildContext context,
+    Variable variable,
+  ) {
+    final count = heapStructTy.llvmType
+        .getField(variable, context, Identifier.builtIn('count'));
+    return count!;
   }
 }

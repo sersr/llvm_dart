@@ -381,9 +381,13 @@ class Parser {
   Block parseBlock(TokenIterator it) {
     assert(it.current.token.kind == TokenKind.openBrace, getToken(it).kind.str);
     final stmts = <Stmt>[];
-    if (!it.moveNext()) return Block([], getIdent(it));
+    // final ident = getIdent(it);
+    final start = getIdent(it);
+    if (!it.moveNext()) {
+      return Block([], null, Identifier.none, Identifier.none);
+    }
+    final end = getIdent(it);
     it = it.current.child.tokenIt;
-
     loop(it, () {
       final t = getToken(it);
       final k = t.kind;
@@ -396,7 +400,8 @@ class Parser {
       }
       return false;
     });
-    return Block(stmts, null);
+
+    return Block(stmts, null, start, end);
   }
 
   Key? getKey(TokenIterator it) {
@@ -570,9 +575,10 @@ class Parser {
         it.moveNext();
         jump();
       } else {
+        final start = getIdent(it);
         final stmt = parseStmt(it);
         if (stmt != null) {
-          final block = Block([stmt], null);
+          final block = Block([stmt], null, start, getIdent(it));
           items.add(MatchItemExpr(expr, block, op));
           jump();
         }
@@ -724,7 +730,7 @@ class Parser {
     if (getToken(it).kind == TokenKind.openBrace) {
       block = parseBlock(it);
     } else {
-      block = Block([], getIdent(it));
+      block = Block([], getIdent(it), Identifier.none, Identifier.none);
     }
     return IfExprBlock(expr, block);
   }

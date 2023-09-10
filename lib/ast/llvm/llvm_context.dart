@@ -10,7 +10,6 @@ import '../analysis_context.dart';
 import '../ast.dart';
 import '../expr.dart';
 import '../memory.dart';
-import '../stmt.dart';
 import '../tys.dart';
 import 'build_methods.dart';
 import 'intrinsics.dart';
@@ -40,8 +39,9 @@ class BuildContext
         Consts,
         OverflowMath,
         Cast {
-  BuildContext._(BuildContext this.parent) : isRoot = false {
-    _from(parent!);
+  BuildContext._(BuildContext this.parent, {bool sameBuilder = false})
+      : isRoot = false {
+    _from(parent!, sameBuilder: sameBuilder);
   }
 
   BuildContext._importRoot(BuildContext p)
@@ -66,11 +66,12 @@ class BuildContext
     builder = llvm.LLVMCreateBuilderInContext(llvmContext);
   }
 
-  void _from(BuildContext parent, {bool isImport = false}) {
+  void _from(BuildContext parent,
+      {bool isImport = false, bool sameBuilder = false}) {
     llvmContext = parent.llvmContext;
     module = parent.module;
     tm = parent.tm;
-    builder = llvm.LLVMCreateBuilderInContext(llvmContext);
+    if (!sameBuilder) builder = llvm.LLVMCreateBuilderInContext(llvmContext);
     if (!isImport) _dBuilder = parent._dBuilder;
   }
 
@@ -229,8 +230,12 @@ class BuildContext
   @override
   BuildContext? getLastFnContext() => super.getLastFnContext() as BuildContext?;
 
-  BuildContext createChildContext() {
-    final child = BuildContext._(this);
+  BuildContext createChildContext({bool same = false}) {
+    final child = BuildContext._(this, sameBuilder: same);
+    if (same) {
+      child.fn = fn;
+      child.builder = builder;
+    }
     children.add(child);
     return child;
   }
@@ -398,43 +403,7 @@ class BuildContext
       fnContext.initFnParamsStart(fv.value, fn.fnSign.fnDecl, fn, extra,
           map: map);
       block.build(fnContext);
-
-      bool hasRet = false;
-      bool voidRet({bool back = false}) {
-        if (hasRet) return true;
-        final rty = fn.getRetTy(this);
-        if (rty is BuiltInTy) {
-          final lit = rty.ty;
-          if (lit != LitKind.kVoid) {
-            if (back) return false;
-            // error
-          }
-          fnContext.ret(null, null);
-          hasRet = true;
-          return true;
-        }
-        return false;
-      }
-
-      if (block.stmts.isNotEmpty) {
-        final lastStmt = block.stmts.last;
-        if (lastStmt is ExprStmt) {
-          final expr = lastStmt.expr;
-          if (expr is! RetExpr) {
-            if (!voidRet(back: true)) {
-              // 获取缓存的value
-              final valTemp = expr.build(fnContext);
-              final val = valTemp?.variable;
-              if (val == null) {
-                // error
-              }
-
-              fnContext.ret(val, valTemp?.currentIdent);
-            }
-          }
-        }
-      }
-      voidRet();
+      block.ret(fnContext);
     });
     return fv;
   }

@@ -53,7 +53,7 @@ class AbiFnArm64 implements AbiFn {
       if (i < fnParams.length) {
         c = fn.getRty(context, fnParams[i]);
       }
-      final temp = LiteralExpr.run(() => p.build(context), c);
+      final temp = p.build(context, baseTy: c);
       final v = temp?.variable;
       if (v != null) {
         LLVMValueRef value;

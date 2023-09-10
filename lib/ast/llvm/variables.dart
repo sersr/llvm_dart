@@ -10,13 +10,13 @@ import 'llvm_types.dart';
 
 abstract class Variable extends LifeCycleVariable {
   bool isRef = false;
-  LLVMValueRef load(BuildContext c, Offset offset);
+  LLVMValueRef load(covariant BuildMethods c, Offset offset);
   LLVMTypeRef getDerefType(BuildContext c);
   Variable getRef(BuildContext c) {
     return RefTy(ty).llvmType.createAlloca(c, Identifier.none, getBaseValue(c));
   }
 
-  LLVMValueRef getBaseValue(BuildContext c) => load(c, Offset.zero);
+  LLVMValueRef getBaseValue(covariant BuildMethods c) => load(c, Offset.zero);
   Ty get ty;
 
   Variable defaultDeref(BuildContext c) {

@@ -1,6 +1,4 @@
 // ignore_for_file: constant_identifier_names
-import 'dart:async';
-
 import 'package:collection/collection.dart';
 import 'package:nop/nop.dart';
 
@@ -35,39 +33,19 @@ class LiteralExpr extends Expr {
     return '$v[:$ty]';
   }
 
-  static T run<T>(T Function() body, Ty? ty) {
-    return runZoned(body, zoneValues: {#ty: ty});
-  }
-
-  static Ty? get letTy {
-    final r = Zone.current[#ty];
-    if (r is Ty) {
-      return r;
-    }
-    return null;
-  }
-
-  BuiltInTy get realTy {
-    final r = Zone.current[#ty];
-    if (r is BuiltInTy) {
-      if (ty.ty.isNum && !r.ty.isNum) {
-        return ty;
-      }
-      return r;
-    }
-    return ty;
-  }
-
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
-    final v = realTy.llvmType.createValue(ident: ident);
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+    if (baseTy is! BuiltInTy) {
+      baseTy = ty;
+    }
+    final v = baseTy.llvmType.createValue(ident: ident);
 
     return ExprTempValue(v, ty, ident);
   }
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    return context.createVal(realTy, ident);
+    return context.createVal(ty, ident);
   }
 }
 
@@ -155,9 +133,8 @@ class IfExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
-    final v =
-        createIfBlock(ifExpr, context, LiteralExpr.letTy ?? _variable?.ty);
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+    final v = createIfBlock(ifExpr, context, baseTy ?? _variable?.ty);
     if (v == null) return null;
     return ExprTempValue(v, v.ty, Identifier.none);
   }
@@ -287,7 +264,7 @@ class BreakExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     context.brLoop();
     return null;
   }
@@ -312,7 +289,7 @@ class ContinueExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     context.brContinue();
     return null;
   }
@@ -345,7 +322,7 @@ class LoopExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     context.forLoop(block, null, null);
     // todo: phi
     return null;
@@ -382,7 +359,7 @@ class WhileExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     context.forLoop(block, null, expr);
     return null;
   }
@@ -406,7 +383,7 @@ class RetExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final e = expr?.build(context);
 
     context.ret(e?.variable, e?.currentIdent, ident.offset);
@@ -488,7 +465,7 @@ class StructExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     var struct = context.getStruct(ident);
     var genericsInst = generics;
     if (struct == null) {
@@ -560,13 +537,13 @@ class StructExpr extends Expr {
 
         Ty? ty;
         if (isBuild) {
-          ty = LiteralExpr.run(() => f.build(context)?.variable,
-                  fd.grtOrT(context, gen: gen))
+          ty = f
+              .build(context, baseTy: fd.grtOrT(context, gen: gen))
+              ?.variable
               ?.ty;
         } else {
-          ty = LiteralExpr.run(() => f.analysis(context as AnalysisContext),
-                  fd.grtOrT(context, gen: gen))
-              ?.ty;
+          // fd.grtOrT(context, gen: gen)
+          ty = f.analysis(context as AnalysisContext)?.ty;
         }
         if (ty != null) {
           final fd = fields[i];
@@ -617,7 +594,7 @@ class StructExpr extends Expr {
         final f = sortFields[i];
         final fd = fields[i];
 
-        final temp = LiteralExpr.run(() => f.build(context), fd.grt(context));
+        final temp = f.build(context, baseTy: fd.grt(context));
         final v = temp?.variable;
         if (v == null) continue;
         final vv = struct.llvmType.getField(value, context, fd.ident)!;
@@ -681,9 +658,9 @@ class AssignExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final lhs = ref.build(context);
-    final rhs = LiteralExpr.run(() => expr.build(context), lhs?.ty);
+    final rhs = expr.build(context, baseTy: lhs?.ty);
 
     final lVariable = lhs?.variable;
     final rVariable = rhs?.variable;
@@ -734,19 +711,17 @@ class AssignOpExpr extends AssignExpr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final lhs = ref.build(context);
     final lVariable = lhs?.variable;
 
     if (lVariable is StoreVariable) {
-      final val = LiteralExpr.run(
-          () => OpExpr.math(
-              context, op, lVariable, expr, opIdent, lhs!.currentIdent),
-          lVariable.ty);
+      final val =
+          OpExpr.math(context, op, lVariable, expr, opIdent, lhs!.currentIdent);
       final rValue = val?.variable;
       if (rValue != null) {
         lVariable.store(context, rValue.load(context, val!.currentIdent.offset),
-            lhs!.currentIdent.offset);
+            lhs.currentIdent.offset);
       }
     }
 
@@ -773,7 +748,7 @@ class FieldExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     return expr.build(context);
   }
 
@@ -829,7 +804,7 @@ class FnExpr extends Expr {
   FnExpr(this.fn);
   final Fn fn;
   @override
-  Expr clone() {
+  FnExpr clone() {
     return FnExpr(fn.cloneDefault());
   }
 
@@ -840,7 +815,7 @@ class FnExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final fnV = fn.build();
     if (fnV == null) return null;
 
@@ -947,7 +922,7 @@ class FnCallExpr extends Expr with FnCallMixin {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final fnV = expr.build(context);
     final variable = fnV?.variable;
     final fn = variable?.ty ?? fnV?.ty;
@@ -956,7 +931,7 @@ class FnCallExpr extends Expr with FnCallMixin {
           fn, context, Identifier.none, params, const []);
     }
 
-    if (fn is SizeOfFn) {
+    if (fn == sizeOfFn) {
       if (params.isEmpty) {
         return null;
       }
@@ -975,7 +950,7 @@ class FnCallExpr extends Expr with FnCallMixin {
       }
       if (ty == null) return null;
 
-      final v = fn.llvmType.build(context, ty);
+      final v = sizeOf(context, ty);
       return ExprTempValue(v, BuiltInTy.i32, fnV!.currentIdent);
     }
     if (fn is! Fn) return null;
@@ -1005,7 +980,7 @@ class FnCallExpr extends Expr with FnCallMixin {
       }
       return context.createStructVal(struct, struct.ident, all);
     }
-    if (fn.ty is SizeOfFn) {
+    if (fn.ty == sizeOfFn) {
       return context.createVal(BuiltInTy.usize, Identifier.none);
     }
     if (fnty is! Fn) return null;
@@ -1045,7 +1020,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final variable = receiver.build(context);
     final fnName = ident.src;
 
@@ -1064,8 +1039,8 @@ class MethodCallExpr extends Expr with FnCallMixin {
     /// TODO: 将内部实现迁移到[GlobalContext]
     if (valTy is ArrayTy && variable != null && val != null) {
       if (fnName == 'elementAt' && params.isNotEmpty) {
-        final first = LiteralExpr.run(
-            () => params.first.build(context)?.variable, BuiltInTy.usize);
+        final first =
+            params.first.build(context, baseTy: BuiltInTy.usize)?.variable;
 
         if (first != null && first.ty is BuiltInTy) {
           final element = valTy.llvmType.getElement(
@@ -1085,8 +1060,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (valTy is StructTy && variable != null && val != null) {
       if (valTy.ident.src == 'CArray') {
         if (fnName == 'elementAt' && params.isNotEmpty) {
-          final param = LiteralExpr.run(
-              () => params.first.build(context), BuiltInTy.usize);
+          final param = params.first.build(context, baseTy: BuiltInTy.usize);
           final paramValue = param?.variable;
           if (paramValue != null && paramValue.ty is BuiltInTy) {
             final ty = valTy.tys.values.first;
@@ -1121,7 +1095,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
 
     var structTy = valTy;
-    final ty = LiteralExpr.letTy;
+    final ty = baseTy;
 
     if (structTy is StructTy) {
       if (structTy.tys.isEmpty) {
@@ -1141,8 +1115,8 @@ class MethodCallExpr extends Expr with FnCallMixin {
       if (structTy.ident.src == 'Array') {
         if (fnName == 'new') {
           if (params.isNotEmpty) {
-            final first = LiteralExpr.run(
-                () => params.first.build(context)?.variable, BuiltInTy.usize);
+            final first =
+                params.first.build(context, baseTy: BuiltInTy.usize)?.variable;
 
             if (first is LLVMLitVariable) {
               if (structTy.tys.isNotEmpty) {
@@ -1187,13 +1161,13 @@ class MethodCallExpr extends Expr with FnCallMixin {
     var structTy = variable.ty;
     if (structTy is! StructTy) return null;
 
-    final ty = LiteralExpr.letTy;
+    // final ty = LiteralExpr.letTy;
 
-    if (structTy.tys.isEmpty) {
-      if (ty is StructTy && structTy.ident == ty.ident) {
-        structTy = ty;
-      }
-    }
+    // if (structTy.tys.isEmpty) {
+    //   if (ty is StructTy && structTy.ident == ty.ident) {
+    //     structTy = ty;
+    //   }
+    // }
 
     if (variable is AnalysisStructVariable) {
       final p = variable.getParam(ident);
@@ -1242,7 +1216,7 @@ class StructDotFieldExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final structVal = struct.build(context);
     final val = structVal?.variable;
     var newVal = val;
@@ -1484,12 +1458,12 @@ class OpExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     var l = lhs.build(context);
-    var r = LiteralExpr.run(() => rhs.clone().build(context), l?.ty);
+    var r = rhs.clone().build(context, baseTy: l?.ty);
     if (l == null || r == null) return null;
     if (l.ty != r.ty) {
-      final nl = LiteralExpr.run(() => lhs.clone().build(context), r.ty);
+      final nl = lhs.clone().build(context, baseTy: r.ty);
       if (nl == null) return null;
       l = nl;
     }
@@ -1502,7 +1476,7 @@ class OpExpr extends Expr {
     if (l == null) return null;
 
     final v = context.math(l, (context) {
-      return LiteralExpr.run(() => rhs?.build(context), l.ty);
+      return rhs?.build(context, baseTy: l.ty);
     }, op, lhsOffset: lhsIdent.offset, opOffset: opIdent.offset);
 
     return ExprTempValue(v, v.ty, lhsIdent);
@@ -1620,15 +1594,14 @@ class VariableIdentExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     if (ident.src == 'null') {
-      final letTy = LiteralExpr.letTy;
-      final ty = letTy?.llvmType.createType(context);
+      final ty = baseTy?.llvmType.createType(context);
 
       if (ty == null) {
         return ExprTempValue(null, BuiltInTy.kVoid, ident);
       }
-      final v = LLVMConstVariable(llvm.LLVMConstNull(ty), letTy!);
+      final v = LLVMConstVariable(llvm.LLVMConstNull(ty), baseTy!);
       return ExprTempValue(v, v.ty, ident);
     }
 
@@ -1669,10 +1642,6 @@ class VariableIdentExpr extends Expr {
       }
     }
     if (fn != null) {
-      if (fn is SizeOfFn) {
-        return ExprTempValue(null, fn, ident);
-      }
-
       var enableBuild = false;
       if (localGenerics.isNotEmpty) {
         fn = fn.newInstWithGenerics(context, localGenerics, fn.generics);
@@ -1691,6 +1660,10 @@ class VariableIdentExpr extends Expr {
       }
       return ExprTempValue(null, fn, ident);
     }
+
+    final builtinFn = context.getBuiltinFn(ident);
+    if (builtinFn != null) return ExprTempValue(null, builtinFn, ident);
+
     return null;
   }
 
@@ -1732,6 +1705,8 @@ class VariableIdentExpr extends Expr {
       }
       return context.createVal(fn, ident);
     }
+    final builtinFn = context.getBuiltinFn(ident);
+    if (builtinFn != null) return context.createVal(builtinFn, ident);
 
     return null;
   }
@@ -1757,7 +1732,7 @@ class RefExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final val = current.build(context);
     var vv = PointerKind.refDerefs(val?.variable, context, kind);
     if (vv != null) {
@@ -1798,7 +1773,7 @@ class BlockExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     throw StateError('use block.build(context) instead.');
   }
 
@@ -1957,7 +1932,8 @@ class MatchExpr extends Expr {
     return null;
   }
 
-  ExprTempValue? commonExpr(BuildContext context, ExprTempValue variable) {
+  ExprTempValue? commonExpr(
+      BuildContext context, ExprTempValue variable, Ty? baseTy) {
     // match 表达式
     MatchItemExpr? last;
     MatchItemExpr? valIdentItem =
@@ -1975,9 +1951,10 @@ class MatchExpr extends Expr {
     last = valIdentItem;
 
     StoreVariable? retVariable;
-    final retTy = LiteralExpr.letTy;
-    if (retTy != null) {
-      retVariable = retTy.llvmType.createAlloca(context, Identifier.none, null);
+
+    if (baseTy != null) {
+      retVariable =
+          baseTy.llvmType.createAlloca(context, Identifier.none, null);
     }
     void buildItem(MatchItemExpr item, BuildContext context) {
       final then = context.buildSubBB(name: 'm_then');
@@ -2036,12 +2013,12 @@ class MatchExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final variable = expr.build(context);
     if (variable == null) return null;
     final ty = variable.ty;
     if (ty is! EnumItem) {
-      return commonExpr(context, variable);
+      return commonExpr(context, variable, baseTy);
     }
 
     final itemLength = ty.parent.variants.length;
@@ -2050,7 +2027,7 @@ class MatchExpr extends Expr {
     if (parent == null) return null;
 
     StoreVariable? retVariable;
-    final retTy = LiteralExpr.letTy ?? _variable?.ty;
+    final retTy = baseTy ?? _variable?.ty;
     if (retTy != null) {
       retVariable = retTy.llvmType.createAlloca(context, Identifier.none, null);
     }
@@ -2182,7 +2159,7 @@ class AsExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final r = rhs.grt(context);
     final l = lhs.build(context);
     final lv = l?.variable;
@@ -2218,7 +2195,7 @@ class ImportExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     context.pushImport(path, name: name);
     return null;
   }
@@ -2248,33 +2225,30 @@ class ArrayExpr extends Expr {
         ty ??= v.ty;
       }
     }
-    ty ??= LiteralExpr.letTy;
+
     if (ty == null) return null;
     return context.createVal(ArrayTy(ty, elements.length), Identifier.none);
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final values = <LLVMValueRef>[];
-    Ty? arrTy = LiteralExpr.letTy;
+    Ty? arrTy = baseTy;
 
     Ty? ty;
     if (arrTy is ArrayTy) {
       ty = arrTy.elementType;
     }
 
-    final elementTy = LiteralExpr.run(() {
-      Ty? ty;
-      for (var element in elements) {
-        final v = element.build(context);
-        final variable = v?.variable;
-        if (variable != null) {
-          ty ??= variable.ty;
-          values.add(variable.load(context, v!.currentIdent.offset));
-        }
+    Ty? elementTy;
+    for (var element in elements) {
+      final v = element.build(context, baseTy: ty);
+      final variable = v?.variable;
+      if (variable != null) {
+        elementTy ??= variable.ty;
+        values.add(variable.load(context, v!.currentIdent.offset));
       }
-      return ty;
-    }, ty);
+    }
 
     ty ??= elementTy;
 
@@ -2335,7 +2309,7 @@ class UnaryExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context) {
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final temp = expr.build(context);
     var val = temp?.variable;
     if (val == null) return null;
@@ -2376,5 +2350,85 @@ class UnaryExpr extends Expr {
     if (temp == null) return null;
 
     return context.createVal(temp.ty, Identifier.none);
+  }
+}
+
+class NewExpr extends Expr {
+  NewExpr(this.ident, this.expr);
+  final Identifier ident;
+  final Expr expr;
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    return expr.analysis(context);
+  }
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+    final temp = expr.build(context, baseTy: baseTy);
+    if (temp == null) return null;
+    final variable = temp.variable;
+    if (variable == null) return null;
+    var heapStructTy = context.getStruct(Identifier.builtIn('HeapCount'));
+    if (heapStructTy == null) return null;
+
+    heapStructTy =
+        heapStructTy.newInst({Identifier.builtIn('T'): temp.ty}, context);
+    final mallocFn = context.getFn(Identifier.builtIn('malloc'));
+    if (mallocFn == null) return null;
+    final size = heapStructTy.llvmType.getBytes(context);
+    final sizeValue = BuiltInTy.usize.llvmType
+        .createValue(ident: Identifier.builtIn('$size'));
+    final params = [
+      FieldExpr(
+          InternalExpr(ExprTempValue(sizeValue, sizeValue.ty, Identifier.none)),
+          ident)
+    ];
+    final mallocValue = AbiFn.fnCallInternal(
+        context, mallocFn, params, null, null, null, Identifier.none);
+    final mVoidVariable = mallocValue?.variable;
+    if (mVoidVariable == null) return null;
+    final heapTy = HeapTy(temp.ty, heapStructTy);
+
+    final data = heapTy.llvmType.getData(context, mVoidVariable);
+
+    final count = heapTy.llvmType.getCount(context, mVoidVariable);
+    count.store(context, context.usizeValue(1), Offset.zero);
+
+    if (variable is LLVMAllocaDelayVariable && !variable.created) {
+      variable.create(context, data);
+    } else {
+      context.memcopy(data, variable, sizeValue.getBaseValue(context));
+    }
+
+    // 判断 [temp.ty] 中的直接字段是否有 HeapPointer,如果有增加计数
+
+    return ExprTempValue(mVoidVariable, heapTy, ident);
+  }
+
+  @override
+  NewExpr clone() {
+    return NewExpr(ident, expr.clone());
+  }
+}
+
+class InternalExpr extends Expr {
+  InternalExpr(this.value);
+
+  final ExprTempValue? value;
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    return null;
+  }
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+    return value;
+  }
+
+  @override
+  Expr clone() {
+    return this;
   }
 }

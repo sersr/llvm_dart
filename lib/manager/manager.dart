@@ -44,8 +44,8 @@ class ProjectManager extends ManagerBase {
       alc.currentPath = path;
       root.currentPath = path;
 
-      rootAnalysisContext.pushFn(sizeOfFn.fnName, sizeOfFn);
-      rootBuildContext.pushFn(sizeOfFn.fnName, sizeOfFn);
+      rootAnalysisContext.pushBuiltinFn(sizeOfFn.name, sizeOfFn);
+      rootBuildContext.pushBuiltinFn(sizeOfFn.name, sizeOfFn);
 
       void actionAlc(BuildMixin builder) => builder.analysis(alc);
       void action(BuildMixin builder) {

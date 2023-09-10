@@ -16,7 +16,7 @@ Future<void> run(String name,
   return runPrint(() async {
     final path = testSrcDir.childFile(name).path;
     final project = ProjectManager();
-    final arch = 'arm64';
+    final arch = 'x86_64';
     project.isDebug = true;
     final root = project.build(path,
         target: '$arch-apple-darwin22.4.0',

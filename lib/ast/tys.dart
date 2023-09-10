@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 
 import 'ast.dart';
+import 'buildin.dart';
 
 abstract class LifeCycleVariable {
   Identifier? ident;
@@ -178,6 +179,17 @@ mixin Tys<V extends LifeCycleVariable> {
 
   void pushFn(Identifier ident, Fn fn) {
     pushKV(ident, fn, fns);
+  }
+
+  final builtinFns = <Identifier, List<BuiltinFn>>{};
+  BuiltinFn? getBuiltinFn(Identifier ident) {
+    return getKV(ident, (c) => c.builtinFns, handler: (c) {
+      return c.getBuiltinFn(ident);
+    });
+  }
+
+  void pushBuiltinFn(Identifier ident, BuiltinFn fn) {
+    pushKV(ident, fn, builtinFns);
   }
 
   final components = <Identifier, List<ComponentTy>>{};

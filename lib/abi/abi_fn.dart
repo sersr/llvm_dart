@@ -75,9 +75,7 @@ abstract interface class AbiFn {
       if (i < fnParams.length) {
         c = fn.getRty(context, fnParams[i]);
       }
-      final temp = LiteralExpr.run(() {
-        return p.build(context);
-      }, c);
+      final temp = p.build(context, baseTy: c);
       final v = temp?.variable;
       if (v != null) {
         final value = v.load(context, temp!.currentIdent.offset);

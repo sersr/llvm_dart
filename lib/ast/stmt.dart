@@ -39,9 +39,7 @@ class LetStmt extends Stmt {
   @override
   void build(BuildContext context) {
     final realTy = ty?.grt(context);
-    ExprTempValue? val = LiteralExpr.run(() {
-      return rExpr?.build(context);
-    }, realTy);
+    ExprTempValue? val = rExpr?.build(context, baseTy: realTy);
 
     context.diSetCurrentLoc(nameIdent.offset);
 
@@ -112,9 +110,7 @@ class LetStmt extends Stmt {
   @override
   void analysis(AnalysisContext context) {
     final realTy = ty?.grt(context);
-    final v = LiteralExpr.run(() {
-      return rExpr?.analysis(context);
-    }, realTy);
+    final v = rExpr?.analysis(context);
 
     if (v == null) return;
     final value = v.copy(ty: realTy, ident: nameIdent);
@@ -183,7 +179,7 @@ class StaticStmt extends Stmt {
     final realTy = ty?.grtOrT(context);
     if (ty != null && realTy == null) return;
 
-    final e = LiteralExpr.run(() => expr.build(context), realTy);
+    final e = expr.build(context, baseTy: realTy);
 
     final rty = realTy ?? e?.ty;
     final val = e?.variable;
@@ -245,7 +241,7 @@ class StaticStmt extends Stmt {
   @override
   void analysis(AnalysisContext context) {
     final realTy = ty?.grt(context);
-    final val = LiteralExpr.run(() => expr.analysis(context), realTy);
+    final val = expr.analysis(context);
     final vTy = realTy ?? val?.ty;
     if (vTy == null || val == null) return;
     context.pushVariable(
