@@ -57,8 +57,8 @@ extern struct Basef64 {
 }
 extern struct Base64Float {
   y: f32,
-  c: u8,
   x: f32,
+  c: u8,
 }
 extern struct Base96 {
   y: f32,

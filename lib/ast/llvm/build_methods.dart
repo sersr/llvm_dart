@@ -155,9 +155,25 @@ mixin LLVMTypeMixin {
     llvm.LLVMSetValueName(ref, name.toChar());
   }
 
-  void setLLVMAttr(LLVMValueRef value, int index, int kind, {int val = 0}) {
+  void setFnLLVMAttr(LLVMValueRef value, int index, int kind, {int val = 0}) {
     final attr = llvm.LLVMCreateEnumAttribute(llvmContext, kind, val);
     llvm.LLVMAddAttributeAtIndex(value, index, attr);
+  }
+
+  void setFnTypeAttr(LLVMValueRef value, int index, int kind, LLVMTypeRef ty) {
+    final attr = llvm.LLVMCreateTypeAttribute(llvmContext, kind, ty);
+    llvm.LLVMAddAttributeAtIndex(value, index, attr);
+  }
+
+  void setCallLLVMAttr(LLVMValueRef value, int index, int kind, {int val = 0}) {
+    final attr = llvm.LLVMCreateEnumAttribute(llvmContext, kind, val);
+    llvm.LLVMAddCallSiteAttribute(value, index, attr);
+  }
+
+  void setCallTypeAttr(
+      LLVMValueRef value, int index, int kind, LLVMTypeRef ty) {
+    final attr = llvm.LLVMCreateTypeAttribute(llvmContext, kind, ty);
+    llvm.LLVMAddCallSiteAttribute(value, index, attr);
   }
 }
 mixin BuildMethods on LLVMTypeMixin {

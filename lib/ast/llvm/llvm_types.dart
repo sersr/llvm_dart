@@ -343,9 +343,9 @@ class LLVMFnType extends LLVMType {
         c.diSetCurrentLoc(offset);
       }
 
-      c.setLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
-      c.setLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
-      c.setLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
+      c.setFnLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
+      c.setFnLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
+      c.setFnLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
 
       final fnVariable = LLVMConstVariable(v, fn);
       after(fnVariable);
@@ -362,6 +362,13 @@ class LLVMFnType extends LLVMType {
   LLVMMetadataRef createDIType(covariant BuildContext c) {
     return llvm.LLVMDIBuilderCreateBasicType(
         c.dBuilder!, 'ptr'.toChar(), 3, getBytes(c) * 8, 1, 0);
+  }
+
+  LLVMConstVariable? _externFn;
+
+  LLVMConstVariable getOrCreate(LLVMConstVariable Function() action) {
+    if (_externFn != null) return _externFn!;
+    return _externFn = action();
   }
 }
 
@@ -894,6 +901,15 @@ class FieldsSize {
         } else {
           vals.add(ty);
         }
+      }
+    }
+    if (map.isNotEmpty) {
+      final last = map.entries.last;
+      final itemSize = last.key.grt(c).llvmType.getBytes(c);
+      final edge = itemSize + last.value.diOffset;
+      final extra = edge % alignSize;
+      if (extra > 0) {
+        vals.add(c.arrayType(c.i8, alignSize - extra));
       }
     }
     return c.typeStruct(vals, ident);

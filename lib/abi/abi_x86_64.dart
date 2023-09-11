@@ -1,5 +1,7 @@
 import 'dart:ffi';
 
+import 'package:nop/nop.dart';
+
 import '../ast/ast.dart';
 import '../ast/expr.dart';
 import '../ast/llvm/llvm_context.dart';
@@ -9,7 +11,8 @@ import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'abi_fn.dart';
 
-class AbiFnArm64 implements AbiFn {
+// ignore: camel_case_types
+class AbiFnx86_64 implements AbiFn {
   @override
   bool isSret(BuildContext c, Fn fn) {
     var retTy = fn.getRetTy(c);
@@ -46,7 +49,7 @@ class AbiFnArm64 implements AbiFn {
     final sortFields = alignParam(
         params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
 
-    final listNoundefs = <int>[];
+    final listByvals = <(int, LLVMTypeRef)>[];
     for (var i = 0; i < sortFields.length; i++) {
       final p = sortFields[i];
       Ty? c;
@@ -61,7 +64,7 @@ class AbiFnArm64 implements AbiFn {
         if (vty is StructTy) {
           final (sfp, tyValue) = toFnParams(context, vty, v);
           if (sfp == Reg.byval) {
-            listNoundefs.add(i + 1);
+            listByvals.add((i + 1, vty.llvmType.createType(context)));
           }
           value = tyValue;
         } else {
@@ -87,10 +90,9 @@ class AbiFnArm64 implements AbiFn {
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 
-    for (var index in listNoundefs) {
-      final attr = llvm.LLVMCreateEnumAttribute(
-          context.llvmContext, LLVMAttr.NoUndef, 0);
-      llvm.LLVMAddCallSiteAttribute(ret, index, attr);
+    for (var (index, ty) in listByvals) {
+      context.setCallLLVMAttr(ret, index, LLVMAttr.NoUndef);
+      context.setCallTypeAttr(ret, index, LLVMAttr.ByVal, ty);
     }
 
     if (sret != null) {
@@ -116,29 +118,43 @@ class AbiFnArm64 implements AbiFn {
       return context.pointer();
     }
 
-    final onlyFloat = ty.fields.every((e) => e.grt(context) == BuiltInTy.f32);
-    if (onlyFloat) {
-      final size = (count / 4).ceil();
-      return context.arrayType(context.f32, size);
-    }
-
-    final onlyDouble = ty.fields.every((e) => e.grt(context) == BuiltInTy.f64);
-    if (onlyDouble) {
-      final size = (count / 8).ceil();
-      return context.arrayType(context.f64, size);
-    }
-
-    final arrayCount = count ~/ 8;
-
-    final extra = count % 8;
-    final loadTy = context.i64;
     final list = <LLVMTypeRef>[];
-    for (var i = 0; i < arrayCount; i++) {
-      list.add(loadTy);
+    final map = ty.llvmType.getFieldsSize(context).map;
+
+    var oFloat = true;
+
+    bool isFloat(Ty ty) {
+      if (ty is StructTy) {
+        return ty.fields.every((e) => isFloat(e.grt(context)));
+      }
+      return ty is BuiltInTy && ty.ty.isFp;
     }
 
+    var num = 8;
+    var currentOffset = 0;
+
+    for (var item in ty.fields) {
+      final index = map[item]!;
+      if (index.diOffset >= num) {
+        list.add(oFloat ? context.f64 : context.i64);
+        oFloat = true;
+        currentOffset = index.diOffset;
+        num += 8;
+      }
+
+      if (ty.ident.src == 'Base64Float') {
+        Log.w('$oFloat ${isFloat(item.grt(context))} $item');
+      }
+      oFloat &= isFloat(item.grt(context));
+    }
+
+    final extra = count - currentOffset;
     if (extra > 0) {
-      list.add(context.i32);
+      if (extra <= 4) {
+        list.add(oFloat ? context.f32 : context.i32);
+      } else {
+        list.add(oFloat ? context.f64 : context.i64);
+      }
     }
 
     return context.typeStruct(list, null);
@@ -148,11 +164,7 @@ class AbiFnArm64 implements AbiFn {
       BuildContext context, StructTy struct, Variable variable) {
     final byteSize = struct.llvmType.getBytes(context);
     if (byteSize > 16) {
-      final llType = struct.llvmType.createType(context);
-      final copyValue = context.alloctor(llType);
-      llvm.LLVMBuildMemCpy(context.builder, copyValue, 0,
-          variable.getBaseValue(context), 0, context.usizeValue(byteSize));
-      return (Reg.byval, copyValue);
+      return (Reg.byval, variable.getBaseValue(context));
     }
     final cTy = getCStructFnParamTy(context, struct);
     final align = context.getBaseAlignSize(struct);
@@ -243,10 +255,24 @@ class AbiFnArm64 implements AbiFn {
     llvm.LLVMSetLinkage(v, LLVMLinkage.LLVMExternalLinkage);
 
     var retTy = fn.getRetTy(c);
+    var index = 0;
     if (isSret(c, fn)) {
       c.setFnLLVMAttr(v, 1, LLVMAttr.StructRet);
+      index += 1;
     }
 
+    for (var p in fn.fnSign.fnDecl.params) {
+      index += 1;
+      final realTy = fn.getRty(c, p);
+      if (realTy is StructTy) {
+        final size = realTy.llvmType.getBytes(c);
+        if (size > 16) {
+          final ty = realTy.llvmType.createType(c);
+          c.setFnLLVMAttr(v, index, LLVMAttr.NoUndef);
+          c.setFnTypeAttr(v, index, LLVMAttr.ByVal, ty);
+        }
+      }
+    }
     final offset = fn.fnSign.fnDecl.ident.offset;
 
     final dBuilder = c.dBuilder;
@@ -256,10 +282,12 @@ class AbiFnArm64 implements AbiFn {
       params.add(retTy.llvmType.createDIType(c));
 
       for (var p in fn.fnSign.fnDecl.params) {
+        index += 1;
         final realTy = fn.getRty(c, p);
         final ty = realTy.llvmType.createDIType(c);
         params.add(ty);
       }
+
       final (namePointer, nameLength) = ident.toNativeUtf8WithLength();
 
       final fnTy = llvm.LLVMDIBuilderCreateSubroutineType(

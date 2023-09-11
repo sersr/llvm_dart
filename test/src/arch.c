@@ -40,8 +40,8 @@ typedef struct Basef64
 typedef struct Base64Float
 {
   float y;
-  char z;
   float x;
+  char z;
 } Base64Float;
 
 typedef struct Base96
@@ -121,7 +121,7 @@ Base128 apiFnRet128()
 
 Base64Float apiFnRet64Float()
 {
-  Base64Float base = {128.00, 11, 130.00};
+  Base64Float base = {128.00,  130.00, 11};
   return base;
 }
 
@@ -135,7 +135,7 @@ void run()
   Base32 base32 = {1};
   Base128 b128 = {1, 2};
   BaseBig bbig = {1, 2, 3, 4, 6};
-  Base64Float b64float = {1.0, 2, 3.0};
+  Base64Float b64float = {1.0, 3.0, 2};
   ii(10);
   apiFn(base);
   apiFn32(base32);

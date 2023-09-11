@@ -40,7 +40,7 @@ class LiteralExpr extends Expr {
     }
     final v = baseTy.llvmType.createValue(ident: ident);
 
-    return ExprTempValue(v, ty, ident);
+    return ExprTempValue(v, baseTy, ident);
   }
 
   @override
@@ -414,7 +414,7 @@ class RetExpr extends Expr {
     }
 
     if (val != null) {
-      final vals = current?.currentFn?.sretVariables;
+      final vals = current?.currentFn?.returnVariables;
       if (vals != null) {
         final all = val.allParent;
         all.insert(0, val);
@@ -587,9 +587,7 @@ class StructExpr extends Expr {
         // llvm.LLVMBuildMemSet(context.builder, base, context.constI8(0),
         //     BuiltInTy.constUsize(context, len), align);
       }
-      if (value is LLVMAllocaDelayVariable) {
-        value.create(context, null, nIdent ?? ident);
-      }
+
       for (var i = 0; i < sortFields.length; i++) {
         final f = sortFields[i];
         final fd = fields[i];
@@ -598,11 +596,9 @@ class StructExpr extends Expr {
         final v = temp?.variable;
         if (v == null) continue;
         final vv = struct.llvmType.getField(value, context, fd.ident)!;
-        if (v is LLVMAllocaDelayVariable) {
-          final result = v.create(context, vv);
-          if (result) {
-            continue;
-          }
+        if (v is LLVMAllocaDelayVariable && !v.created) {
+          v.create(context, vv, f.ident);
+          continue;
         }
 
         final loadOffset = temp!.currentIdent.offset;
@@ -749,7 +745,7 @@ class FieldExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
-    return expr.build(context);
+    return expr.build(context, baseTy: baseTy);
   }
 
   @override

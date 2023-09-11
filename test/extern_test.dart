@@ -1,3 +1,4 @@
+import 'package:llvm_dart/abi/abi_fn.dart';
 import 'package:llvm_dart/ast/memory.dart';
 import 'package:llvm_dart/fs/fs.dart';
 import 'package:llvm_dart/manager/build_run.dart';
@@ -16,9 +17,10 @@ Future<void> run(String name,
   return runPrint(() async {
     final path = testSrcDir.childFile(name).path;
     final project = ProjectManager();
-    final arch = 'x86_64';
+    final arch = Abi.x86_64;
     project.isDebug = true;
     final root = project.build(path,
+        abi: arch,
         target: '$arch-apple-darwin22.4.0',
         afterAnalysis: () => project.printAst());
     buildRun(root);

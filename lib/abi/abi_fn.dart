@@ -7,9 +7,19 @@ import '../ast/memory.dart';
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'abi_arm64.dart';
+import 'abi_x86_64.dart';
 
 enum Abi {
-  arm64,
+  arm64('arm64'),
+  x86_64('x86_64');
+
+  final String name;
+  const Abi(this.name);
+
+  @override
+  String toString() {
+    return name;
+  }
 }
 
 abstract interface class AbiFn {
@@ -24,16 +34,13 @@ abstract interface class AbiFn {
       BuildContext c, Fn fn, void Function(LLVMConstVariable fnValue) after);
 
   static final _instances = <Abi, AbiFn>{};
-  void clear();
-  static void clearAll() {
-    for (var instance in _instances.values) {
-      instance.clear();
-    }
-  }
 
   factory AbiFn.get(Abi abi) {
     return _instances.putIfAbsent(abi, () {
-      return AbiFnArm64();
+      return switch (abi) {
+        Abi.x86_64 => AbiFnx86_64(),
+        _ => AbiFnArm64(),
+      };
     });
   }
 
@@ -50,7 +57,7 @@ abstract interface class AbiFn {
       Map<Identifier, Set<AnalysisVariable>>? map,
       Identifier currentIdent) {
     if (fn.extern) {
-      return AbiFn.get(Abi.arm64).fnCall(context, fn, params, currentIdent);
+      return AbiFn.get(context.abi).fnCall(context, fn, params, currentIdent);
     }
 
     fn = StructExpr.resolveGeneric(fn, context, params, []);
@@ -141,7 +148,9 @@ abstract interface class AbiFn {
       Set<AnalysisVariable>? variables,
       void Function(LLVMConstVariable fnValue) after) {
     if (fn.extern) {
-      return AbiFn.get(Abi.arm64).createFunctionAbi(c, fn, after);
+      return fn.llvmType.getOrCreate(() {
+        return AbiFn.get(c.abi).createFunctionAbi(c, fn, after);
+      });
     }
     return fn.llvmType.createFunction(c, variables, after);
   }
@@ -153,7 +162,7 @@ abstract interface class AbiFn {
       FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
       {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
     if (fnty.extern) {
-      return AbiFn.get(Abi.arm64).initFnParamsImpl(context, fn, fnty);
+      return AbiFn.get(context.abi).initFnParamsImpl(context, fn, fnty);
     }
     context.initFnParams(fn, decl, fnty, extra, map: map);
     return context.sret;
@@ -162,7 +171,7 @@ abstract interface class AbiFn {
   static LLVMValueRef fnRet(
       BuildContext context, Fn fn, Variable src, Offset offset) {
     if (fn.extern) {
-      return AbiFn.get(Abi.arm64).classifyFnRet(context, src, offset);
+      return AbiFn.get(context.abi).classifyFnRet(context, src, offset);
     }
     return src.load(context, offset);
   }

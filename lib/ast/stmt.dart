@@ -43,65 +43,56 @@ class LetStmt extends Stmt {
 
     context.diSetCurrentLoc(nameIdent.offset);
 
-    final tty = realTy ?? val?.ty;
-    if (tty != null) {
-      final variable = val?.variable;
-      if (variable is LLVMLitVariable) {
-        if (tty is BuiltInTy) {
-          if (isFinal) {
-            context.pushVariable(nameIdent, variable);
-            return;
-          }
+    final tty = val?.ty;
+    final variable = val?.variable;
+    if (tty == null || variable == null) return;
 
-          final alloca = variable.createAlloca(context, nameIdent, tty);
-
-          alloca.create(context);
-
-          alloca.isTemp = false;
-          context.pushVariable(nameIdent, alloca);
+    if (variable is LLVMLitVariable) {
+      if (tty is BuiltInTy) {
+        if (isFinal) {
+          context.pushVariable(nameIdent, variable);
           return;
         }
-        // error
-      }
 
-      StoreVariable? alloca;
-      final (sret, delayAlloca) = context.sretFromVariable(nameIdent, variable);
+        final alloca = variable.createAlloca(context, nameIdent, tty);
 
-      /// 当前的变量是 sret 时才有效
-      if (sret != null) {
-        alloca = delayAlloca;
-        delayAlloca?.ident = nameIdent;
-      }
+        alloca.create(context);
 
-      if (variable is StoreVariable && variable.isTemp) {
-        variable.isTemp = false;
-        variable.ident = nameIdent;
-        context.setName(variable.alloca, nameIdent.src);
-        context.pushVariable(nameIdent, variable);
+        alloca.isTemp = false;
+        context.pushVariable(nameIdent, alloca);
         return;
       }
-
-      bool wrapRef = variable?.isRef == true;
-      alloca ??= tty.llvmType.createAlloca(context, nameIdent, null);
-
-      LLVMValueRef? rValue;
-      if (variable != null) {
-        if (variable is LLVMAllocaDelayVariable) {
-          variable.create(context, null, nameIdent);
-        }
-        if (wrapRef) {
-          rValue = variable.getBaseValue(context);
-        } else {
-          rValue = variable.load(context, val!.currentIdent.offset);
-        }
-      }
-      if (rValue != null) {
-        alloca.store(context, rValue, nameIdent.offset);
-      }
-
-      alloca.isTemp = false;
-      context.pushVariable(nameIdent, alloca);
+      // error
     }
+
+    /// 先判断是否是 struct ret
+    StoreVariable? alloca;
+    if (context.sretFromVariable(nameIdent, variable) &&
+        variable is StoreVariable) {
+      alloca = variable;
+    }
+
+    if (variable is StoreVariable && variable.isTemp) {
+      variable.isTemp = false;
+      variable.ident = nameIdent;
+      context.setName(variable.alloca, nameIdent.src);
+      context.pushVariable(nameIdent, variable);
+      return;
+    }
+
+    alloca ??= tty.llvmType.createAlloca(context, nameIdent, null);
+
+    LLVMValueRef rValue;
+    if (variable.isRef) {
+      rValue = variable.getBaseValue(context);
+    } else {
+      rValue = variable.load(context, val!.currentIdent.offset);
+    }
+
+    alloca.store(context, rValue, nameIdent.offset);
+
+    alloca.isTemp = false;
+    context.pushVariable(nameIdent, alloca);
   }
 
   @override

@@ -14885,6 +14885,23 @@ class LLVMCore {
       LLVMValueRef Function(
           ffi.Pointer<ffi.Char>, LLVMModuleRef, LLVMTypeRef)>();
 
+  LLVMAttributeRef getWithByValType(
+    LLVMContextRef contxt,
+    LLVMTypeRef Ty,
+  ) {
+    return _getWithByValType(
+      contxt,
+      Ty,
+    );
+  }
+
+  late final _getWithByValTypePtr = _lookup<
+      ffi.NativeFunction<
+          LLVMAttributeRef Function(
+              LLVMContextRef, LLVMTypeRef)>>('getWithByValType');
+  late final _getWithByValType = _getWithByValTypePtr
+      .asFunction<LLVMAttributeRef Function(LLVMContextRef, LLVMTypeRef)>();
+
   LLVMMetadataRef LLVMCreateCompileUnit(
     LLVMDIBuilderRef builder,
     ffi.Pointer<ffi.Char> fileName,

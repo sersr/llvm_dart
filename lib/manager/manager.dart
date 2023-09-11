@@ -1,3 +1,4 @@
+import '../abi/abi_fn.dart';
 import '../ast/analysis_context.dart';
 import '../ast/ast.dart';
 import '../ast/buildin.dart';
@@ -30,11 +31,12 @@ class ProjectManager extends ManagerBase {
   final rootAnalysisContext = RootAnalysis();
 
   BuildContext build(String path,
-      {String? target, void Function()? afterAnalysis}) {
+      {String? target, Abi abi = Abi.arm64, void Function()? afterAnalysis}) {
     return Identifier.run(() {
       llvm.initLLVM();
       final fileName = currentDir.childFile(path).basename;
-      final root = BuildContext.root(targetTriple: target, name: fileName);
+      final root =
+          BuildContext.root(targetTriple: target, abi: abi, name: fileName);
       llvmCtxs[path] = root;
       final parser = getParser(path);
       final alc = AnalysisContext.root();

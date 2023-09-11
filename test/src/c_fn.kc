@@ -2,7 +2,7 @@ import 'd.kc';
 
 fn main() i32 {
   let value = apiFnRet64Float();
-  printf("return value: %lf, x: %lf\n", value.y, value.x);
+  printf("return value: %f, x: %f, c: %d\n", value.y as double, value.x as double, value.c);
 
   let s = test_sret();
   printf('sret: %d, x: %d, z: %d, f: %d\n', s.y, s.x, s.z, s.f);
@@ -38,8 +38,8 @@ fn apiFn128(base: Base);
 
 extern struct Base64Float {
   y: f32,
-  c: u8,
   x: f32,
+  c: u8,
 }
 extern
 fn apiFnRet64Float() Base64Float;
@@ -53,7 +53,8 @@ extern struct SRet {
 }
 extern
 fn test_sret() SRet {
-  SRet { 10, 20, 30, 40};
+  let s = SRet { 10, 20, 30, 40};
+  s
 }
 
 struct BaseValue {

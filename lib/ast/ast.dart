@@ -463,10 +463,6 @@ class Block extends BuildMixin with EquatableMixin {
     for (var i = 0; i < _stmts.length; i += 1) {
       final stmt = stmts[i];
       stmt.analysis(context);
-      if (i == stmts.length - 1 && stmt is ExprStmt) {
-        final expr = stmt.expr;
-        RetExpr.analysisAll(context, expr);
-      }
     }
     for (var fn in _fnExprs) {
       fn.analysis(context);
@@ -884,7 +880,7 @@ class Fn extends Ty with NewInst<Fn> {
     _parent = from.root;
     selfVariables = from.selfVariables;
     _get = from._get;
-    sretVariables = from.sretVariables;
+    returnVariables = from.returnVariables;
     currentContext = from.currentContext;
   }
 
@@ -939,7 +935,7 @@ class Fn extends Ty with NewInst<Fn> {
 
   Set<AnalysisVariable> Function()? _get;
 
-  List<RawIdent> sretVariables = [];
+  List<RawIdent> returnVariables = [];
 
   bool _anaysised = false;
 
@@ -964,15 +960,16 @@ class Fn extends Ty with NewInst<Fn> {
     _get = () => child.childrenVariables;
     if (block != null && block!.stmts.isNotEmpty) {
       final lastStmt = block!.stmts.last;
-      if (lastStmt is ExprStmt) {
-        var expr = lastStmt.expr;
-        if (expr is! RetExpr) {
-          final val = expr.analysis(child);
-          if (val != null) {
-            sretVariables.add(val.ident.toRawIdent);
-          }
-        }
-      }
+      if (lastStmt is ExprStmt) RetExpr.analysisAll(child, lastStmt.expr);
+      // if (lastStmt is ExprStmt) {
+      //   var expr = lastStmt.expr;
+      //   if (expr is! RetExpr) {
+      //     final val = expr.analysis(child);
+      //     if (val != null) {
+      //       returnVariables.add(val.ident.toRawIdent);
+      //     }
+      //   }
+      // }
     }
   }
 
