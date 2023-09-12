@@ -1,4 +1,6 @@
 
+import 'd.kc';
+
 type HeapPointer<T> = *HeapCount<T>;
 
 struct HeapCount<T> {
@@ -6,15 +8,17 @@ struct HeapCount<T> {
   data: T,
 }
 
-impl HeapData<T> {
+impl HeapCount<T> {
 
   fn addStack() {
-    count += 1;
+    self.count += 1;
+    printf("hello add %d\n", self.count);
   }
 
   fn removeStack() {
-    count -= 1;
-    if count <= 0 {
+    self.count -= 1;
+    printf('remove %d\n', self.count);
+    if self.count == 0 {
       free(&self);
     }
   }

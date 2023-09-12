@@ -138,6 +138,7 @@ abstract interface class AbiFn {
     }
 
     final v = LLVMConstVariable(ret, retTy);
+    context.autoAddFreeHeap(v);
 
     return ExprTempValue(v, v.ty, currentIdent);
   }

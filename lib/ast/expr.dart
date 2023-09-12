@@ -2375,17 +2375,20 @@ class NewExpr extends Expr {
     final params = [
       FieldExpr(
           InternalExpr(ExprTempValue(sizeValue, sizeValue.ty, Identifier.none)),
-          ident)
+          Identifier.none)
     ];
     final mallocValue = AbiFn.fnCallInternal(
         context, mallocFn, params, null, null, null, Identifier.none);
-    final mVoidVariable = mallocValue?.variable;
-    if (mVoidVariable == null) return null;
+    final voidVariable = mallocValue?.variable;
+
+    if (voidVariable == null) return null;
     final heapTy = HeapTy(temp.ty, heapStructTy);
+    final heapVariable =
+        LLVMConstVariable(voidVariable.getBaseValue(context), heapTy);
 
-    final data = heapTy.llvmType.getData(context, mVoidVariable);
+    final data = heapTy.llvmType.getData(context, heapVariable);
 
-    final count = heapTy.llvmType.getCount(context, mVoidVariable);
+    final count = heapTy.llvmType.getCount(context, heapVariable);
     count.store(context, context.usizeValue(1), Offset.zero);
 
     if (variable is LLVMAllocaDelayVariable && !variable.created) {
@@ -2393,15 +2396,21 @@ class NewExpr extends Expr {
     } else {
       context.memcopy(data, variable, sizeValue.getBaseValue(context));
     }
+    context.autoAddFreeHeap(heapVariable);
 
     // 判断 [temp.ty] 中的直接字段是否有 HeapPointer,如果有增加计数
 
-    return ExprTempValue(mVoidVariable, heapTy, ident);
+    return ExprTempValue(heapVariable, heapTy, ident);
   }
 
   @override
   NewExpr clone() {
     return NewExpr(ident, expr.clone());
+  }
+
+  @override
+  String toString() {
+    return 'new $expr';
   }
 }
 

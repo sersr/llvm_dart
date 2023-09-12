@@ -9,6 +9,7 @@ import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
 import 'package:nop/nop.dart';
 
+import '../abi/abi_fn.dart';
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import '../parsers/lexers/token_kind.dart';
@@ -193,11 +194,11 @@ class Identifier with EquatableMixin {
 
   @override
   String toString() {
-    if (identical(this, none) || lineStart == -1) {
-      return '';
-    }
     if (builtInValue.isNotEmpty) {
       return '[$builtInValue]';
+    }
+    if (identical(this, none) || lineStart == -1) {
+      return '';
     }
 
     return data.substring(start, end);
@@ -445,10 +446,6 @@ class Block extends BuildMixin with EquatableMixin {
     for (var stmt in _stmts) {
       stmt.build(context);
     }
-
-    // for (var fn in _fnExprs) {
-    //   fn.build(context);
-    // }
   }
 
   @override
@@ -1639,6 +1636,9 @@ class HeapTy extends RefTy {
 
   @override
   late LLVMHeapType llvmType = LLVMHeapType(this);
+
+  @override
+  List<Object?> get props => [parent, heapStructTy];
 }
 
 class LLVMHeapType extends LLVMRefType {
@@ -1661,5 +1661,46 @@ class LLVMHeapType extends LLVMRefType {
     final count = heapStructTy.llvmType
         .getField(variable, context, Identifier.builtIn('count'));
     return count!;
+  }
+
+  void addStack(BuildContext context, Variable variable) {
+    final ident = Identifier.builtIn('addStack');
+    final impl = context.getImplForStruct(heapStructTy, ident);
+    var implFn = impl?.getFn(ident);
+    final addFn = implFn?.copyFrom(heapStructTy);
+    if (addFn == null) {
+      Log.e('error addFn == null.', onlyDebug: false);
+      return;
+    }
+    AbiFn.fnCallInternal(
+      context,
+      addFn,
+      [],
+      LLVMConstVariable(variable.load(context, Offset.zero), ty),
+      null,
+      null,
+      Identifier.none,
+    );
+  }
+
+  void removeStack(BuildContext context, Variable variable) {
+    final ident = Identifier.builtIn('removeStack');
+    final impl = context.getImplForStruct(heapStructTy, ident);
+
+    var implFn = impl?.getFn(ident);
+    final removeFn = implFn?.copyFrom(heapStructTy);
+    if (removeFn == null) {
+      Log.e('error removeFn == null.', onlyDebug: false);
+      return;
+    }
+    AbiFn.fnCallInternal(
+      context,
+      removeFn,
+      [],
+      LLVMConstVariable(variable.load(context, Offset.zero), ty),
+      null,
+      null,
+      Identifier.none,
+    );
   }
 }

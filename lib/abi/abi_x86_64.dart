@@ -106,6 +106,7 @@ class AbiFnx86_64 implements AbiFn {
     } else {
       v = LLVMConstVariable(ret, retTy);
     }
+    context.autoAddFreeHeap(v);
 
     return ExprTempValue(v, v.ty, currentIdent);
   }

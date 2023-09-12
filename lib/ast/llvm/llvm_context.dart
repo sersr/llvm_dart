@@ -316,7 +316,14 @@ class BuildContext
 
     diSetCurrentLoc(ident.offset);
 
+    if (val != null) {
+      final ty = val.ty;
+      if (ty is HeapTy) {
+        ty.llvmType.addStack(this, val);
+      }
+    }
     _returned = true;
+    freeHeap();
     if (val == null) {
       diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRetVoid(builder);
@@ -368,18 +375,35 @@ class BuildContext
       fnSret.store(this, variable.load(this, offset), nameIdent.offset);
     }
 
-    // if (variable is LLVMAllocaDelayVariable && !variable.created) {
-    //   variable.create(this, fnSret, nameIdent);
-    //   return variable;
-    // } else {
-    //   fnSret.store(
-    //       this, variable.load(this, variable.ident!.offset), nameIdent.offset);
-    // }
     return null;
   }
 
+  void autoAddFreeHeap(Variable variable) {
+    final ty = variable.ty;
+    if (ty is HeapTy) {
+      _heapVariables.add((ty, variable));
+    } else if (ty case RefTy(:StructTy parent)) {
+      if (parent.ident.src == 'HeapCount') {
+        _heapVariables.add((HeapTy(parent, parent), variable));
+      }
+    }
+  }
+
   /// 当前生命周期块中需要释放的资源
-  final heapVariables = <Variable>[];
+  final _heapVariables = <(HeapTy, Variable)>[];
+
+  /// {
+  ///   // 当前代码块如果有返回语句，需要释放一些资源
+  ///
+  /// }
+  bool _freeDone = false;
+  void freeHeap() {
+    if (_freeDone) return;
+    _freeDone = true;
+    for (var (ty, variable) in _heapVariables) {
+      ty.llvmType.removeStack(this, variable);
+    }
+  }
 
   void painc() {
     llvm.LLVMBuildUnreachable(builder);
