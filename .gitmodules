@@ -1,0 +1,3 @@
+[submodule "llvm_lang"]
+	path = llvm_lang
+	url = https://github.com/sersr/llvm_lang
