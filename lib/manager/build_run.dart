@@ -5,7 +5,7 @@ import '../fs/fs.dart';
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
 
-void buildRun(BuildContext root, {bool optimize = false}) {
+void buildRun(BuildContext root, {String name = 'out', bool optimize = false}) {
   if (optimize) {
     llvm.optimize(
       root.module,
@@ -22,10 +22,10 @@ void buildRun(BuildContext root, {bool optimize = false}) {
       LLVMFalse,
     );
   }
-  llvm.LLVMDumpModule(root.module);
-  llvm.LLVMPrintModuleToFile(root.module, buildFile('out.ll'), nullptr);
+
+  llvm.LLVMPrintModuleToFile(root.module, buildFileChar('$name.ll'), nullptr);
   llvm.writeOutput(root.module, root.tm, LLVMCodeGenFileType.LLVMObjectFile,
-      buildFile('out.o'));
+      buildFileChar('$name.o'));
 
   root.dispose();
 }

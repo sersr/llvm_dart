@@ -3,8 +3,7 @@
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:file/local.dart';
-
+import 'fs/fs.dart';
 import 'llvm_core.dart';
 
 const LLVMTrue = 1;
@@ -26,12 +25,11 @@ class LLVMInstance {
   static LLVMCore getInstance() {
     if (_bindings != null) return _bindings!;
     DynamicLibrary library;
-    var dir = LocalFileSystem().currentDirectory;
-    assert(() {
-      dir = dir.parent.childDirectory('llvm_lang');
-      dir = dir.childDirectory('install/lib');
-      return true;
-    }());
+    var dir = currentDir
+        .childDirectory('llvm_lang')
+        .childDirectory('install')
+        .childDirectory('lib');
+
     var name = 'libllvm_wrapper.dylib';
     if (Platform.isWindows) {
       name = 'libllvm_wrapper.dll';

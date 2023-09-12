@@ -126,12 +126,6 @@ abstract class ManagerBase extends GlobalContext {
       for (var ty in parser.globalTy.values) {
         ty.currentContext = context;
       }
-
-      // for (var fns in context.fns.values) {
-      //   for (var fn in fns) {
-      //     fn.currentContext = context;
-      //   }
-      // }
     } else {
       for (var fns in context.fns.values) {
         for (var fn in fns) {

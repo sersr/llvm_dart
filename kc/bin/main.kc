@@ -1,0 +1,111 @@
+import '../lib/d.kc';
+
+
+struct Data {
+	x: i32,
+	y: i64,
+}
+
+struct Bcx<T> {
+	x: i32,
+	b: T,
+}
+
+impl Bcx<T> {
+	fn getb(n: &T) &T {
+		let y = &self.b;
+		let hh = self;
+		let hx = &self;
+		let hhxa = n;
+		printf("h nn h: %d\n", hx.x);
+		let u = 212;
+		 fn inn() {
+			let yx = hx;
+			let hch = yx.x;
+			printf("hhinn: %d, hch: %d\n", yx.x, hch);
+		}
+		// printf("hh: %d\n", hh.x);
+		inn();
+
+		// printf("last value: %d\n", y.x);
+		// self.b = n;
+		// let h = n;
+		// printf("h: %d\n", h.x);
+		y;
+	}
+
+	fn gee() {
+		let x = 33;
+		fn hin() {
+			let y = printf('gee.hin: %d\n', x);
+			printf("hin pr: %d\n", y);
+		}
+		hin();
+	}
+}
+
+struct Gen {
+	x: i32,
+}
+
+
+
+impl Gen {
+	fn printx() {
+		printf("gen.x: %d\n", self.x);
+	}
+}
+
+fn main() i32 {
+	print('start');
+	let y = 55 as i64;
+	let bcx = Bcx {10202 ,Gen { 3434343 }}
+	let size = bcx.getb(& Gen { 66666 }).x;
+	printf("main size: %d\n", size);
+
+	fn pp() {
+	 //	printf("size: %d\n", size);
+	}
+	pp();
+	bcx.gee();
+
+	print('---------');
+
+	let bcxData = Bcx { 10001, Data { 33 ,555}, }
+	let size = bcxData.getb(& Data { 44, 666 }).x;
+		printf("main size data: %d\n", size);
+	bcxData.gee();
+	let s = sizeOf(bcxData);
+	printf('s: %d\n', s);
+
+	let b = true;
+	if b {
+		print("hello b");
+	}
+
+	"hello world".print();
+	print('end print');
+	33.ll();
+
+	0;
+}
+
+impl str {
+	fn print() {
+		print(&self);
+	}
+}
+
+impl i32 {
+	fn ll() {
+		let x = self;
+	}
+}
+
+type String;
+
+impl String {
+	static fn new() String {
+
+	}
+}

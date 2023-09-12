@@ -857,10 +857,6 @@ class Fn extends Ty with NewInst<Fn> {
     context.pushFn(fnSign.fnDecl.ident, this);
   }
 
-  void pushFnOnBuild(Tys context) {
-    pushFn(context);
-  }
-
   @override
   LLVMConstVariable? build(
       [Set<AnalysisVariable>? variables,
@@ -868,7 +864,6 @@ class Fn extends Ty with NewInst<Fn> {
     final context = currentContext;
     assert(context != null);
     if (context == null) return null;
-    pushFnOnBuild(context);
     return customBuild(context, variables, map);
   }
 
@@ -880,7 +875,6 @@ class Fn extends Ty with NewInst<Fn> {
     _parent = from.root;
     selfVariables = from.selfVariables;
     _get = from._get;
-    returnVariables = from.returnVariables;
     currentContext = from.currentContext;
   }
 
@@ -948,7 +942,6 @@ class Fn extends Ty with NewInst<Fn> {
       return;
     }
 
-    pushFnOnBuild(context);
     final child = context.childContext();
     pushTyAnalysis(context);
 
@@ -958,19 +951,9 @@ class Fn extends Ty with NewInst<Fn> {
     block?.analysis(child);
     selfVariables = child.catchVariables;
     _get = () => child.childrenVariables;
-    if (block != null && block!.stmts.isNotEmpty) {
-      final lastStmt = block!.stmts.last;
-      if (lastStmt is ExprStmt) RetExpr.analysisAll(child, lastStmt.expr);
-      // if (lastStmt is ExprStmt) {
-      //   var expr = lastStmt.expr;
-      //   if (expr is! RetExpr) {
-      //     final val = expr.analysis(child);
-      //     if (val != null) {
-      //       returnVariables.add(val.ident.toRawIdent);
-      //     }
-      //   }
-      // }
-    }
+
+    final lastStmt = block?._stmts.lastOrNull;
+    if (lastStmt is ExprStmt) RetExpr.analysisAll(child, lastStmt.expr);
   }
 
   @override
@@ -1010,9 +993,6 @@ mixin ImplFnMixin on Fn {
 
   @override
   ImplFnMixin newTy(List<FieldDef> fields);
-
-  @override
-  void pushFnOnBuild(Tys context) {}
 
   @override
   void pushTyGenerics(BuildContext context) {

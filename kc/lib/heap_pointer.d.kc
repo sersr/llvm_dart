@@ -1,0 +1,24 @@
+
+type HeapPointer<T> = *HeapCount<T>;
+
+struct HeapCount<T> {
+  count: usize,
+  data: T,
+}
+
+impl HeapData<T> {
+
+  fn addStack() {
+    count += 1;
+  }
+
+  fn removeStack() {
+    count -= 1;
+    if count <= 0 {
+      free(&self);
+    }
+  }
+}
+
+extern fn malloc(size: usize) *void;
+extern fn free(ptr: *void);

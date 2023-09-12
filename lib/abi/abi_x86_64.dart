@@ -1,7 +1,5 @@
 import 'dart:ffi';
 
-import 'package:nop/nop.dart';
-
 import '../ast/ast.dart';
 import '../ast/expr.dart';
 import '../ast/llvm/llvm_context.dart';
@@ -121,11 +119,11 @@ class AbiFnx86_64 implements AbiFn {
     final list = <LLVMTypeRef>[];
     final map = ty.llvmType.getFieldsSize(context).map;
 
-    var oFloat = true;
+    var hasFloat = true;
 
-    bool isFloat(Ty ty) {
+    bool checkFloat(Ty ty) {
       if (ty is StructTy) {
-        return ty.fields.every((e) => isFloat(e.grt(context)));
+        return ty.fields.every((e) => checkFloat(e.grt(context)));
       }
       return ty is BuiltInTy && ty.ty.isFp;
     }
@@ -136,24 +134,21 @@ class AbiFnx86_64 implements AbiFn {
     for (var item in ty.fields) {
       final index = map[item]!;
       if (index.diOffset >= num) {
-        list.add(oFloat ? context.f64 : context.i64);
-        oFloat = true;
+        list.add(hasFloat ? context.f64 : context.i64);
+        hasFloat = true;
         currentOffset = index.diOffset;
         num += 8;
       }
 
-      if (ty.ident.src == 'Base64Float') {
-        Log.w('$oFloat ${isFloat(item.grt(context))} $item');
-      }
-      oFloat &= isFloat(item.grt(context));
+      hasFloat &= checkFloat(item.grt(context));
     }
 
     final extra = count - currentOffset;
     if (extra > 0) {
       if (extra <= 4) {
-        list.add(oFloat ? context.f32 : context.i32);
+        list.add(hasFloat ? context.f32 : context.i32);
       } else {
-        list.add(oFloat ? context.f64 : context.i64);
+        list.add(hasFloat ? context.f64 : context.i64);
       }
     }
 

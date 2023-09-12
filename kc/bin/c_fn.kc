@@ -1,0 +1,70 @@
+import '../lib/d.kc';
+
+fn main() i32 {
+  let value = apiFnRet64Float();
+  printf("return value: %f, x: %f, c: %d\n", value.y as double, value.x as double, value.c);
+
+  let s = test_sret();
+  printf('sret: %d, x: %d, z: %d, f: %d\n', s.y, s.x, s.z, s.f);
+
+  let baseValue = test_fn();
+  printf('baseValue: %d, x: %d\n', baseValue.y, baseValue.x);
+  test_fn_param(baseValue);
+  0;
+
+}
+
+extern struct Base {
+  y: f64,
+  x: f64,
+}
+
+extern 
+fn c_fn(base: Base) {
+  printf("value: %lf\n", base.y);
+}
+
+extern
+fn c_fn_value() Base {
+
+  Base {111, 222}
+}
+extern
+fn apiFnRet128() Base;
+
+extern
+fn apiFn128(base: Base);
+
+
+extern struct Base64Float {
+  y: f32,
+  x: f32,
+  c: u8,
+}
+extern
+fn apiFnRet64Float() Base64Float;
+
+
+extern struct SRet {
+  y: i32,
+  x: i32,
+  z: i64,
+  f: i64,
+}
+extern
+fn test_sret() SRet {
+  let s = SRet { 10, 20, 30, 40};
+  s
+}
+
+struct BaseValue {
+  y: i32,
+  x: i32,
+}
+fn test_fn() BaseValue {
+  BaseValue {10, 20}
+}
+
+fn test_fn_param(base: BaseValue) {
+  printf('test_fn_param: %d, x: %d\n', base.y, base.x);
+}

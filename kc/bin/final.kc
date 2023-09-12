@@ -1,0 +1,122 @@
+
+import '../lib/d.kc';
+import '../lib/stack_overflow.kc';;
+
+
+fn main() i32 {
+  final y = 10;
+  printf("hello: %d\n", y);
+  init_sig_stack();
+
+  if y == 10 {
+    print("end");
+  }
+
+  let y = 10i64;
+  let ha = Hy{};
+  let hh = HH {1, ha};
+
+  printf("hh: %d\n", hh.y);
+  printf("hh: %p\n", hh.x);
+
+  y = null;
+  let yy = 10;
+  if 10 == y {
+    print("y == yy");
+  }
+  if p {
+    print("null");
+  }
+  let yx = 0x10;
+  printf("yx: %d\n", yx);
+  let y = Hy {};
+  y.print();
+  hh.x = y;
+  let size = sizeOf(y);
+  printf("size: %d\n", size);
+  hh.x.print();
+
+  let y = -1f32;
+  if y == null {
+    print("y == null");
+  }else {
+    print("y == -1");
+  }
+  loopx();
+
+  let option = Some { 10 };
+  option = None{};
+
+  match option {
+    Some(x) => {
+      printf("x:%d\n", x);
+    }
+    None => {
+      printf("None\n");
+    }
+  }
+  0;
+}
+
+static p:*void = null;
+
+static y = 10;
+
+struct HH {
+  y: i32,
+  x: Hy,
+  h: Hax,
+}
+
+struct Hax {
+  asx: i32,
+  hh: i32,
+}
+
+struct Hy;
+
+impl Hy {
+  fn print() {
+    printf("hhhh%p\n", self);
+  }
+}
+
+fn loopx() {
+  let y = malloc(10);
+  free(y);
+  let h = HH {};
+  if !h.h.hh {
+    print("h.h.hh == null");
+  }else {
+    print("h.h.hh != null");
+  }
+  h.h = null;
+  let hb = false;
+  hhg(h);
+  printf("size hb: %d\n", sizeOf(hb));
+}
+
+fn hhg(g: HH) {
+  let y = 10;
+
+  match y {
+    < 9 => {
+      print(" < 9");
+    },
+    11 => {
+      print(" == 11");
+    },
+    o => {
+      printf("vv: %d\n", o);
+    }
+  }
+}
+
+enum Option {
+  Some(i32),
+  None,
+}
+
+extern fn malloc(size: usize) *void;
+extern fn realloc(p: *void, size: usize) *void;
+extern fn free(p: *void);

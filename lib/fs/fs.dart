@@ -25,6 +25,6 @@ Directory get buildDir {
   return currentDir.childDirectory('build');
 }
 
-Pointer<Char> buildFile(String name) {
+Pointer<Char> buildFileChar(String name) {
   return buildDir.childFile(name).path.toChar();
 }

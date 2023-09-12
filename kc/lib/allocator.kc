@@ -1,0 +1,9 @@
+
+
+extern fn free(data: *void);
+
+extern fn malloc(size: usize) *void;
+
+extern fn calloc(count: usize, size: usize) *void;
+
+extern fn aligned_alloc(alignment: usize, size: usize) *void;

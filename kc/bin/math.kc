@@ -1,0 +1,37 @@
+import 'd.kc'
+
+
+struct HDD {
+  s: str,
+  x: i32,
+}
+
+fn main() i32 {
+  let 年后 = 10;
+  if !年后 {
+    print("y != 0");
+  } else {
+    print("!y == 0");
+  }
+
+  print('字符串\
+    分开' "的两种方式。");
+
+  
+  let 😯 = 0;
+  if 😯 {
+    print("y != 0");
+  } else {
+    print("y == 0");
+  }
+
+  if 1 {
+    print("1 != null");
+  } else {
+    print("1 == null");
+  }
+  let h = HDD {"hello", 10};
+  printf("value: %s, %d\n", h.s, h.x);
+
+  0;
+}

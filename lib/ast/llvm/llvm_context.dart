@@ -342,25 +342,27 @@ class BuildContext
     }
   }
 
-  bool sretFromVariable(Identifier? nameIdent, Variable variable) {
+  LLVMAllocaDelayVariable? sretFromVariable(
+      Identifier? nameIdent, Variable variable) {
     final fnContext = getLastFnContext()!;
     final fnty = fnContext.fn.ty as Fn;
     StoreVariable? fnSret;
     fnSret = fnContext.sret;
-    if (fnSret == null) return false;
+    if (fnSret == null) return null;
 
     nameIdent ??= variable.ident!;
     if (!fnty.returnVariables.contains(nameIdent.toRawIdent)) {
-      return false;
+      return null;
     }
 
     if (variable is LLVMAllocaDelayVariable && !variable.created) {
       variable.create(this, fnSret, nameIdent);
+      return variable;
     } else {
       fnSret.store(
           this, variable.load(this, variable.ident!.offset), nameIdent.offset);
+      return null;
     }
-    return true;
   }
 
   /// 当前生命周期块中需要释放的资源
