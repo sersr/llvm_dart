@@ -428,13 +428,10 @@ class RetExpr extends Expr {
         //  let x = y;
         //  return x; // 与 `y` 同源
         // }
-        final isSameRoot =
-            vals.isEmpty || all.any((e) => vals.contains(e.ident.toRawIdent));
-        if (isSameRoot) {
-          for (var val in all) {
-            final ident = val.ident.toRawIdent;
-            vals.add(ident);
-          }
+        for (var val in all) {
+          final ident = val.ident.toRawIdent;
+          // Log.w(val.ident.light, onlyDebug: false);
+          vals.add(ident);
         }
       }
     }

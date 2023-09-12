@@ -8,12 +8,18 @@ import 'package:nop/nop.dart';
 
 Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
 void main(List<String> args) async {
+  assert(() {
+    args = ['sret_fn'];
+    return true;
+  }());
+
   final argParser = ArgParser();
   argParser.addMultiOption('c',
       abbr: 'c', help: '-c kc/bin/arch.c', defaultsTo: ['kc/bin/arch.c']);
   argParser.addFlag('verbose', abbr: 'v', help: '-v', defaultsTo: false);
 
   argParser.addFlag('g', abbr: 'g', defaultsTo: false, help: 'clang -g');
+  argParser.addFlag('ast', abbr: 'a', defaultsTo: false, help: 'printAst');
 
   final results = argParser.parse(args);
   final kcFiles = results.rest;
@@ -27,6 +33,7 @@ void main(List<String> args) async {
   final cFiles = results['c'] as List<String>;
   final isVerbose = results['verbose'] as bool;
   final isDebug = results['g'] as bool;
+  final printAst = results['ast'] as bool;
 
   File? runFile = currentDir.childFile(name);
   if (!runFile.existsSync()) {
@@ -46,15 +53,15 @@ void main(List<String> args) async {
     return;
   }
 
-  return run(runFile, cFiles, isVerbose, isDebug);
+  return run(runFile, cFiles, isVerbose, isDebug, printAst);
 }
 
 final rq = TaskQueue();
 
 const abi = Abi.arm64;
 
-Future<void> run(
-    File file, Iterable<String> cFiles, bool isVerbose, bool isDebug) {
+Future<void> run(File file, Iterable<String> cFiles, bool isVerbose,
+    bool isDebug, bool printAst) {
   return runPrint(() async {
     final project = ProjectManager();
     final path = file.path;
@@ -63,7 +70,9 @@ Future<void> run(
       path,
       abi: abi,
       target: '$abi-apple-darwin22.4.0',
-      // afterAnalysis: () => project.printAst(),
+      afterAnalysis: () {
+        if (printAst) project.printAst();
+      },
     );
 
     final name = file.basename.replaceFirst(RegExp('.kc\$'), '');

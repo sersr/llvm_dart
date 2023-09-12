@@ -1,0 +1,26 @@
+import '../lib/d.kc';
+
+fn main() i32 {
+  let base = sret(true);
+  printf('y: %d, x: %d\n', base.y, base.x);  
+  let base = sret(false);
+  printf('y: %d, x: %d\n', base.y, base.x);
+  0;
+}
+
+extern struct Base {
+  y: i64,
+  x: i64,
+  z: f32,
+}
+
+extern fn sret(isBase: bool) Base {
+  let base = Base {10, 20, 11};
+
+  if isBase {
+    let base2 = Base { 40, 44, 46 };
+    return base2;
+  }
+
+  base;
+}

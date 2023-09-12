@@ -342,6 +342,7 @@ class BuildContext
     }
   }
 
+  RawIdent? _sertOwner;
   LLVMAllocaDelayVariable? sretFromVariable(
       Identifier? nameIdent, Variable variable) {
     final fnContext = getLastFnContext()!;
@@ -351,18 +352,30 @@ class BuildContext
     if (fnSret == null) return null;
 
     nameIdent ??= variable.ident!;
-    if (!fnty.returnVariables.contains(nameIdent.toRawIdent)) {
+    final owner = nameIdent.toRawIdent;
+    if (!fnty.returnVariables.contains(owner)) {
       return null;
     }
 
-    if (variable is LLVMAllocaDelayVariable && !variable.created) {
+    if (fnContext._sertOwner == null &&
+        variable is LLVMAllocaDelayVariable &&
+        !variable.created) {
       variable.create(this, fnSret, nameIdent);
+      fnContext._sertOwner = owner;
       return variable;
     } else {
-      fnSret.store(
-          this, variable.load(this, variable.ident!.offset), nameIdent.offset);
-      return null;
+      final offset = variable.ident?.offset ?? Offset.zero;
+      fnSret.store(this, variable.load(this, offset), nameIdent.offset);
     }
+
+    // if (variable is LLVMAllocaDelayVariable && !variable.created) {
+    //   variable.create(this, fnSret, nameIdent);
+    //   return variable;
+    // } else {
+    //   fnSret.store(
+    //       this, variable.load(this, variable.ident!.offset), nameIdent.offset);
+    // }
+    return null;
   }
 
   /// 当前生命周期块中需要释放的资源

@@ -929,7 +929,7 @@ class Fn extends Ty with NewInst<Fn> {
 
   Set<AnalysisVariable> Function()? _get;
 
-  List<RawIdent> returnVariables = [];
+  Set<RawIdent> returnVariables = {};
 
   bool _anaysised = false;
 
@@ -953,6 +953,7 @@ class Fn extends Ty with NewInst<Fn> {
     _get = () => child.childrenVariables;
 
     final lastStmt = block?._stmts.lastOrNull;
+
     if (lastStmt is ExprStmt) RetExpr.analysisAll(child, lastStmt.expr);
   }
 
