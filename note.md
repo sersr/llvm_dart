@@ -37,6 +37,7 @@
 
     struct HeapCount<T> {
       count: usize,
+      start: usize,
       data: T,
     }
 
@@ -54,6 +55,18 @@
         *pointer = HeapCount {count: 1, data: data};
         return pointer;
       }
+
+      static fn from(data: T) HeapPointer<T> {
+        let size = sizeOf(T);
+
+        let pointer = malloc(size) as HeapPointer<T>;
+
+        /// data 为初始化列表；
+        /// 由 LLVM IR 实现赋值过程
+        *pointer = HeapCount {count: 1, data: data};
+        return pointer;
+      }
+      
       
       fn addStack() {
         count += 1;
@@ -74,6 +87,12 @@
     struct Data {
       base: HeapPointer<Base>,
       x: i32, 
+    }
+
+    impl Data {
+      fn rr() &i32 {
+        &self.x;
+      }
     }
 
     fn test_heap() HeapPointer<Base> {
@@ -113,6 +132,7 @@
       /// noop
       let data = Data { base: base, x: 200 };
 
+      let baseX = &base.x;
       if true {
 
         let base2 = base;

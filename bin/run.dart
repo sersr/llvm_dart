@@ -9,7 +9,7 @@ import 'package:nop/nop.dart';
 Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
 void main(List<String> args) async {
   assert(() {
-    args = ['sret_fn'];
+    args = ['compile'];
     return true;
   }());
 

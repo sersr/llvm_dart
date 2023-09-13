@@ -1091,6 +1091,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     final ty = baseTy;
 
     if (structTy is StructTy) {
+      structTy = StructExpr.resolveGeneric(structTy, context, params, []);
       if (structTy.tys.isEmpty) {
         if (ty is StructTy && structTy.ident == ty.ident) {
           structTy = ty;
@@ -1172,6 +1173,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
       if (p != null) return p;
     }
 
+    structTy = StructExpr.resolveGeneric(structTy, context, params, []);
     final impl = context.getImplForStruct(structTy, ident);
 
     Fn? fn = impl?.getFn(ident)?.copyFrom(structTy);
@@ -2154,7 +2156,7 @@ class AsExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final r = rhs.grt(context);
-    final l = lhs.build(context);
+    final l = lhs.build(context, baseTy: r);
     final lv = l?.variable;
     final lty = l?.ty;
     if (lv == null) return l;
@@ -2163,6 +2165,18 @@ class AsExpr extends Expr {
           lty.ty, lv.load(context, l!.currentIdent.offset), r.ty);
       return ExprTempValue(LLVMConstVariable(val, r), r, l.currentIdent);
     }
+    Variable? asValue;
+    if (lv is LLVMConstVariable) {
+      asValue = LLVMConstVariable(lv.value, r);
+    } else if (lv is StoreVariable) {
+      asValue = LLVMAllocaVariable(
+          r, lv.getBaseValue(context), r.llvmType.createType(context));
+    }
+
+    if (asValue != null) {
+      return ExprTempValue(asValue, asValue.ty, rhs.ident);
+    }
+
     return l;
   }
 
@@ -2382,20 +2396,12 @@ class NewExpr extends Expr {
     final voidVariable = mallocValue?.variable;
 
     if (voidVariable == null) return null;
-    final heapTy = HeapTy(temp.ty, heapStructTy);
+    final heapTy = HeapTy(heapStructTy);
     final heapVariable =
         LLVMConstVariable(voidVariable.getBaseValue(context), heapTy);
 
-    final data = heapTy.llvmType.getData(context, heapVariable);
+    heapTy.llvmType.initData(context, heapVariable);
 
-    final count = heapTy.llvmType.getCount(context, heapVariable);
-    count.store(context, context.usizeValue(1), Offset.zero);
-
-    if (variable is LLVMAllocaDelayVariable && !variable.created) {
-      variable.create(context, data);
-    } else {
-      context.memcopy(data, variable, sizeValue.getBaseValue(context));
-    }
     context.autoAddFreeHeap(heapVariable);
 
     // 判断 [temp.ty] 中的直接字段是否有 HeapPointer,如果有增加计数

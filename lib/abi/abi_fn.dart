@@ -63,6 +63,32 @@ abstract interface class AbiFn {
     fn = StructExpr.resolveGeneric(fn, context, params, []);
 
     final fnParams = fn.fnSign.fnDecl.params;
+    final sortFields = alignParam(
+        params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
+
+    if (fn is ImplStaticFn && fn.fnName.src == 'new') {
+      final newParams = <Variable>[];
+      for (var i = 0; i < sortFields.length; i++) {
+        final p = sortFields[i];
+        Ty? baseTy;
+        if (i < fnParams.length) {
+          baseTy = fn.getRty(context, fnParams[i]);
+        }
+        final temp = p.build(context, baseTy: baseTy);
+        final v = temp?.variable;
+        if (v != null) {
+          v.ident = fnParams[i].ident;
+          newParams.add(v);
+        }
+      }
+      final retVariable = fn
+          .getRetTy(context)
+          .llvmType
+          .createAlloca(context, Identifier.none, null);
+      context.compileRun(fn, context, newParams, retVariable);
+      return ExprTempValue(retVariable, retVariable.ty, currentIdent);
+    }
+
     final args = <LLVMValueRef>[];
     final retTy = fn.getRetTy(context);
 
@@ -73,9 +99,6 @@ abstract interface class AbiFn {
         args.add(struct.getBaseValue(context));
       }
     }
-    final sortFields = alignParam(
-        params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
-
     for (var i = 0; i < sortFields.length; i++) {
       final p = sortFields[i];
       Ty? c;

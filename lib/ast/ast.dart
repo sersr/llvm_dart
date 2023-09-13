@@ -997,7 +997,6 @@ mixin ImplFnMixin on Fn {
     super.pushTyGenerics(context);
     final structTy = ty;
     if (structTy is! StructTy) return;
-
     context.pushDyTys(structTy.tys);
   }
 
@@ -1025,7 +1024,12 @@ mixin ImplFnMixin on Fn {
     if (nTy != null) {
       return nTy;
     }
+
     final ty = this.ty;
+    if (ident.src == 'Self') {
+      return ty;
+    }
+
     if (ty is! StructTy) return null;
     if (ty.generics.isEmpty) return null;
     final impltyStruct = implty.struct.grtOrT(c);
@@ -1625,9 +1629,11 @@ class LLVMAliasType extends LLVMType {
 }
 
 class HeapTy extends RefTy {
-  HeapTy(super.parent, this.heapStructTy);
+  HeapTy(this.parent) : super(parent);
 
-  final StructTy heapStructTy;
+  @override
+  // ignore: overridden_fields
+  final StructTy parent;
 
   @override
   String toString() {
@@ -1636,9 +1642,6 @@ class HeapTy extends RefTy {
 
   @override
   late LLVMHeapType llvmType = LLVMHeapType(this);
-
-  @override
-  List<Object?> get props => [parent, heapStructTy];
 }
 
 class LLVMHeapType extends LLVMRefType {
@@ -1646,7 +1649,7 @@ class LLVMHeapType extends LLVMRefType {
 
   @override
   HeapTy get ty => super.ty as HeapTy;
-  StructTy get heapStructTy => ty.heapStructTy;
+  StructTy get heapStructTy => ty.parent;
 
   StoreVariable getData(BuildContext context, Variable variable) {
     final data = heapStructTy.llvmType
@@ -1661,6 +1664,38 @@ class LLVMHeapType extends LLVMRefType {
     final count = heapStructTy.llvmType
         .getField(variable, context, Identifier.builtIn('count'));
     return count!;
+  }
+
+  void initData(BuildContext context, Variable variable) {
+    final llType = heapStructTy.llvmType;
+    final count =
+        llType.getField(variable, context, Identifier.builtIn('count'))!;
+    count.store(context, context.usizeValue(1), Offset.zero);
+    final start =
+        llType.getField(variable, context, Identifier.builtIn('start'))!;
+    final pointerStart = variable.getBaseValue(context);
+    start.store(context, pointerStart, Offset.zero);
+
+    final data =
+        llType.getField(variable, context, Identifier.builtIn('data'))!;
+
+    if (variable is LLVMAllocaDelayVariable && !variable.created) {
+      variable.create(context, data);
+    } else {
+      final size = llType.getBytes(context);
+      context.memcopy(data, variable, context.usizeValue(size));
+    }
+  }
+
+  void memRef(BuildContext context, Variable variable, Variable src) {
+    final llType = heapStructTy.llvmType;
+    final count =
+        llType.getField(variable, context, Identifier.builtIn('count'))!;
+    count.store(context, context.usizeValue(1), Offset.zero);
+    final start =
+        llType.getField(variable, context, Identifier.builtIn('start'))!;
+    final pointerStart = variable.load(context, Offset.zero);
+    start.store(context, pointerStart, Offset.zero);
   }
 
   void addStack(BuildContext context, Variable variable) {

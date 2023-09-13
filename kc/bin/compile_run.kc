@@ -1,0 +1,29 @@
+import '../lib/d.kc';
+
+extern fn malloc(size: usize) *void;
+extern fn free(ptr: *void);
+
+fn main() i32 {
+
+  let base = Base.new(100);
+  printf('y: %d\n', base.y);
+
+  type  Base64 = Base<i64>;
+
+  let mBase = malloc(sizeOf(Base64)) as *Base64;
+  mBase.y = 100;
+  printf('malloc, y: %d\n', mBase.y);
+  free(mBase);
+  0;
+}
+
+
+struct Base<T> {
+  y: T,
+}
+
+impl Base<T> {
+  static fn new(y: T) Self {
+   Base {y};
+  }
+}

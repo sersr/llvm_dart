@@ -1258,6 +1258,7 @@ class Parser {
       if (t.kind == TokenKind.ident) {
         eatLfIfNeed(it);
         final name = getIdent(it);
+        final instances = parseGenericsInstance(it);
 
         final state = it.cursor;
         if (it.moveNext()) {
@@ -1270,6 +1271,17 @@ class Parser {
             }
             return false;
           }
+        }
+
+        /// 类型可作为变量
+        if (instances.isNotEmpty) {
+          final expr = VariableIdentExpr(name, instances);
+          final f = FieldExpr(expr, null);
+          fields.add(f);
+          if (getToken(it).kind == TokenKind.closeParen) {
+            return true;
+          }
+          return false;
         }
         state.restore();
       }

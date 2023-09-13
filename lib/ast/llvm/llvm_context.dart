@@ -1,6 +1,7 @@
 import 'dart:ffi';
 
 import 'package:collection/collection.dart';
+import 'package:nop/nop.dart';
 
 import '../../abi/abi_fn.dart';
 import '../../fs/fs.dart';
@@ -46,9 +47,12 @@ class BuildContext
     _from(parent!);
   }
 
-  BuildContext._importRoot(BuildContext p)
+  BuildContext._base(BuildContext p)
       : parent = null,
         abi = p.abi,
+        isRoot = false;
+  BuildContext._compileRun(BuildContext this.parent)
+      : abi = parent.abi,
         isRoot = false;
 
   BuildContext.root(
@@ -171,11 +175,13 @@ class BuildContext
 
   @override
   BuildContext defaultImport(String path) {
-    final child = BuildContext._importRoot(this);
+    final child = BuildContext._base(this);
     child._from(this, isImport: true);
     child.currentPath = path;
     children.add(child);
-    child._debugInit();
+    if (_dBuilder != null) {
+      child._debugInit();
+    }
     return child;
   }
 
@@ -306,6 +312,48 @@ class BuildContext
     return fv;
   }
 
+  void _compileFn(BuildContext parent) {
+    llvmContext = parent.llvmContext;
+    module = parent.module;
+    tm = parent.tm;
+    builder = parent.builder;
+    _dBuilder = parent._dBuilder;
+    fn = parent.fn;
+    isFnBBContext = true;
+  }
+
+  LLVMBasicBlock? _newBlockAfter;
+  LLVMAllocaDelayVariable? _compileRetValue;
+  void compileRun(Fn fn, BuildContext context, List<Variable> params,
+      LLVMAllocaDelayVariable retVariable) {
+    final block = fn.block;
+    if (block == null) {
+      Log.e('block == null');
+      return;
+    }
+
+    final fnContext = BuildContext._compileRun(fn.currentContext ?? context);
+
+    fnContext._compileFn(context);
+
+    for (var p in params) {
+      fnContext.pushVariable(p.ident!, p);
+    }
+
+    fnContext._compileRetValue = retVariable;
+    block.build(fnContext);
+
+    final retTy = fn.getRetTy(fnContext);
+    if (retTy == BuiltInTy.kVoid) {
+      fnContext.ret(null, null);
+    } else {
+      block.ret(fnContext);
+    }
+    if (fnContext._newBlockAfter != null) {
+      fnContext.insertPointBB(fnContext._newBlockAfter!);
+    }
+  }
+
   void ret(Variable? val, Identifier? ident, [Offset retOffset = Offset.zero]) {
     if (_returned) {
       // error
@@ -322,14 +370,14 @@ class BuildContext
         ty.llvmType.addStack(this, val);
       }
     }
-    _returned = true;
+    final fn = getLastFnContext()!;
+    final sret = fn._sret ?? fn._compileRetValue;
+
     freeHeap();
     if (val == null) {
       diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRetVoid(builder);
     } else {
-      final fn = getLastFnContext()!;
-      final sret = fn._sret;
       final fnty = fn.fn.ty as Fn;
 
       if (sret == null) {
@@ -337,16 +385,22 @@ class BuildContext
         diSetCurrentLoc(retOffset);
         llvm.LLVMBuildRet(builder, v);
       } else {
-        if (val is LLVMAllocaDelayVariable) {
+        if (val is LLVMAllocaDelayVariable && !val.created) {
           val.create(this, sret, null);
         } else {
-          sret.store(this, val.load(this, val.ident!.offset), retOffset);
+          sret.store(this, val.load(this, val.ident?.offset ?? Offset.zero),
+              retOffset);
         }
-
-        diSetCurrentLoc(retOffset);
-        llvm.LLVMBuildRetVoid(builder);
+        if (fn._compileRetValue == null) {
+          diSetCurrentLoc(retOffset);
+          llvm.LLVMBuildRetVoid(builder);
+        } else {
+          final block = fn._newBlockAfter ??= fn.buildSubBB(name: '_new_ret');
+          br(block.context);
+        }
       }
     }
+    _returned = true;
   }
 
   RawIdent? _sertOwner;
@@ -355,7 +409,7 @@ class BuildContext
     final fnContext = getLastFnContext()!;
     final fnty = fnContext.fn.ty as Fn;
     StoreVariable? fnSret;
-    fnSret = fnContext.sret;
+    fnSret = fnContext.sret ?? fnContext._compileRetValue;
     if (fnSret == null) return null;
 
     nameIdent ??= variable.ident!;
@@ -382,11 +436,12 @@ class BuildContext
     final ty = variable.ty;
     if (ty is HeapTy) {
       _heapVariables.add((ty, variable));
-    } else if (ty case RefTy(:StructTy parent)) {
-      if (parent.ident.src == 'HeapCount') {
-        _heapVariables.add((HeapTy(parent, parent), variable));
-      }
     }
+    // else if (ty case RefTy(:StructTy parent)) {
+    //   if (parent.ident.src == 'HeapCount') {
+    //     _heapVariables.add((HeapTy(parent, parent), variable));
+    //   }
+    // }
   }
 
   /// 当前生命周期块中需要释放的资源

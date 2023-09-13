@@ -10,6 +10,14 @@ struct HeapCount<T> {
 
 impl HeapCount<T> {
 
+  static new(data: T) Self {
+    final size = sizeOf(Self);
+    final owner = malloc(size) as Self;
+    owner.count = 1;
+    owner.data = data;
+    return owner;
+  }
+
   fn addStack() {
     self.count += 1;
     printf("hello add %d\n", self.count);
@@ -26,3 +34,13 @@ impl HeapCount<T> {
 
 extern fn malloc(size: usize) *void;
 extern fn free(ptr: *void);
+
+com Dot<T> {
+  fn getDotSelf() &T;
+  fn getSelf() &Self;
+}
+
+com Stack {
+  fn addStack();
+  fn removeStack();
+}
