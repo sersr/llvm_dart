@@ -143,6 +143,7 @@ class IfExpr extends Expr {
     StoreVariable? variable;
     if (ty != null) {
       variable = ty.llvmType.createAlloca(context, Identifier.none, null);
+      context.autoAddFreeHeap(variable);
     }
     buildIfExprBlock(ifb, context, variable);
 
@@ -163,7 +164,8 @@ class IfExpr extends Expr {
           if (val == null) {
             // error
           } else {
-            if (val is LLVMAllocaDelayVariable) {
+            context.removeFreeVariable(val);
+            if (val is LLVMAllocaDelayVariable && !val.created) {
               val.create(context, variable);
             } else {
               final v = val.load(context, temp!.currentIdent.offset);
@@ -182,8 +184,10 @@ class IfExpr extends Expr {
     final onlyIf = elseifBlock == null && elseBlock == null;
     assert(onlyIf || (elseBlock != null) != (elseifBlock != null));
     final then = c.buildSubBB(name: 'then');
-    final afterBB = c.buildSubBB(name: 'after');
+    late final afterBB = c.buildSubBB(name: 'after');
     LLVMBasicBlock? elseBB;
+
+    bool hasAfterBb = false;
 
     final conTemp = ifEB.expr.build(c);
     final con = conTemp?.variable;
@@ -194,41 +198,45 @@ class IfExpr extends Expr {
         .load(c, conTemp!.currentIdent.offset);
 
     c.appendBB(then);
-    ifEB.block.build(then.context);
+    ifEB.block.build(then.context, free: false);
 
     if (onlyIf) {
       llvm.LLVMBuildCondBr(c.builder, conv, then.bb, afterBB.bb);
+      c.setBr();
     } else {
       elseBB = c.buildSubBB(name: elseifBlock == null ? 'else' : 'elseIf');
       llvm.LLVMBuildCondBr(c.builder, conv, then.bb, elseBB.bb);
       c.appendBB(elseBB);
-
+      c.setBr();
       if (elseifBlock != null) {
         buildIfExprBlock(elseifBlock, elseBB.context, variable);
       } else if (elseBlock != null) {
-        elseBlock.build(elseBB.context);
+        elseBlock.build(elseBB.context, free: false);
       }
     }
     var canBr = then.context.canBr;
     if (canBr) {
+      hasAfterBb = true;
       _blockRetValue(ifEB.block, then.context, variable);
+      then.context.freeHeap();
       then.context.br(afterBB.context);
     }
 
     if (elseBB != null) {
       final elseCanBr = elseBB.context.canBr;
-      // canBr |= elseCanBr;
       if (elseCanBr) {
+        hasAfterBb = true;
         if (elseBlock != null) {
           _blockRetValue(elseBlock, elseBB.context, variable);
+          elseBB.context.freeHeap();
         } else if (elseifBlock != null) {
           _blockRetValue(elseifBlock.block, elseBB.context, variable);
+          elseBB.context.freeHeap();
         }
         elseBB.context.br(afterBB.context);
       }
     }
-
-    c.insertPointBB(afterBB);
+    if (hasAfterBb) c.insertPointBB(afterBB);
   }
 
   AnalysisVariable? _variable;

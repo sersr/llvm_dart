@@ -437,7 +437,7 @@ class Block extends BuildMixin with EquatableMixin {
     }
   }
 
-  void build(BuildContext context) {
+  void build(BuildContext context, {bool free = true}) {
     for (var expr in _fnExprs) {
       expr.fn.pushFn(context);
     }
@@ -446,6 +446,8 @@ class Block extends BuildMixin with EquatableMixin {
     for (var stmt in _stmts) {
       stmt.build(context);
     }
+
+    if (free) context.freeHeap();
   }
 
   @override

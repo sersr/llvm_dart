@@ -2,7 +2,7 @@ import 'std:d.kc';
 import 'std:heap_pointer.d.kc';
 
 fn main() i32 {
-  let base_ptr = ret();
+  let base_ptr = ret(false);
   printf('base_ptr: data: %d\n', base_ptr.data);
   test();
   0;
@@ -15,11 +15,15 @@ struct Base {
 
 
 fn test() {
-  let base = ret();
+  let base = ret(true);
   printf('test: data: %d\n', base.data);
 }
-fn ret() *Base {
-  Base.new(22002);
+fn ret(c: bool) *Base {
+   if c {
+    Base.new(22002);
+  } else {
+    Base.new(10001);
+  }
 }
 
 

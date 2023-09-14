@@ -300,7 +300,7 @@ class BuildContext
       onCreated?.call(fnContext);
       fnContext.initFnParamsStart(fv.value, fn.fnSign.fnDecl, fn, extra,
           map: map);
-      block.build(fnContext);
+      block.build(fnContext, free: false);
 
       final retTy = fn.getRetTy(fnContext);
       if (retTy == BuiltInTy.kVoid) {
@@ -326,7 +326,7 @@ class BuildContext
   LLVMAllocaDelayVariable? _compileRetValue;
   void compileRun(Fn fn, BuildContext context, List<Variable> params,
       LLVMAllocaDelayVariable retVariable) {
-    final block = fn.block;
+    final block = fn.block?.clone();
     if (block == null) {
       Log.e('block == null');
       return;
@@ -341,7 +341,7 @@ class BuildContext
     }
 
     fnContext._compileRetValue = retVariable;
-    block.build(fnContext);
+    block.build(fnContext, free: false);
 
     final retTy = fn.getRetTy(fnContext);
     if (retTy == BuiltInTy.kVoid) {
@@ -373,7 +373,9 @@ class BuildContext
     }
     final fn = getLastFnContext()!;
     final sret = fn._sret ?? fn._compileRetValue;
-    if (fn._compileRetValue == null) {
+    final canFree = fn._compileRetValue == null;
+
+    if (canFree) {
       if (val != null) {
         ImplStackTy.addStack(this, val);
       }
@@ -381,6 +383,7 @@ class BuildContext
     }
 
     if (val == null) {
+      if (!canBr) return;
       diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRetVoid(builder);
     } else {
@@ -486,6 +489,12 @@ class BuildContext
   /// com
   void gg(Ty ty) {
     getImplWithIdent(ty, Identifier.builtIn('Dot'));
+  }
+
+  void removeFreeVariable(Variable variable) {
+    if (!_stackComVariables.remove(variable)) {
+      addStackCom(variable);
+    }
   }
 
   void addStackCom(Variable variable) {
@@ -771,6 +780,10 @@ mixin ChildContext on BuildMethods {
     if (!canBr) return;
     _breaked = true;
     llvm.LLVMBuildBr(builder, llvm.LLVMGetInsertBlock(to.builder));
+  }
+
+  void setBr() {
+    _breaked = true;
   }
 
   void brLoop() {
