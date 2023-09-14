@@ -1,4 +1,4 @@
-import '../lib/d.kc';
+import 'std:d.kc';
 
 fn main() i32 {
   let value = apiFnRet64Float();

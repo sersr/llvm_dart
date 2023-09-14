@@ -19,6 +19,8 @@ abstract class ManagerBase extends GlobalContext {
     return null;
   }
 
+  String get stdRoot => '';
+
   final llvmCtxs = <String, BuildContext>{};
   final alcs = <String, AnalysisContext>{};
   final others = <String, Tys>{};
@@ -70,10 +72,13 @@ abstract class ManagerBase extends GlobalContext {
   @override
   Tys<LifeCycleVariable> import(
       Tys<LifeCycleVariable> current, ImportPath path) {
-    final pname = parseStr(path.name.src);
+    var pname = parseStr(path.name.src);
     var pathName = '';
     final currentPath = current.currentPath;
     assert(currentPath != null, 'current == null.');
+    if (pname.startsWith('std:')) {
+      pname = pname.replaceFirst(RegExp('^std:'), stdRoot);
+    }
 
     pathName = join(currentDir.childDirectory(currentPath!).parent.path, pname);
 

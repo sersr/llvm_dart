@@ -2,8 +2,14 @@ import 'dart:async';
 
 import 'package:equatable/equatable.dart';
 
+import '../llvm_core.dart';
+import '../llvm_dart.dart';
 import 'ast.dart';
 import 'buildin.dart';
+import 'expr.dart';
+import 'llvm/llvm_context.dart';
+import 'llvm/variables.dart';
+import 'memory.dart';
 
 abstract class LifeCycleVariable {
   Identifier? ident;
@@ -44,6 +50,95 @@ abstract class GlobalContext {
   V? getVariable<V>(Identifier ident);
   VA? getKVImpl<K, VA, T>(K k, Map<K, List<VA>> Function(Tys c) map,
       {ImportKV<VA>? handler, bool Function(VA v)? test});
+
+  ExprTempValue? arrayBuiltin(
+      BuildContext context,
+      ExprTempValue variable,
+      Identifier ident,
+      String fnName,
+      Variable val,
+      Ty valTy,
+      List<FieldExpr> params) {
+    if (valTy is ArrayTy) {
+      if (fnName == 'elementAt' && params.isNotEmpty) {
+        final first =
+            params.first.build(context, baseTy: BuiltInTy.usize)?.variable;
+
+        if (first != null && first.ty is BuiltInTy) {
+          final element = valTy.llvmType.getElement(
+              context, val, first.load(context, variable.currentIdent.offset));
+          return ExprTempValue(element, element.ty, ident);
+        }
+      } else if (fnName == 'getSize') {
+        final size = BuiltInTy.usize.llvmType
+            .createValue(ident: Identifier.builtIn('${valTy.size}'));
+        return ExprTempValue(size, size.ty, ident);
+      } else if (fnName == 'toStr') {
+        final element = valTy.llvmType.toStr(context, val);
+        return ExprTempValue(element, element.ty, ident);
+      }
+    }
+
+    if (valTy is StructTy) {
+      if (valTy.ident.src == 'CArray') {
+        if (fnName == 'elementAt' && params.isNotEmpty) {
+          final param = params.first.build(context, baseTy: BuiltInTy.usize);
+          final paramValue = param?.variable;
+          if (paramValue != null && paramValue.ty is BuiltInTy) {
+            final ty = valTy.tys.values.first;
+            Variable getElement(
+                BuildContext c, Variable value, LLVMValueRef index) {
+              final indics = <LLVMValueRef>[index];
+
+              final p = value.load(c, variable.currentIdent.offset);
+              final elementTy = ty.llvmType.createType(c);
+              var ety = ty;
+              if (ty is RefTy) {
+                ety = ty.parent;
+              }
+
+              c.diSetCurrentLoc(ident.offset);
+
+              var v = llvm.LLVMBuildInBoundsGEP2(c.builder, elementTy, p,
+                  indics.toNative(), indics.length, unname);
+              v = llvm.LLVMBuildLoad2(c.builder, c.pointer(), v, unname);
+              final vv = ety.llvmType.createAlloca(c, Identifier.none, v);
+              return vv;
+            }
+
+            final v = valTy.llvmType
+                .getField(val, context, Identifier.builtIn('ptr'));
+            final element = getElement(context, v!,
+                paramValue.load(context, param!.currentIdent.offset));
+            return ExprTempValue(element, element.ty, ident);
+          }
+        }
+      }
+    }
+
+    if (valTy is StructTy) {
+      if (valTy.ident.src == 'Array') {
+        if (fnName == 'new') {
+          if (params.isNotEmpty) {
+            final first =
+                params.first.build(context, baseTy: BuiltInTy.usize)?.variable;
+
+            if (first is LLVMLitVariable) {
+              if (valTy.tys.isNotEmpty) {
+                final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
+                final element =
+                    arr.llvmType.createAlloca(context, Identifier.none, null);
+
+                return ExprTempValue(element, element.ty, ident);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return null;
+  }
 }
 
 mixin Tys<V extends LifeCycleVariable> {
@@ -254,6 +349,14 @@ mixin Tys<V extends LifeCycleVariable> {
           return contains;
         });
     return cache ?? v;
+  }
+
+  ImplTy? getImplWithIdent(Ty structTy, Identifier implIdent) {
+    return getKV(structTy, (c) => c.implForStructs, handler: (c) {
+      return c.getImplWithIdent(structTy, implIdent);
+    }, test: (impl) {
+      return impl.com?.ident == implIdent;
+    });
   }
 
   void pushImplForStruct(Ty structTy, ImplTy ty) {

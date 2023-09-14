@@ -10,8 +10,10 @@ import '../llvm_dart.dart';
 import 'manager_base.dart';
 
 class ProjectManager extends ManagerBase {
-  ProjectManager();
+  ProjectManager({this.stdRoot = ''});
 
+  @override
+  final String stdRoot;
   bool isDebug = false;
 
   AnalysisContext analysis(String path) {

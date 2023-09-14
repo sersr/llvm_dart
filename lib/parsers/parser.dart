@@ -441,7 +441,7 @@ class Parser {
       Expr? expr;
       if (it.moveNext()) {
         final t = getToken(it);
-        if (t.kind != TokenKind.lf) {
+        if (t.kind != TokenKind.lf && t.kind != TokenKind.semi) {
           it.moveBack();
           expr = parseExpr(it);
         } else {
@@ -1078,9 +1078,7 @@ class Parser {
               final struct = parseStructExpr(it, ident, generics);
 
               /// 只需检查最后一个即可
-              if (struct.fields case [..., FieldExpr(expr: UnknownExpr expr)]) {
-                final ident = expr.ident;
-                Log.i('${ident.light} ${ident.offset.row}[ignore]');
+              if (struct.fields case [..., FieldExpr(expr: UnknownExpr _)]) {
                 cursor.restore();
               } else {
                 expr = struct;
@@ -1101,7 +1099,8 @@ class Parser {
     return expr;
   }
 
-  Expr parseExpr(TokenIterator it, {bool runOp = false}) {
+  Expr parseExpr(TokenIterator it,
+      {bool runOp = false, bool isStructExpr = false}) {
     if (!it.moveNext()) return UnknownExpr(getIdent(it), '');
     var baseExpr = parseKeyExpr(it);
     if (baseExpr != null) return baseExpr;
@@ -1109,8 +1108,10 @@ class Parser {
     baseExpr = parseUnaryExpr(it) ?? parserBaseExpr(it);
     if (baseExpr == null) {
       final ident = getIdent(it);
-      Log.e('${ident.src} ${ident.offset}', onlyDebug: false);
-      return UnknownExpr(getIdent(it), '');
+      if (!isStructExpr) {
+        Log.e('${ident.src} ${ident.offset}', onlyDebug: false);
+      }
+      return UnknownExpr(ident, '');
     }
 
     /// 处理后缀
@@ -1347,7 +1348,7 @@ class Parser {
 
       bool parseCommon() {
         it.moveBack();
-        final expr = parseExpr(it);
+        final expr = parseExpr(it, isStructExpr: true);
         final f = FieldExpr(expr, null);
         fields.add(f);
         return expr.hasUnknownExpr;

@@ -1,0 +1,47 @@
+import 'std:d.kc';
+import 'std:heap_pointer.d.kc';
+
+fn main() i32 {
+  let base_ptr = ret();
+  printf('base_ptr: data: %d\n', base_ptr.data);
+  test();
+  0;
+}
+
+struct Base {
+  count: usize,
+  data: i32,
+}
+
+
+fn test() {
+  let base = ret();
+  printf('test: data: %d\n', base.data);
+}
+fn ret() *Base {
+  Base.new(22002);
+}
+
+
+impl Stack for Base {
+  static fn new(data: i32) *Self {
+    final size = sizeOf(Base);
+    final m = malloc(size) as *Base;
+    m.data = data;
+    m.count = 1;
+    return m;
+  }
+
+  fn addStack() {
+    self.count +=1;
+    printf('add count: %d\n', self.count);
+  }
+
+  fn removeStack() {
+    self.count -=1;
+      printf('remove count: %d\n', self.count);
+    if self.count == 0 {
+      free(&self);
+    }
+  }
+}

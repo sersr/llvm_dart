@@ -352,6 +352,7 @@ class BuildContext
     if (fnContext._newBlockAfter != null) {
       fnContext.insertPointBB(fnContext._newBlockAfter!);
     }
+    autoAddStackCom(retVariable);
   }
 
   void ret(Variable? val, Identifier? ident, [Offset retOffset = Offset.zero]) {
@@ -372,8 +373,13 @@ class BuildContext
     }
     final fn = getLastFnContext()!;
     final sret = fn._sret ?? fn._compileRetValue;
+    if (fn._compileRetValue == null) {
+      if (val != null) {
+        ImplStackTy.addStack(this, val);
+      }
+      freeHeap();
+    }
 
-    freeHeap();
     if (val == null) {
       diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRetVoid(builder);
@@ -395,8 +401,13 @@ class BuildContext
           diSetCurrentLoc(retOffset);
           llvm.LLVMBuildRetVoid(builder);
         } else {
-          final block = fn._newBlockAfter ??= fn.buildSubBB(name: '_new_ret');
-          br(block.context);
+          var block = fn._newBlockAfter;
+          if (this != fn) {
+            block = fn.buildSubBB(name: '_new_ret');
+            fn._newBlockAfter = block;
+          }
+
+          if (block != null) br(block.context);
         }
       }
     }
@@ -404,8 +415,7 @@ class BuildContext
   }
 
   RawIdent? _sertOwner;
-  LLVMAllocaDelayVariable? sretFromVariable(
-      Identifier? nameIdent, Variable variable) {
+  StoreVariable? sretFromVariable(Identifier? nameIdent, Variable variable) {
     final fnContext = getLastFnContext()!;
     final fnty = fnContext.fn.ty as Fn;
     StoreVariable? fnSret;
@@ -427,22 +437,31 @@ class BuildContext
     } else {
       final offset = variable.ident?.offset ?? Offset.zero;
       fnSret.store(this, variable.load(this, offset), nameIdent.offset);
+      return fnSret;
     }
-
-    return null;
   }
 
   void autoAddFreeHeap(Variable variable) {
     final ty = variable.ty;
     if (ty is HeapTy) {
       _heapVariables.add((ty, variable));
+    } else if (ty case RefTy(:StructTy parent)) {
+      if (parent.ident.src == 'HeapCount') {
+        _heapVariables.add((HeapTy(parent), variable));
+      }
     }
-    // else if (ty case RefTy(:StructTy parent)) {
-    //   if (parent.ident.src == 'HeapCount') {
-    //     _heapVariables.add((HeapTy(parent, parent), variable));
-    //   }
-    // }
+    if (ImplStackTy.isStackCom(this, variable)) {
+      _stackComVariables.add(variable);
+    }
   }
+
+  void autoAddStackCom(Variable variable) {
+    if (ImplStackTy.isStackCom(this, variable)) {
+      _stackComVariables.add(variable);
+    }
+  }
+
+  final _stackComVariables = <Variable>{};
 
   /// 当前生命周期块中需要释放的资源
   final _heapVariables = <(HeapTy, Variable)>[];
@@ -458,7 +477,22 @@ class BuildContext
     for (var (ty, variable) in _heapVariables) {
       ty.llvmType.removeStack(this, variable);
     }
+
+    for (var variable in _stackComVariables) {
+      ImplStackTy.removeStack(this, variable);
+    }
   }
+
+  /// com
+  void gg(Ty ty) {
+    getImplWithIdent(ty, Identifier.builtIn('Dot'));
+  }
+
+  void addStackCom(Variable variable) {
+    ImplStackTy.addStack(this, variable);
+  }
+
+  /// math
 
   void painc() {
     llvm.LLVMBuildUnreachable(builder);

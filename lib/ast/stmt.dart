@@ -66,7 +66,7 @@ class LetStmt extends Stmt {
     }
 
     /// 先判断是否是 struct ret
-    var allocaOrSret = context.sretFromVariable(nameIdent, variable);
+    var sretVariable = context.sretFromVariable(nameIdent, variable);
 
     if (variable is StoreVariable && variable.isTemp) {
       variable.isTemp = false;
@@ -76,19 +76,26 @@ class LetStmt extends Stmt {
       return;
     }
 
-    allocaOrSret ??= tty.llvmType.createAlloca(context, nameIdent, null);
-
-    LLVMValueRef rValue;
-    if (variable.isRef) {
-      rValue = variable.getBaseValue(context);
-    } else {
-      rValue = variable.load(context, val!.currentIdent.offset);
+    if (isFinal) {
+      context.pushVariable(nameIdent, sretVariable ?? variable);
+      return;
     }
 
-    allocaOrSret.store(context, rValue, nameIdent.offset);
+    /// 如果是
+    if (sretVariable == null) {
+      sretVariable = tty.llvmType.createAlloca(context, nameIdent, null);
 
-    allocaOrSret.isTemp = false;
-    context.pushVariable(nameIdent, allocaOrSret);
+      LLVMValueRef rValue;
+      if (variable.isRef) {
+        rValue = variable.getBaseValue(context);
+      } else {
+        rValue = variable.load(context, val!.currentIdent.offset);
+      }
+
+      sretVariable.store(context, rValue, nameIdent.offset);
+    }
+    sretVariable.isTemp = false;
+    context.pushVariable(nameIdent, sretVariable);
   }
 
   @override

@@ -94,6 +94,7 @@ class AbiFnx86_64 implements AbiFn {
     }
 
     if (sret != null) {
+      context.autoAddFreeHeap(sret);
       return ExprTempValue(sret, retTy, currentIdent);
     }
     if (retTy == BuiltInTy.kVoid) {

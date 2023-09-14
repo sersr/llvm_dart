@@ -7,6 +7,7 @@ import 'package:llvm_dart/run.dart';
 import 'package:nop/nop.dart';
 
 Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
+Directory get stdRoot => currentDir.childDirectory('kc').childDirectory('lib');
 void main(List<String> args) async {
   assert(() {
     args = ['compile'];
@@ -20,6 +21,7 @@ void main(List<String> args) async {
 
   argParser.addFlag('g', abbr: 'g', defaultsTo: false, help: 'clang -g');
   argParser.addFlag('ast', abbr: 'a', defaultsTo: false, help: 'printAst');
+  argParser.addOption('std', defaultsTo: stdRoot.path, help: '--std ./bin/lib');
 
   final results = argParser.parse(args);
   final kcFiles = results.rest;
@@ -27,13 +29,14 @@ void main(List<String> args) async {
   final name = kcFiles.firstOrNull;
 
   if (name == null) {
-    Log.e('dart run bin/run.dart <filename>.kc');
+    Log.e('dart run bin/run.dart <filename>.kc', onlyDebug: false);
     return;
   }
   final cFiles = results['c'] as List<String>;
   final isVerbose = results['verbose'] as bool;
   final isDebug = results['g'] as bool;
   final printAst = results['ast'] as bool;
+  final stdDir = results['std'] as String;
 
   File? runFile = currentDir.childFile(name);
   if (!runFile.existsSync()) {
@@ -41,7 +44,7 @@ void main(List<String> args) async {
     final entries = kcBinDir.listSync(followLinks: false);
     for (var file in entries) {
       if (file is File &&
-          file.basename.contains(name) &&
+          file.basename.startsWith(name) &&
           file.basename.endsWith('.kc')) {
         runFile = file;
         break;
@@ -49,21 +52,25 @@ void main(List<String> args) async {
     }
   }
   if (runFile == null) {
-    Log.e('找不到 <$name> 文件');
+    Log.e('找不到 <$name> 文件', onlyDebug: false);
     return;
   }
 
-  return run(runFile, cFiles, isVerbose, isDebug, printAst);
+  return run(runFile, cFiles, stdDir, isVerbose, isDebug, printAst);
 }
 
 final rq = TaskQueue();
 
 const abi = Abi.arm64;
 
-Future<void> run(File file, Iterable<String> cFiles, bool isVerbose,
+Future<void> run(File file, Iterable<String> cFiles, String std, bool isVerbose,
     bool isDebug, bool printAst) {
   return runPrint(() async {
-    final project = ProjectManager();
+    if (!std.endsWith('/')) {
+      std = '$std/';
+    }
+
+    final project = ProjectManager(stdRoot: std);
     final path = file.path;
     project.isDebug = isDebug;
     final root = project.build(
