@@ -1,11 +1,12 @@
 import 'package:characters/characters.dart';
 import 'package:llvm_dart/ast/ast.dart';
-import 'package:llvm_dart/fs/fs.dart';
 import 'package:llvm_dart/parsers/lexers/token_kind.dart';
 import 'package:llvm_dart/parsers/lexers/token_stream.dart';
 import 'package:llvm_dart/parsers/token_it.dart';
 import 'package:nop/nop.dart';
 import 'package:test/test.dart';
+
+import '../bin/run.dart';
 
 void main() {
   test('cursor 😯', () {
@@ -20,7 +21,7 @@ void main() {
   });
 
   test('light', () {
-    final src = testSrcDir.childFile('math.kc').readAsStringSync();
+    final src = kcBinDir.childFile('main.kc').readAsStringSync();
     Log.logPathFn = (path) => path;
     final tokenReader = TokenReader(src);
 

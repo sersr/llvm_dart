@@ -21,7 +21,7 @@ fn main() i32 {
     print(aa.toStr());
     let y = Gen { 10 };
 
-		y.print();
+    y.print();
     hello(&y);
     0
 }
@@ -36,8 +36,8 @@ com Print {
 
 impl Print:test for Gen {
   fn print() {
-		print('hello');
-	}
+    print('hello');
+  }
 }
 
 fn hello<T>(y: &T) {
