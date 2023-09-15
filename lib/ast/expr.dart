@@ -202,6 +202,7 @@ class IfExpr extends Expr {
     ifEB.block.build(then.context, free: false);
 
     if (onlyIf) {
+      hasAfterBb = true;
       llvm.LLVMBuildCondBr(c.builder, conv, then.bb, afterBB.bb);
       c.setBr();
     } else {
@@ -1033,6 +1034,11 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (valTy == null) return null;
 
     var structTy = valTy;
+    if (variable != null) {
+      final builiin = context.importHandler.arrayBuiltin(
+          context, variable, ident, fnName, val, structTy, params);
+      if (builiin != null) return builiin;
+    }
 
     if (structTy is StructTy) {
       /// 对于类方法(静态方法)，struct 中存在泛型，并且没有指定时，从静态方法中的参数列表
@@ -1060,12 +1066,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
           structTy = baseTy;
         }
       }
-    }
-
-    if (variable != null && val != null) {
-      final builiin = context.importHandler.arrayBuiltin(
-          context, variable, ident, fnName, val, structTy, params);
-      if (builiin != null) return builiin;
     }
 
     final impl = context.getImplForStruct(structTy, ident);

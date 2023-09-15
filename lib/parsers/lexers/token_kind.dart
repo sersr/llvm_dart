@@ -365,7 +365,7 @@ class Cursor {
     final end = lineStartCursors[nextIndex];
 
     if (key >= start && key < end) {
-      return (start, end - 1, _lastLineNumber);
+      return (start, end - 1, _lastLineNumber + 1);
     }
 
     var index = nextIndex;
@@ -375,7 +375,7 @@ class Cursor {
 
       if (key >= start && key < end) {
         _lastLineNumber = index;
-        return (start, end - 1, index);
+        return (start, end - 1, index + 1);
       }
       index += 1;
     }

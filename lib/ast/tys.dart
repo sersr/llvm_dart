@@ -56,10 +56,10 @@ abstract class GlobalContext {
       ExprTempValue variable,
       Identifier ident,
       String fnName,
-      Variable val,
+      Variable? val,
       Ty valTy,
       List<FieldExpr> params) {
-    if (valTy is ArrayTy) {
+    if (valTy is ArrayTy && val != null) {
       if (fnName == 'elementAt' && params.isNotEmpty) {
         final first =
             params.first.build(context, baseTy: BuiltInTy.usize)?.variable;
@@ -79,7 +79,7 @@ abstract class GlobalContext {
       }
     }
 
-    if (valTy is StructTy) {
+    if (valTy is StructTy && val != null) {
       if (valTy.ident.src == 'CArray') {
         if (fnName == 'elementAt' && params.isNotEmpty) {
           final param = params.first.build(context, baseTy: BuiltInTy.usize);
@@ -128,7 +128,6 @@ abstract class GlobalContext {
                 final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
                 final element =
                     arr.llvmType.createAlloca(context, Identifier.none, null);
-
                 return ExprTempValue(element, element.ty, ident);
               }
             }
