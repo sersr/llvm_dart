@@ -13,6 +13,7 @@ import '../expr.dart';
 import '../memory.dart';
 import '../tys.dart';
 import 'build_methods.dart';
+import 'coms.dart';
 import 'intrinsics.dart';
 import 'variables.dart';
 
@@ -340,6 +341,8 @@ class BuildContext
       fnContext.pushVariable(p.ident!, p);
     }
 
+    fn.pushTyGenerics(fnContext);
+
     fnContext._compileRetValue = retVariable;
     block.build(fnContext, free: false);
 
@@ -461,6 +464,18 @@ class BuildContext
   void autoAddStackCom(Variable variable) {
     if (ImplStackTy.isStackCom(this, variable)) {
       _stackComVariables.add(variable);
+      var ty = variable.ty;
+      if (ty is RefTy) {
+        ty = ty.baseTy;
+      }
+      variable = variable.defaultDeref(this);
+
+      if (ty is StructTy) {
+        for (var field in ty.fields) {
+          final val = ty.llvmType.getField(variable, this, field.ident);
+          if (val != null) autoAddStackCom(val);
+        }
+      }
     }
   }
 

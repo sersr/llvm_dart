@@ -362,8 +362,9 @@ mixin Consts on BuildMethods {
         src = parseStr(src);
       }
 
-      final length = src.nativeLength;
-      final strData = constStr(src, length: length);
+      final (strPtr, length) = src.toNativeUtf8WithLength();
+      final strData = constStr('', strPtr: strPtr, length: length);
+
       final type = arrayType(BuiltInTy.u8.llvmType.litType(this), length + 1);
       final value = llvm.LLVMAddGlobal(module, type, '.str'.toChar());
       llvm.LLVMSetLinkage(value, LLVMLinkage.LLVMPrivateLinkage);
@@ -374,9 +375,18 @@ mixin Consts on BuildMethods {
     });
   }
 
-  LLVMValueRef constStr(String str, {int? length}) {
+  /// length: 是 UTF-8 编码形式的数组长度，不可直接从 [String.length] 获取
+  LLVMValueRef constStr(String str, {Pointer<Char>? strPtr, int? length}) {
+    assert(strPtr == null || length != null);
+
+    if (length == null || strPtr == null) {
+      final (value, nLength) = str.toNativeUtf8WithLength();
+      strPtr = value;
+      length = nLength;
+    }
+
     return llvm.LLVMConstStringInContext(
-        llvmContext, str.toChar(), length ?? str.nativeLength, LLVMFalse);
+        llvmContext, strPtr, length, LLVMFalse);
   }
 
   LLVMValueRef constArray(LLVMTypeRef ty, List<LLVMValueRef> vals) {

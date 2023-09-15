@@ -5,12 +5,21 @@ fn main() i32 {
   let base_ptr = ret(false);
   printf('base_ptr: data: %d\n', base_ptr.data);
   test();
+
+  // 自动调用 deref(),实际为 Base.data: i32
+  // let data: &i32;
+  let data = *base_ptr; 
+  printf('alias Base.data: %d\n', *hh);
+
+
+  let base64 = Base.new( 6666i64);
+  printf('base64: data: %d\n', base64.data);
   0;
 }
 
-struct Base {
+struct Base<T> {
   count: usize,
-  data: i32,
+  data: T,
 }
 
 
@@ -18,19 +27,24 @@ fn test() {
   let base = ret(true);
   printf('test: data: %d\n', base.data);
 }
-fn ret(c: bool) *Base {
-   if c {
+fn ret(c: bool) *Base<i32> {
+  if c {
     Base.new(22002);
   } else {
     Base.new(10001);
   }
 }
 
+impl Deref<T> for Base<T> {
+  fn deref() &T {
+    &self.data
+  }
+}
 
-impl Stack for Base {
-  static fn new(data: i32) *Self {
-    final size = sizeOf(Base);
-    final m = malloc(size) as *Base;
+impl Stack for Base<T> {
+  static fn new(data: T) *Self {
+    final size = sizeOf(Base<T>);
+    final m = malloc(size) as *Base<T>;
     m.data = data;
     m.count = 1;
     return m;

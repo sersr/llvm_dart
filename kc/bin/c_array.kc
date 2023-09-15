@@ -15,6 +15,7 @@ fn main(argc: i32, ptr: **u8) i32 {
       print("none");
     }
   }
+  op = Some();
 
   test();
   0;

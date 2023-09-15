@@ -41,6 +41,7 @@ abstract class LLVMType {
       BuildContext c, Identifier ident, LLVMValueRef? base) {
     final type = createType(c);
     final val = LLVMAllocaDelayVariable(ty, base, ([alloca, nIdent]) {
+      if (alloca != null) return alloca.getBaseValue(c);
       final value = c.alloctor(type, ty: ty, name: nIdent?.src ?? ident.src);
       c.diBuilderDeclare(nIdent ?? ident, value, ty);
       return value;
@@ -687,7 +688,8 @@ class LLVMEnumItemType extends LLVMStructType {
     if (_type != null) return _type!;
 
     final m = pTy.getRealIndexType(c);
-    final size = _size ??= alignType(c, ty.fields, initValue: m, sort: true);
+    final size = _size ??=
+        alignType(c, ty.fields, initValue: m, sort: true, minToMax: true);
 
     // 以数组的形式表示占位符
     final idnexType = c.arrayType(pTy.getIndexType(c), 1);
@@ -695,7 +697,7 @@ class LLVMEnumItemType extends LLVMStructType {
   }
 
   static FieldsSize alignType(BuildContext c, List<FieldDef> fields,
-      {int initValue = 0, bool sort = false}) {
+      {int initValue = 0, bool sort = false, bool minToMax = false}) {
     final targetSize = c.pointerSize();
     var alignSize = fields.fold<int>(0, (previousValue, element) {
       final size = element.grt(c).llvmType.getBytes(c);
@@ -712,7 +714,13 @@ class LLVMEnumItemType extends LLVMStructType {
       newList.sort((p, n) {
         final pre = p.grt(c).llvmType.getBytes(c);
         final next = n.grt(c).llvmType.getBytes(c);
-        return pre > next ? 1 : -1;
+        if (pre == next) return 0;
+
+        if (minToMax) {
+          return pre > next ? 1 : -1;
+        } else {
+          return pre > next ? -1 : 1;
+        }
       });
     }
 
@@ -874,12 +882,13 @@ class FieldsSize {
   final int alignSize;
 
   LLVMTypeRef getTypeStruct(
-      BuildContext c, String? ident, LLVMTypeRef? enumIndexTy) {
+      BuildContext c, String? ident, LLVMTypeRef? enumIndexTy,
+      {int initSize = 0}) {
     final vals = <LLVMTypeRef>[];
     final fields = map.keys.toList();
     if (enumIndexTy != null) {
       // 以数组的形式表示占位符
-      vals.add(c.arrayType(enumIndexTy, 1));
+      vals.add(enumIndexTy);
     }
 
     for (var field in fields) {

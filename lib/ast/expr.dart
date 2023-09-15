@@ -10,6 +10,7 @@ import 'analysis_context.dart';
 import 'ast.dart';
 import 'buildin.dart';
 import 'context.dart';
+import 'llvm/coms.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
 import 'stmt.dart';
@@ -486,9 +487,10 @@ class StructExpr extends Expr {
   }
 
   static T resolveGeneric<T extends Ty>(NewInst<T> t, Tys context,
-      List<FieldExpr> params, List<PathTy> genericsInst) {
+      List<FieldExpr> params, List<PathTy> genericsInst,
+      {List<FieldDef> others = const []}) {
     final fields = t.fields;
-    final generics = t.generics;
+    final generics = [...t.generics, ...others];
     var nt = t as T;
     if (genericsInst.isNotEmpty) {
       nt = t.newInstWithGenerics(context, genericsInst, generics, extra: t.tys);
@@ -538,7 +540,7 @@ class StructExpr extends Expr {
 
       for (var i = 0; i < sortFields.length; i += 1) {
         final f = sortFields[i];
-        final fd = fields[i].rawTy;
+        final fd = fields[i];
 
         Ty? ty;
         if (isBuild) {
@@ -551,7 +553,6 @@ class StructExpr extends Expr {
           ty = f.analysis(context as AnalysisContext)?.ty;
         }
         if (ty != null) {
-          final fd = fields[i];
           visitor(ty, fd.rawTy);
         }
       }
@@ -956,9 +957,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     }
     if (fn is! Fn) return null;
 
-    final fnInst = StructExpr.resolveGeneric(fn, context, params, []);
-
-    return fnCall(context, fnInst, params, fnV!.currentIdent);
+    return fnCall(context, fn, params, fnV!.currentIdent);
   }
 
   @override
@@ -1027,20 +1026,38 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
     var val = variable?.variable;
 
-    if (val is Deref) {
-      val = val.getDeref(context);
+    if (val != null) {
+      val = RefDerefCom.getDeref(context, val);
     }
     var valTy = val?.ty ?? variable?.ty;
     if (valTy == null) return null;
 
     var structTy = valTy;
-    final ty = baseTy;
 
     if (structTy is StructTy) {
-      structTy = StructExpr.resolveGeneric(structTy, context, params, []);
+      /// 对于类方法(静态方法)，struct 中存在泛型，并且没有指定时，从静态方法中的参数列表
+      /// 自动获取
+      final impl = context.getImplForStruct(structTy, ident);
+
+      var implFn = impl?.getFn(ident);
+      if (implFn is ImplStaticFn) {
+        implFn = StructExpr.resolveGeneric(implFn, context, params, [],
+            others: structTy.generics) as ImplFnMixin;
+        if (structTy.tys.length != structTy.generics.length) {
+          final newTys = <Identifier, Ty>{}..addAll(structTy.tys);
+          for (var g in structTy.generics) {
+            final ty = implFn.tys[g.ident];
+            if (ty != null) {
+              newTys[g.ident] = ty;
+            }
+          }
+          structTy = structTy.newInst(newTys, context);
+        }
+      }
+
       if (structTy.tys.isEmpty) {
-        if (ty is StructTy && structTy.ident == ty.ident) {
-          structTy = ty;
+        if (baseTy is StructTy && structTy.ident == baseTy.ident) {
+          structTy = baseTy;
         }
       }
     }
@@ -1105,7 +1122,23 @@ class MethodCallExpr extends Expr with FnCallMixin {
     structTy = StructExpr.resolveGeneric(structTy, context, params, []);
     final impl = context.getImplForStruct(structTy, ident);
 
-    Fn? fn = impl?.getFn(ident)?.copyFrom(structTy);
+    ImplFnMixin? implFn = impl?.getFn(ident);
+    if (implFn != null) {
+      implFn = StructExpr.resolveGeneric(implFn, context, params, [],
+          others: structTy.generics) as ImplFnMixin;
+      if (structTy.tys.length != structTy.generics.length) {
+        final newTys = <Identifier, Ty>{};
+        for (var g in structTy.generics) {
+          final ty = implFn.tys[g.ident];
+          if (ty != null) {
+            newTys[g.ident] = ty;
+          }
+        }
+        structTy = structTy.newInst(newTys, context);
+      }
+    }
+    Fn? fn = implFn?.copyFrom(structTy);
+
     if (fn == null) {
       final field =
           structTy.fields.firstWhereOrNull((element) => element.ident == ident);
@@ -1658,6 +1691,18 @@ class RefExpr extends Expr {
   @override
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final val = current.build(context);
+    var variable = val?.variable;
+    if (variable == null) return val;
+    Variable? valRef = variable;
+    if (kind == PointerKind.ref) {
+      valRef = RefDerefCom.getRef(context, variable);
+    } else if (kind == PointerKind.deref) {
+      valRef = RefDerefCom.getDeref(context, variable);
+    }
+
+    if (valRef != variable) {
+      return ExprTempValue(valRef, valRef.ty, pointerIdent);
+    }
     var vv = PointerKind.refDerefs(val?.variable, context, kind);
     if (vv != null) {
       return ExprTempValue(vv, vv.ty, pointerIdent);

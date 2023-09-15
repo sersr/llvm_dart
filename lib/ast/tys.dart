@@ -352,9 +352,13 @@ mixin Tys<V extends LifeCycleVariable> {
   }
 
   ImplTy? getImplWithIdent(Ty structTy, Identifier implIdent) {
+    if (structTy is StructTy) {
+      structTy = structTy.parentOrCurrent;
+    }
     return getKV(structTy, (c) => c.implForStructs, handler: (c) {
       return c.getImplWithIdent(structTy, implIdent);
     }, test: (impl) {
+      // todo: 判断 struct 泛型 是否匹配
       return impl.com?.ident == implIdent;
     });
   }

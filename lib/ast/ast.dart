@@ -942,7 +942,7 @@ class Fn extends Ty with NewInst<Fn> {
     }
 
     final child = context.childContext();
-    pushTyAnalysis(context);
+    pushTyAnalysis(child);
 
     child.setFnContext(this);
     fnSign.fnDecl.analysis(child, this);
@@ -1007,9 +1007,7 @@ mixin ImplFnMixin on Fn {
     super.pushTyAnalysis(context);
     final structTy = ty;
     if (structTy is! StructTy) return;
-    for (var MapEntry(:key, :value) in structTy.tys.entries) {
-      context.pushVariable(key, context.createVal(value, Identifier.none, []));
-    }
+    context.pushDyTys(structTy.tys);
   }
 
   @override
@@ -1034,15 +1032,13 @@ mixin ImplFnMixin on Fn {
 
     if (ty is! StructTy) return null;
     if (ty.generics.isEmpty) return null;
-    final impltyStruct = implty.struct.grtOrT(c);
-    if (impltyStruct is StructTy) {
-      final v = impltyStruct.generics.indexWhere((e) => e.ident == ident);
-      if (v != -1) {
-        final g = ty.generics[v];
-        final vx = ty.tys[g.ident];
-        return vx;
-      }
+    final v = ty.generics.indexWhere((e) => e.ident == ident);
+    if (v != -1) {
+      final g = ty.generics[v];
+      final vx = ty.tys[g.ident];
+      return vx;
     }
+
     return null;
   }
 
@@ -1630,6 +1626,7 @@ class LLVMAliasType extends LLVMType {
   }
 }
 
+/// 弃用
 class HeapTy extends RefTy {
   HeapTy(this.parent) : super(parent);
 
@@ -1726,67 +1723,6 @@ class LLVMHeapType extends LLVMRefType {
 
     var implFn = impl?.getFn(ident);
     final removeFn = implFn?.copyFrom(heapStructTy);
-    if (removeFn == null) {
-      Log.e('error removeFn == null.', onlyDebug: false);
-      return;
-    }
-    AbiFn.fnCallInternal(
-      context,
-      removeFn,
-      [],
-      LLVMConstVariable(variable.load(context, Offset.zero), ty),
-      null,
-      null,
-      Identifier.none,
-    );
-  }
-}
-
-abstract class ImplStackTy {
-  static void addStack(BuildContext context, Variable variable) {
-    var ty = variable.ty;
-    if (ty is RefTy) {
-      ty = ty.baseTy;
-    }
-    final stackImpl = context.getImplWithIdent(ty, Identifier.builtIn('Stack'));
-    if (stackImpl == null) return;
-    var addFn = stackImpl.getFn(Identifier.builtIn('addStack'));
-    addFn = addFn?.copyFrom(ty);
-    if (addFn == null) {
-      Log.e('error addFn == null.', onlyDebug: false);
-      return;
-    }
-    AbiFn.fnCallInternal(
-      context,
-      addFn,
-      [],
-      LLVMConstVariable(variable.load(context, Offset.zero), ty),
-      null,
-      null,
-      Identifier.none,
-    );
-  }
-
-  static bool isStackCom(BuildContext context, Variable variable) {
-    var ty = variable.ty;
-    if (ty is RefTy) {
-      ty = ty.baseTy;
-    }
-    return context.getImplWithIdent(ty, Identifier.builtIn('Stack')) != null;
-  }
-
-  static void removeStack(BuildContext context, Variable variable) {
-    final ident = Identifier.builtIn('removeStack');
-    var ty = variable.ty;
-    if (ty is RefTy) {
-      ty = ty.baseTy;
-    }
-
-    final stackImpl = context.getImplWithIdent(ty, Identifier.builtIn('Stack'));
-    if (stackImpl == null) return;
-    var removeFn = stackImpl.getFn(ident);
-    removeFn = removeFn?.copyFrom(ty);
-
     if (removeFn == null) {
       Log.e('error removeFn == null.', onlyDebug: false);
       return;
