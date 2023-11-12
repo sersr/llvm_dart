@@ -319,33 +319,17 @@ class Cursor {
 
   List<int> get lineStartCursors => _lineStartCursors ??= _computedLFCursors();
 
-  // ignore: constant_identifier_names
-  static const _CR = '\r';
-  // ignore: constant_identifier_names
-  static const _LF = '\n';
-
   List<int> _computedLFCursors() {
     final cursors = <int>[0];
     final it = _it;
     final state = it.cursor;
     while (it.moveNext()) {
       final current = it.current;
-      final firstCursor = it.stringCursor + 1;
-      final nextIsLF = it.moveNext() ? it.current == _LF : false;
-      if (current == _CR) {
-        if (nextIsLF) {
-          cursors.add(it.stringCursor + 1);
-        } else {
-          cursors.add(firstCursor);
-        }
-        continue;
-      } else if (current == _LF) {
-        cursors.add(firstCursor);
-      }
-      if (nextIsLF) {
-        cursors.add(it.stringCursor + 1);
+      if (current == '\n' || current == '\r\n') {
+        cursors.add(it.stringCursorEnd);
       }
     }
+
     // stringCursorEnd: 由于 cursor 并没有下移，所以要加上当前字符的长度
     cursors.add(it.stringCursorEnd + 1);
     state.restore();
@@ -388,6 +372,15 @@ class Cursor {
     if (char.isEmpty) {
       return Token(
           kind: TokenKind.eof, lineStart: -1, start: cursor, end: cursorEnd);
+    }
+
+    if (char == '\r\n') {
+      final start = cursor;
+      return Token(
+          kind: TokenKind.lf,
+          getLineStart: getLineStart,
+          start: start,
+          end: cursorEnd);
     }
 
     if (whiteSpaceChars.contains(char)) {
@@ -469,7 +462,7 @@ class Cursor {
               unit >= 0x30 &&
               unit <= 0x39;
     }
-    return char.isNotEmpty;
+    return char != '\r\n' && char.isNotEmpty;
   }
 
   Token ident() {
@@ -601,7 +594,7 @@ class Cursor {
 
   void eatLine() {
     loop((char) {
-      if (char == '\n') return true;
+      if (char == '\n' || char == '\r\n') return true;
       return false;
     });
   }

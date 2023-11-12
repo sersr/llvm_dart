@@ -2432,7 +2432,9 @@ class ArrayOpExpr extends Expr {
     final val = array.variable;
     if (val == null) return null;
 
-  // llvm.LLVMBuildAtomicCmpXchg(B, Ptr, Cmp, New, SuccessOrdering, FailureOrdering, SingleThread)
+    // todo:
+    return null;
+    // llvm.LLVMBuildAtomicCmpXchg(B, Ptr, Cmp, New, SuccessOrdering, FailureOrdering, SingleThread)
   }
 
   @override

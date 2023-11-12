@@ -3,3 +3,7 @@
 .dart_tool/
 /build/
 /.DS_Store
+
+# ignore dll
+zlib1.dll
+zstd.dll

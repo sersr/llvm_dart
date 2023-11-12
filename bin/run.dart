@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:llvm_dart/abi/abi_fn.dart';
 import 'package:llvm_dart/fs/fs.dart';
@@ -10,9 +12,10 @@ Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
 Directory get stdRoot => currentDir.childDirectory('kc').childDirectory('lib');
 void main(List<String> args) async {
   assert(() {
-    args = ['stack_com'];
+    args = ['final'];
     return true;
   }());
+  buildDir.create();
 
   final argParser = ArgParser();
   argParser.addMultiOption('c',
@@ -61,7 +64,7 @@ void main(List<String> args) async {
 
 final rq = TaskQueue();
 
-const abi = Abi.arm64;
+var abi = Abi.arm64;
 
 Future<void> run(File file, Iterable<String> cFiles, String std, bool isVerbose,
     bool isDebug, bool printAst) {
@@ -73,10 +76,17 @@ Future<void> run(File file, Iterable<String> cFiles, String std, bool isVerbose,
     final project = ProjectManager(stdRoot: std);
     final path = file.path;
     project.isDebug = isDebug;
+
+    var target = '$abi-apple-darwin22.4.0';
+    if (Platform.isWindows) {
+      abi = Abi.x86_64;
+      target = '$abi-pc-windows-msvc19.37.32825';
+    }
+
     final root = project.build(
       path,
       abi: abi,
-      target: '$abi-apple-darwin22.4.0',
+      target: target,
       afterAnalysis: () {
         if (printAst) project.printAst();
       },
@@ -85,11 +95,18 @@ Future<void> run(File file, Iterable<String> cFiles, String std, bool isVerbose,
     final name = file.basename.replaceFirst(RegExp('.kc\$'), '');
     buildRun(root, name: name);
 
-    final files = cFiles.map((e) => currentDir.childFile(e).path).join(' ');
+    final files = cFiles.map((e) {
+      final path = currentDir.childFile(e).path;
+      if (Platform.isWindows) return path.replaceAll('\\', r'\\\\');
+      return path;
+    }).join(' ');
+
     final verbose = isVerbose ? ' -v ' : ' ';
     final debug = isDebug ? ' -g ' : ' ';
+    final abiV = Platform.isWindows ? '' : '-arch $abi ';
+
     await runCmd([
-      'clang $debug$verbose $name.o $files -arch $abi -o main && ./main hello world'
+      'clang $debug$verbose $name.o $files $abiV-o main && ./main hello world'
     ], dir: buildDir);
 
     Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);

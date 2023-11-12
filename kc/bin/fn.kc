@@ -1,4 +1,4 @@
-import 'd.kc'
+import 'std:d.kc'
 
 fn main() i32 {
   let y = return_value();

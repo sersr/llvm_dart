@@ -69,8 +69,8 @@ class BuildContext
       tm = llvm.createTarget(module, tt);
       llvm.LLVMDisposeMessage(tt);
     }
-    final datalayout = llvm.LLVMCreateTargetDataLayout(tm);
-    llvm.LLVMSetModuleDataLayout(module, datalayout);
+    // final datalayout = llvm.LLVMCreateTargetDataLayout(tm);
+    // llvm.LLVMSetModuleDataLayout(module, datalayout);
 
     builder = llvm.LLVMCreateBuilderInContext(llvmContext);
   }
