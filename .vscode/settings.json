@@ -86,6 +86,7 @@
         "stdio.h": "c",
         "stdlib.h": "c",
         "*.inc": "c",
-        "memory.h": "c"
+        "memory.h": "c",
+        "*.def": "cpp"
     }
 }

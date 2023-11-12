@@ -1,0 +1,32 @@
+import 'heap_pointer.d.kc';
+import 'allocator.kc';
+
+com VecCom<T> {
+  fn elementAt(index: usize) &T;
+}
+
+struct Vec<T> {
+  cap: usize,
+  data: *void,
+  len: usize,
+}
+
+
+impl Vec<T> {
+  static fn new() Self {
+    let size = sizeOf(T) * 8;
+    let data = malloc(size);
+    Vec { 8, data, 0 }
+  }
+
+  fn elementAt(index: usize) &T {
+    getElement(self.data, T, index)
+  }
+
+  fn add(value: T) &T {
+    if self.len == self.cap {
+      let size = cap * 2;
+      self.data = realloc(self.data, size);
+    }
+  }
+}

@@ -2414,3 +2414,29 @@ class InternalExpr extends Expr {
     return this;
   }
 }
+
+class ArrayOpExpr extends Expr {
+  ArrayOpExpr(this.ident, this.arrayOrPtr, this.expr);
+  final Identifier ident;
+  final Expr arrayOrPtr;
+  final Expr expr;
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    return null;
+  }
+
+  @override
+  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+    final array = arrayOrPtr.build(context);
+    if (array == null) return null;
+    final val = array.variable;
+    if (val == null) return null;
+
+  // llvm.LLVMBuildAtomicCmpXchg(B, Ptr, Cmp, New, SuccessOrdering, FailureOrdering, SingleThread)
+  }
+
+  @override
+  ArrayOpExpr clone() {
+    return ArrayOpExpr(ident, arrayOrPtr.clone(), expr.clone());
+  }
+}

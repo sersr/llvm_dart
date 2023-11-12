@@ -1,5 +1,6 @@
 
 import 'd.kc';
+import 'allocator.kc';
 
 type HeapPointer<T> = *HeapCount<T>;
 
@@ -22,9 +23,6 @@ impl HeapCount<T> {
     }
   }
 }
-
-extern fn malloc(size: usize) *void;
-extern fn free(ptr: *void);
 
 com Dot<T> {
   fn dot() &T;
