@@ -33,7 +33,18 @@ class LLVMInstance {
     var name = 'libllvm_wrapper.dylib';
     if (Platform.isWindows) {
       name = 'llvm_wrapper.dll';
-      dir = currentDir.childDirectory('llvm_lang').childDirectory('build');
+
+      final bin = currentDir
+          .childDirectory('llvm_lang')
+          .childDirectory('install')
+          .childDirectory('binx');
+
+      final file = bin.childFile(name);
+      if (file.existsSync()) {
+        dir = bin;
+      } else {
+        dir = currentDir.childDirectory('dll');
+      }
     } else if (Platform.isLinux) {
       name = 'libllvm_wrapper.so';
     }

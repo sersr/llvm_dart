@@ -5,5 +5,4 @@
 /.DS_Store
 
 # ignore dll
-zlib1.dll
-zstd.dll
+/dll
