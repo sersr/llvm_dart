@@ -37,7 +37,7 @@ class LLVMInstance {
       final bin = currentDir
           .childDirectory('llvm_lang')
           .childDirectory('install')
-          .childDirectory('binx');
+          .childDirectory('bin');
 
       final file = bin.childFile(name);
       if (file.existsSync()) {

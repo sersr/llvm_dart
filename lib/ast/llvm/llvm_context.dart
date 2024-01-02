@@ -775,8 +775,9 @@ mixin ChildContext on BuildMethods {
       final variable = v?.variable;
       if (variable != null) {
         final bb = buildSubBB(name: 'loop_body');
-        llvm.LLVMBuildCondBr(loopBB.context.builder,
-            variable.load(this, Offset.zero), bb.bb, loopAfter.bb);
+        final v = variable.load(loopBB.context, Offset.zero);
+        loopBB.context.assume(v);
+        llvm.LLVMBuildCondBr(loopBB.context.builder, v, bb.bb, loopAfter.bb);
         appendBB(bb);
         block.build(bb.context);
         bb.context.br(this);

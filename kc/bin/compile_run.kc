@@ -6,13 +6,13 @@ extern fn free(ptr: *void);
 fn main() i32 {
 
   let base = Base.new(100);
-  printf('y: %d\n', base.y);
+  printf("y: %d\n", base.y);
 
   type  Base64 = Base<i64>;
 
   let mBase = malloc(sizeOf(Base64)) as *Base64;
   mBase.y = 100;
-  printf('malloc, y: %d\n', mBase.y);
+  printf("malloc, y: %d\n", mBase.y);
   free(mBase);
   0;
 }

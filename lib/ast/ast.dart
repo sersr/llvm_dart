@@ -253,7 +253,7 @@ class UnknownExpr extends Expr {
 
   @override
   String toString() {
-    return 'UnknownExpr($message): $ident';
+    return 'UnknownExpr: $ident';
   }
 
   @override
@@ -1499,13 +1499,15 @@ class ArrayLLVMType extends LLVMType {
     return LLVMConstVariable(value, ty);
   }
 
-  Variable getElement(BuildContext c, Variable value, LLVMValueRef index) {
+  Variable getElement(BuildContext c, Variable value, LLVMValueRef index,
+      {Offset offset = Offset.zero}) {
     final indics = <LLVMValueRef>[index];
 
     final p = value.getBaseValue(c);
 
     final elementTy = ty.elementType.llvmType.createType(c);
 
+    c.diSetCurrentLoc(offset);
     final v = llvm.LLVMBuildInBoundsGEP2(
         c.builder, elementTy, p, indics.toNative(), indics.length, unname);
 

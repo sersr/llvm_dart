@@ -36,7 +36,7 @@ impl Bcx<T> {
   fn gee() {
     let x = 33;
     fn hin() {
-      let y = printf('gee.hin: %d\n', x);
+      let y = printf("gee.hin: %d\n", x);
       printf("hin pr: %d\n", y);
     }
     hin();
@@ -75,7 +75,7 @@ fn main() i32 {
     printf("main size data: %d\n", size);
   bcxData.gee();
   let s = sizeOf(bcxData);
-  printf('s: %d\n', s);
+  printf("s: %d\n", s);
 
   let b = true;
   if b {
@@ -83,7 +83,7 @@ fn main() i32 {
   }
 
   "hello world".print();
-  print('end print');
+  print("end print");
   33.ll();
 
   0;

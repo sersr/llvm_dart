@@ -955,7 +955,7 @@ class Parser {
     return null;
   }
 
-  Expr? parserBaseExpr(TokenIterator it) {
+  Expr? parseBaseExpr(TokenIterator it) {
     Expr? expr;
 
     final t = getToken(it);
@@ -972,6 +972,7 @@ class Parser {
           final tokens = <Token>[];
           loop(it, () {
             final t = getToken(it);
+            if (t.kind == TokenKind.lf) return false;
             if (t.kind == TokenKind.literal) {
               final lit = t.literalKind!;
               final lkd = LitKind.from(lit);
@@ -1009,6 +1010,19 @@ class Parser {
     expr ??= parserStructOrVariableExpr(it);
 
     return expr;
+  }
+
+  Expr parseArrayOpExpr(TokenIterator it, Expr ptr) {
+    assert(getToken(it).kind == TokenKind.openBracket);
+    final ident = getIdent(it);
+    it.moveNext();
+    final nIt = it.current.child.tokenIt;
+    final expr = parseExpr(nIt);
+
+    eatLfIfNeed(it);
+    assert(getToken(it).kind == TokenKind.closeBracket);
+
+    return ArrayOpExpr(ident, ptr, expr);
   }
 
   NewExpr? parseNewExpr(TokenIterator it) {
@@ -1105,7 +1119,7 @@ class Parser {
     var baseExpr = parseKeyExpr(it);
     if (baseExpr != null) return baseExpr;
 
-    baseExpr = parseUnaryExpr(it) ?? parserBaseExpr(it);
+    baseExpr = parseUnaryExpr(it) ?? parseBaseExpr(it);
     if (baseExpr == null) {
       final ident = getIdent(it);
       if (!isStructExpr) {
@@ -1127,6 +1141,9 @@ class Parser {
         return false;
       } else if (t.kind == TokenKind.openParen) {
         fnCalls = parseCallExpr(it, fnCalls);
+        return false;
+      } else if (t.kind == TokenKind.openBracket) {
+        fnCalls = parseArrayOpExpr(it, fnCalls);
         return false;
       }
       it.moveBack();

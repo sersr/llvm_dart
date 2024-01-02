@@ -1,10 +1,10 @@
-import 'std:d.kc'
+import "std:d.kc"
 
 fn main() i32 {
   let y = return_value();
 
-  printf('value: %d\n', y.x);
-  printf('value: y %d\n', y.y);
+  printf("value: %d\n", y.x);
+  printf("value: y %d\n", y.y);
   0;
 }
 
@@ -16,6 +16,6 @@ struct Base {
 fn return_value() Base {
 
   let x = Base {10, 20 };
-  printf('inner: %d\n', x.y);
+  printf("inner: %d\n", x.y);
   x
 }

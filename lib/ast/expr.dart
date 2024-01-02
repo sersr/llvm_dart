@@ -2237,6 +2237,13 @@ class ArrayExpr extends Expr {
       arrTy = ArrayTy(ty, elements.length);
     }
     if (arrTy is ArrayTy) {
+      final extra = arrTy.size - values.length;
+      if (extra > 0) {
+        final zero = values.lastOrNull ??
+            llvm.LLVMConstNull(ty!.llvmType.createType(context));
+        values.addAll(List.generate(extra, (index) => zero));
+      }
+
       final v = arrTy.llvmType.createArray(context, values);
       return ExprTempValue(v, v.ty, Identifier.none);
     }
@@ -2429,16 +2436,33 @@ class ArrayOpExpr extends Expr {
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final array = arrayOrPtr.build(context);
     if (array == null) return null;
-    final val = array.variable;
-    if (val == null) return null;
+    final arrVal = array.variable;
+    final loc = expr.build(context);
+    final locVal = loc?.variable;
+    if (arrVal == null || locVal == null || loc == null) return null;
 
-    // todo:
-    return null;
-    // llvm.LLVMBuildAtomicCmpXchg(B, Ptr, Cmp, New, SuccessOrdering, FailureOrdering, SingleThread)
+    final ty = arrVal.ty;
+    if (ty is ArrayTy) {
+      final element = ty.llvmType.getElement(
+        context,
+        arrVal,
+        locVal.load(context, loc.currentIdent.offset),
+        offset: ident.offset,
+      );
+      return ExprTempValue(element, element.ty, ident);
+    }
+
+    return context.importHandler.cArrayElement(context, ty, ident, locVal,
+        loc.currentIdent, arrVal, array.currentIdent);
   }
 
   @override
   ArrayOpExpr clone() {
     return ArrayOpExpr(ident, arrayOrPtr.clone(), expr.clone());
+  }
+
+  @override
+  String toString() {
+    return "$arrayOrPtr[$expr]";
   }
 }

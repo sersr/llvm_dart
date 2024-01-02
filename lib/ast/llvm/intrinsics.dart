@@ -117,12 +117,19 @@ mixin OverflowMath on Consts {
   @override
   OverflowMath get root => super.root as OverflowMath;
   LLVMValueRef expect(LLVMValueRef lhs) {
-    final fn = root.maps
-        .putIfAbsent("llvm.expect.i1",
-            () => FunctionDeclare([i1, i1], 'llvm.expect.i1', i1))
-        .build(this);
-    return llvm.LLVMBuildCall2(builder, i1, fn,
+    final fn = root.maps.putIfAbsent("llvm.expect.i1",
+        () => FunctionDeclare([i1, i1], 'llvm.expect.i1', i1));
+    final f = fn.build(this);
+    return llvm.LLVMBuildCall2(builder, fn.type, f,
         [lhs, constI1(LLVMFalse)].toNative(), 2, 'bool'.toChar());
+  }
+
+  LLVMValueRef assume(LLVMValueRef expr) {
+    final fn = root.maps.putIfAbsent(
+        "llvm.assume", () => FunctionDeclare([i1], 'llvm.assume', typeVoid));
+
+    return llvm.LLVMBuildCall2(
+        builder, fn.type, fn.build(this), [expr].toNative(), 1, unname);
   }
 
   MathValue oMath(LLVMValueRef lhs, LLVMValueRef rhs, LLVMIntrisics fn) {

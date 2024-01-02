@@ -126,8 +126,12 @@ abstract class GlobalContext {
             if (first is LLVMLitVariable) {
               if (valTy.tys.isNotEmpty) {
                 final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
-                final element =
-                    arr.llvmType.createAlloca(context, Identifier.none, null);
+                final element = arr.llvmType.createAlloca(
+                  context,
+                  Identifier.none,
+                  llvm.LLVMConstNull(arr.llvmType.createType(context)),
+                );
+
                 return ExprTempValue(element, element.ty, ident);
               }
             }
@@ -137,6 +141,41 @@ abstract class GlobalContext {
     }
 
     return null;
+  }
+
+  ExprTempValue? cArrayElement(
+    BuildContext context,
+    Ty ty,
+    Identifier ident,
+    Variable index,
+    Identifier indexLoad,
+    Variable target,
+    Identifier targetLoad,
+  ) {
+    if (ty is! StructTy || ty.ident.src != 'CArray') return null;
+
+    final value =
+        ty.llvmType.getField(target, context, Identifier.builtIn('ptr'))!;
+    final ptrTy = ty.tys.values.first;
+
+    final indics = <LLVMValueRef>[
+      index.load(context, indexLoad.offset),
+    ];
+
+    final p = value.load(context, targetLoad.offset);
+    final elementTy = ptrTy.llvmType.createType(context);
+    var ety = ptrTy;
+    if (ety is RefTy) {
+      ety = ety.parent;
+    }
+    context.diSetCurrentLoc(ident.offset);
+
+    var v = llvm.LLVMBuildInBoundsGEP2(context.builder, elementTy, p,
+        indics.toNative(), indics.length, unname);
+    v = llvm.LLVMBuildLoad2(context.builder, context.pointer(), v, unname);
+    final vv = ety.llvmType.createAlloca(context, Identifier.none, v);
+
+    return ExprTempValue(vv, vv.ty, ident);
   }
 }
 

@@ -1,4 +1,4 @@
-import 'vec.kc';
+import "vec.kc";
 
 fn main() i32 {
   let vec = Vec<i32>.new(10);

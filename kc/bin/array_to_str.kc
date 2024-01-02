@@ -1,21 +1,21 @@
-import '../lib/d.kc';
+import "../lib/d.kc";
 
 fn main() i32 {
   let arr = Array<u8>.new(10);
 
   let size = 10;
 
-  printf('size: %d\n', size);
+  printf("size: %d\n", size);
 
   let v = 502;
 
   let count = -1;
-  printf('v: %d\n', v);
+  printf("v: %d\n", v);
   while v > 0 {
     count += 1;
     if(v < 10) {
       arr.elementAt(count) = v + 48;
-      printf('index: %d\n', arr.elementAt(count));
+      printf("index: %d\n", arr.elementAt(count));
       break;
      }
     let vv = v % 10;
@@ -24,7 +24,7 @@ fn main() i32 {
      }
     arr.elementAt(count) = vv + 48;
      v = v / 10;
-    printf('index: %d\n', arr.elementAt(count));
+    printf("index: %d\n", arr.elementAt(count));
   }
 
   let vSize = count;
@@ -33,16 +33,16 @@ fn main() i32 {
   
   let n_arr = Array<u8>.new(10);
 
-  print('reverse');
+  print("reverse");
 
   while count >= 0 {
     let d = arr.elementAt(count);
-    printf('index: %d, %d\n', count, d);
+    printf("index: %d, %d\n", count, d);
     n_arr.elementAt(vSize - count) = d;
     count -= 1;
   }
 
-  print('print: 502 to string');
+  print("print: 502 to string");
   print(n_arr.toStr());
 
   0;

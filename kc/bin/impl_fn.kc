@@ -1,4 +1,4 @@
-import '../lib/d.kc';
+import "../lib/d.kc";
 
 fn main() i32 {
     let g = Gen(3);
@@ -7,7 +7,7 @@ fn main() i32 {
     // let arr2 = Array<Gen>{11,2,3,23,3, size : 55};
     let yy = 10;
     fn hh() {
-        printf('...%d\n', yy);
+        printf("...%d\n", yy);
     }
     hh();
     let some = Some(11);
@@ -17,7 +17,7 @@ fn main() i32 {
     aa.elementAt(0) = 48 + 5;
     let size = aa.getSize() as i8;
     aa.elementAt(1) = size + 38;
-    print('next number: 506');
+    print("next number: 506");
     print(aa.toStr());
     let y = Gen { 10 };
 
@@ -36,7 +36,7 @@ com Print {
 
 impl Print:test for Gen {
   fn print() {
-    print('hello');
+    print("hello");
   }
 }
 

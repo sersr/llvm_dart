@@ -1,0 +1,42 @@
+import "../lib/d.kc";
+
+fn main(argc: usize, argv:  **u8) i32 {
+    let arr = CArray { argc, argv };
+    let size = arr.getSize();
+    
+    let i = 0;
+    while i < size {
+        kprintln(arr[i]);
+        i += 1;
+    }
+
+    kprintln("----------------");
+    let text = "single\n"
+"多行 \
+best
+...
+start
+多行
+测试
+...
+end";
+
+    kprintln(text);
+    0;
+}
+
+fn kprint(text: *void) {
+    write(stdout_fd, text, strlen(text));
+}
+
+fn kprintln(text: *void) {
+  kprint(text);
+  kprint("\n");
+}
+
+static const stdin_fd = 0usize;
+static const stdout_fd = 1usize;
+static const stderr_fd = 2usize;
+
+extern fn strlen(text: *void) usize;
+extern fn write(fd: usize, buf: *void, charCount: usize) usize;

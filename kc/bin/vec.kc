@@ -1,4 +1,4 @@
-import 'allocator.kc'
+import "allocator.kc"
 
 struct Vec<T> {
   data: *T,

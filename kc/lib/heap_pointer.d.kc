@@ -1,6 +1,6 @@
 
-import 'd.kc';
-import 'allocator.kc';
+import "d.kc";
+import "allocator.kc";
 
 type HeapPointer<T> = *HeapCount<T>;
 
@@ -17,7 +17,7 @@ impl HeapCount<T> {
 
   fn removeStack() {
     self.count -= 1;
-    printf('remove %d\n', self.count);
+    printf("remove %d\n", self.count);
     if self.count == 0 {
       free(&self);
     }

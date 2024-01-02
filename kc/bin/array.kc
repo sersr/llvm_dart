@@ -1,4 +1,4 @@
-import '../lib/d.kc';
+import "../lib/d.kc";
 
 
 fn main(argc: usize, argv:  **u8) i32 {
@@ -7,34 +7,32 @@ fn main(argc: usize, argv:  **u8) i32 {
 
     let y = 0u64;
 
-    printf('new start %d\n', size);
+    printf("c_array.size: %d\n", size);
+    while y < size {
+        printf("c_array: %s\n", arr[y]);
+        y+=1;
+    }
     let new_arr = Array<i32>.new(10);
 
     let new_max = new_arr.getSize() as i32;
 
     let y = 0;
-    printf('size: %d\n', new_max);
+    printf("size: %d\n", new_max);
     while y < new_max {
-        let yy = y + 1;
-       new_arr.elementAt(y) = yy;
-       printf("%d\n", new_arr.elementAt(y));
+        new_arr.elementAt(y) = y + 1;
+        printf("y: %d, element: %d\n",y, new_arr.elementAt(y));
         y += 1;
-
-        printf('y: %d\n', y);
     }
 
-   // y -= 1;
-    //while y >= 0 {
-      //  printf("newx: %d\n", new_arr.elementAt(y));
-      //  y -= 1;
-    //}
+    // [10,11,111, 1,1,1,1,1,1,1]
+    let arr_lit:[i32;10] = [10, 11, 111,1];
+    let y = 2;
+    arr_lit[7] = 1002;
 
-    let i = 0;
-    loop {
-        if i > 30 {
-            break;
-        }
-     //   printf('i: %d\n', i);
+    printf("arr_lit size: %d\n", arr_lit.getSize());
+   let i = 0;
+    while i < arr_lit.getSize() {
+        printf("arr_lit: %d\n", arr_lit.elementAt(i));
         i += 1;
     }
     0;

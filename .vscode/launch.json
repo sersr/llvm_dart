@@ -8,10 +8,10 @@
             "name": "llvm_dart",
             "request": "launch",
             "type": "dart",
-            "program": "./bin/parser.dart",
-            "toolArgs": [
-                "--enable-experiment=records,patterns"
-            ]
+            "program": "./bin/run.dart",
+            "env":{
+                "PATH":"dll;${env:PATH}",
+            },
         }
     ]
 }

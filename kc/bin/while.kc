@@ -1,4 +1,4 @@
-import 'std:d.kc';
+import "std:d.kc";
 
 fn main() i32 {
 
@@ -7,11 +7,11 @@ fn main() i32 {
     let i = 0;
     let max = arr.size as i32;
 
-    printf('max: %d\n', max);
+    printf("max: %d\n", max);
 
     loop {
         if i > max {
-            printf('hello\n');
+            printf("hello\n");
             break;
         }
         arr.elementAt(i as usize) = i + 1;
@@ -20,7 +20,7 @@ fn main() i32 {
 
     i = 0;
     while i < max {
-        printf('value: %d\n', arr.elementAt(i));
+        printf("value: %d\n", arr.elementAt(i));
         i += 1;
     }
     0;

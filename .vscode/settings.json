@@ -87,6 +87,12 @@
         "stdlib.h": "c",
         "*.inc": "c",
         "memory.h": "c",
-        "*.def": "cpp"
+        "*.kc": "rust",
+        "*.def": "cpp",
+        "xhash": "c",
+        "xlocale": "c",
+        "xlocbuf": "c",
+        "xstring": "c",
+        "string.h": "c"
     }
 }
