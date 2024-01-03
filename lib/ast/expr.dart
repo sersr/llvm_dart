@@ -2243,7 +2243,6 @@ class ArrayExpr extends Expr {
             llvm.LLVMConstNull(ty!.llvmType.createType(context));
         values.addAll(List.generate(extra, (index) => zero));
       }
-
       final v = arrTy.llvmType.createArray(context, values);
       return ExprTempValue(v, v.ty, Identifier.none);
     }
@@ -2450,6 +2449,22 @@ class ArrayOpExpr extends Expr {
         offset: ident.offset,
       );
       return ExprTempValue(element, element.ty, ident);
+    } else if (ty is RefTy && arrVal is Deref) {
+      final offset = ident.offset;
+      final index = locVal.load(context, loc.currentIdent.offset);
+      final indics = <LLVMValueRef>[index];
+
+      final p = arrVal.getDeref(context).getBaseValue(context);
+
+      final elementTy = ty.parent.llvmType.createType(context);
+
+      context.diSetCurrentLoc(offset);
+      final v = llvm.LLVMBuildInBoundsGEP2(context.builder, elementTy, p,
+          indics.toNative(), indics.length, unname);
+
+      final vv = LLVMAllocaVariable(ty.parent, v, elementTy);
+      vv.isTemp = false;
+      return ExprTempValue(vv, vv.ty, Identifier.none);
     }
 
     return context.importHandler.cArrayElement(context, ty, ident, locVal,

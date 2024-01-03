@@ -1,8 +1,23 @@
-import "../lib/d.kc";
+import "std:d.kc";
 
 fn main(argc: usize, argv:  **u8) i32 {
     let arr = CArray { argc, argv };
     let size = arr.getSize();
+
+    kprintln(argv[0]);
+    final msize = 128 - 32;
+
+    let mm = malloc(msize) as *u8;
+    let mi = 0;
+    while mi < msize -1 {
+        mm[mi] = 32 + mi;
+        mi += 1;
+    }
+
+    mm[mize -1] = 0;
+
+    kprintln(mm);
+    free(mm);
     
     let i = 0;
     while i < size {
@@ -40,3 +55,5 @@ static const stderr_fd = 2usize;
 
 extern fn strlen(text: *void) usize;
 extern fn write(fd: usize, buf: *void, charCount: usize) usize;
+extern fn malloc(size: usize) *void;
+extern fn free(data: *void);
