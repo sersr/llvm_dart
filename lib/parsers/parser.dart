@@ -730,7 +730,10 @@ class Parser {
     if (getToken(it).kind == TokenKind.openBrace) {
       block = parseBlock(it);
     } else {
-      block = Block([], getIdent(it), Identifier.none, Identifier.none);
+      final stmt = parseStmt(it);
+
+      block = Block([if (stmt != null) stmt], getIdent(it), Identifier.none,
+          Identifier.none);
     }
     return IfExprBlock(expr, block);
   }

@@ -194,9 +194,8 @@ class IfExpr extends Expr {
     final con = conTemp?.variable;
     if (con == null) return;
 
-    final conv = c
-        .math(con, (context) => null, OpKind.Ne)
-        .load(c, conTemp!.currentIdent.offset);
+    final conv =
+        c.math(con, null, OpKind.Ne).load(c, conTemp!.currentIdent.offset);
 
     c.appendBB(then);
     ifEB.block.build(then.context, free: false);
@@ -1431,10 +1430,12 @@ class OpExpr extends Expr {
   static ExprTempValue? math(BuildContext context, OpKind op, Variable? l,
       Expr? rhs, Identifier opIdent, Identifier lhsIdent) {
     if (l == null) return null;
+    final rhsExp = rhs?.build(context, baseTy: l.ty);
 
-    final v = context.math(l, (context) {
-      return rhs?.build(context, baseTy: l.ty);
-    }, op, lhsOffset: lhsIdent.offset, opOffset: opIdent.offset);
+    final v = context.math(l, rhsExp?.variable, op,
+        rhsOffset: rhsExp?.currentIdent.offset ?? Offset.zero,
+        lhsOffset: lhsIdent.offset,
+        opOffset: opIdent.offset);
 
     return ExprTempValue(v, v.ty, lhsIdent);
   }

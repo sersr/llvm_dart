@@ -87,17 +87,25 @@ T runPrint<T>(T Function() body) {
 
 /// 使用 [runNativeCode]
 Future<void> runCode() async {
-  return runCmd(['clang -g out.ll base.c -o main && ./build/main']);
+  var main = 'main';
+  if (Platform.isWindows) {
+    main = 'main.exe';
+  }
+  return runCmd(['clang -g out.ll base.c -o $main && ./build/$main']);
 }
 
 Future<void> runNativeCode(
     {String args = '', String pre = '', bool run = true}) async {
   var runn = '';
+  var main = 'main';
+  if (Platform.isWindows) {
+    main = 'main.exe';
+  }
   if (run) {
-    runn = '&& ./main $args';
+    runn = '&& ./$main $args';
   }
 
-  return runCmd(['clang -g out.o $pre -o main $runn']);
+  return runCmd(['clang -g out.o $pre -o $main $runn']);
 }
 
 Future<void> runCmd(List<String> cmd, {Directory? dir}) async {

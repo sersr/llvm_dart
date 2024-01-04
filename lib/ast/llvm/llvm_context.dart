@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:nop/nop.dart';
@@ -139,24 +140,22 @@ class BuildContext
     final uwtable = 'uwtable';
     final framePointer = 'frame-pointer';
 
-    final infoV = constI32(3);
-    final versionV = constI32(4);
-    final picLevelV = constI32(2);
-    final uwtableV = constI32(1);
-    final framePointerV = constI32(1);
-
-    void add(int lv, String name, LLVMValueRef value) {
+    void add(int lv, String name, int size) {
       final (namePointer, nameLength) = name.toNativeUtf8WithLength();
-      llvm.LLVMAddModuleFlag(
-          module, lv, namePointer, nameLength, llvm.LLVMValueAsMetadata(value));
+      llvm.LLVMAddModuleFlag(module, lv, namePointer, nameLength,
+          llvm.LLVMValueAsMetadata(constI32(size)));
     }
 
-    add(1, info, infoV);
-    add(6, version, versionV);
-    add(7, picLevel, picLevelV);
-    add(6, uwtable, uwtableV);
-    add(6, framePointer, framePointerV);
+    if (Platform.isWindows) {
+      add(1, "CodeView", 1);
+    } else {
+      add(6, version, 4);
+      add(7, picLevel, 2);
+      add(6, framePointer, 1);
+      add(6, uwtable, 1);
+    }
 
+    add(1, info, 3);
     _debugInit();
   }
 
@@ -522,15 +521,26 @@ class BuildContext
     llvm.LLVMBuildUnreachable(builder);
   }
 
-  Variable math(Variable lhs,
-      ExprTempValue? Function(BuildContext context) rhsBuilder, OpKind op,
-      {Offset lhsOffset = Offset.zero, Offset opOffset = Offset.zero}) {
+  Variable math(Variable lhs, Variable? rhs, OpKind op,
+      {Offset lhsOffset = Offset.zero,
+      Offset rhsOffset = Offset.zero,
+      Offset opOffset = Offset.zero}) {
     var isFloat = false;
     var signed = false;
     final ty = lhs.ty;
+    LLVMTypeRef? type;
 
     if (ty is BuiltInTy && ty.ty.isNum) {
       final kind = ty.ty;
+      if (rhs != null) {
+        final rty = rhs.ty;
+        if (rty is BuiltInTy) {
+          final rSize = rty.llvmType.getBytes(this);
+          final lSize = ty.llvmType.getBytes(this);
+          final max = rSize > lSize ? rty : ty;
+          type = max.llvmType.createType(this);
+        }
+      }
       if (kind.isFp) {
         isFloat = true;
       } else if (kind.isInt) {
@@ -538,7 +548,19 @@ class BuildContext
       }
     }
 
-    final l = lhs.load(this, lhsOffset);
+    type ??= ty.llvmType.createType(this);
+
+    var l = lhs.load(this, lhsOffset);
+    var r = rhs?.load(this, rhsOffset);
+    if (r != null) {
+      if (isFloat) {
+        l = llvm.LLVMBuildFPCast(builder, l, type, unname);
+        r = llvm.LLVMBuildFPCast(builder, r, type, unname);
+      } else {
+        l = llvm.LLVMBuildIntCast2(builder, l, type, signed.llvmBool, unname);
+        r = llvm.LLVMBuildIntCast2(builder, r, type, signed.llvmBool, unname);
+      }
+    }
 
     if (op == OpKind.And || op == OpKind.Or) {
       final after = buildSubBB(name: 'op_after');
@@ -555,8 +577,6 @@ class BuildContext
         llvm.LLVMBuildCondBr(builder, l, after.bb, opBB.bb);
       }
       final c = opBB.context;
-      final temp = rhsBuilder(c);
-      final r = temp?.variable?.load(c, temp.currentIdent.offset);
       if (r == null) {
         // error
       }
@@ -567,8 +587,6 @@ class BuildContext
       return variable;
     }
 
-    final temp = rhsBuilder(this);
-    final r = temp?.variable?.load(this, temp.currentIdent.offset);
     if (r == null) {
       LLVMValueRef? value;
 

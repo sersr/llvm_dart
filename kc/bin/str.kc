@@ -1,10 +1,27 @@
 import "std:d.kc";
 
-fn main(argc: usize, argv:  **u8) i32 {
+fn main(argc: i32, argv:  **i8) i32 {
     let arr = CArray { argc, argv };
     let size = arr.getSize();
 
-    kprintln(argv[0]);
+    let v = 0;
+
+    while v < argc {
+        kprintln(argv[v]);
+        let d = argv[v];
+
+        let di = 0;
+        printf("i: %d: ", v);
+        loop {
+            let dv = d[di];
+            if dv == 0 { break; }
+            printf("%c", dv);
+            di += 1;
+        }
+        printf("\n");
+        v += 1;
+    }
+
     final msize = 128 - 32;
 
     let mm = malloc(msize) as *u8;
@@ -46,7 +63,7 @@ fn kprint(text: *void) {
 
 fn kprintln(text: *void) {
   kprint(text);
-  kprint("\n");
+  _write(stdout_fd, "\n", strlen("\n"));
 }
 
 static const stdin_fd = 0usize;
@@ -55,5 +72,6 @@ static const stderr_fd = 2usize;
 
 extern fn strlen(text: *void) usize;
 extern fn write(fd: usize, buf: *void, charCount: usize) usize;
+extern fn _write(fd: usize, buf: *void, charCount: usize) usize;
 extern fn malloc(size: usize) *void;
 extern fn free(data: *void);

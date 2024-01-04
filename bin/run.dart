@@ -12,7 +12,7 @@ Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
 Directory get stdRoot => currentDir.childDirectory('kc').childDirectory('lib');
 void main(List<String> args) async {
   assert(() {
-    args = ['array'];
+    args = ['str'];
     return true;
   }());
   buildDir.create();
@@ -114,7 +114,7 @@ Future<void> run(Options options) {
     var target = '$abi-apple-darwin22.4.0';
     if (Platform.isWindows) {
       abi = Abi.x86_64;
-      target = '$abi-pc-windows-msvc19.37.32825';
+      target = "$abi-pc-windows-msvc";
     }
 
     final root = project.build(
@@ -139,8 +139,18 @@ Future<void> run(Options options) {
     final debug = options.isDebug ? ' -g' : '';
     final abiV = Platform.isWindows ? '' : '-arch $abi';
 
+    var main = 'main';
+    if (Platform.isWindows) {
+      main = 'main.exe';
+    }
+
+    var linkName = '$name.o';
+    if (Platform.isWindows) {
+      linkName = '$name.ll';
+    }
+
     await runCmd([
-      'clang $debug $verbose $name.o $files $abiV -o main && ./main "hello world"'
+      'clang $debug $verbose $linkName $files $abiV -o $main && ./$main "hello world"'
     ], dir: buildDir);
     if (options.logFile) {
       Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);

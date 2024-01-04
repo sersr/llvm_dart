@@ -325,7 +325,7 @@ class LLVMFnType extends LLVMType {
             dBuilder, file, params.toNative(), params.length, 0);
         final fnScope = llvm.LLVMDIBuilderCreateFunction(
             dBuilder,
-            c.unit,
+            file,
             namePointer,
             nameLength,
             unname,
