@@ -150,7 +150,7 @@ Future<void> run(Options options) {
     }
 
     await runCmd([
-      'clang $debug $verbose $linkName $files $abiV -o $main && ./$main "hello world"'
+      'clang $debug $verbose $linkName $files $abiV -o $main -Wno-override-module && ./$main "hello world"'
     ], dir: buildDir);
     if (options.logFile) {
       Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);

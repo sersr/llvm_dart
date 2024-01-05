@@ -121,7 +121,7 @@ mixin OverflowMath on Consts {
         () => FunctionDeclare([i1, i1], 'llvm.expect.i1', i1));
     final f = fn.build(this);
     return llvm.LLVMBuildCall2(builder, fn.type, f,
-        [lhs, constI1(LLVMFalse)].toNative(), 2, 'bool'.toChar());
+        [lhs, constI1(LLVMTrue)].toNative(), 2, 'bool'.toChar());
   }
 
   LLVMValueRef assume(LLVMValueRef expr) {
@@ -135,7 +135,7 @@ mixin OverflowMath on Consts {
   MathValue oMath(LLVMValueRef lhs, LLVMValueRef rhs, LLVMIntrisics fn) {
     final ty = typeList[fn.index % 5];
     final structTy = typeStruct([ty, i1], null);
-    final inFn = maps.putIfAbsent(fn.name, () {
+    final inFn = root.maps.putIfAbsent(fn.name, () {
       return FunctionDeclare([ty, ty], fn.name, structTy);
     });
     final f = inFn.build(this);

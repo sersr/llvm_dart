@@ -643,6 +643,7 @@ class BuildContext
       }
     }
 
+    final isConst = lhs is LLVMLitVariable && rhs is LLVMLitVariable;
     final cmpId = op.getICmpId(signed);
     if (cmpId != null) {
       final v = llvm.LLVMBuildICmp(builder, cmpId, l, r, unname);
@@ -654,17 +655,25 @@ class BuildContext
     LLVMIntrisics? k;
     switch (op) {
       case OpKind.Add:
-        k = LLVMIntrisics.getAdd(ty, signed, this);
+        if (isConst) {
+          llfn = llvm.LLVMBuildAdd;
+        } else {
+          k = LLVMIntrisics.getAdd(ty, signed, this);
+        }
         break;
       case OpKind.Sub:
-        if (!signed) {
-          value = llvm.LLVMBuildSub(builder, l, r, unname);
+        if (!signed || isConst) {
+          llfn = llvm.LLVMBuildSub;
         } else {
           k = LLVMIntrisics.getSub(ty, signed, this);
         }
         break;
       case OpKind.Mul:
-        k = LLVMIntrisics.getMul(ty, signed, this);
+        if (isConst) {
+          llfn = llvm.LLVMBuildMul;
+        } else {
+          k = LLVMIntrisics.getMul(ty, signed, this);
+        }
         break;
       case OpKind.Div:
         llfn = signed ? llvm.LLVMBuildSDiv : llvm.LLVMBuildUDiv;
@@ -690,7 +699,7 @@ class BuildContext
       default:
     }
 
-    assert(k == null || llfn == null);
+    assert(k == null || llfn != null);
 
     if (k != null) {
       final mathValue = oMath(l, r, k);
@@ -794,7 +803,7 @@ mixin ChildContext on BuildMethods {
       if (variable != null) {
         final bb = buildSubBB(name: 'loop_body');
         final v = variable.load(loopBB.context, Offset.zero);
-        loopBB.context.assume(v);
+        loopBB.context.expect(v);
         llvm.LLVMBuildCondBr(loopBB.context.builder, v, bb.bb, loopAfter.bb);
         appendBB(bb);
         block.build(bb.context);

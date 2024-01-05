@@ -10,8 +10,8 @@ void buildRun(BuildContext root, {String name = 'out', bool optimize = false}) {
     llvm.optimize(
       root.module,
       root.tm,
-      LLVMRustPassBuilderOptLevel.O0,
-      LLVMRustOptStage.PreLinkNoLTO,
+      LLVMRustPassBuilderOptLevel.O3,
+      LLVMRustOptStage.PreLinkThinLTO,
       LLVMFalse,
       LLVMTrue,
       LLVMTrue,

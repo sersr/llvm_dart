@@ -1415,7 +1415,7 @@ class OpExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
-    var l = lhs.build(context);
+    var l = lhs.build(context, baseTy: baseTy);
     var r = rhs.clone().build(context, baseTy: l?.ty);
     if (l == null || r == null) return null;
     if (l.ty != r.ty) {
