@@ -2,7 +2,11 @@ import "std:d.kc";
 
 fn main(argc: i32, argv:  **i8) i32 {
     let arr = CArray { argc as u64, argv };
+<<<<<<< HEAD
     let size = arr.getSize(); // u64
+=======
+    let size = arr.getSize();
+>>>>>>> refs/remotes/origin/main
 
     let v = 0;
 
@@ -35,31 +39,27 @@ fn main(argc: i32, argv:  **i8) i32 {
 
     kprintln(mm);
     free(mm);
-    
+
     let i = 0;
-    while i < size { // i as u64;
+    while i < size  { // i as u64;
         kprintln(arr[i]);
         i += 1;
     }
 
-    kprintln("----------------");
     let text = "single\n"
+<<<<<<< HEAD
                 "多行 \
 \                 best
                  ..."
 "
-start
-多行
-测试
+=======
+"多行
+best
 ...
+>>>>>>> refs/remotes/origin/main
+start
 end";
-
-    let hx = 50;
-    let hy = 100;
-
-    let hh = if i == 1{ hx } else { hy };
-
-    kprintln(text);
+kprintln(text);
     0;
 }
 
@@ -69,7 +69,7 @@ fn kprint(text: *void) {
 
 fn kprintln(text: *void) {
   kprint(text);
-  _write(stdout_fd, "\n", strlen("\n"));
+  write(stdout_fd, "\n", strlen("\n"));
 }
 
 static const stdin_fd = 0usize;
@@ -78,6 +78,5 @@ static const stderr_fd = 2usize;
 
 extern fn strlen(text: *void) usize;
 extern fn write(fd: usize, buf: *void, charCount: usize) usize;
-extern fn _write(fd: usize, buf: *void, charCount: usize) usize;
 extern fn malloc(size: usize) *void;
 extern fn free(data: *void);

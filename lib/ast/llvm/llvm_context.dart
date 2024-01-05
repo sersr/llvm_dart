@@ -136,9 +136,6 @@ class BuildContext
     if (!isDebug) return;
     final info = "Debug Info Version";
     final version = "Dwarf Version";
-    final picLevel = "PIC Level";
-    final uwtable = 'uwtable';
-    final framePointer = 'frame-pointer';
 
     void add(int lv, String name, int size) {
       final (namePointer, nameLength) = name.toNativeUtf8WithLength();
@@ -149,10 +146,7 @@ class BuildContext
     if (Platform.isWindows) {
       add(1, "CodeView", 1);
     } else {
-      add(6, version, 4);
-      add(7, picLevel, 2);
-      add(6, framePointer, 1);
-      add(6, uwtable, 1);
+      add(6, version, 2);
     }
 
     add(1, info, 3);
