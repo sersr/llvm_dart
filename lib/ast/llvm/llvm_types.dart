@@ -153,7 +153,7 @@ class LLVMTypeLit extends LLVMType {
 
   @override
   int getBytes(LLVMTypeMixin c) {
-    final kind = ty.ty;
+    final kind = ty.ty.convert;
     switch (kind) {
       case LitKind.kDouble:
       case LitKind.f64:
