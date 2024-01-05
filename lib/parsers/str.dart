@@ -3,6 +3,10 @@ import 'package:characters/characters.dart';
 import 'lexers/token_kind.dart';
 import 'token_it.dart';
 
+bool isLF(String text) {
+  return text == '\r\n' || text == '\n';
+}
+
 String parseStr(String str) {
   final buf = StringBuffer();
   var lastChar = '';
@@ -30,7 +34,7 @@ String parseStr(String str) {
         buf.write(pattern);
       } else if (char == 'n') {
         buf.write('\n');
-      } else if (char == '\n') {
+      } else if (isLF(char)) {
         if (eatLn != false) {
           eatLn = true;
           eatLine();
@@ -43,12 +47,12 @@ String parseStr(String str) {
     }
 
     if (eatLn == null) {
-      if (char == '\n') {
+      if (isLF(char)) {
         eatLn = false;
       }
     }
 
-    if (eatLn == true && char == '\n') {
+    if (eatLn == true && isLF(char)) {
       eatLine();
       lastChar = '';
     } else {
