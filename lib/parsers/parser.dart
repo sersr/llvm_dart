@@ -117,7 +117,6 @@ class Parser {
       eatLfIfNeed(it, back: false);
       final t = getToken(it);
       if (t.kind == TokenKind.openBrace) {
-        it.moveNext(); // {
         final childIt = it.current.child.tokenIt;
         eatLfIfNeed(childIt);
         if (it.moveNext()) {
@@ -166,11 +165,9 @@ class Parser {
     if (getToken(it).kind == TokenKind.openBrace) {
       final fns = <Fn>[];
       final staticFns = <Fn>[];
-      it.moveNext();
       it = it.current.child.tokenIt;
       loop(it, () {
         final t = getToken(it);
-        if (t.kind == TokenKind.closeBrace) return true;
         if (t.kind == TokenKind.ident) {
           var key = getKey(it);
           var isStatic = false;
@@ -213,11 +210,9 @@ class Parser {
 
     if (getToken(it).kind == TokenKind.openBrace) {
       final fns = <FnSign>[];
-      it.moveNext();
       it = it.current.child.tokenIt;
       loop(it, () {
         final t = getToken(it);
-        if (t.kind == TokenKind.closeBrace) return true;
         if (t.kind == TokenKind.ident) {
           final key = getKey(it);
           if (key == Key.fn) {
@@ -236,22 +231,9 @@ class Parser {
     return null;
   }
 
-  FnDecl parseFnDecl(TokenIterator it, Identifier ident) {
+  (List<FieldDef>, bool) _params(TokenIterator it) {
     final params = <FieldDef>[];
-    bool isVar = false;
-    List<FieldDef> generics = const [];
-    if (getToken(it).kind == TokenKind.lt) {
-      it.moveBack();
-      generics = parseGenerics(it);
-      if (getToken(it).kind == TokenKind.gt) {
-        it.moveNext();
-      }
-    }
-
-    final preIt = it;
-    if (it.moveNext()) {
-      it = it.current.child.tokenIt;
-    }
+    var isVar = false;
     loop(it, () {
       final token = getToken(it);
       final kind = token.kind;
@@ -278,16 +260,26 @@ class Parser {
             return true;
           });
         }
-        if (kind == TokenKind.closeParen || kind == TokenKind.closeBrace) {
-          return true;
-        }
       }
       return false;
     });
 
-    PathTy? retTy;
+    return (params, isVar);
+  }
 
-    it = preIt;
+  FnDecl parseFnDecl(TokenIterator it, Identifier ident) {
+    List<FieldDef> generics = const [];
+    if (getToken(it).kind == TokenKind.lt) {
+      it.moveBack();
+      generics = parseGenerics(it);
+      if (getToken(it).kind == TokenKind.gt) {
+        it.moveNext();
+      }
+    }
+
+    final (params, isVar) = _params(it.current.child.tokenIt);
+
+    PathTy? retTy;
     eatLfIfNeed(it);
     final state = it.cursor;
     if (it.moveNext()) {
@@ -364,7 +356,6 @@ class Parser {
   }
 
   ArrayPathTy? parseArrayPathTy(TokenIterator it) {
-    it.moveNext();
     it = it.current.child.tokenIt;
     final aty = parsePathTy(it);
 
@@ -381,19 +372,16 @@ class Parser {
   Block parseBlock(TokenIterator it) {
     assert(it.current.token.kind == TokenKind.openBrace, getToken(it).kind.str);
     final stmts = <Stmt>[];
-    // final ident = getIdent(it);
+
     final start = getIdent(it);
-    if (!it.moveNext()) {
-      return Block([], null, Identifier.none, Identifier.none);
-    }
-    final end = getIdent(it);
+    final end = getEndIdent(it);
     it = it.current.child.tokenIt;
     loop(it, () {
       final t = getToken(it);
       final k = t.kind;
       if (k == TokenKind.lf) return false;
       if (k == TokenKind.semi) return false;
-      if (k == TokenKind.closeBrace) return false;
+
       final stmt = parseStmt(it);
       if (stmt != null) {
         stmts.add(stmt);
@@ -420,6 +408,10 @@ class Parser {
 
   Identifier getIdent(TokenIterator it) {
     return Identifier.fromToken(it.current.token, src);
+  }
+
+  Identifier getEndIdent(TokenIterator it) {
+    return Identifier.fromToken(it.current.end!, src);
   }
 
   Stmt? parseStmt(TokenIterator it) {
@@ -465,8 +457,6 @@ class Parser {
   ArrayExpr? parseArrayExpr(TokenIterator it) {
     final isArrayKind = getToken(it).kind == TokenKind.openBracket;
     if (!isArrayKind) return null;
-
-    it.moveNext();
 
     it = it.current.child.tokenIt;
     final exprs = <Expr>[];
@@ -537,7 +527,7 @@ class Parser {
 
   List<MatchItemExpr> parseMatchItem(TokenIterator it) {
     assert(it.current.token.kind == TokenKind.openBrace, getToken(it).kind.str);
-    if (!it.moveNext()) return [];
+    // if (!it.moveNext()) return [];
     it = it.current.child.tokenIt;
     final items = <MatchItemExpr>[];
 
@@ -707,10 +697,7 @@ class Parser {
     eatLfIfNeed(it);
 
     final state = it.cursor;
-    if (getToken(it).kind == TokenKind.closeBrace) {
-      it.moveNext();
-      eatLfIfNeed(it);
-    }
+
     final hasElse = getKey(it) == Key.kElse;
     if (hasElse) {
       checkBlock(it);
@@ -783,7 +770,7 @@ class Parser {
       final key = getKey(it);
       final t = getToken(it);
 
-      if (t.kind == TokenKind.closeBrace || t.kind == TokenKind.lf) {
+      if (t.kind == TokenKind.lf) {
         return false;
       }
       final hasElse = key == Key.kElse;
@@ -963,7 +950,6 @@ class Parser {
 
     final t = getToken(it);
     if (t.kind == TokenKind.openParen) {
-      it.moveNext();
       expr = parseExpr(it.current.child.tokenIt);
     } else if (t.kind == TokenKind.literal) {
       final lit = t.literalKind!;
@@ -1018,12 +1004,7 @@ class Parser {
   Expr parseArrayOpExpr(TokenIterator it, Expr ptr) {
     assert(getToken(it).kind == TokenKind.openBracket);
     final ident = getIdent(it);
-    it.moveNext();
-    final nIt = it.current.child.tokenIt;
-    final expr = parseExpr(nIt);
-
-    eatLfIfNeed(it);
-    assert(getToken(it).kind == TokenKind.closeBracket);
+    final expr = parseExpr(it.current.child.tokenIt);
 
     return ArrayOpExpr(ident, ptr, expr);
   }
@@ -1169,14 +1150,7 @@ class Parser {
     }
 
     eatLfIfNeed(it);
-    // 遇到`)`结束本次表达式解析
-    if (it.moveNext()) {
-      if (getToken(it).kind == TokenKind.closeParen) {
-        return baseExpr;
-      } else {
-        it.moveBack();
-      }
-    }
+
     if (!runOp) {
       final op = parseOpExpr(it, baseExpr);
       if (op != null) {
@@ -1253,20 +1227,10 @@ class Parser {
     final fields = <FieldExpr>[];
 
     assert(getToken(it).kind == TokenKind.openParen, '${getIdent(it)}');
-    it.moveNext();
     it = it.current.child.tokenIt;
 
     eatLfIfNeed(it);
-    if (it.moveNext()) {
-      // eat `)`
-      final t = getToken(it);
-      if (t.kind == TokenKind.closeParen) {
-        it.moveNext();
-        return fields;
-      } else {
-        it.moveBack();
-      }
-    }
+
     loop(it, () {
       final t = getToken(it);
 
@@ -1287,9 +1251,6 @@ class Parser {
             final expr = parseExpr(it);
             final f = FieldExpr(expr, name);
             fields.add(f);
-            if (getToken(it).kind == TokenKind.closeParen) {
-              return true;
-            }
             return false;
           }
         }
@@ -1299,9 +1260,6 @@ class Parser {
           final expr = VariableIdentExpr(name, instances);
           final f = FieldExpr(expr, null);
           fields.add(f);
-          if (getToken(it).kind == TokenKind.closeParen) {
-            return true;
-          }
           return false;
         }
         state.restore();
@@ -1311,9 +1269,6 @@ class Parser {
       final expr = parseExpr(it);
       final f = FieldExpr(expr, null);
       fields.add(f);
-      if (getToken(it).kind == TokenKind.closeParen) {
-        return true;
-      }
 
       return false;
     });
@@ -1348,8 +1303,6 @@ class Parser {
   StructExpr parseStructExpr(
       TokenIterator it, Identifier ident, List<PathTy> generics) {
     final fields = <FieldExpr>[];
-    it.moveNext(); // `}`
-    final pIt = it;
     it = it.current.child.tokenIt;
 
     loop(it, () {
@@ -1358,9 +1311,6 @@ class Parser {
       if (t.kind == TokenKind.semi) {
         final e = UnknownExpr(getIdent(it), 'is not struct expr');
         fields.add(FieldExpr(e, ident));
-        return true;
-      }
-      if (t.kind == TokenKind.closeBrace) {
         return true;
       }
 
@@ -1394,12 +1344,6 @@ class Parser {
 
       return parseCommon();
     });
-
-    final t = getToken(pIt);
-    // 一定要有 `}`
-    if (t.kind == TokenKind.closeBrace) {
-      // test
-    }
 
     return StructExpr(ident, fields, generics);
   }
@@ -1496,12 +1440,9 @@ class Parser {
     final fields = <FieldDef>[];
     it.moveNext(); // {
     if (getToken(it).kind == TokenKind.openBrace) {
-      it.moveNext(); // block
-
       it = it.current.child.tokenIt;
       loop(it, () {
         final k = getToken(it).kind;
-        if (k == TokenKind.closeBrace) return true;
         if (k == TokenKind.ident) {
           final name = getIdent(it);
 
@@ -1524,10 +1465,9 @@ class Parser {
     if (getToken(it).kind != TokenKind.ident) return null;
 
     final ident = getIdent(it);
-    eatLfIfNeed(it);
 
-    it.moveNext(); // {
-    it.moveNext(); // block
+    it.moveNext();
+    eatLfIfNeed(it);
 
     it = it.current.child.tokenIt;
 
@@ -1535,7 +1475,6 @@ class Parser {
     loop(it, () {
       final t = getToken(it);
       if (t.kind == TokenKind.lf) return false;
-      if (t.kind == TokenKind.closeBrace) return true;
       // e.g. Some
       if (t.kind == TokenKind.ident) {
         final item = parseEnumItem(it);
@@ -1560,7 +1499,6 @@ class Parser {
       return EnumItem(ident, [], types);
     }
 
-    it.moveNext();
     it = it.current.child.tokenIt;
 
     final fields = <FieldDef>[];

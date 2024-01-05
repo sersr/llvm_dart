@@ -1,7 +1,7 @@
 import "std:d.kc";
 
 fn main(argc: i32, argv:  **i8) i32 {
-    let arr = CArray { argc, argv };
+    let arr = CArray { argc as u64, argv };
     let size = arr.getSize(); // u64
 
     let v = 0;
@@ -44,9 +44,10 @@ fn main(argc: i32, argv:  **i8) i32 {
 
     kprintln("----------------");
     let text = "single\n"
-"多行 \
-best
-...
+                "多行 \
+\                 best
+                 ..."
+"
 start
 多行
 测试

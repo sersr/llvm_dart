@@ -209,7 +209,7 @@ class ExprTempValue {
   ExprTempValue(this.variable, this.ty, this.currentIdent);
   final Ty ty;
   final Variable? variable;
-  final Identifier currentIdent;
+  Identifier currentIdent;
 }
 
 abstract class Expr extends BuildMixin {
@@ -230,6 +230,8 @@ abstract class Expr extends BuildMixin {
   }
 
   Expr clone();
+
+  Ty? getTy(BuildContext context) => null;
 
   @override
   AnalysisVariable? analysis(AnalysisContext context);

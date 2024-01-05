@@ -527,7 +527,7 @@ class BuildContext
       Offset opOffset = Offset.zero}) {
     var isFloat = false;
     var signed = false;
-    final ty = lhs.ty;
+    var ty = lhs.ty;
     LLVMTypeRef? type;
 
     if (ty is BuiltInTy && ty.ty.isNum) {
@@ -539,6 +539,7 @@ class BuildContext
           final lSize = ty.llvmType.getBytes(this);
           final max = rSize > lSize ? rty : ty;
           type = max.llvmType.createType(this);
+          ty = max;
         }
       }
       if (kind.isFp) {
@@ -699,7 +700,7 @@ class BuildContext
       default:
     }
 
-    assert(k == null || llfn != null);
+    assert(k != null || llfn != null);
 
     if (k != null) {
       final mathValue = oMath(l, r, k);

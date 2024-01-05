@@ -6,7 +6,7 @@ import '../lib/stack_overflow.kc';;
 fn main() i32 {
   final y = 10;
   printf("hello: %d\n", y);
-  init_sig_stack();
+  // init_sig_stack();
 
   if y == 10 {
     print("end");

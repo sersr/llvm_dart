@@ -2,8 +2,13 @@ import 'token_kind.dart';
 
 class TokenTree {
   TokenTree({required this.token, this.child = const []});
+
+  ///open token: (, [, {, <
   final Token token;
   final List<TokenTree> child;
+
+  /// close token: ), ], }, >
+  Token? end;
 }
 
 class TokenReader {
@@ -22,8 +27,10 @@ class TokenReader {
       final token = cursor.advanceToken();
 
       if (token.kind.isOpen) {
-        tokens.add(TokenTree(token: token));
-        tokens.add(parse(true));
+        final child = parse(true);
+        final tree = TokenTree(child: child.child, token: token)
+          ..end = child.token;
+        tokens.add(tree);
         continue;
       } else if (token.kind.isClose) {
         if (isDelimited) {

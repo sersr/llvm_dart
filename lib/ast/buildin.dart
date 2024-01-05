@@ -1,18 +1,60 @@
-import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
+import 'expr.dart';
 import 'llvm/llvm_context.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';
-import 'memory.dart';
+import 'tys.dart';
+
+void initBuiltinFns(Tys context) {
+  _init();
+  for (var fn in BuiltinFn._fns) {
+    context.pushBuiltinFn(fn.name, fn);
+  }
+}
+
+bool _inited = false;
+void _init() {
+  if (_inited) return;
+  sizeOfFn;
+  memSetFn;
+  memCopyFn;
+}
+
+ExprTempValue? doBuiltFns(
+    BuildContext context, Ty? fn, List<FieldExpr> params) {
+  if (fn is BuiltinFn) {
+    return fn.runFn(context, params);
+  }
+  return null;
+}
+
+BuiltinFn? isBuiltinFn(Identifier ident) {
+  for (var fn in BuiltinFn._fns) {
+    if (fn.name == ident) {
+      return fn;
+    }
+  }
+  return null;
+}
+
+typedef BuiltinFnRun = ExprTempValue? Function(
+    BuildContext context, List<FieldExpr> params);
 
 final class BuiltinFn extends Ty {
-  BuiltinFn(this.name);
+  BuiltinFn(this.name, this.runFn) {
+    _fns.add(this);
+  }
+
+  static final _fns = <BuiltinFn>[];
+
   final Identifier name;
+
   @override
   void analysis(AnalysisContext context) {}
 
+  final BuiltinFnRun runFn;
   @override
   LLVMType get llvmType => throw UnimplementedError();
 
@@ -20,33 +62,85 @@ final class BuiltinFn extends Ty {
   List<Object?> get props => [name];
 }
 
-LLVMConstVariable sizeOf(BuildContext c, Ty ty) {
+ExprTempValue? sizeOf(BuildContext context, List<FieldExpr> params) {
+  assert(params.isNotEmpty);
+
+  final first = params.first;
+  final e = first.expr.build(context);
+  Ty? ty = e?.ty;
+  if (ty == null) {
+    var e = first.expr;
+
+    if (e is VariableIdentExpr) {
+      final p = PathTy(e.ident, e.generics);
+      ty = p.grt(context);
+    }
+  }
+
   if (ty is EnumItem) {
     ty = ty.parent;
   }
-  final tyy = ty.llvmType.createType(c);
-  final size = c.typeSize(tyy);
+  final tyy = ty!.llvmType.createType(context);
+  final size = context.typeSize(tyy);
 
-  final v = c.usizeValue(size);
-  return LLVMConstVariable(v, BuiltInTy.usize);
+  final v = context.usizeValue(size);
+  final vv = LLVMConstVariable(v, BuiltInTy.usize);
+  return ExprTempValue(vv, vv.ty, Identifier.none);
 }
 
-final sizeOfFn = BuiltinFn(Identifier.builtIn('sizeOf'));
+final sizeOfFn = BuiltinFn(Identifier.builtIn('sizeOf'), sizeOf);
 
-LLVMAllocaVariable elmentAt(
-    BuildContext c, Ty elementTy, Variable v, Variable index) {
-  if (elementTy is EnumItem) {
-    elementTy = elementTy.parent;
-  }
-  final tyy = elementTy.llvmType.createType(c);
+// LLVMAllocaVariable elmentAt(
+//     BuildContext c, Ty elementTy, Variable v, Variable index) {
+//   if (elementTy is RefTy) {
+//     elementTy = elementTy.parent;
+//   }
+//   final tyy = elementTy.llvmType.createType(c);
 
-  final ptr = v.getBaseValue(c);
-  final indics = <LLVMValueRef>[index.load(c, Offset.zero)];
+//   final ptr = v.getBaseValue(c);
+//   final indics = <LLVMValueRef>[index.load(c, Offset.zero)];
 
-  final llValue = llvm.LLVMBuildInBoundsGEP2(
-      c.builder, tyy, ptr, indics.toNative(), indics.length, unname);
+//   final llValue = llvm.LLVMBuildInBoundsGEP2(
+//       c.builder, tyy, ptr, indics.toNative(), indics.length, unname);
 
-  return LLVMAllocaVariable(elementTy, llValue, tyy);
+//   return LLVMAllocaVariable(elementTy, llValue, tyy);
+// }
+
+// final elementAt = BuiltinFn(Identifier.builtIn('getElement'));
+
+ExprTempValue memSet(BuildContext context, List<FieldExpr> params) {
+  Variable lhs = params[0].build(context)!.variable!;
+
+  Variable rhs = params[1].build(context)!.variable!;
+  Variable len = params[2].build(context)!.variable!;
+
+  final lv = lhs.load(context, Offset.zero);
+  final rv = rhs.load(context, Offset.zero);
+  final lenv = len.load(context, Offset.zero);
+  final align = context.getBaseAlignSize(rhs.ty);
+  final value = llvm.LLVMBuildMemSet(context.builder, lv, rv, lenv, align);
+
+  final v = LLVMConstVariable(value, BuiltInTy.usize);
+  return ExprTempValue(v, v.ty, Identifier.none);
 }
 
-final elementAt = BuiltinFn(Identifier.builtIn('getElement'));
+final memSetFn = BuiltinFn(Identifier.builtIn('memSet'), memSet);
+ExprTempValue memCopy(BuildContext context, List<FieldExpr> params) {
+  Variable lhs = params[0].build(context)!.variable!;
+
+  Variable rhs = params[1].build(context)!.variable!;
+  Variable len = params[2].build(context)!.variable!;
+
+  final lv = lhs.load(context, Offset.zero);
+  final rv = rhs.load(context, Offset.zero);
+  final lenv = len.load(context, Offset.zero);
+  final lalign = context.getBaseAlignSize(lhs.ty);
+  final align = context.getBaseAlignSize(rhs.ty);
+  final value =
+      llvm.LLVMBuildMemCpy(context.builder, lv, lalign, rv, align, lenv);
+
+  final v = LLVMConstVariable(value, RefTy(BuiltInTy.kVoid));
+  return ExprTempValue(v, v.ty, Identifier.none);
+}
+
+final memCopyFn = BuiltinFn(Identifier.builtIn('memCopy'), memCopy);

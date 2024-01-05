@@ -35,6 +35,11 @@ class LiteralExpr extends Expr {
   }
 
   @override
+  Ty? getTy(BuildContext context) {
+    return ty;
+  }
+
+  @override
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     if (baseTy is! BuiltInTy) {
       baseTy = ty;
@@ -461,6 +466,21 @@ class StructExpr extends Expr {
   final List<PathTy> generics;
 
   @override
+  StructTy? getTy(BuildContext context, {void Function()? gen}) {
+    var struct = context.getStruct(ident);
+
+    if (struct == null) {
+      final cty = context.getAliasTy(ident);
+      final t = cty?.getTy(context, generics);
+      if (t is! StructTy) return null;
+
+      gen?.call();
+      struct = t;
+    }
+    return struct;
+  }
+
+  @override
   Expr clone() {
     return StructExpr(ident, fields.map((e) => e.clone()).toList(), generics);
   }
@@ -472,16 +492,12 @@ class StructExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
-    var struct = context.getStruct(ident);
     var genericsInst = generics;
-    if (struct == null) {
-      final cty = context.getAliasTy(ident);
-      final t = cty?.getTy(context, genericsInst);
-      if (t is! StructTy) return null;
-
+    final struct = getTy(context, gen: () {
       genericsInst = const [];
-      struct = t;
-    }
+    });
+
+    if (struct == null) return null;
 
     return buildTupeOrStruct(struct, context, ident, fields, genericsInst);
   }
@@ -932,29 +948,12 @@ class FnCallExpr extends Expr with FnCallMixin {
       return StructExpr.buildTupeOrStruct(
           fn, context, Identifier.none, params, const []);
     }
-
-    if (fn == sizeOfFn) {
-      if (params.isEmpty) {
-        return null;
-      }
-      final first = params.first;
-      final e = first.expr.build(context);
-      Ty? ty = e?.ty;
-      if (ty == null) {
-        var e = first.expr;
-        if (e is RefExpr) {
-          e = e.current;
-        }
-        if (e is VariableIdentExpr) {
-          final p = PathTy(e.ident, e.generics);
-          ty = p.grt(context);
-        }
-      }
-      if (ty == null) return null;
-
-      final v = sizeOf(context, ty);
-      return ExprTempValue(v, BuiltInTy.i32, fnV!.currentIdent);
+    final builtinFn = doBuiltFns(context, fn, params);
+    if (builtinFn != null) {
+      builtinFn.currentIdent = fnV!.currentIdent;
+      return builtinFn;
     }
+
     if (fn is! Fn) return null;
 
     return fnCall(context, fn, params, fnV!.currentIdent);
@@ -1415,14 +1414,18 @@ class OpExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
-    var l = lhs.build(context, baseTy: baseTy);
-    var r = rhs.clone().build(context, baseTy: l?.ty);
-    if (l == null || r == null) return null;
-    if (l.ty != r.ty) {
-      final nl = lhs.clone().build(context, baseTy: r.ty);
-      if (nl == null) return null;
-      l = nl;
+    final lty = lhs.getTy(context);
+    final rty = rhs.getTy(context);
+    Ty? bestTy = lty ?? rty;
+    if (lty != null && rty != null) {
+      final lsize = lty.llvmType.getBytes(context);
+      final rsize = rty.llvmType.getBytes(context);
+      bestTy = lsize > rsize ? lty : rty;
     }
+
+    var l = lhs.build(context, baseTy: bestTy);
+    var r = rhs.build(context, baseTy: bestTy);
+    if (l == null || r == null) return null;
 
     return math(context, op, l.variable, rhs, opIdent, l.currentIdent);
   }
@@ -1544,6 +1547,11 @@ class VariableIdentExpr extends Expr {
   @override
   String toString() {
     return '$ident${generics.str}';
+  }
+
+  @override
+  Ty? getTy(BuildContext context) {
+    return context.getVariable(ident)?.ty;
   }
 
   @override
@@ -2120,6 +2128,11 @@ class AsExpr extends Expr {
   final PathTy rhs;
 
   @override
+  Ty? getTy(BuildContext context) {
+    return rhs.grt(context);
+  }
+
+  @override
   AnalysisVariable? analysis(AnalysisContext context) {
     final r = rhs.grt(context);
     final l = lhs.analysis(context);
@@ -2135,24 +2148,29 @@ class AsExpr extends Expr {
     final lv = l?.variable;
     final lty = l?.ty;
     if (lv == null) return l;
+
     if (r is BuiltInTy && lty is BuiltInTy) {
       final val = context.castLit(
           lty.ty, lv.load(context, l!.currentIdent.offset), r.ty);
       return ExprTempValue(LLVMConstVariable(val, r), r, l.currentIdent);
     }
     Variable? asValue;
-    if (lv is LLVMConstVariable) {
-      asValue = LLVMConstVariable(lv.value, r);
-    } else if (lv is StoreVariable) {
-      asValue = LLVMAllocaVariable(
-          r, lv.getBaseValue(context), r.llvmType.createType(context));
+
+    final lValue = lv.load(context, l!.currentIdent.offset);
+
+    if (lty is RefTy && r is BuiltInTy && r.ty.isInt) {
+      final type = r.llvmType.createType(context);
+      final v = llvm.LLVMBuildPtrToInt(context.builder, lValue, type, unname);
+      asValue = LLVMConstVariable(v, r);
+    } else if (lty is BuiltInTy && lty.ty.isInt && r is RefTy) {
+      final type = r.llvmType.createType(context);
+      final v = llvm.LLVMBuildIntToPtr(context.builder, lValue, type, unname);
+      asValue = LLVMConstVariable(v, r);
+    } else {
+      asValue = LLVMConstVariable(lValue, r);
     }
 
-    if (asValue != null) {
-      return ExprTempValue(asValue, asValue.ty, rhs.ident);
-    }
-
-    return l;
+    return ExprTempValue(asValue, asValue.ty, rhs.ident);
   }
 
   @override

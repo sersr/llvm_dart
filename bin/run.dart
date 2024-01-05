@@ -12,7 +12,7 @@ Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
 Directory get stdRoot => currentDir.childDirectory('kc').childDirectory('lib');
 void main(List<String> args) async {
   assert(() {
-    args = ['str'];
+    args = ['test/string.kc'];
     return true;
   }());
   buildDir.create();
@@ -44,7 +44,7 @@ void main(List<String> args) async {
   final stdDir = results['std'] as String;
   final logFile = results['logfile'] as bool;
 
-  File? runFile = currentDir.childFile(name);
+  File? runFile = kcBinDir.childFile(name);
   if (!runFile.existsSync()) {
     runFile = null;
     final entries = kcBinDir.listSync(followLinks: false);
