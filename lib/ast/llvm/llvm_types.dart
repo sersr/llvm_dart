@@ -33,13 +33,13 @@ class LLVMRawValue {
 abstract class LLVMType {
   Ty get ty;
   int getBytes(covariant LLVMTypeMixin c);
-  LLVMTypeRef createType(covariant LLVMTypeMixin c);
+  LLVMTypeRef typeOf(covariant LLVMTypeMixin c);
 
   LLVMMetadataRef createDIType(covariant LLVMTypeMixin c);
 
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
-    final type = createType(c);
+    final type = typeOf(c);
     final val = LLVMAllocaDelayVariable(ty, base, ([alloca, nIdent]) {
       if (alloca != null) return alloca.getBaseValue(c);
       final value = c.alloctor(type, ty: ty, name: nIdent?.src ?? ident.src);
@@ -59,7 +59,7 @@ class LLVMTypeLit extends LLVMType {
   final BuiltInTy ty;
 
   @override
-  LLVMTypeRef createType(BuildContext c) {
+  LLVMTypeRef typeOf(BuildContext c) {
     return litType(c);
   }
 
@@ -67,7 +67,7 @@ class LLVMTypeLit extends LLVMType {
     final kind = ty.ty.convert;
     LLVMTypeRef type;
     switch (kind) {
-      case LitKind.usize:
+      case LitKind.isize:
         final size = c.pointerSize();
         if (size == 8) {
           type = c.i64;
@@ -137,7 +137,7 @@ class LLVMTypeLit extends LLVMType {
           return c.constI64(raw.iValue, kind.signed);
         case LitKind.i128:
           return c.constI128(raw.raw, kind.signed);
-        case LitKind.usize:
+        case LitKind.isize:
           return c.pointerSize() == 8
               ? c.constI64(raw.iValue)
               : c.constI32(raw.iValue);
@@ -166,14 +166,13 @@ class LLVMTypeLit extends LLVMType {
         return 4;
       case LitKind.kBool:
       case LitKind.i8:
-      case LitKind.u8:
         return 1;
       case LitKind.i16:
         return 2;
       case LitKind.i128:
         return 16;
       case LitKind.kStr:
-      case LitKind.usize:
+      case LitKind.isize:
         return c.pointerSize();
       case LitKind.kVoid:
       default:
@@ -191,7 +190,7 @@ class LLVMTypeLit extends LLVMType {
 
     var encoding = 5;
     if (ty.ty == LitKind.kStr) {
-      final base = BuiltInTy.u8.llvmType.createDIType(c);
+      final base = BuiltInTy.u8.llty.createDIType(c);
       return llvm.LLVMDIBuilderCreatePointerType(
           c.dBuilder!, base, c.pointerSize() * 8, 0, 0, unname, 0);
     }
@@ -221,7 +220,7 @@ class LLVMFnType extends LLVMType {
 
   @protected
   @override
-  LLVMTypeRef createType(BuildContext c) {
+  LLVMTypeRef typeOf(BuildContext c) {
     return c.pointer();
   }
 
@@ -234,7 +233,7 @@ class LLVMFnType extends LLVMType {
       LLVMTypeRef ty;
       final tty = (fn as ImplFn).ty;
       if (tty is BuiltInTy) {
-        ty = tty.llvmType.createType(c);
+        ty = tty.typeOf(c);
       } else {
         ty = c.pointer();
       }
@@ -242,14 +241,14 @@ class LLVMFnType extends LLVMType {
     }
 
     LLVMTypeRef cType(Ty tty) {
-      return tty.llvmType.createType(c);
+      return tty.typeOf(c);
     }
 
     for (var p in params) {
       final realTy = fn.getRty(c, p);
       LLVMTypeRef ty;
       if (p.isRef) {
-        ty = realTy.llvmType.createType(c);
+        ty = realTy.typeOf(c);
       } else {
         ty = cType(realTy);
       }
@@ -262,7 +261,7 @@ class LLVMFnType extends LLVMType {
 
       if (v != null) {
         final dty = v.ty;
-        LLVMTypeRef ty = dty.llvmType.createType(c);
+        LLVMTypeRef ty = dty.typeOf(c);
         ty = c.typePointer(ty);
 
         list.add(ty);
@@ -285,7 +284,7 @@ class LLVMFnType extends LLVMType {
     final key = ListKey(variables?.toList() ?? []);
 
     return _cacheFns.putIfAbsent(key, () {
-      final ty = fn.llvmType.createFnType(c, variables);
+      final ty = fn.llty.createFnType(c, variables);
       var ident = fn.fnSign.fnDecl.ident.src;
       final (namePointer, nameLength) = ident.toNativeUtf8WithLength();
 
@@ -313,11 +312,11 @@ class LLVMFnType extends LLVMType {
       if (dBuilder != null && fn.block?.stmts.isNotEmpty == true) {
         final file = llvm.LLVMDIScopeGetFile(c.unit);
         final params = <Pointer>[];
-        params.add(retTy.llvmType.createDIType(c));
+        params.add(retTy.llty.createDIType(c));
 
         for (var p in fn.fnSign.fnDecl.params) {
           final realTy = fn.getRty(c, p);
-          final ty = realTy.llvmType.createDIType(c);
+          final ty = realTy.llty.createDIType(c);
           params.add(ty);
         }
 
@@ -386,14 +385,14 @@ class LLVMStructType extends LLVMType {
       _size ??= LLVMEnumItemType.alignType(c, ty.fields, sort: !ty.extern);
 
   @override
-  LLVMTypeRef createType(BuildContext c) {
+  LLVMTypeRef typeOf(BuildContext c) {
     if (_type != null) return _type!;
     return _type = getFieldsSize(c).getTypeStruct(c, ty.ident.src, null);
   }
 
   StoreVariable? getField(
       Variable alloca, BuildContext context, Identifier ident) {
-    LLVMTypeRef type = createType(context);
+    LLVMTypeRef type = typeOf(context);
 
     final fields = ty.fields;
     final index = fields.indexWhere((element) => element.ident == ident);
@@ -412,15 +411,14 @@ class LLVMStructType extends LLVMType {
     fieldValue =
         llvm.LLVMBuildStructGEP2(context.builder, type, v, rIndex, unname);
 
-    final val =
-        LLVMAllocaVariable(rTy, fieldValue, rTy.llvmType.createType(context));
+    final val = LLVMAllocaVariable(rTy, fieldValue, rTy.typeOf(context));
 
     return val;
   }
 
   @override
   int getBytes(BuildContext c) {
-    return c.typeSize(createType(c));
+    return c.typeSize(typeOf(c));
   }
 
   @override
@@ -438,11 +436,11 @@ class LLVMStructType extends LLVMType {
       LLVMMetadataRef ty;
       int alignSize;
       if (rty is FnTy) {
-        ty = rty.llvmType.createDIType(c);
+        ty = rty.llty.createDIType(c);
         alignSize = c.pointerSize() * 8;
       } else {
-        ty = rty.llvmType.createDIType(c);
-        alignSize = rty.llvmType.getBytes(c) * 8;
+        ty = rty.llty.createDIType(c);
+        alignSize = rty.llty.getBytes(c) * 8;
       }
       final fieldName = field.ident.src;
 
@@ -492,12 +490,12 @@ class LLVMRefType extends LLVMType {
   final RefTy ty;
   Ty get parent => ty.parent;
   @override
-  LLVMTypeRef createType(BuildContext c) {
+  LLVMTypeRef typeOf(BuildContext c) {
     return ref(c);
   }
 
   LLVMTypeRef ref(BuildContext c) {
-    return c.typePointer(parent.llvmType.createType(c));
+    return c.typePointer(parent.typeOf(c));
   }
 
   @override
@@ -509,7 +507,7 @@ class LLVMRefType extends LLVMType {
   LLVMMetadataRef createDIType(covariant BuildContext c) {
     return llvm.LLVMDIBuilderCreatePointerType(
         c.dBuilder!,
-        parent.llvmType.createDIType(c),
+        parent.llty.createDIType(c),
         c.pointerSize(),
         c.pointerSize(),
         0,
@@ -529,7 +527,7 @@ class LLVMEnumType extends LLVMType {
   static const int8Max = (1 << 7) - 1;
 
   @override
-  LLVMTypeRef createType(BuildContext c) {
+  LLVMTypeRef typeOf(BuildContext c) {
     if (_type != null) return _type!;
     final size = getItemBytes(c);
     final index = getIndexType(c);
@@ -561,16 +559,16 @@ class LLVMEnumType extends LLVMType {
   LLVMMetadataRef getIndexDIType(BuildContext c) {
     final size = getRealIndexType(c);
     if (size == 8) {
-      return BuiltInTy.i64.llvmType.createDIType(c);
+      return BuiltInTy.i64.llty.createDIType(c);
     } else if (size == 4) {
-      return BuiltInTy.i32.llvmType.createDIType(c);
+      return BuiltInTy.i32.llty.createDIType(c);
     }
-    return BuiltInTy.i8.llvmType.createDIType(c);
+    return BuiltInTy.i8.llty.createDIType(c);
   }
 
   int getItemBytes(BuildContext c) {
     final fSize = ty.variants.fold<int>(0, (previousValue, element) {
-      final esize = element.llvmType.getSuperBytes(c);
+      final esize = element.llty.getSuperBytes(c);
       if (previousValue > esize) return previousValue;
       return esize;
     });
@@ -593,7 +591,7 @@ class LLVMEnumType extends LLVMType {
     if (_minSize != null) return _minSize!;
     final size = ty.variants.length;
     final minSize = ty.variants.fold<int>(100, (previousValue, element) {
-      final esize = element.llvmType.getMinSize(c);
+      final esize = element.llty.getMinSize(c);
       if (esize < previousValue) return esize;
       return previousValue;
     });
@@ -634,11 +632,11 @@ class LLVMEnumType extends LLVMType {
     LLVMMetadataRef tyx;
     if (minSize == 1) {
       tyx = llvm.LLVMDIBuilderCreateArrayType(c.dBuilder!, size - 1, size,
-          BuiltInTy.i8.llvmType.createDIType(c), nullptr, 0);
+          BuiltInTy.i8.llty.createDIType(c), nullptr, 0);
     } else if (minSize == 4) {
       final fc = (size / 4).ceil();
       tyx = llvm.LLVMDIBuilderCreateArrayType(c.dBuilder!, fc, size,
-          BuiltInTy.i32.llvmType.createDIType(c), nullptr, 0);
+          BuiltInTy.i32.llty.createDIType(c), nullptr, 0);
     } else {
       final item = c.getStructExternDIType(size);
       tyx = item;
@@ -674,17 +672,17 @@ class LLVMEnumItemType extends LLVMStructType {
   LLVMEnumItemType(EnumItem super.ty);
   @override
   EnumItem get ty => super.ty as EnumItem;
-  LLVMEnumType get pTy => ty.parent.llvmType;
+  LLVMEnumType get pTy => ty.parent.llty;
 
   int getMinSize(BuildContext c) {
     return ty.fields.fold<int>(100, (p, e) {
-      final size = e.grt(c).llvmType.getBytes(c);
+      final size = e.grt(c).llty.getBytes(c);
       return p > size ? size : p;
     });
   }
 
   @override
-  LLVMTypeRef createType(BuildContext c) {
+  LLVMTypeRef typeOf(BuildContext c) {
     if (_type != null) return _type!;
 
     final m = pTy.getRealIndexType(c);
@@ -700,7 +698,7 @@ class LLVMEnumItemType extends LLVMStructType {
       {int initValue = 0, bool sort = false, bool minToMax = false}) {
     final targetSize = c.pointerSize();
     var alignSize = fields.fold<int>(0, (previousValue, element) {
-      final size = element.grt(c).llvmType.getBytes(c);
+      final size = element.grt(c).llty.getBytes(c);
       if (previousValue > size) return previousValue;
       return size;
     });
@@ -712,8 +710,8 @@ class LLVMEnumItemType extends LLVMStructType {
     final newList = List.of(fields);
     if (sort) {
       newList.sort((p, n) {
-        final pre = p.grt(c).llvmType.getBytes(c);
-        final next = n.grt(c).llvmType.getBytes(c);
+        final pre = p.grt(c).llty.getBytes(c);
+        final next = n.grt(c).llty.getBytes(c);
         if (pre == next) return 0;
 
         if (minToMax) {
@@ -736,7 +734,7 @@ class LLVMEnumItemType extends LLVMStructType {
       if (rty is FnTy) {
         currentSize = c.pointerSize();
       } else {
-        final ty = rty.llvmType.createType(c);
+        final ty = rty.typeOf(c);
         if (field.isRef) {
           currentSize = c.pointerSize();
         } else {
@@ -784,9 +782,9 @@ class LLVMEnumItemType extends LLVMStructType {
   @override
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
-    final type = pTy.createType(c);
+    final type = pTy.typeOf(c);
     return LLVMAllocaDelayVariable(ty, base, ([alloca, nIdent]) {
-      final ctype = createType(c);
+      final ctype = typeOf(c);
       final alloca = c.alloctor(type, ty: ty, name: nIdent?.src ?? ident.src);
       c.diBuilderDeclare(nIdent ?? ident, alloca, ty);
       final indices = [c.constI32(0), c.constI32(0)];
@@ -805,7 +803,7 @@ class LLVMEnumItemType extends LLVMStructType {
     } else {
       value = parent.load(c, Offset.zero);
     }
-    final type = createType(c);
+    final type = typeOf(c);
 
     final map = _size!.map;
 
@@ -829,7 +827,7 @@ class LLVMEnumItemType extends LLVMStructType {
         final t = f.grt(c);
         final llValue = llvm.LLVMBuildInBoundsGEP2(
             c.builder, type, value, indices.toNative(), indices.length, unname);
-        final val = LLVMAllocaVariable(t, llValue, t.llvmType.createType(c));
+        final val = LLVMAllocaVariable(t, llValue, t.typeOf(c));
         val.isTemp = false;
         c.pushVariable(ident, val);
       }
@@ -847,7 +845,7 @@ class LLVMEnumItemType extends LLVMStructType {
 
     final indices = [c.constI32(0), c.constI32(0)];
     final t = pTy.getIndexType(c);
-    final pt = pTy.createType(c);
+    final pt = pTy.typeOf(c);
     final v = llvm.LLVMBuildInBoundsGEP2(
         c.builder, pt, value, indices.toNative(), indices.length, unname);
 
@@ -904,7 +902,7 @@ class FieldsSize {
       if (rty is FnTy) {
         vals.add(c.pointer());
       } else {
-        final ty = rty.llvmType.createType(c);
+        final ty = rty.typeOf(c);
         if (field.isRef) {
           vals.add(c.typePointer(ty));
         } else {
@@ -914,7 +912,7 @@ class FieldsSize {
     }
     if (map.isNotEmpty) {
       final last = map.entries.last;
-      final itemSize = last.key.grt(c).llvmType.getBytes(c);
+      final itemSize = last.key.grt(c).llty.getBytes(c);
       final edge = itemSize + last.value.diOffset;
       final extra = edge % alignSize;
       if (extra > 0) {

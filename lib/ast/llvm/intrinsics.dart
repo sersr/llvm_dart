@@ -96,7 +96,7 @@ enum LLVMIntrisics {
       default:
     }
 
-    if (ty.ty == LitKind.usize) {
+    if (ty.ty.isSize) {
       final size = context.pointerSize();
       if (size > 8) {
         return saddOI128;

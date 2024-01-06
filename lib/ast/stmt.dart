@@ -83,7 +83,7 @@ class LetStmt extends Stmt {
 
     /// 如果是
     if (sretVariable == null) {
-      sretVariable = tty.llvmType.createAlloca(context, nameIdent, null);
+      sretVariable = tty.llty.createAlloca(context, nameIdent, null);
 
       LLVMValueRef rValue;
       if (variable.isRef) {
@@ -180,7 +180,7 @@ class StaticStmt extends Stmt {
     if (e == null || val == null) return;
 
     final y = rty ?? e.ty;
-    final type = y.llvmType.createType(context);
+    final type = y.typeOf(context);
 
     context.diSetCurrentLoc(ident.offset);
 
@@ -200,7 +200,7 @@ class StaticStmt extends Stmt {
     final diBuilder = context.dBuilder;
     if (diBuilder != null) {
       final file = llvm.LLVMDIScopeGetFile(context.scope);
-      final diType = y.llvmType.createDIType(context);
+      final diType = y.llty.createDIType(context);
       final name = ident.src;
       final (namePointer, nameLength) = name.toNativeUtf8WithLength();
 

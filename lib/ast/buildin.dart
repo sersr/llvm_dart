@@ -56,7 +56,7 @@ final class BuiltinFn extends Ty {
 
   final BuiltinFnRun runFn;
   @override
-  LLVMType get llvmType => throw UnimplementedError();
+  LLVMType get llty => throw UnimplementedError();
 
   @override
   List<Object?> get props => [name];
@@ -80,7 +80,7 @@ ExprTempValue? sizeOf(BuildContext context, List<FieldExpr> params) {
   if (ty is EnumItem) {
     ty = ty.parent;
   }
-  final tyy = ty!.llvmType.createType(context);
+  final tyy = ty!.typeOf(context);
   final size = context.typeSize(tyy);
 
   final v = context.usizeValue(size);

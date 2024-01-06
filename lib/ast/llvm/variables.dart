@@ -28,8 +28,7 @@ abstract class Variable extends LifeCycleVariable {
 
     /// 如果是一个指针，说明还有下一级，满足 store, load
     if (parent is RefTy) {
-      val = LLVMAllocaVariable(parent, v, parent.llvmType.createType(c))
-        ..isTemp = false;
+      val = LLVMAllocaVariable(parent, v, parent.typeOf(c))..isTemp = false;
     } else {
       val = LLVMConstVariable(v, parent);
     }
@@ -214,7 +213,7 @@ class LLVMLitVariable extends Variable {
   LLVMAllocaDelayVariable createAlloca(BuildContext c, Identifier ident,
       [BuiltInTy? tty]) {
     final rValue = load(c, ident.offset, ty: tty);
-    final alloca = ty.llvmType.createAlloca(c, ident, rValue);
+    final alloca = ty.llty.createAlloca(c, ident, rValue);
 
     return alloca;
   }

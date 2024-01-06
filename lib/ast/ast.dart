@@ -16,6 +16,7 @@ import '../parsers/lexers/token_kind.dart';
 import 'analysis_context.dart';
 import 'context.dart';
 import 'expr.dart';
+import 'llvm/build_methods.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
@@ -210,6 +211,8 @@ class ExprTempValue {
   final Ty ty;
   final Variable? variable;
   Identifier currentIdent;
+
+  Offset get offset => currentIdent.offset;
 }
 
 abstract class Expr extends BuildMixin {
@@ -308,6 +311,7 @@ enum LitKind {
   i32('i32'),
   i64('i64'),
   i128('i128'),
+  isize('isize'),
 
   u8('u8'),
   u16('u16'),
@@ -319,6 +323,8 @@ enum LitKind {
   kBool('bool'),
   kVoid('void'),
   ;
+
+  bool get isSize => this == isize || this == usize;
 
   bool get isFp {
     if (index <= f64.index) {
@@ -337,9 +343,9 @@ enum LitKind {
   bool get isNum => isInt || isFp;
 
   LitKind get convert {
-    if (index >= u8.index && index <= u128.index) {
-      final diff = u8.index - i8.index;
-      return values[index - diff];
+    if (index >= u8.index && index <= usize.index) {
+      final diff = index - u8.index;
+      return values[i8.index + diff];
     }
     if (this == kFloat) {
       return f32;
@@ -350,7 +356,7 @@ enum LitKind {
   }
 
   bool get signed {
-    if (index >= i8.index && index <= i128.index || this == kInt) {
+    if (index >= i8.index && index <= isize.index || this == kInt) {
       return true;
     }
     return false;
@@ -362,6 +368,8 @@ enum LitKind {
   static LitKind? from(LiteralKind kind) {
     return values.firstWhereOrNull((element) => element.lit == kind.lit);
   }
+
+  BuiltInTy get ty => BuiltInTy.get(this);
 }
 
 class Block extends BuildMixin with EquatableMixin {
@@ -537,7 +545,9 @@ class FnSign with EquatableMixin {
 abstract class Ty extends BuildMixin with EquatableMixin {
   static final PathTy unknown = UnknownTy(Identifier.none);
 
-  LLVMType get llvmType;
+  LLVMType get llty;
+
+  LLVMTypeRef typeOf(LLVMTypeMixin c) => llty.typeOf(c);
 
   Ty getRealTy(BuildContext c) => this;
 
@@ -569,7 +579,7 @@ class RefTy extends Ty {
   void analysis(AnalysisContext context) {}
 
   @override
-  LLVMRefType get llvmType => LLVMRefType(this);
+  LLVMRefType get llty => LLVMRefType(this);
 
   @override
   List<Object?> get props => [parent];
@@ -581,16 +591,15 @@ class RefTy extends Ty {
 }
 
 class BuiltInTy extends Ty {
-  static final i8 = BuiltInTy.get(LitKind.i8);
-  static final u8 = BuiltInTy.get(LitKind.u8);
-  static final i32 = BuiltInTy.get(LitKind.i32);
-  static final i64 = BuiltInTy.get(LitKind.i64);
-  static final f32 = BuiltInTy.get(LitKind.f32);
-  static final f64 = BuiltInTy.get(LitKind.f64);
-  static final str = BuiltInTy.get(LitKind.kStr);
-  static final kVoid = BuiltInTy.get(LitKind.kVoid);
-  static final kBool = BuiltInTy.get(LitKind.kBool);
-  static final usize = BuiltInTy.get(LitKind.usize);
+  static final i8 = LitKind.i8.ty;
+  static final u8 = LitKind.u8.ty;
+  static final i32 = LitKind.i32.ty;
+  static final i64 = LitKind.i64.ty;
+  static final f32 = LitKind.f32.ty;
+  static final f64 = LitKind.f64.ty;
+  static final kVoid = LitKind.kVoid.ty;
+  static final kBool = LitKind.kBool.ty;
+  static final usize = LitKind.usize.ty;
 
   static final _instances = <LitKind, BuiltInTy>{};
 
@@ -626,7 +635,7 @@ class BuiltInTy extends Ty {
   List<Object?> get props => [_ty];
 
   @override
-  LLVMTypeLit get llvmType => LLVMTypeLit(this);
+  LLVMTypeLit get llty => LLVMTypeLit(this);
 
   @override
   @override
@@ -959,7 +968,7 @@ class Fn extends Ty with NewInst<Fn> {
   }
 
   @override
-  late final LLVMFnType llvmType = LLVMFnType(this);
+  late final LLVMFnType llty = LLVMFnType(this);
 
   @override
   List<FieldDef> get fields => fnSign.fnDecl.params;
@@ -1260,7 +1269,7 @@ class StructTy extends Ty
   }
 
   @override
-  late final LLVMStructType llvmType = LLVMStructType(this);
+  late final LLVMStructType llty = LLVMStructType(this);
 }
 
 class UnionTy extends StructTy {
@@ -1300,7 +1309,7 @@ class EnumTy extends Ty {
   }
 
   @override
-  late LLVMEnumType llvmType = LLVMEnumType(this);
+  late LLVMEnumType llty = LLVMEnumType(this);
 
   @override
   void analysis(AnalysisContext context) {
@@ -1323,7 +1332,7 @@ class EnumItem extends StructTy {
 
   @override
   // ignore: overridden_fields
-  late final LLVMEnumItemType llvmType = LLVMEnumItemType(this);
+  late final LLVMEnumItemType llty = LLVMEnumItemType(this);
 }
 
 class ComponentTy extends Ty {
@@ -1354,7 +1363,7 @@ class ComponentTy extends Ty {
   List<Object?> get props => [ident, fns];
 
   @override
-  LLVMType get llvmType => throw UnimplementedError();
+  LLVMType get llty => throw UnimplementedError();
 }
 
 class ImplTy extends Ty {
@@ -1438,7 +1447,7 @@ class ImplTy extends Ty {
   List<Object?> get props => [struct, staticFns, fns, label];
 
   @override
-  LLVMType get llvmType => throw UnimplementedError();
+  LLVMType get llty => throw UnimplementedError();
 
   @override
   void analysis(AnalysisContext context) {
@@ -1449,8 +1458,8 @@ class ImplTy extends Ty {
 }
 
 class ArrayTy extends Ty {
-  ArrayTy(this.elementType, this.size);
-  final Ty elementType;
+  ArrayTy(this.elementTy, this.size);
+  final Ty elementTy;
   final int size;
 
   @override
@@ -1458,10 +1467,10 @@ class ArrayTy extends Ty {
 
   @override
   @override
-  late final ArrayLLVMType llvmType = ArrayLLVMType(this);
+  late final ArrayLLVMType llty = ArrayLLVMType(this);
 
   @override
-  List<Object?> get props => [elementType];
+  List<Object?> get props => [elementTy];
 }
 
 class ArrayLLVMType extends LLVMType {
@@ -1470,13 +1479,13 @@ class ArrayLLVMType extends LLVMType {
   @override
   final ArrayTy ty;
   @override
-  LLVMTypeRef createType(BuildContext c) {
-    return c.arrayType(ty.elementType.llvmType.createType(c), ty.size);
+  LLVMTypeRef typeOf(BuildContext c) {
+    return c.arrayType(ty.elementTy.typeOf(c), ty.size);
   }
 
   @override
   int getBytes(BuildContext c) {
-    return c.typeSize(createType(c));
+    return c.typeSize(typeOf(c));
   }
 
   @override
@@ -1484,12 +1493,9 @@ class ArrayLLVMType extends LLVMType {
       BuildContext c, Identifier ident, LLVMValueRef? base) {
     final val = LLVMAllocaDelayVariable(ty, base, ([alloca, nIdent]) {
       nIdent ??= ident;
-      final count = BuiltInTy.usize.llvmType
-          .createValue(ident: Identifier.builtIn('${ty.size}'))
-          .load(c, nIdent.offset);
-      return c.createArray(ty.elementType.llvmType.createType(c), count,
-          name: nIdent.src);
-    }, createType(c));
+      final count = c.constI64(ty.size);
+      return c.createArray(ty.elementTy.typeOf(c), count, name: nIdent.src);
+    }, typeOf(c));
     if (ident.isValid) {
       val.ident = ident;
     }
@@ -1497,7 +1503,7 @@ class ArrayLLVMType extends LLVMType {
   }
 
   LLVMConstVariable createArray(BuildContext c, List<LLVMValueRef> values) {
-    final value = c.constArray(ty.elementType.llvmType.createType(c), values);
+    final value = c.constArray(ty.elementTy.typeOf(c), values);
     return LLVMConstVariable(value, ty);
   }
 
@@ -1507,19 +1513,19 @@ class ArrayLLVMType extends LLVMType {
 
     final p = value.getBaseValue(c);
 
-    final elementTy = ty.elementType.llvmType.createType(c);
+    final elementTy = ty.elementTy.typeOf(c);
 
     c.diSetCurrentLoc(offset);
     final v = llvm.LLVMBuildInBoundsGEP2(
         c.builder, elementTy, p, indics.toNative(), indics.length, unname);
 
-    final vv = LLVMAllocaVariable(ty.elementType, v, elementTy);
+    final vv = LLVMAllocaVariable(ty.elementTy, v, elementTy);
     vv.isTemp = false;
     return vv;
   }
 
   Variable toStr(BuildContext c, Variable value) {
-    return LLVMConstVariable(value.getBaseValue(c), BuiltInTy.str);
+    return LLVMConstVariable(value.getBaseValue(c), LitKind.kStr.ty);
   }
 
   @override
@@ -1527,8 +1533,8 @@ class ArrayLLVMType extends LLVMType {
     return llvm.LLVMDIBuilderCreateArrayType(
         c.dBuilder!,
         ty.size,
-        ty.elementType.llvmType.getBytes(c),
-        ty.elementType.llvmType.createDIType(c),
+        ty.elementTy.llty.getBytes(c),
+        ty.elementTy.llty.createDIType(c),
         nullptr,
         0);
   }
@@ -1578,7 +1584,7 @@ class TypeAliasTy extends Ty {
   }
 
   @override
-  late final LLVMAliasType llvmType = LLVMAliasType(this);
+  late final LLVMAliasType llty = LLVMAliasType(this);
 
   @override
   List<Object?> get props => [ident, generics, baseTy];
@@ -1604,11 +1610,11 @@ class LLVMAliasType extends LLVMType {
   final TypeAliasTy ty;
 
   @override
-  LLVMTypeRef createType(BuildContext c) {
+  LLVMTypeRef typeOf(BuildContext c) {
     final base = ty.baseTy;
     if (base == null) return c.pointer();
     final bty = base.grt(c);
-    return bty.llvmType.createType(c);
+    return bty.typeOf(c);
   }
 
   @override
@@ -1616,7 +1622,7 @@ class LLVMAliasType extends LLVMType {
     final base = ty.baseTy;
     if (base == null) return c.pointerSize();
     final bty = base.grt(c);
-    return bty.llvmType.getBytes(c);
+    return bty.llty.getBytes(c);
   }
 
   @override
@@ -1626,7 +1632,7 @@ class LLVMAliasType extends LLVMType {
       return llvm.LLVMDIBuilderCreateBasicType(
           c.dBuilder!, 'ptr'.toChar(), 3, c.pointerSize() * 8, 1, 0);
     }
-    return base.grt(c).llvmType.createDIType(c);
+    return base.grt(c).llty.createDIType(c);
   }
 }
 
@@ -1644,7 +1650,7 @@ class HeapTy extends RefTy {
   }
 
   @override
-  late LLVMHeapType llvmType = LLVMHeapType(this);
+  late LLVMHeapType llty = LLVMHeapType(this);
 }
 
 class LLVMHeapType extends LLVMRefType {
@@ -1655,7 +1661,7 @@ class LLVMHeapType extends LLVMRefType {
   StructTy get heapStructTy => ty.parent;
 
   StoreVariable getData(BuildContext context, Variable variable) {
-    final data = heapStructTy.llvmType
+    final data = heapStructTy.llty
         .getField(variable, context, Identifier.builtIn('data'));
     return data!;
   }
@@ -1664,13 +1670,13 @@ class LLVMHeapType extends LLVMRefType {
     BuildContext context,
     Variable variable,
   ) {
-    final count = heapStructTy.llvmType
+    final count = heapStructTy.llty
         .getField(variable, context, Identifier.builtIn('count'));
     return count!;
   }
 
   void initData(BuildContext context, Variable variable) {
-    final llType = heapStructTy.llvmType;
+    final llType = heapStructTy.llty;
     final count =
         llType.getField(variable, context, Identifier.builtIn('count'))!;
     count.store(context, context.usizeValue(1), Offset.zero);
@@ -1691,7 +1697,7 @@ class LLVMHeapType extends LLVMRefType {
   }
 
   void memRef(BuildContext context, Variable variable, Variable src) {
-    final llType = heapStructTy.llvmType;
+    final llType = heapStructTy.llty;
     final count =
         llType.getField(variable, context, Identifier.builtIn('count'))!;
     count.store(context, context.usizeValue(1), Offset.zero);

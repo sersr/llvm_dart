@@ -15,7 +15,7 @@ class AbiFnx86_64 implements AbiFn {
   bool isSret(BuildContext c, Fn fn) {
     var retTy = fn.getRetTy(c);
     if (retTy is StructTy) {
-      final size = retTy.llvmType.getBytes(c);
+      final size = retTy.llty.getBytes(c);
       if (size > 16) return true;
     }
     return false;
@@ -38,8 +38,7 @@ class AbiFnx86_64 implements AbiFn {
 
     StoreVariable? sret;
     if (isSret(context, fn)) {
-      sret = retTy.llvmType
-          .createAlloca(context, Identifier.builtIn('sret'), null);
+      sret = retTy.llty.createAlloca(context, Identifier.builtIn('sret'), null);
 
       args.add(sret.alloca);
     }
@@ -62,7 +61,7 @@ class AbiFnx86_64 implements AbiFn {
         if (vty is StructTy) {
           final (sfp, tyValue) = toFnParams(context, vty, v);
           if (sfp == Reg.byval) {
-            listByvals.add((i + 1, vty.llvmType.createType(context)));
+            listByvals.add((i + 1, vty.typeOf(context)));
           }
           value = tyValue;
         } else {
@@ -113,13 +112,13 @@ class AbiFnx86_64 implements AbiFn {
   }
 
   LLVMTypeRef getCStructFnParamTy(BuildContext context, StructTy ty) {
-    var count = ty.llvmType.getBytes(context);
+    var count = ty.llty.getBytes(context);
     if (count > 16) {
       return context.pointer();
     }
 
     final list = <LLVMTypeRef>[];
-    final map = ty.llvmType.getFieldsSize(context).map;
+    final map = ty.llty.getFieldsSize(context).map;
 
     var hasFloat = true;
 
@@ -159,7 +158,7 @@ class AbiFnx86_64 implements AbiFn {
 
   (Reg, LLVMValueRef) toFnParams(
       BuildContext context, StructTy struct, Variable variable) {
-    final byteSize = struct.llvmType.getBytes(context);
+    final byteSize = struct.llty.getBytes(context);
     if (byteSize > 16) {
       return (Reg.byval, variable.getBaseValue(context));
     }
@@ -173,11 +172,11 @@ class AbiFnx86_64 implements AbiFn {
 
   Variable fromFnParamsOrRet(
       BuildContext context, StructTy struct, LLVMValueRef src) {
-    final byteSize = struct.llvmType.getBytes(context);
-    final llType = struct.llvmType.createType(context);
+    final byteSize = struct.llty.getBytes(context);
+    final llType = struct.typeOf(context);
 
     if (byteSize <= 16) {
-      return struct.llvmType.createAlloca(context, Identifier.none, src)
+      return struct.llty.createAlloca(context, Identifier.none, src)
         ..create(context);
     }
 
@@ -190,7 +189,7 @@ class AbiFnx86_64 implements AbiFn {
       BuildContext context, Variable src, Offset offset) {
     final ty = src.ty;
     if (ty is! StructTy) return src.load(context, offset);
-    final byteSize = ty.llvmType.getBytes(context);
+    final byteSize = ty.llty.getBytes(context);
 
     if (byteSize > 16) {
       /// error: 已经经过sret 处理了
@@ -209,7 +208,7 @@ class AbiFnx86_64 implements AbiFn {
 
     var retIsSret = isSret(c, fn);
     if (retIsSret) {
-      list.add(c.typePointer(retTy.llvmType.createType(c)));
+      list.add(c.typePointer(retTy.typeOf(c)));
     }
 
     LLVMTypeRef cType(Ty tty) {
@@ -217,7 +216,7 @@ class AbiFnx86_64 implements AbiFn {
       if (tty is StructTy) {
         ty = getCStructFnParamTy(c, tty);
       } else {
-        ty = tty.llvmType.createType(c);
+        ty = tty.typeOf(c);
       }
       return ty;
     }
@@ -262,9 +261,9 @@ class AbiFnx86_64 implements AbiFn {
       index += 1;
       final realTy = fn.getRty(c, p);
       if (realTy is StructTy) {
-        final size = realTy.llvmType.getBytes(c);
+        final size = realTy.llty.getBytes(c);
         if (size > 16) {
-          final ty = realTy.llvmType.createType(c);
+          final ty = realTy.typeOf(c);
           c.setFnLLVMAttr(v, index, LLVMAttr.NoUndef);
           c.setFnTypeAttr(v, index, LLVMAttr.ByVal, ty);
         }
@@ -276,12 +275,12 @@ class AbiFnx86_64 implements AbiFn {
     if (dBuilder != null && fn.block?.stmts.isNotEmpty == true) {
       final file = llvm.LLVMDIScopeGetFile(c.unit);
       final params = <Pointer>[];
-      params.add(retTy.llvmType.createDIType(c));
+      params.add(retTy.llty.createDIType(c));
 
       for (var p in fn.fnSign.fnDecl.params) {
         index += 1;
         final realTy = fn.getRty(c, p);
-        final ty = realTy.llvmType.createDIType(c);
+        final ty = realTy.llty.createDIType(c);
         params.add(ty);
       }
 
@@ -330,8 +329,7 @@ class AbiFnx86_64 implements AbiFn {
 
     if (isSret(context, fnty)) {
       final first = llvm.LLVMGetParam(fn, index);
-      final alloca =
-          LLVMAllocaVariable(retTy, first, retTy.llvmType.createType(context));
+      final alloca = LLVMAllocaVariable(retTy, first, retTy.typeOf(context));
       alloca.isTemp = false;
       index += 1;
       sret = alloca;
@@ -355,7 +353,7 @@ class AbiFnx86_64 implements AbiFn {
     if (ty is StructTy) {
       alloca = fromFnParamsOrRet(context, ty, fnParam);
     } else {
-      final a = ty.llvmType.createAlloca(context, ident, fnParam);
+      final a = ty.llty.createAlloca(context, ident, fnParam);
       a.create(context);
       context.setName(a.alloca, ident.src);
       alloca = a;

@@ -112,7 +112,7 @@ mixin LLVMTypeMixin {
   }
 
   int getAlignSize(Ty ty) {
-    final size = ty.llvmType.getBytes(this);
+    final size = ty.llty.getBytes(this);
     final max = pointerSize();
     if (size >= max) {
       return max;
@@ -123,7 +123,7 @@ mixin LLVMTypeMixin {
   }
 
   int getBaseAlignSize(Ty ty) {
-    final type = ty.llvmType.createType(this);
+    final type = ty.typeOf(this);
     final td = llvm.LLVMGetModuleDataLayout(module);
     return llvm.LLVMABIAlignmentOfType(td, type);
   }
@@ -135,12 +135,12 @@ mixin LLVMTypeMixin {
       final d = count / size;
       count = d.ceil();
       loadTy = llvm.LLVMDIBuilderCreateArrayType(dBuilder!, count, size,
-          BuiltInTy.i64.llvmType.createDIType(this), nullptr, 0);
+          BuiltInTy.i64.llty.createDIType(this), nullptr, 0);
     } else {
       if (count > 4) {
-        loadTy = BuiltInTy.i64.llvmType.createDIType(this);
+        loadTy = BuiltInTy.i64.llty.createDIType(this);
       } else {
-        loadTy = BuiltInTy.i32.llvmType.createDIType(this);
+        loadTy = BuiltInTy.i32.llty.createDIType(this);
       }
     }
     return loadTy;
@@ -240,7 +240,7 @@ mixin BuildMethods on LLVMTypeMixin {
     final (namePointer, length) = name.toNativeUtf8WithLength();
     final dBuilder = this.dBuilder;
     if (dBuilder == null) return;
-    final dTy = ty.llvmType.createDIType(this);
+    final dTy = ty.llty.createDIType(this);
     final dvariable = llvm.LLVMDIBuilderCreateParameterVariable(
         dBuilder,
         scope,
@@ -365,7 +365,7 @@ mixin Consts on BuildMethods {
       final (strPtr, length) = src.toNativeUtf8WithLength();
       final strData = constStr('', strPtr: strPtr, length: length);
 
-      final type = arrayType(BuiltInTy.u8.llvmType.litType(this), length + 1);
+      final type = arrayType(BuiltInTy.u8.llty.litType(this), length + 1);
       final value = llvm.LLVMAddGlobal(module, type, '.str'.toChar());
       llvm.LLVMSetLinkage(value, LLVMLinkage.LLVMPrivateLinkage);
       llvm.LLVMSetGlobalConstant(value, LLVMTrue);
@@ -400,7 +400,7 @@ mixin Consts on BuildMethods {
   }
 
   LLVMValueRef usizeValue(int size) {
-    return BuiltInTy.usize.llvmType
+    return BuiltInTy.usize.llty
         .createValue(ident: Identifier.builtIn('$size'))
         .getValue(this);
   }
@@ -431,7 +431,7 @@ mixin Consts on BuildMethods {
 mixin Cast on BuildMethods {
   LLVMValueRef castLit(LitKind src, LLVMValueRef value, LitKind dest) {
     final ty = BuiltInTy.from(dest.lit)!;
-    final llty = ty.llvmType.litType(this);
+    final llty = ty.llty.litType(this);
     if (src.isInt != dest.isInt) {
       final op = getCastOp(src, dest)!;
       return llvm.LLVMBuildCast(builder, op, value, llty, unname);

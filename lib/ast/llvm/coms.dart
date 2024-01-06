@@ -83,10 +83,8 @@ abstract class RefDerefCom {
     final fn = getImplFn(context, variable.ty, Identifier.builtIn('Ref'),
         Identifier.builtIn('ref'));
     if (fn == null) return variable;
-    final retVariable = fn
-        .getRetTy(context)
-        .llvmType
-        .createAlloca(context, Identifier.none, null);
+    final retVariable =
+        fn.getRetTy(context).llty.createAlloca(context, Identifier.none, null);
 
     final param = LLVMConstVariable(variable.load(context, Offset.zero), fn.ty);
     param.ident = Identifier.builtIn('self');
@@ -99,10 +97,8 @@ abstract class RefDerefCom {
     final fn = getImplFn(context, variable.ty, Identifier.builtIn('Deref'),
         Identifier.builtIn('deref'));
     if (fn == null) return variable;
-    final retVariable = fn
-        .getRetTy(context)
-        .llvmType
-        .createAlloca(context, Identifier.none, null);
+    final retVariable =
+        fn.getRetTy(context).llty.createAlloca(context, Identifier.none, null);
     final param = LLVMConstVariable(variable.load(context, Offset.zero), fn.ty);
     param.ident = Identifier.builtIn('self');
     context.compileRun(fn, context, [param], retVariable);

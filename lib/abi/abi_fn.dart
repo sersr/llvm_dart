@@ -83,7 +83,7 @@ abstract interface class AbiFn {
       }
       final retVariable = fn
           .getRetTy(context)
-          .llvmType
+          .llty
           .createAlloca(context, Identifier.none, null);
       context.compileRun(fn, context, newParams, retVariable);
       return ExprTempValue(retVariable, retVariable.ty, currentIdent);
@@ -146,7 +146,7 @@ abstract interface class AbiFn {
       }
     }
 
-    final fnType = fn.llvmType.createFnType(context, extra);
+    final fnType = fn.llty.createFnType(context, extra);
 
     final fnAlloca = fn.build(extra, map);
     final fnValue = fnAlloca?.load(context, Offset.zero);
@@ -172,11 +172,11 @@ abstract interface class AbiFn {
       Set<AnalysisVariable>? variables,
       void Function(LLVMConstVariable fnValue) after) {
     if (fn.extern) {
-      return fn.llvmType.getOrCreate(() {
+      return fn.llty.getOrCreate(() {
         return AbiFn.get(c.abi).createFunctionAbi(c, fn, after);
       });
     }
-    return fn.llvmType.createFunction(c, variables, after);
+    return fn.llty.createFunction(c, variables, after);
   }
 
   LLVMAllocaVariable? initFnParamsImpl(

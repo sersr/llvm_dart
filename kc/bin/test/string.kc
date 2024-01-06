@@ -1,26 +1,20 @@
 import "std:allocator.kc";
 import "std:d.kc";
 
+
 type char = u8;
-struct String {
+struct StringData {
   data: *char,
   size: usize,
 }
 
-impl String {
-  static fn new(data: *char) Self {
+impl StringData {
+  static fn init(data: *char, out: *StringData)  {
     final size = strlen(data);
     final ptr = malloc(size + 1) as *char;
     strcpy(ptr, data);
-    return String { data: ptr, size: size };
-  }
-
-  fn c_str() *char {
-    return self.data;
-  }
-
-  fn len() usize {
-    return self.size;
+    out.data = ptr;
+    out.size = size;
   }
 
   fn add_str(other: *char) {
@@ -36,24 +30,48 @@ impl String {
     // memCopy(start as *char, other, other_size + 1);
     strcpy(start, other);
   }
+}
+
+struct String {
+  ptr: *StringData,
+}
+
+impl String {
+  static fn new(data: *char) Self {
+    final ptr = malloc(sizeOf(StringData)) as *StringData;
+    StringData.init(data, ptr);
+    return String{ ptr: ptr };
+  }
+
+  fn c_str() *char {
+    return self.ptr.data;
+  }
+
+  fn len() usize {
+    return self.ptr.size;
+  }
+
+  fn add_str(other: *char) {
+    self.ptr.add_str(other);
+  }
 
   fn ref_deref() {
     let hx = &self;
-    printf("size: %d\n", self.size);
-    printf("hx: %d\n", (hx).size);
+    printf("size: %d\n", self.ptr.size);
+    printf("hx: %d\n", (hx).ptr.size);
   }
 
   fn drop() {
-    free(self.data);
-    self.size = 0;
-    self.data = 0 as u64;
+    free(self.ptr.data);
+    free(self.ptr);
+    self.ptr = 0;
   }
 }
 
 
 fn main(argc: i32, argv: **u8) i32 {
-  final my_str = String.new("hello world");
-
+  let my_str = String.new("hello world");
+  
   my_str.ref_deref();
   printf(my_str.c_str());
   printf("\n");

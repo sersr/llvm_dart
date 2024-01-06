@@ -267,7 +267,7 @@ class BuildContext
       } else {
         v = val.getBaseValue(this);
       }
-      final type = fn.llvmType.createFnType(this);
+      final type = fn.llty.createFnType(this);
       llvm.LLVMBuildCall2(
           builder, type, fnv.getBaseValue(this), [v].toNative(), 1, unname);
     }
@@ -364,7 +364,7 @@ class BuildContext
     if (val != null) {
       final ty = val.ty;
       if (ty is HeapTy) {
-        ty.llvmType.addStack(this, val);
+        ty.llty.addStack(this, val);
       }
     }
     final fn = getLastFnContext()!;
@@ -465,7 +465,7 @@ class BuildContext
 
       if (ty is StructTy) {
         for (var field in ty.fields) {
-          final val = ty.llvmType.getField(variable, this, field.ident);
+          final val = ty.llty.getField(variable, this, field.ident);
           if (val != null) autoAddStackCom(val);
         }
       }
@@ -486,7 +486,7 @@ class BuildContext
     if (_freeDone) return;
     _freeDone = true;
     for (var (ty, variable) in _heapVariables) {
-      ty.llvmType.removeStack(this, variable);
+      ty.llty.removeStack(this, variable);
     }
 
     for (var variable in _stackComVariables) {
@@ -543,10 +543,10 @@ class BuildContext
       final kind = ty.ty;
       final rty = rhs.ty;
       if (rty is BuiltInTy) {
-        final rSize = rty.llvmType.getBytes(this);
-        final lSize = ty.llvmType.getBytes(this);
+        final rSize = rty.llty.getBytes(this);
+        final lSize = ty.llty.getBytes(this);
         final max = rSize > lSize ? rty : ty;
-        type = max.llvmType.createType(this);
+        type = max.typeOf(this);
         ty = max;
       }
       if (kind.isFp) {
@@ -556,11 +556,11 @@ class BuildContext
       }
     } else if (ty is RefTy) {
       ty = rhs.ty;
-      type = ty.llvmType.createType(this);
+      type = ty.typeOf(this);
       l = llvm.LLVMBuildPtrToInt(builder, l, type, unname);
     }
 
-    type ??= ty.llvmType.createType(this);
+    type ??= ty.typeOf(this);
 
     if (isFloat) {
       l = llvm.LLVMBuildFPCast(builder, l, type, unname);
@@ -851,8 +851,7 @@ extension FnContext on BuildContext {
       final ident = Identifier.builtIn('self');
 
       // 只读引用
-      final alloca =
-          LLVMAllocaVariable(p, selfParam, p.llvmType.createType(this));
+      final alloca = LLVMAllocaVariable(p, selfParam, p.typeOf(this));
       setName(alloca.alloca, 'self');
       alloca.isTemp = false;
       alloca.isRef = true;
@@ -885,7 +884,7 @@ extension FnContext on BuildContext {
       }
 
       final ty = val.ty;
-      final type = ty.llvmType.createType(this);
+      final type = ty.typeOf(this);
       final alloca = LLVMAllocaVariable(ty, value, type);
       alloca.isTemp = false;
 
@@ -907,7 +906,7 @@ extension FnContext on BuildContext {
   }
 
   void resolveParam(Ty ty, LLVMValueRef fnParam, Identifier ident) {
-    final alloca = ty.llvmType.createAlloca(this, ident, fnParam);
+    final alloca = ty.llty.createAlloca(this, ident, fnParam);
     alloca.create(this);
     alloca.isTemp = false;
     pushVariable(ident, alloca);
