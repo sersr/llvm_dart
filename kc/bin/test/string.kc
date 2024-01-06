@@ -10,8 +10,8 @@ struct String {
 impl String {
   static fn new(data: *char) Self {
     final size = strlen(data);
-    final ptr = malloc(size) as *char;
-    memCopy(ptr, data, size);
+    final ptr = malloc(size + 1) as *char;
+    strcpy(ptr, data);
     return String { data: ptr, size: size };
   }
 
@@ -25,18 +25,28 @@ impl String {
 
   fn add_str(other: *char) {
     final other_size = strlen(other);
-    let size = self.size + other_size - 1;
-    final new_ptr = realloc(self.data, size) as *char;
+    let size = self.size + other_size;
+
+    final new_ptr = realloc(self.data, size + 1) as *char;
     self.data = new_ptr;
 
     let start = new_ptr + self.size;
-    memCopy(start as *char, other, other_size);
+    self.size = size;
+
+    // memCopy(start as *char, other, other_size + 1);
+    strcpy(start, other);
   }
 
   fn ref_deref() {
     let hx = &self;
     printf("size: %d\n", self.size);
     printf("hx: %d\n", (hx).size);
+  }
+
+  fn drop() {
+    free(self.data);
+    self.size = 0;
+    self.data = 0 as u64;
   }
 }
 
@@ -62,3 +72,4 @@ fn main(argc: i32, argv: **u8) i32 {
 }
 
 extern fn strlen(data: *void) usize;
+extern fn strcpy(dest: *char, src: *char) *char;
