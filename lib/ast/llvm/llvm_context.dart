@@ -524,37 +524,50 @@ class BuildContext
     var ty = lhs.ty;
     LLVMTypeRef? type;
 
+    var l = lhs.load(this, lhsOffset);
+    var r = rhs?.load(this, rhsOffset);
+
+    if (r == null || rhs == null) {
+      LLVMValueRef? value;
+
+      if (op == OpKind.Eq) {
+        value = llvm.LLVMBuildIsNull(builder, l, unname);
+      } else {
+        assert(op == OpKind.Ne);
+        value = llvm.LLVMBuildIsNotNull(builder, l, unname);
+      }
+      return LLVMConstVariable(value, BuiltInTy.kBool);
+    }
+
     if (ty is BuiltInTy && ty.ty.isNum) {
       final kind = ty.ty;
-      if (rhs != null) {
-        final rty = rhs.ty;
-        if (rty is BuiltInTy) {
-          final rSize = rty.llvmType.getBytes(this);
-          final lSize = ty.llvmType.getBytes(this);
-          final max = rSize > lSize ? rty : ty;
-          type = max.llvmType.createType(this);
-          ty = max;
-        }
+      final rty = rhs.ty;
+      if (rty is BuiltInTy) {
+        final rSize = rty.llvmType.getBytes(this);
+        final lSize = ty.llvmType.getBytes(this);
+        final max = rSize > lSize ? rty : ty;
+        type = max.llvmType.createType(this);
+        ty = max;
       }
       if (kind.isFp) {
         isFloat = true;
       } else if (kind.isInt) {
         signed = kind.signed;
       }
+    } else if (ty is RefTy) {
+      ty = rhs.ty;
+      type = ty.llvmType.createType(this);
+      l = llvm.LLVMBuildPtrToInt(builder, l, type, unname);
     }
 
     type ??= ty.llvmType.createType(this);
 
-    var l = lhs.load(this, lhsOffset);
-    var r = rhs?.load(this, rhsOffset);
-    if (r != null) {
-      if (isFloat) {
-        l = llvm.LLVMBuildFPCast(builder, l, type, unname);
-        r = llvm.LLVMBuildFPCast(builder, r, type, unname);
-      } else {
-        l = llvm.LLVMBuildIntCast2(builder, l, type, signed.llvmBool, unname);
-        r = llvm.LLVMBuildIntCast2(builder, r, type, signed.llvmBool, unname);
-      }
+    if (isFloat) {
+      l = llvm.LLVMBuildFPCast(builder, l, type, unname);
+      r = llvm.LLVMBuildFPCast(builder, r, type, unname);
+    } else {
+      l = llvm.LLVMBuildIntCast2(builder, l, type, signed.llvmBool, unname);
+      r = llvm.LLVMBuildIntCast2(builder, r, type, signed.llvmBool, unname);
     }
 
     if (op == OpKind.And || op == OpKind.Or) {
@@ -572,26 +585,11 @@ class BuildContext
         llvm.LLVMBuildCondBr(builder, l, after.bb, opBB.bb);
       }
       final c = opBB.context;
-      if (r == null) {
-        // error
-      }
 
-      variable.store(c, r!, Offset.zero);
+      variable.store(c, r, Offset.zero);
       c.br(after.context);
       insertPointBB(after);
       return variable;
-    }
-
-    if (r == null) {
-      LLVMValueRef? value;
-
-      if (op == OpKind.Eq) {
-        value = llvm.LLVMBuildIsNull(builder, l, unname);
-      } else {
-        assert(op == OpKind.Ne);
-        value = llvm.LLVMBuildIsNotNull(builder, l, unname);
-      }
-      return LLVMConstVariable(value, BuiltInTy.kBool);
     }
 
     LLVMValueRef Function(LLVMBuilderRef b, LLVMValueRef l, LLVMValueRef r,
@@ -600,7 +598,7 @@ class BuildContext
     diSetCurrentLoc(opOffset);
 
     if (isFloat) {
-      final id = op.getFCmpId(signed);
+      final id = op.getFCmpId(true);
       if (id != null) {
         final v = llvm.LLVMBuildFCmp(builder, id, l, r, unname);
         return LLVMConstVariable(v, BuiltInTy.kBool);
@@ -609,28 +607,20 @@ class BuildContext
       switch (op) {
         case OpKind.Add:
           value = llvm.LLVMBuildFAdd(builder, l, r, unname);
-          break;
         case OpKind.Sub:
           value = llvm.LLVMBuildFSub(builder, l, r, unname);
-          break;
         case OpKind.Mul:
           value = llvm.LLVMBuildFMul(builder, l, r, unname);
-          break;
         case OpKind.Div:
           value = llvm.LLVMBuildFDiv(builder, l, r, unname);
-          break;
         case OpKind.Rem:
           value = llvm.LLVMBuildFRem(builder, l, r, unname);
-          break;
         case OpKind.BitAnd:
-          value = llvm.LLVMBuildAnd(builder, l, r, unname);
-          break;
         case OpKind.BitOr:
-          value = llvm.LLVMBuildOr(builder, l, r, unname);
-          break;
         case OpKind.BitXor:
-          value = llvm.LLVMBuildXor(builder, l, r, unname);
-          break;
+        // value = llvm.LLVMBuildAnd(builder, l, r, unname);
+        // value = llvm.LLVMBuildOr(builder, l, r, unname);
+        // value = llvm.LLVMBuildXor(builder, l, r, unname);
         default:
       }
       if (value != null) {

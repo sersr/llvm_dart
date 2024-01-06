@@ -3,7 +3,7 @@ import 'package:llvm_dart/fs/fs.dart';
 void main() {
   final lib = currentDir.childDirectory('lib');
   final entries = lib.listSync(recursive: true);
-  final reg = RegExp('llvm\\.(.*?)\\(');
+  final reg = RegExp('llvm\\.([A-Za-z0-9]*?)[\\( :;]');
   final def = currentDir.childFile('llvm_wrapper.def');
   def.createSync(recursive: true);
 

@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../ast.dart';
@@ -13,7 +11,7 @@ abstract class Variable extends LifeCycleVariable {
   LLVMValueRef load(covariant BuildMethods c, Offset offset);
   LLVMTypeRef getDerefType(BuildContext c);
   Variable getRef(BuildContext c) {
-    return RefTy(ty).llvmType.createAlloca(c, Identifier.none, getBaseValue(c));
+    return LLVMConstVariable(getBaseValue(c), RefTy(ty));
   }
 
   LLVMValueRef getBaseValue(covariant BuildMethods c) => load(c, Offset.zero);
@@ -25,9 +23,16 @@ abstract class Variable extends LifeCycleVariable {
 
     final v = load(c, Offset.zero);
     final parent = cTy.parent;
-    final type = parent.llvmType.createType(c);
-    final val = LLVMAllocaVariable(parent, v, type);
-    val.isTemp = false;
+
+    Variable val;
+
+    /// 如果是一个指针，说明还有下一级，满足 store, load
+    if (parent is RefTy) {
+      val = LLVMAllocaVariable(parent, v, parent.llvmType.createType(c))
+        ..isTemp = false;
+    } else {
+      val = LLVMConstVariable(v, parent);
+    }
     return val;
   }
 }
@@ -44,6 +49,10 @@ abstract class StoreVariable extends Variable {
   }
 }
 
+/// 没有[store]功能
+///
+/// 可以看作右值，临时变量
+/// 函数返回值，数值运算
 class LLVMConstVariable extends Variable with Deref {
   LLVMConstVariable(this.value, this.ty);
   @override
@@ -64,14 +73,6 @@ class LLVMConstVariable extends Variable with Deref {
   @override
   LLVMTypeRef getDerefType(BuildContext c) {
     return llvm.LLVMTypeOf(value);
-  }
-
-  @override
-  Variable getRef(BuildContext c) {
-    final alloca =
-        ty.llvmType.createAlloca(c, Identifier.builtIn('_ref'), value);
-    alloca.create(c);
-    return RefTy(ty).llvmType.createAlloca(c, Identifier.none, alloca.alloca);
   }
 }
 
@@ -96,7 +97,10 @@ mixin DelayVariableMixin {
   LLVMValueRef get alloca => _alloca ??= _create();
 }
 
-/// 只要用于 [Struct] 作为右值时延时分配
+/// 不会立即分配内存，如立即使用[context.allocator()]
+/// 可以重定向到[_create]返回的[_alloca],[_alloca]作为分配地址
+/// 一般用在复杂结构体中，如结构体内包含其他结构体，在作为字面量初始化时会使用外面
+/// 结构体[LLVMStructType.getField]创建的[Variable]
 class LLVMAllocaDelayVariable extends StoreVariable
     with DelayVariableMixin, Deref {
   LLVMAllocaDelayVariable(this.ty, this.initAlloca, this._create, this.type);
@@ -118,12 +122,6 @@ class LLVMAllocaDelayVariable extends StoreVariable
   LLVMValueRef getBaseValue(BuildContext c) {
     create(c);
     return super.getBaseValue(c);
-  }
-
-  @override
-  Variable getRef(BuildContext c) {
-    create(c);
-    return RefTy(ty).llvmType.createAlloca(c, Identifier.none, alloca);
   }
 
   @override
@@ -151,6 +149,8 @@ class LLVMAllocaDelayVariable extends StoreVariable
   }
 }
 
+/// 使用已分配的地址
+/// 有[store],[load]功能
 class LLVMAllocaVariable extends StoreVariable implements Deref {
   LLVMAllocaVariable(this.ty, this.alloca, this.type);
   @override
@@ -160,11 +160,6 @@ class LLVMAllocaVariable extends StoreVariable implements Deref {
 
   @override
   final Ty ty;
-
-  @override
-  Variable getRef(BuildContext c) {
-    return RefTy(ty).llvmType.createAlloca(c, Identifier.none, alloca);
-  }
 
   @override
   LLVMValueRef load(BuildContext c, Offset offset) {
@@ -193,6 +188,7 @@ mixin Deref on Variable {
   }
 }
 
+/// 内部的原生类型
 class LLVMLitVariable extends Variable {
   LLVMLitVariable(this._load, this.ty, this.value);
 
@@ -213,13 +209,6 @@ class LLVMLitVariable extends Variable {
   @override
   LLVMTypeRef getDerefType(BuildContext c) {
     return llvm.LLVMTypeOf(load(c, Offset.zero));
-  }
-
-  @override
-  Variable getRef(BuildContext c) {
-    final alloca = createAlloca(c, Identifier.builtIn('_${ty.ty.lit}_ref'));
-    alloca.create(c);
-    return RefTy(ty).llvmType.createAlloca(c, Identifier.none, alloca.alloca);
   }
 
   LLVMAllocaDelayVariable createAlloca(BuildContext c, Identifier ident,

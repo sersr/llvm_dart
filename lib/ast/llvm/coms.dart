@@ -80,11 +80,6 @@ abstract class RefDerefCom {
   }
 
   static Variable getRef(BuildContext context, Variable variable) {
-    // 自动解引用
-    if (variable is Deref) {
-      variable = variable.getDeref(context);
-    }
-
     final fn = getImplFn(context, variable.ty, Identifier.builtIn('Ref'),
         Identifier.builtIn('ref'));
     if (fn == null) return variable;
@@ -93,7 +88,7 @@ abstract class RefDerefCom {
         .llvmType
         .createAlloca(context, Identifier.none, null);
 
-    final param = LLVMConstVariable(variable.getBaseValue(context), fn.ty);
+    final param = LLVMConstVariable(variable.load(context, Offset.zero), fn.ty);
     param.ident = Identifier.builtIn('self');
     context.compileRun(fn, context, [param], retVariable);
 
@@ -101,10 +96,6 @@ abstract class RefDerefCom {
   }
 
   static Variable getDeref(BuildContext context, Variable variable) {
-    if (variable is Deref) {
-      variable = variable.getDeref(context);
-    }
-
     final fn = getImplFn(context, variable.ty, Identifier.builtIn('Deref'),
         Identifier.builtIn('deref'));
     if (fn == null) return variable;
@@ -112,7 +103,7 @@ abstract class RefDerefCom {
         .getRetTy(context)
         .llvmType
         .createAlloca(context, Identifier.none, null);
-    final param = LLVMConstVariable(variable.getBaseValue(context), fn.ty);
+    final param = LLVMConstVariable(variable.load(context, Offset.zero), fn.ty);
     param.ident = Identifier.builtIn('self');
     context.compileRun(fn, context, [param], retVariable);
 

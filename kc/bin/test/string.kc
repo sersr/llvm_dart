@@ -29,21 +29,28 @@ impl String {
     final new_ptr = realloc(self.data, size) as *char;
     self.data = new_ptr;
 
-    let start = new_ptr as u64 + self.size;
-
+    let start = new_ptr + self.size;
     memCopy(start as *char, other, other_size);
+  }
+
+  fn ref_deref() {
+    let hx = &self;
+    printf("size: %d\n", self.size);
+    printf("hx: %d\n", (hx).size);
   }
 }
 
 
 fn main(argc: i32, argv: **u8) i32 {
   final my_str = String.new("hello world");
+
+  my_str.ref_deref();
   printf(my_str.c_str());
   printf("\n");
 
   my_str.add_str("你好");
   let y = 21;
-  let x = 10usize;
+  final x = 10usize;
   printf("y + x = %d\n", y + x);
   
   printf("%s\n", my_str.c_str());

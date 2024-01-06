@@ -199,8 +199,12 @@ class IfExpr extends Expr {
     final con = conTemp?.variable;
     if (con == null) return;
 
-    final conv =
-        c.math(con, null, OpKind.Ne).load(c, conTemp!.currentIdent.offset);
+    LLVMValueRef conv;
+    if (con.ty == BuiltInTy.kBool) {
+      conv = con.load(c, conTemp!.currentIdent.offset);
+    } else {
+      conv = c.math(con, null, OpKind.Ne).load(c, conTemp!.currentIdent.offset);
+    }
 
     c.appendBB(then);
     ifEB.block.build(then.context, free: false);
@@ -1321,38 +1325,38 @@ enum OpKind {
     return i;
   }
 
-  int? getFCmpId(bool isSigned) {
+  int? getFCmpId(bool ordered) {
     if (index < Eq.index) return null;
     int? i;
 
     switch (this) {
       case Eq:
-        i = isSigned
+        i = ordered
             ? LLVMRealPredicate.LLVMRealOEQ
             : LLVMRealPredicate.LLVMRealUEQ;
         break;
       case Ne:
-        i = isSigned
+        i = ordered
             ? LLVMRealPredicate.LLVMRealONE
             : LLVMRealPredicate.LLVMRealUNE;
         break;
       case Gt:
-        i = isSigned
+        i = ordered
             ? LLVMRealPredicate.LLVMRealOGT
             : LLVMRealPredicate.LLVMRealUGT;
         break;
       case Ge:
-        i = isSigned
+        i = ordered
             ? LLVMRealPredicate.LLVMRealOGE
             : LLVMRealPredicate.LLVMRealUGE;
         break;
       case Lt:
-        i = isSigned
+        i = ordered
             ? LLVMRealPredicate.LLVMRealOLT
             : LLVMRealPredicate.LLVMRealULT;
         break;
       case Le:
-        i = isSigned
+        i = ordered
             ? LLVMRealPredicate.LLVMRealOLE
             : LLVMRealPredicate.LLVMRealULE;
         break;
@@ -1573,12 +1577,6 @@ class VariableIdentExpr extends Expr {
 
     final val = context.getVariable(ident);
     if (val != null) {
-      if (val is Deref) {
-        if (ident.src == 'self') {
-          final newVal = val.getDeref(context);
-          return ExprTempValue(newVal, newVal.ty, ident);
-        }
-      }
       return ExprTempValue(val, val.ty, ident);
     }
 
