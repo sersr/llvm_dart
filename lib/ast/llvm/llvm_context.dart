@@ -316,19 +316,20 @@ class BuildContext
     isFnBBContext = true;
   }
 
-  LLVMBasicBlock? _newBlockAfter;
-  LLVMAllocaDelayVariable? _compileRetValue;
-  void compileRun(Fn fn, BuildContext context, List<Variable> params,
-      LLVMAllocaDelayVariable retVariable) {
+  LLVMBasicBlock? _runBbAfter;
+  Variable? _compileRetValue;
+  Fn? runFn;
+  Variable? compileRun(Fn fn, BuildContext context, List<Variable> params) {
     final block = fn.block?.clone();
     if (block == null) {
       Log.e('block == null');
-      return;
+      return null;
     }
 
     final fnContext = BuildContext._compileRun(fn.currentContext ?? context);
 
     fnContext._compileFn(context);
+    fnContext.runFn = fn;
 
     for (var p in params) {
       fnContext.pushVariable(p.ident!, p);
@@ -336,7 +337,6 @@ class BuildContext
 
     fn.pushTyGenerics(fnContext);
 
-    fnContext._compileRetValue = retVariable;
     block.build(fnContext, free: false);
 
     final retTy = fn.getRetTy(fnContext);
@@ -345,80 +345,81 @@ class BuildContext
     } else {
       block.ret(fnContext);
     }
-    if (fnContext._newBlockAfter != null) {
-      fnContext.insertPointBB(fnContext._newBlockAfter!);
+    if (fnContext._runBbAfter != null) {
+      fnContext.insertPointBB(fnContext._runBbAfter!);
     }
-    autoAddStackCom(retVariable);
+    return fnContext._compileRetValue;
   }
 
   void ret(Variable? val, Identifier? ident, [Offset retOffset = Offset.zero]) {
-    if (_returned) {
+    if (!canBr) {
       // error
       return;
     }
+    _returned = true;
+
+    final fn = getLastFnContext()!;
+    if (fn.runFn != null) {
+      fn._compileRetValue = val;
+      var block = fn._runBbAfter;
+      if (this != fn) {
+        block = fn.buildSubBB(name: '_new_ret');
+        fn._runBbAfter = block;
+      }
+
+      if (block != null) _br(block.context);
+      return;
+    }
+
     dropAll();
     ident ??= Identifier.none;
 
     diSetCurrentLoc(ident.offset);
 
     if (val != null) {
-      final ty = val.ty;
-      if (ty is HeapTy) {
-        ty.llty.addStack(this, val);
-      }
-    }
-    final fn = getLastFnContext()!;
-    final sret = fn._sret ?? fn._compileRetValue;
-    final canFree = fn._compileRetValue == null;
-
-    if (canFree) {
-      if (val != null) {
-        ImplStackTy.addStack(this, val);
-      }
-      freeHeap();
+      ImplStackTy.addStack(this, val);
     }
 
+    freeHeap();
+
+    /// return void
     if (val == null) {
-      if (!canBr) return;
       diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRetVoid(builder);
-    } else {
-      final fnty = fn.fn.ty as Fn;
-
-      if (sret == null) {
-        final v = AbiFn.fnRet(this, fnty, val, ident.offset);
-        diSetCurrentLoc(retOffset);
-        llvm.LLVMBuildRet(builder, v);
-      } else {
-        if (val is LLVMAllocaDelayVariable && !val.created) {
-          val.create(this, sret, null);
-        } else {
-          sret.store(this, val.load(this, val.ident?.offset ?? Offset.zero),
-              retOffset);
-        }
-        if (fn._compileRetValue == null) {
-          diSetCurrentLoc(retOffset);
-          llvm.LLVMBuildRetVoid(builder);
-        } else {
-          var block = fn._newBlockAfter;
-          if (this != fn) {
-            block = fn.buildSubBB(name: '_new_ret');
-            fn._newBlockAfter = block;
-          }
-
-          if (block != null) br(block.context);
-        }
-      }
+      return;
     }
-    _returned = true;
+
+    final sret = fn._sret;
+
+    /// return variable
+    if (sret == null) {
+      final fnty = fn.fn.ty as Fn;
+      final v = AbiFn.fnRet(this, fnty, val, ident.offset);
+      diSetCurrentLoc(retOffset);
+      llvm.LLVMBuildRet(builder, v);
+      return;
+    }
+
+    /// struct ret
+    if (val is LLVMAllocaDelayVariable && !val.created) {
+      val.initProxy(this, sret);
+    } else {
+      sret.store(
+          this, val.load(this, val.ident?.offset ?? Offset.zero), retOffset);
+    }
+
+    diSetCurrentLoc(retOffset);
+    llvm.LLVMBuildRetVoid(builder);
   }
 
   RawIdent? _sertOwner;
+
+  /// todo:
   StoreVariable? sretFromVariable(Identifier? nameIdent, Variable variable) {
     final fnContext = getLastFnContext()!;
     final fnty = fnContext.fn.ty as Fn;
     StoreVariable? fnSret;
-    fnSret = fnContext.sret ?? fnContext._compileRetValue;
+    fnSret = fnContext.sret;
     if (fnSret == null) return null;
 
     nameIdent ??= variable.ident!;
@@ -430,7 +431,7 @@ class BuildContext
     if (fnContext._sertOwner == null &&
         variable is LLVMAllocaDelayVariable &&
         !variable.created) {
-      variable.create(this, fnSret, nameIdent);
+      variable.initProxy(this, fnSret);
       fnContext._sertOwner = owner;
       return variable;
     } else {
@@ -440,15 +441,8 @@ class BuildContext
     }
   }
 
+  /// todo:
   void autoAddFreeHeap(Variable variable) {
-    final ty = variable.ty;
-    if (ty is HeapTy) {
-      _heapVariables.add((ty, variable));
-    } else if (ty case RefTy(:StructTy parent)) {
-      if (parent.ident.src == 'HeapCount') {
-        _heapVariables.add((HeapTy(parent), variable));
-      }
-    }
     if (ImplStackTy.isStackCom(this, variable)) {
       _stackComVariables.add(variable);
     }
@@ -474,9 +468,6 @@ class BuildContext
 
   final _stackComVariables = <Variable>{};
 
-  /// 当前生命周期块中需要释放的资源
-  final _heapVariables = <(HeapTy, Variable)>[];
-
   /// {
   ///   // 当前代码块如果有返回语句，需要释放一些资源
   ///
@@ -485,9 +476,6 @@ class BuildContext
   void freeHeap() {
     if (_freeDone) return;
     _freeDone = true;
-    for (var (ty, variable) in _heapVariables) {
-      ty.llty.removeStack(this, variable);
-    }
 
     for (var variable in _stackComVariables) {
       ImplStackTy.removeStack(this, variable);
@@ -510,10 +498,6 @@ class BuildContext
   }
 
   /// math
-
-  void painc() {
-    llvm.LLVMBuildUnreachable(builder);
-  }
 
   Variable math(Variable lhs, Variable? rhs, OpKind op,
       {Offset lhsOffset = Offset.zero,
@@ -806,6 +790,10 @@ mixin ChildContext on BuildMethods {
 
   void br(ChildContext to) {
     if (!canBr) return;
+    _br(to);
+  }
+
+  void _br(ChildContext to) {
     _breaked = true;
     llvm.LLVMBuildBr(builder, llvm.LLVMGetInsertBlock(to.builder));
   }
@@ -848,11 +836,11 @@ extension FnContext on BuildContext {
     if (fnty is ImplFn) {
       final p = fnty.ty;
       final selfParam = llvm.LLVMGetParam(fn, index);
-      final ident = Identifier.builtIn('self');
+      final ident = Identifier.self;
 
       // 只读引用
       final alloca = LLVMAllocaVariable(p, selfParam, p.typeOf(this));
-      setName(alloca.alloca, 'self');
+      setName(alloca.alloca, ident.src);
       alloca.isTemp = false;
       alloca.isRef = true;
       pushVariable(ident, alloca);
@@ -907,7 +895,7 @@ extension FnContext on BuildContext {
 
   void resolveParam(Ty ty, LLVMValueRef fnParam, Identifier ident) {
     final alloca = ty.llty.createAlloca(this, ident, fnParam);
-    alloca.create(this);
+    alloca.initProxy(this);
     alloca.isTemp = false;
     pushVariable(ident, alloca);
   }

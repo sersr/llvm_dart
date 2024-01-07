@@ -40,10 +40,11 @@ abstract class LLVMType {
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
     final type = typeOf(c);
-    final val = LLVMAllocaDelayVariable(ty, base, ([alloca, nIdent]) {
-      if (alloca != null) return alloca.getBaseValue(c);
-      final value = c.alloctor(type, ty: ty, name: nIdent?.src ?? ident.src);
-      c.diBuilderDeclare(nIdent ?? ident, value, ty);
+    final val = LLVMAllocaDelayVariable(ty, base, (proxy) {
+      if (proxy != null) return proxy.getBaseValue(c);
+
+      final value = c.alloctor(type, ty: ty, name: ident.src);
+      c.diBuilderDeclare(ident, value, ty);
       return value;
     }, type);
     if (ident.isValid) {
@@ -401,17 +402,15 @@ class LLVMStructType extends LLVMType {
     final rTy = field.grt(context);
 
     final rIndex = _size!.map[field]!.index;
-    if (alloca is LLVMAllocaDelayVariable && alloca.isTemp) {
-      alloca.create(context);
+    if (alloca is LLVMAllocaDelayVariable && !alloca.created) {
+      alloca.initProxy(context);
     }
     LLVMValueRef v = alloca.getBaseValue(context);
 
-    LLVMValueRef fieldValue;
-
-    fieldValue =
-        llvm.LLVMBuildStructGEP2(context.builder, type, v, rIndex, unname);
-
-    final val = LLVMAllocaVariable(rTy, fieldValue, rTy.typeOf(context));
+    final val = LLVMAllocaDelayVariable(rTy, null, (proxy) {
+      assert(proxy == null);
+      return llvm.LLVMBuildStructGEP2(context.builder, type, v, rIndex, unname);
+    }, rTy.typeOf(context));
 
     return val;
   }
@@ -783,10 +782,13 @@ class LLVMEnumItemType extends LLVMStructType {
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
     final type = pTy.typeOf(c);
-    return LLVMAllocaDelayVariable(ty, base, ([alloca, nIdent]) {
+    return LLVMAllocaDelayVariable(ty, base, (proxy) {
       final ctype = typeOf(c);
-      final alloca = c.alloctor(type, ty: ty, name: nIdent?.src ?? ident.src);
-      c.diBuilderDeclare(nIdent ?? ident, alloca, ty);
+      final alloca = proxy != null
+          ? proxy.getBaseValue(c)
+          : c.alloctor(type, ty: ty, name: ident.src);
+
+      c.diBuilderDeclare(ident, alloca, ty);
       final indices = [c.constI32(0), c.constI32(0)];
       final first = llvm.LLVMBuildInBoundsGEP2(
           c.builder, ctype, alloca, indices.toNative(), indices.length, unname);

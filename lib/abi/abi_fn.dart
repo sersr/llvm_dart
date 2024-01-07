@@ -74,6 +74,7 @@ abstract interface class AbiFn {
         if (i < fnParams.length) {
           baseTy = fn.getRty(context, fnParams[i]);
         }
+        baseTy ??= p.getTy(context);
         final temp = p.build(context, baseTy: baseTy);
         final v = temp?.variable;
         if (v != null) {
@@ -81,12 +82,10 @@ abstract interface class AbiFn {
           newParams.add(v);
         }
       }
-      final retVariable = fn
-          .getRetTy(context)
-          .llty
-          .createAlloca(context, Identifier.none, null);
-      context.compileRun(fn, context, newParams, retVariable);
-      return ExprTempValue(retVariable, retVariable.ty, currentIdent);
+
+      final variable = context.compileRun(fn, context, newParams);
+      return ExprTempValue(
+          variable, variable?.ty ?? LitKind.kVoid.ty, currentIdent);
     }
 
     final args = <LLVMValueRef>[];

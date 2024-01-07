@@ -37,7 +37,7 @@ abstract class Variable extends LifeCycleVariable {
 }
 
 abstract class StoreVariable extends Variable {
-  /// 一般是未命名的，右表达式生成的
+  /// 在 let 表达式使用，判断是否需要分配空间或者直接使用当前对象
   bool isTemp = true;
   LLVMValueRef get alloca;
   LLVMValueRef store(BuildContext c, LLVMValueRef val, Offset offset);
@@ -52,7 +52,7 @@ abstract class StoreVariable extends Variable {
 ///
 /// 可以看作右值，临时变量
 /// 函数返回值，数值运算
-class LLVMConstVariable extends Variable with Deref {
+class LLVMConstVariable extends Variable {
   LLVMConstVariable(this.value, this.ty);
   @override
   final Ty ty;
@@ -75,16 +75,19 @@ class LLVMConstVariable extends Variable with Deref {
   }
 }
 
+typedef LoadFn = LLVMValueRef Function(StoreVariable? proxy);
+
 mixin DelayVariableMixin {
-  LLVMValueRef Function([StoreVariable? alloca, Identifier? ident]) get _create;
+  LoadFn get _delayLoad;
 
   LLVMValueRef? _alloca;
 
   bool get created => _alloca != null;
 
-  bool create(BuildContext c, [StoreVariable? alloca, Identifier? ident]) {
+  /// 从 [proxy] 中获取地址空间
+  bool initProxy(BuildContext c, [StoreVariable? proxy]) {
     final result = _alloca == null;
-    _alloca ??= _create(alloca, ident);
+    _alloca ??= _delayLoad(proxy);
     if (result) {
       storeInit(c);
     }
@@ -93,25 +96,24 @@ mixin DelayVariableMixin {
 
   void storeInit(BuildContext c);
 
-  LLVMValueRef get alloca => _alloca ??= _create();
+  LLVMValueRef get alloca => _alloca ??= _delayLoad(null);
 }
 
 /// 不会立即分配内存，如立即使用[context.allocator()]
 /// 可以重定向到[_create]返回的[_alloca],[_alloca]作为分配地址
 /// 一般用在复杂结构体中，如结构体内包含其他结构体，在作为字面量初始化时会使用外面
 /// 结构体[LLVMStructType.getField]创建的[Variable]
-class LLVMAllocaDelayVariable extends StoreVariable
-    with DelayVariableMixin, Deref {
-  LLVMAllocaDelayVariable(this.ty, this.initAlloca, this._create, this.type);
+class LLVMAllocaDelayVariable extends StoreVariable with DelayVariableMixin {
+  LLVMAllocaDelayVariable(this.ty, this.initAlloca, this._delayLoad, this.type);
   @override
-  final LLVMValueRef Function([StoreVariable? alloca, Identifier? ident])
-      _create;
+  final LoadFn _delayLoad;
   @override
   final Ty ty;
 
   final LLVMTypeRef type;
 
   final LLVMValueRef? initAlloca;
+
   @override
   LLVMTypeRef getDerefType(BuildContext c) {
     return type;
@@ -119,7 +121,7 @@ class LLVMAllocaDelayVariable extends StoreVariable
 
   @override
   LLVMValueRef getBaseValue(BuildContext c) {
-    create(c);
+    initProxy(c);
     return super.getBaseValue(c);
   }
 
@@ -137,7 +139,7 @@ class LLVMAllocaDelayVariable extends StoreVariable
 
   @override
   LLVMValueRef store(BuildContext c, LLVMValueRef val, Offset offset) {
-    create(c);
+    initProxy(c);
     return c.store(alloca, val, offset);
   }
 
@@ -150,7 +152,7 @@ class LLVMAllocaDelayVariable extends StoreVariable
 
 /// 使用已分配的地址
 /// 有[store],[load]功能
-class LLVMAllocaVariable extends StoreVariable implements Deref {
+class LLVMAllocaVariable extends StoreVariable {
   LLVMAllocaVariable(this.ty, this.alloca, this.type);
   @override
   final LLVMValueRef alloca;
@@ -173,17 +175,6 @@ class LLVMAllocaVariable extends StoreVariable implements Deref {
   @override
   LLVMTypeRef getDerefType(BuildContext c) {
     return type;
-  }
-
-  @override
-  Variable getDeref(BuildContext c) {
-    return defaultDeref(c);
-  }
-}
-
-mixin Deref on Variable {
-  Variable getDeref(BuildContext c) {
-    return defaultDeref(c);
   }
 }
 
@@ -211,7 +202,11 @@ class LLVMLitVariable extends Variable {
   }
 
   LLVMAllocaDelayVariable createAlloca(BuildContext c, Identifier ident,
-      [BuiltInTy? tty]) {
+      [Ty? tty]) {
+    if (tty is! BuiltInTy) {
+      tty = ty;
+    }
+
     final rValue = load(c, ident.offset, ty: tty);
     final alloca = ty.llty.createAlloca(c, ident, rValue);
 

@@ -1,9 +1,17 @@
 import "std:d.kc";
 import "std:allocator.kc";
 
+import "std:heap_pointer.d.kc";
+
 fn main() i32 {
 
+  let foo = Foo { bar: Bar { y: 1000 }};
 
+  printf("...y: %d\n", foo.bar.y);
+
+  let share_ptr = SharedPtr.new(Foo{ bar: Bar {y: 1234 }});
+
+  printf("y: %d\n", share_ptr.bar.y);
 
 
   0;
@@ -15,4 +23,16 @@ struct Box<T> {
   size: usize,
 }
 
+struct Bar {
+  y: i32,
+}
 
+struct Foo {
+  bar: Bar,
+}
+
+impl Deref<Bar> for Foo {
+  fn deref() &Bar {
+    return &self.bar;
+  }
+}

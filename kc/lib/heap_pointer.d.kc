@@ -2,40 +2,52 @@
 import "d.kc";
 import "allocator.kc";
 
-type HeapPointer<T> = *HeapCount<T>;
+type SharedPtr<T> = HeapPointer<T>;
+struct HeapPointer<T> {
+  ptr: *HeapCount<T>,
+}
 
 struct HeapCount<T> {
   count: usize,
   data: T,
 }
 
-impl HeapCount<T> {
+impl HeapPointer<T> {
+
+  static fn new(data: T) Self {
+    final ptr = malloc(sizeOf(HeapCount<T>)) as *HeapCount<T>;
+    ptr.data = data;
+    ptr.count = 0;
+    return HeapPointer { ptr: ptr };
+  }
+
   fn addStack() {
-    self.count += 1;
-    printf("hello add %d\n", self.count);
+    final ptr = self.ptr;
+    ptr.count += 1;
+    printf("add %d\n", ptr.count);
   }
 
   fn removeStack() {
-    self.count -= 1;
-    printf("remove %d\n", self.count);
-    if self.count == 0 {
-      free(&self);
+    final ptr = self.ptr;
+    ptr.count -= 1;
+    printf("remove %d\n", ptr.count);
+    if ptr.count == 0 {
+      free(&ptr);
     }
   }
 }
 
-com Dot<T> {
-  fn dot() &T;
-  fn self() &Self;
-}
-
-com Ref<T> {
-  fn ref() &T;
+impl Deref<T> for HeapPointer<T> {
+  fn deref() &T {
+    return &self.ptr.data; 
+  }
 }
 
 com Deref<T> {
   fn deref() &T;
 }
+
+
 
 com Stack {
   fn addStack();

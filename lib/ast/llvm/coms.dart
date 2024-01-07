@@ -75,34 +75,35 @@ abstract class RefDerefCom {
 
     final impl = context.getImplWithIdent(ty, com);
     if (impl == null) return null;
+
+    /// 内部方法不使用
+    final currentFn = context.getLastFnContext()!.runFn;
+    if (currentFn is ImplFn && currentFn.ty == ty) return null;
+
     var fn = impl.getFn(fnIdent);
     return fn?.copyFrom(ty);
-  }
-
-  static Variable getRef(BuildContext context, Variable variable) {
-    final fn = getImplFn(context, variable.ty, Identifier.builtIn('Ref'),
-        Identifier.builtIn('ref'));
-    if (fn == null) return variable;
-    final retVariable =
-        fn.getRetTy(context).llty.createAlloca(context, Identifier.none, null);
-
-    final param = LLVMConstVariable(variable.load(context, Offset.zero), fn.ty);
-    param.ident = Identifier.builtIn('self');
-    context.compileRun(fn, context, [param], retVariable);
-
-    return retVariable;
   }
 
   static Variable getDeref(BuildContext context, Variable variable) {
     final fn = getImplFn(context, variable.ty, Identifier.builtIn('Deref'),
         Identifier.builtIn('deref'));
-    if (fn == null) return variable;
-    final retVariable =
-        fn.getRetTy(context).llty.createAlloca(context, Identifier.none, null);
-    final param = LLVMConstVariable(variable.load(context, Offset.zero), fn.ty);
-    param.ident = Identifier.builtIn('self');
-    context.compileRun(fn, context, [param], retVariable);
 
-    return retVariable;
+    if (fn == null) return variable;
+
+    final param = LLVMAllocaVariable(variable.ty,
+        variable.getBaseValue(context), variable.ty.typeOf(context));
+    param.ident = Identifier.self;
+    return context.compileRun(fn, context, [param]) ?? variable;
+  }
+
+  static void loopGetDeref(
+      BuildContext context, Variable variable, bool Function(Variable) action) {
+    if (action(variable)) return;
+    for (;;) {
+      final v = getDeref(context, variable).defaultDeref(context);
+      if (action(v)) break;
+      if (variable == v) break;
+      variable = v;
+    }
   }
 }

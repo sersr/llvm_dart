@@ -9,7 +9,6 @@ import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
 import 'package:nop/nop.dart';
 
-import '../abi/abi_fn.dart';
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import '../parsers/lexers/token_kind.dart';
@@ -113,6 +112,7 @@ class Identifier with EquatableMixin {
   }
 
   static final Identifier none = Identifier.builtIn('');
+  static final Identifier self = Identifier.builtIn('self');
 
   static bool get enableIdentEq {
     return Zone.current[#data] == true;
@@ -1079,7 +1079,7 @@ class ImplFn extends Fn with ImplFnMixin {
 
   @override
   void analysisContext(AnalysisContext context) {
-    final ident = Identifier.builtIn('self');
+    final ident = Identifier.self;
     final v = context.createVal(ty, ident);
     v.lifecycle.isOut = true;
     context.pushVariable(ident, v);
@@ -1113,17 +1113,17 @@ class FieldDef with EquatableMixin {
   PathTy get rawTy => _ty;
   final Ty? _rty;
   Ty grt(Tys c) {
-    if (_rty != null) return _rty!;
+    if (_rty != null) return _rty;
     return _ty.grt(c);
   }
 
   Ty grts(Tys c, GenTy gen) {
-    if (_rty != null) return _rty!;
+    if (_rty != null) return _rty;
     return _ty.grt(c, gen: gen);
   }
 
   Ty? grtOrT(Tys c, {GenTy? gen}) {
-    if (_rty != null) return _rty!;
+    if (_rty != null) return _rty;
     return _ty.grtOrT(c, gen: gen);
   }
 
@@ -1491,10 +1491,11 @@ class ArrayLLVMType extends LLVMType {
   @override
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
-    final val = LLVMAllocaDelayVariable(ty, base, ([alloca, nIdent]) {
-      nIdent ??= ident;
+    final val = LLVMAllocaDelayVariable(ty, base, (proxy) {
+      if (proxy != null) return proxy.getBaseValue(c);
+
       final count = c.constI64(ty.size);
-      return c.createArray(ty.elementTy.typeOf(c), count, name: nIdent.src);
+      return c.createArray(ty.elementTy.typeOf(c), count, name: ident.src);
     }, typeOf(c));
     if (ident.isValid) {
       val.ident = ident;
@@ -1516,11 +1517,13 @@ class ArrayLLVMType extends LLVMType {
     final elementTy = ty.elementTy.typeOf(c);
 
     c.diSetCurrentLoc(offset);
-    final v = llvm.LLVMBuildInBoundsGEP2(
-        c.builder, elementTy, p, indics.toNative(), indics.length, unname);
 
-    final vv = LLVMAllocaVariable(ty.elementTy, v, elementTy);
-    vv.isTemp = false;
+    final vv = LLVMAllocaDelayVariable(ty.elementTy, null, (proxy) {
+      assert(proxy == null);
+
+      return llvm.LLVMBuildInBoundsGEP2(
+          c.builder, elementTy, p, indics.toNative(), indics.length, unname);
+    }, elementTy);
     return vv;
   }
 
@@ -1633,118 +1636,5 @@ class LLVMAliasType extends LLVMType {
           c.dBuilder!, 'ptr'.toChar(), 3, c.pointerSize() * 8, 1, 0);
     }
     return base.grt(c).llty.createDIType(c);
-  }
-}
-
-/// 弃用
-class HeapTy extends RefTy {
-  HeapTy(this.parent) : super(parent);
-
-  @override
-  // ignore: overridden_fields
-  final StructTy parent;
-
-  @override
-  String toString() {
-    return 'HeapTy($parent)';
-  }
-
-  @override
-  late LLVMHeapType llty = LLVMHeapType(this);
-}
-
-class LLVMHeapType extends LLVMRefType {
-  LLVMHeapType(HeapTy super.ty);
-
-  @override
-  HeapTy get ty => super.ty as HeapTy;
-  StructTy get heapStructTy => ty.parent;
-
-  StoreVariable getData(BuildContext context, Variable variable) {
-    final data = heapStructTy.llty
-        .getField(variable, context, Identifier.builtIn('data'));
-    return data!;
-  }
-
-  StoreVariable getCount(
-    BuildContext context,
-    Variable variable,
-  ) {
-    final count = heapStructTy.llty
-        .getField(variable, context, Identifier.builtIn('count'));
-    return count!;
-  }
-
-  void initData(BuildContext context, Variable variable) {
-    final llType = heapStructTy.llty;
-    final count =
-        llType.getField(variable, context, Identifier.builtIn('count'))!;
-    count.store(context, context.usizeValue(1), Offset.zero);
-    // final start =
-    //     llType.getField(variable, context, Identifier.builtIn('start'))!;
-    // final pointerStart = variable.getBaseValue(context);
-    // start.store(context, pointerStart, Offset.zero);
-
-    final data =
-        llType.getField(variable, context, Identifier.builtIn('data'))!;
-
-    if (variable is LLVMAllocaDelayVariable && !variable.created) {
-      variable.create(context, data);
-    } else {
-      final size = llType.getBytes(context);
-      context.memcopy(data, variable, context.usizeValue(size));
-    }
-  }
-
-  void memRef(BuildContext context, Variable variable, Variable src) {
-    final llType = heapStructTy.llty;
-    final count =
-        llType.getField(variable, context, Identifier.builtIn('count'))!;
-    count.store(context, context.usizeValue(1), Offset.zero);
-    // final start =
-    //     llType.getField(variable, context, Identifier.builtIn('start'))!;
-    // final pointerStart = variable.load(context, Offset.zero);
-    // start.store(context, pointerStart, Offset.zero);
-  }
-
-  void addStack(BuildContext context, Variable variable) {
-    final ident = Identifier.builtIn('addStack');
-    final impl = context.getImplForStruct(heapStructTy, ident);
-    var implFn = impl?.getFn(ident);
-    final addFn = implFn?.copyFrom(heapStructTy);
-    if (addFn == null) {
-      Log.e('error addFn == null.', onlyDebug: false);
-      return;
-    }
-    AbiFn.fnCallInternal(
-      context,
-      addFn,
-      [],
-      LLVMConstVariable(variable.load(context, Offset.zero), ty),
-      null,
-      null,
-      Identifier.none,
-    );
-  }
-
-  void removeStack(BuildContext context, Variable variable) {
-    final ident = Identifier.builtIn('removeStack');
-    final impl = context.getImplForStruct(heapStructTy, ident);
-
-    var implFn = impl?.getFn(ident);
-    final removeFn = implFn?.copyFrom(heapStructTy);
-    if (removeFn == null) {
-      Log.e('error removeFn == null.', onlyDebug: false);
-      return;
-    }
-    AbiFn.fnCallInternal(
-      context,
-      removeFn,
-      [],
-      LLVMConstVariable(variable.load(context, Offset.zero), ty),
-      null,
-      null,
-      Identifier.none,
-    );
   }
 }

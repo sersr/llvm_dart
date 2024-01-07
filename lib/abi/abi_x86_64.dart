@@ -177,7 +177,7 @@ class AbiFnx86_64 implements AbiFn {
 
     if (byteSize <= 16) {
       return struct.llty.createAlloca(context, Identifier.none, src)
-        ..create(context);
+        ..initProxy(context);
     }
 
     // ptr
@@ -354,7 +354,7 @@ class AbiFnx86_64 implements AbiFn {
       alloca = fromFnParamsOrRet(context, ty, fnParam);
     } else {
       final a = ty.llty.createAlloca(context, ident, fnParam);
-      a.create(context);
+      a.initProxy(context);
       context.setName(a.alloca, ident.src);
       alloca = a;
     }

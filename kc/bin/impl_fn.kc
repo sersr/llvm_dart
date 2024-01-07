@@ -14,9 +14,9 @@ fn main() i32 {
 
     let arr = Array<i8>.new(10);
     let aa:[i8; 10] = [ 48, 50, 54, 0];
-    aa.elementAt(0) = 48 + 5;
+    aa[0] = 48 + 5;
     let size = aa.getSize() as i8;
-    aa.elementAt(1) = size + 38;
+    aa[1] = size + 38;
     print("next number: 506");
     print(aa.toStr());
     let y = Gen { 10 };

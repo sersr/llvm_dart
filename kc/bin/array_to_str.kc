@@ -2,7 +2,6 @@ import "../lib/d.kc";
 
 fn main() i32 {
   let arr = Array<u8>.new(10);
-
   let size = 10;
 
   printf("size: %d\n", size);
@@ -13,32 +12,34 @@ fn main() i32 {
   printf("v: %d\n", v);
   while v > 0 {
     count += 1;
-    if(v < 10) {
-      arr.elementAt(count) = v + 48;
-      printf("index: %d\n", arr.elementAt(count));
+    if v < 10 {
+      let yx = v + 48;
+      arr[count] = yx; // 自动转换成 u8
+      printf("index: %d %c\n",arr[count] as i32, yx);
+      printf("sss :%d\n", arr[count -1 ]);
       break;
      }
     let vv = v % 10;
      if(count > size - 2) {
       break;
      }
-    arr.elementAt(count) = vv + 48;
+    arr[count] = vv + 48;
      v = v / 10;
-    printf("index: %d\n", arr.elementAt(count));
+    printf("indexxx: %d\n", arr[count]);
   }
 
   let vSize = count;
 
-  arr.elementAt(vSize + 1) = 0;
+  arr[vSize + 1] = 0;
   
   let n_arr = Array<u8>.new(10);
 
   print("reverse");
 
   while count >= 0 {
-    let d = arr.elementAt(count);
-    printf("index: %d, %d\n", count, d);
-    n_arr.elementAt(vSize - count) = d;
+    let d = arr[count];
+    printf("index: %d, %d\n", count, d as i32);
+    n_arr[vSize - count] = d;
     count -= 1;
   }
 

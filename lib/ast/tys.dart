@@ -2,14 +2,12 @@ import 'dart:async';
 
 import 'package:equatable/equatable.dart';
 
-import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'ast.dart';
 import 'buildin.dart';
 import 'expr.dart';
 import 'llvm/llvm_context.dart';
 import 'llvm/variables.dart';
-import 'memory.dart';
 
 abstract class LifeCycleVariable {
   Identifier? ident;
@@ -60,59 +58,13 @@ abstract class GlobalContext {
       Ty valTy,
       List<FieldExpr> params) {
     if (valTy is ArrayTy && val != null) {
-      if (fnName == 'elementAt' && params.isNotEmpty) {
-        final first =
-            params.first.build(context, baseTy: BuiltInTy.usize)?.variable;
-
-        if (first != null && first.ty is BuiltInTy) {
-          final element = valTy.llty.getElement(
-              context, val, first.load(context, variable.currentIdent.offset));
-          return ExprTempValue(element, element.ty, ident);
-        }
-      } else if (fnName == 'getSize') {
+      if (fnName == 'getSize') {
         final size = BuiltInTy.usize.llty
             .createValue(ident: Identifier.builtIn('${valTy.size}'));
         return ExprTempValue(size, size.ty, ident);
       } else if (fnName == 'toStr') {
         final element = valTy.llty.toStr(context, val);
         return ExprTempValue(element, element.ty, ident);
-      }
-    }
-
-    if (valTy is StructTy && val != null) {
-      if (valTy.ident.src == 'CArray') {
-        if (fnName == 'elementAt' && params.isNotEmpty) {
-          final param = params.first.build(context, baseTy: BuiltInTy.usize);
-          final paramValue = param?.variable;
-          if (paramValue != null && paramValue.ty is BuiltInTy) {
-            final ty = valTy.tys.values.first;
-            Variable getElement(
-                BuildContext c, Variable value, LLVMValueRef index) {
-              final indics = <LLVMValueRef>[index];
-
-              final p = value.load(c, variable.currentIdent.offset);
-              final elementTy = ty.typeOf(c);
-              var ety = ty;
-              if (ty is RefTy) {
-                ety = ty.parent;
-              }
-
-              c.diSetCurrentLoc(ident.offset);
-
-              var v = llvm.LLVMBuildInBoundsGEP2(c.builder, elementTy, p,
-                  indics.toNative(), indics.length, unname);
-              v = llvm.LLVMBuildLoad2(c.builder, c.pointer(), v, unname);
-              final vv = ety.llty.createAlloca(c, Identifier.none, v);
-              return vv;
-            }
-
-            final v =
-                valTy.llty.getField(val, context, Identifier.builtIn('ptr'));
-            final element = getElement(context, v!,
-                paramValue.load(context, param!.currentIdent.offset));
-            return ExprTempValue(element, element.ty, ident);
-          }
-        }
       }
     }
 
@@ -141,40 +93,6 @@ abstract class GlobalContext {
     }
 
     return null;
-  }
-
-  ExprTempValue? cArrayElement(
-    BuildContext context,
-    Ty ty,
-    Identifier ident,
-    Variable index,
-    Identifier indexLoad,
-    Variable target,
-    Identifier targetLoad,
-  ) {
-    if (ty is! StructTy || ty.ident.src != 'CArray') return null;
-
-    final value = ty.llty.getField(target, context, Identifier.builtIn('ptr'))!;
-    final ptrTy = ty.tys.values.first;
-
-    final indics = <LLVMValueRef>[
-      index.load(context, indexLoad.offset),
-    ];
-
-    final p = value.load(context, targetLoad.offset);
-    final elementTy = ptrTy.typeOf(context);
-    var ety = ptrTy;
-    if (ety is RefTy) {
-      ety = ety.parent;
-    }
-    context.diSetCurrentLoc(ident.offset);
-
-    var v = llvm.LLVMBuildInBoundsGEP2(context.builder, elementTy, p,
-        indics.toNative(), indics.length, unname);
-    v = llvm.LLVMBuildLoad2(context.builder, context.pointer(), v, unname);
-    final vv = ety.llty.createAlloca(context, Identifier.none, v);
-
-    return ExprTempValue(vv, vv.ty, ident);
   }
 }
 

@@ -992,7 +992,6 @@ class Parser {
       }
     }
 
-    expr ??= parseNewExpr(it);
     expr ??= parseArrayExpr(it);
     expr ??= parseIfExpr(it);
     expr ??= parseMatchExpr(it);
@@ -1007,15 +1006,6 @@ class Parser {
     final expr = parseExpr(it.current.child.tokenIt);
 
     return ArrayOpExpr(ident, ptr, expr);
-  }
-
-  NewExpr? parseNewExpr(TokenIterator it) {
-    final isNew = getKey(it) == Key.kNew;
-    final ident = getIdent(it);
-    if (!isNew) return null;
-    eatLfIfNeed(it);
-    final expr = parseExpr(it);
-    return NewExpr(ident, expr);
   }
 
   /// 解析关键字
@@ -1581,7 +1571,6 @@ enum Key {
   kAs('as'),
   kImport('import'),
   kType('type'),
-  kNew('new'),
   ;
 
   bool get isBool {

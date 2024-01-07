@@ -148,6 +148,10 @@ mixin OverflowMath on Consts {
         llvm.LLVMBuildExtractValue(builder, result, 1, '_result_1'.toChar());
     return MathValue(l1, l2);
   }
+
+  void painc() {
+    llvm.LLVMBuildUnreachable(builder);
+  }
 }
 
 class MathValue {

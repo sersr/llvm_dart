@@ -46,11 +46,18 @@ void main(List<String> args) async {
 
   File? runFile = kcBinDir.childFile(name);
   if (!runFile.existsSync()) {
+    var dir = runFile.parent;
+    if (!dir.existsSync()) {
+      dir = kcBinDir;
+    }
+
     runFile = null;
-    final entries = kcBinDir.listSync(followLinks: false);
+    final basename = name.split('/').last;
+
+    final entries = dir.listSync(followLinks: false);
     for (var file in entries) {
       if (file is File &&
-          file.basename.startsWith(name) &&
+          file.basename.startsWith(basename) &&
           file.basename.endsWith('.kc')) {
         runFile = file;
         break;

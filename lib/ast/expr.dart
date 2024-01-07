@@ -172,7 +172,7 @@ class IfExpr extends Expr {
           } else {
             context.removeFreeVariable(val);
             if (val is LLVMAllocaDelayVariable && !val.created) {
-              val.create(context, variable);
+              val.initProxy(context, variable);
             } else {
               final v = val.load(context, temp!.currentIdent.offset);
               variable.store(context, v, Offset.zero);
@@ -586,22 +586,18 @@ class StructExpr extends Expr {
       Identifier ident, List<FieldExpr> params, List<PathTy> genericsInst) {
     struct = resolveGeneric(struct, context, params, genericsInst);
     final structType = struct.typeOf(context);
-    LLVMValueRef create([StoreVariable? alloca, Identifier? nIdent]) {
-      var value = alloca;
+
+    LLVMValueRef create(StoreVariable? proxy) {
+      StoreVariable? value = proxy;
       // final min = struct.llvmType.getMaxSize(context);
       var fields = struct.fields;
       final sortFields = alignParam(
           params, (p) => fields.indexWhere((e) => e.ident == p.ident));
       // final size = min > 4 ? 8 : 4;
 
-      value ??=
-          struct.llty.createAlloca(context, nIdent ?? Identifier.none, null);
+      value ??= struct.llty.createAlloca(context, ident, null);
 
       context.diSetCurrentLoc(ident.offset);
-
-      if (value is LLVMAllocaDelayVariable) {
-        value.create(context, null, nIdent);
-      }
 
       if (sortFields.length != fields.length) {
         value.store(context, llvm.LLVMConstNull(structType), Offset.zero);
@@ -623,7 +619,7 @@ class StructExpr extends Expr {
         if (v == null) continue;
         final vv = struct.llty.getField(value, context, fd.ident)!;
         if (v is LLVMAllocaDelayVariable && !v.created) {
-          v.create(context, vv, f.ident);
+          v.initProxy(context, vv);
           continue;
         }
 
@@ -693,8 +689,12 @@ class AssignExpr extends Expr {
       if (lv.ty != rv.ty) {
         cav = AsExpr.asType(context, rv, offset, lv.ty);
       }
-
-      lv.store(context, cav.load(context, offset), lhs!.offset);
+      if (cav is LLVMAllocaDelayVariable && !cav.created) {
+        cav.initProxy(context, lv);
+        cav.isTemp = false;
+      } else {
+        lv.store(context, cav.load(context, offset), lhs!.offset);
+      }
     }
 
     return null;
@@ -1030,15 +1030,8 @@ class MethodCallExpr extends Expr with FnCallMixin {
     final variable = receiver.build(context);
     final fnName = ident.src;
 
-    var val = variable?.variable;
+    final val = variable?.variable?.defaultDeref(context);
 
-    if (val is Deref) {
-      val = val.getDeref(context);
-    }
-
-    if (val != null) {
-      val = RefDerefCom.getDeref(context, val);
-    }
     var valTy = val?.ty ?? variable?.ty;
     if (valTy == null) return null;
 
@@ -1079,13 +1072,11 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
     final impl = context.getImplForStruct(structTy, ident);
 
-    var implFn = impl?.getFn(ident);
-    implFn = implFn?.copyFrom(structTy);
-    Fn? fn = implFn;
+    Fn? fn = impl?.getFn(ident)?.copyFrom(structTy);
 
     // 字段有可能是一个函数指针
     if (fn == null) {
-      if (val is StoreVariable && structTy is StructTy) {
+      if (val != null && structTy is StructTy) {
         final field = structTy.llty.getField(val, context, ident);
         if (field != null) {
           // 匿名函数作为参数要处理捕捉的变量
@@ -1109,14 +1100,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (variable == null) return null;
     var structTy = variable.ty;
     if (structTy is! StructTy) return null;
-
-    // final ty = LiteralExpr.letTy;
-
-    // if (structTy.tys.isEmpty) {
-    //   if (ty is StructTy && structTy.ident == ty.ident) {
-    //     structTy = ty;
-    //   }
-    // }
 
     if (variable is AnalysisStructVariable) {
       final p = variable.getParam(ident);
@@ -1187,15 +1170,24 @@ class StructDotFieldExpr extends Expr {
     final val = structVal?.variable;
     var newVal = val;
 
-    if (newVal is Deref) {
-      newVal = newVal.getDeref(context);
-    }
-    var ty = newVal?.ty;
+    newVal = newVal?.defaultDeref(context);
 
-    if (ty is! StructTy) return null;
-    final v = ty.llty.getField(newVal!, context, ident);
-    if (v == null) return null;
-    return ExprTempValue(v, v.ty, ident);
+    if (newVal == null) return null;
+    ExprTempValue? temp;
+    RefDerefCom.loopGetDeref(context, newVal, (variable) {
+      final ty = variable.ty;
+
+      if (ty is StructTy) {
+        final v = ty.llty.getField(variable, context, ident);
+        if (v != null) {
+          temp = ExprTempValue(v, v.ty, ident);
+          return true;
+        }
+      }
+      return false;
+    });
+
+    return temp;
   }
 
   @override
@@ -1488,8 +1480,8 @@ enum PointerKind {
     if (this == PointerKind.none) return val;
     Variable? inst;
     if (val != null) {
-      if (val is Deref && this == PointerKind.deref) {
-        inst = val.getDeref(c);
+      if (this == PointerKind.deref) {
+        inst = val.defaultDeref(c);
       } else if (this == PointerKind.ref) {
         inst = val.getRef(c);
       }
@@ -1499,11 +1491,8 @@ enum PointerKind {
 
   static Variable? refDerefs(Variable? val, BuildContext c, PointerKind kind) {
     if (val == null) return val;
-    Variable? vv = val;
-    // for (var k in kind.reversed) {
-    vv = kind.refDeref(vv, c);
-    // }
-    return vv;
+
+    return kind.refDeref(val, c);
   }
 
   @override
@@ -1707,16 +1696,7 @@ class RefExpr extends Expr {
     final val = current.build(context);
     var variable = val?.variable;
     if (variable == null) return val;
-    Variable? valRef = variable;
-    if (kind == PointerKind.ref) {
-      valRef = RefDerefCom.getRef(context, variable);
-    } else if (kind == PointerKind.deref) {
-      valRef = RefDerefCom.getDeref(context, variable);
-    }
 
-    if (valRef != variable) {
-      return ExprTempValue(valRef, valRef.ty, pointerIdent);
-    }
     var vv = PointerKind.refDerefs(val?.variable, context, kind);
     if (vv != null) {
       return ExprTempValue(vv, vv.ty, pointerIdent);
@@ -2369,87 +2349,6 @@ class UnaryExpr extends Expr {
   }
 }
 
-class NewExpr extends Expr {
-  NewExpr(this.ident, this.expr);
-  final Identifier ident;
-  final Expr expr;
-
-  @override
-  AnalysisVariable? analysis(AnalysisContext context) {
-    return expr.analysis(context);
-  }
-
-  @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
-    final temp = expr.build(context, baseTy: baseTy);
-    if (temp == null) return null;
-    final variable = temp.variable;
-    if (variable == null) return null;
-    var heapStructTy = context.getStruct(Identifier.builtIn('HeapCount'));
-    if (heapStructTy == null) return null;
-
-    heapStructTy =
-        heapStructTy.newInst({Identifier.builtIn('T'): temp.ty}, context);
-    final mallocFn = context.getFn(Identifier.builtIn('malloc'));
-    if (mallocFn == null) return null;
-    final size = heapStructTy.llty.getBytes(context);
-    final sizeValue =
-        BuiltInTy.usize.llty.createValue(ident: Identifier.builtIn('$size'));
-    final params = [
-      FieldExpr(
-          InternalExpr(ExprTempValue(sizeValue, sizeValue.ty, Identifier.none)),
-          Identifier.none)
-    ];
-    final mallocValue = AbiFn.fnCallInternal(
-        context, mallocFn, params, null, null, null, Identifier.none);
-    final voidVariable = mallocValue?.variable;
-
-    if (voidVariable == null) return null;
-    final heapTy = HeapTy(heapStructTy);
-    final heapVariable =
-        LLVMConstVariable(voidVariable.getBaseValue(context), heapTy);
-
-    heapTy.llty.initData(context, heapVariable);
-
-    context.autoAddFreeHeap(heapVariable);
-
-    // 判断 [temp.ty] 中的直接字段是否有 HeapPointer,如果有增加计数
-
-    return ExprTempValue(heapVariable, heapTy, ident);
-  }
-
-  @override
-  NewExpr clone() {
-    return NewExpr(ident, expr.clone());
-  }
-
-  @override
-  String toString() {
-    return 'new $expr';
-  }
-}
-
-class InternalExpr extends Expr {
-  InternalExpr(this.value);
-
-  final ExprTempValue? value;
-
-  @override
-  AnalysisVariable? analysis(AnalysisContext context) {
-    return null;
-  }
-
-  @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
-    return value;
-  }
-
-  @override
-  Expr clone() {
-    return this;
-  }
-}
-
 class ArrayOpExpr extends Expr {
   ArrayOpExpr(this.ident, this.arrayOrPtr, this.expr);
   final Identifier ident;
@@ -2465,39 +2364,52 @@ class ArrayOpExpr extends Expr {
     final array = arrayOrPtr.build(context);
     if (array == null) return null;
     final arrVal = array.variable;
+    final ty = arrVal?.ty;
+
+    if (ty is StructTy) {
+      final elIdent = Identifier.builtIn('elementAt');
+      final impl = context.getImplForStruct(ty, elIdent);
+      final implFn = impl?.getFn(elIdent)?.copyFrom(ty);
+
+      if (implFn != null) {
+        return AbiFn.fnCallInternal(context, implFn, [FieldExpr(expr, ident)],
+            arrVal, null, null, ident);
+      }
+    }
+
     final loc = expr.build(context);
     final locVal = loc?.variable;
     if (arrVal == null || locVal == null || loc == null) return null;
 
-    final ty = arrVal.ty;
     if (ty is ArrayTy) {
       final element = ty.llty.getElement(
         context,
         arrVal,
-        locVal.load(context, loc.currentIdent.offset),
+        locVal.load(context, loc.offset),
         offset: ident.offset,
       );
       return ExprTempValue(element, element.ty, ident);
-    } else if (ty is RefTy && arrVal is Deref) {
+    } else if (ty is RefTy) {
       final offset = ident.offset;
-      final index = locVal.load(context, loc.currentIdent.offset);
+      final index = locVal.load(context, loc.offset);
       final indics = <LLVMValueRef>[index];
 
-      final p = arrVal.getDeref(context).getBaseValue(context);
+      final p = arrVal.defaultDeref(context).getBaseValue(context);
 
       final elementTy = ty.parent.typeOf(context);
 
       context.diSetCurrentLoc(offset);
-      final v = llvm.LLVMBuildInBoundsGEP2(context.builder, elementTy, p,
-          indics.toNative(), indics.length, unname);
+      final vv = LLVMAllocaDelayVariable(ty.parent, null, (proxy) {
+        assert(proxy == null);
 
-      final vv = LLVMAllocaVariable(ty.parent, v, elementTy);
-      vv.isTemp = false;
+        return llvm.LLVMBuildInBoundsGEP2(context.builder, elementTy, p,
+            indics.toNative(), indics.length, unname);
+      }, elementTy);
+
       return ExprTempValue(vv, vv.ty, Identifier.none);
     }
 
-    return context.importHandler.cArrayElement(context, ty, ident, locVal,
-        loc.currentIdent, arrVal, array.currentIdent);
+    return null;
   }
 
   @override

@@ -48,42 +48,50 @@ class LetStmt extends Stmt {
     if (tty == null || variable == null) return;
 
     if (variable is LLVMLitVariable) {
-      if (tty is BuiltInTy) {
-        if (isFinal) {
-          context.pushVariable(nameIdent, variable);
-          return;
-        }
+      assert(tty is BuiltInTy);
 
-        final alloca = variable.createAlloca(context, nameIdent, tty);
-
-        alloca.create(context);
-
-        alloca.isTemp = false;
-        context.pushVariable(nameIdent, alloca);
+      if (isFinal) {
+        context.pushVariable(nameIdent, variable);
         return;
       }
-      // error
+
+      final alloca = variable.createAlloca(context, nameIdent, tty);
+      alloca.initProxy(context);
+
+      alloca.isTemp = false;
+      context.pushVariable(nameIdent, alloca);
+      return;
     }
 
     /// 先判断是否是 struct ret
-    var sretVariable = context.sretFromVariable(nameIdent, variable);
+    StoreVariable? letVariable = context.sretFromVariable(nameIdent, variable);
 
-    if (variable is StoreVariable && variable.isTemp) {
-      variable.isTemp = false;
-      variable.ident = nameIdent;
-      context.setName(variable.alloca, nameIdent.src);
-      context.pushVariable(nameIdent, variable);
+    if (letVariable == null && variable is StoreVariable) {
+      letVariable = variable;
+    }
+
+    if (letVariable != null && letVariable.isTemp) {
+      letVariable.isTemp = false;
+      letVariable.ident = nameIdent;
+
+      /// 不需要新建变量，但要初始化
+      if (letVariable is LLVMAllocaDelayVariable) {
+        letVariable.initProxy(context);
+      }
+
+      context.setName(letVariable.alloca, nameIdent.src);
+      context.pushVariable(nameIdent, letVariable);
       return;
     }
 
     if (isFinal) {
-      context.pushVariable(nameIdent, sretVariable ?? variable);
+      context.pushVariable(nameIdent, letVariable ?? variable);
       return;
     }
 
     /// 如果是
-    if (sretVariable == null) {
-      sretVariable = tty.llty.createAlloca(context, nameIdent, null);
+    if (letVariable == null) {
+      letVariable = tty.llty.createAlloca(context, nameIdent, null);
 
       LLVMValueRef rValue;
       if (variable.isRef) {
@@ -92,10 +100,10 @@ class LetStmt extends Stmt {
         rValue = variable.load(context, val!.currentIdent.offset);
       }
 
-      sretVariable.store(context, rValue, nameIdent.offset);
+      letVariable.store(context, rValue, nameIdent.offset);
     }
-    sretVariable.isTemp = false;
-    context.pushVariable(nameIdent, sretVariable);
+    letVariable.isTemp = false;
+    context.pushVariable(nameIdent, letVariable);
   }
 
   @override
