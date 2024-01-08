@@ -1,11 +1,9 @@
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:nop/nop.dart';
 
 import '../../abi/abi_fn.dart';
-import '../../fs/fs.dart';
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../analysis_context.dart';
@@ -27,40 +25,9 @@ class LLVMBasicBlock {
   bool inserted = false;
 }
 
-class RootBuildContext with Tys<Variable> {
-  @override
-  Tys<LifeCycleVariable> defaultImport(String path) {
-    throw UnimplementedError();
-  }
-}
-
-class BuildContext
-    with
-        LLVMTypeMixin,
-        BuildMethods,
-        ChildContext,
-        Tys<Variable>,
-        Consts,
-        OverflowMath,
-        Cast {
-  BuildContext._(BuildContext this.parent)
-      : isRoot = false,
-        abi = parent.abi {
-    _from(parent!);
-  }
-
-  BuildContext._base(BuildContext p)
-      : parent = null,
-        abi = p.abi,
-        isRoot = false;
-  BuildContext._compileRun(BuildContext this.parent)
-      : abi = parent.abi,
-        isRoot = false;
-
-  BuildContext.root(
-      {String? targetTriple, this.abi = Abi.arm64, String name = 'root'})
-      : parent = null,
-        isRoot = true {
+class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
+  RootBuildContext(
+      {this.abi = Abi.arm64, String name = 'root', String? targetTriple}) {
     llvmContext = llvm.LLVMContextCreate();
     module = llvm.LLVMModuleCreateWithNameInContext(name.toChar(), llvmContext);
     if (targetTriple != null) {
@@ -70,26 +37,86 @@ class BuildContext
       tm = llvm.createTarget(module, tt);
       llvm.LLVMDisposeMessage(tt);
     }
-    // final datalayout = llvm.LLVMCreateTargetDataLayout(tm);
-    // llvm.LLVMSetModuleDataLayout(module, datalayout);
 
-    builder = llvm.LLVMCreateBuilderInContext(llvmContext);
-  }
+    final info = "Debug Info Version";
 
-  void _from(BuildContext parent, {bool isImport = false}) {
-    llvmContext = parent.llvmContext;
-    module = parent.module;
-    tm = parent.tm;
-    builder = llvm.LLVMCreateBuilderInContext(llvmContext);
-    if (!isImport) _dBuilder = parent._dBuilder;
+    void add(int lv, String name, int size) {
+      final (namePointer, nameLength) = name.toNativeUtf8WithLength();
+      llvm.LLVMAddModuleFlag(module, lv, namePointer, nameLength,
+          llvm.LLVMValueAsMetadata(constI32(size)));
+    }
+
+    if (Platform.isWindows) {
+      add(1, "CodeView", 1);
+    } else {
+      final version = "Dwarf Version";
+      add(6, version, 2);
+    }
+
+    add(1, info, 3);
   }
 
   @override
-  String? get currentPath => super.currentPath ?? parent?.currentPath;
+  Tys<LifeCycleVariable> defaultImport(String path) {
+    throw UnimplementedError();
+  }
 
   @override
-  GlobalContext get importHandler =>
-      parent?.importHandler ?? super.importHandler;
+  late final GlobalContext importHandler;
+
+  @override
+  late final LLVMModuleRef module;
+  @override
+  late final LLVMContextRef llvmContext;
+  @override
+  late final LLVMTargetMachineRef tm;
+  final Abi abi;
+
+  final maps = <String, FunctionDeclare>{};
+
+  final _globalStrings = <String, LLVMValueRef>{};
+  LLVMValueRef globalStringPut(String key, LLVMValueRef Function() data) {
+    return _globalStrings.putIfAbsent(key, data);
+  }
+
+  void dispose() {
+    llvm.LLVMDisposeModule(module);
+    llvm.LLVMDisposeTargetMachine(tm);
+    llvm.LLVMContextDispose(llvmContext);
+  }
+}
+
+class BuildContext
+    with
+        LLVMTypeMixin,
+        BuildMethods,
+        Tys<Variable>,
+        Consts,
+        OverflowMath,
+        DebugMixin,
+        Cast {
+  BuildContext._baseChild(BuildContext this.parent) : root = parent.root {
+    init(parent!);
+  }
+
+  BuildContext._compileRun(BuildContext this.parent) : root = parent.root;
+
+  BuildContext.root(this.root) : parent = null;
+
+  final BuildContext? parent;
+  @override
+  final RootBuildContext root;
+
+  Abi get abi => root.abi;
+
+  @override
+  late LLVMBuilderRef builder = llvm.LLVMCreateBuilderInContext(llvmContext);
+
+  @override
+  String? get currentPath => super.currentPath ??= parent?.currentPath;
+
+  @override
+  GlobalContext get importHandler => root.importHandler;
 
   void log(int level) {
     print('${' ' * level}$currentPath');
@@ -97,6 +124,12 @@ class BuildContext
     for (var child in children) {
       child.log(level);
     }
+  }
+
+  @override
+  BuildContext? getLastFnContext() {
+    if (isFnBBContext) return this;
+    return parent?.getLastFnContext();
   }
 
   @override
@@ -121,96 +154,21 @@ class BuildContext
     return super.getVariableImpl(ident) ?? parent?.getVariableImpl(ident);
   }
 
-  /// ----
-
-  LLVMMetadataRef? _unit;
-  @override
-  LLVMMetadataRef get unit => _unit ??= parent!.unit;
-
-  LLVMDIBuilderRef? _dBuilder;
-
-  @override
-  LLVMDIBuilderRef? get dBuilder => _dBuilder;
-
-  void init(bool isDebug) {
-    if (!isDebug) return;
-    final info = "Debug Info Version";
-
-    void add(int lv, String name, int size) {
-      final (namePointer, nameLength) = name.toNativeUtf8WithLength();
-      llvm.LLVMAddModuleFlag(module, lv, namePointer, nameLength,
-          llvm.LLVMValueAsMetadata(constI32(size)));
-    }
-
-    if (Platform.isWindows) {
-      add(1, "CodeView", 1);
-    } else {
-      final version = "Dwarf Version";
-      add(6, version, 2);
-    }
-
-    add(1, info, 3);
-    _debugInit();
-  }
-
-  final _dBuilders = <LLVMDIBuilderRef>[];
-
-  void _debugInit() {
-    assert(this.currentPath != null && _unit == null && _dBuilder == null);
-    _dBuilder = llvm.LLVMCreateDIBuilder(module);
-    _dBuilders.add(_dBuilder!);
-    final currentPath = this.currentPath!;
-    final path = currentDir.childFile(currentPath);
-    final dir = path.parent.path;
-
-    _unit = llvm.LLVMCreateCompileUnit(
-        _dBuilder!, path.basename.toChar(), dir.toChar());
-  }
-
   @override
   BuildContext defaultImport(String path) {
-    final child = BuildContext._base(this);
-    child._from(this, isImport: true);
+    final child = BuildContext.root(root);
     child.currentPath = path;
     children.add(child);
-    if (_dBuilder != null) {
-      child._debugInit();
+    if (dBuilder != null) {
+      child.debugInit();
     }
     return child;
   }
 
-  void finalize() {
-    for (var builder in _dBuilders) {
-      llvm.LLVMDIBuilderFinalize(builder);
-    }
-  }
-
-  @override
-  final BuildContext? parent;
   final List<BuildContext> children = [];
 
-  @override
-  late final LLVMModuleRef module;
-
-  late final LLVMTargetMachineRef tm;
-  @override
-  late final LLVMContextRef llvmContext;
-  @override
-  late final LLVMBuilderRef builder;
-
-  final Abi abi;
-
-  final bool isRoot;
   void dispose() {
     _dispose();
-    for (var builder in _dBuilders) {
-      llvm.LLVMDisposeDIBuilder(builder);
-    }
-    _dBuilders.clear();
-    if (_dBuilder != null) {
-      _dBuilder = null;
-    }
-
     llvmMalloc.releaseAll();
   }
 
@@ -219,25 +177,10 @@ class BuildContext
     for (var child in children) {
       child._dispose();
     }
-    if (isRoot) {
-      llvm.LLVMDisposeModule(module);
-      llvm.LLVMDisposeTargetMachine(tm);
-      llvm.LLVMContextDispose(llvmContext);
-    }
   }
 
-  @override
-  late LLVMConstVariable fn;
-
-  @override
-  LLVMValueRef get fnValue => fn.value;
-
-  @override
-  BuildContext? getLastFnContext() => super.getLastFnContext() as BuildContext?;
-
-  @override
   BuildContext _createChildContext() {
-    final child = BuildContext._(this);
+    final child = BuildContext._baseChild(this);
     children.add(child);
     return child;
   }
@@ -245,40 +188,15 @@ class BuildContext
   StoreVariable? _sret;
   StoreVariable? get sret => _sret;
 
-  final _freeVal = <Variable>[];
-
-  @override
-  void addFree(Variable val) {
-    _freeVal.add(val);
-  }
-
-  @override
-  void dropAll() {
-    for (var val in _freeVal) {
-      final ty = val.ty;
-      final ident = Identifier.builtIn('drop');
-      final impl = getImplForStruct(ty, ident);
-      final fn = impl?.getFn(ident)?.copyFrom(ty);
-      final fnv = fn?.build();
-      if (fn == null || fnv == null) continue;
-      LLVMValueRef v;
-
-      // fixme: remove
-      if (val.ty is BuiltInTy) {
-        v = val.load(this);
-      } else {
-        v = val.getBaseValue(this);
-      }
-      final type = fn.llty.createFnType(this);
-      llvm.LLVMBuildCall2(
-          builder, type, fnv.getBaseValue(this), [v].toNative(), 1, unname);
-    }
-  }
-
   LLVMMetadataRef? _fnScope;
 
   @override
   LLVMMetadataRef get scope => _fnScope ?? parent?.scope ?? unit;
+
+  late final LLVMConstVariable _fn;
+
+  @override
+  LLVMValueRef get fnValue => _fn.value;
 
   LLVMConstVariable buildFnBB(Fn fn,
       [Set<AnalysisVariable>? extra,
@@ -289,7 +207,7 @@ class BuildContext
       if (block == null) return;
 
       final fnContext = fn.currentContext!._createChildContext();
-      fnContext.fn = fv;
+      fnContext._fn = fv;
       fnContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
       fnContext.isFnBBContext = true;
       fnContext.instertFnEntryBB();
@@ -312,16 +230,14 @@ class BuildContext
   bool compileRunMode(Fn fn) => currentPath == fn.currentContext!.currentPath;
 
   void _compileFn(BuildContext parent, BuildContext debug) {
-    llvmContext = parent.llvmContext;
-    module = parent.module;
-    tm = parent.tm;
+    llvm.LLVMDisposeBuilder(builder);
     builder = parent.builder;
-    fn = parent.fn;
+    _fn = parent._fn;
+    assert(dBuilder == null);
 
     // 一个函数只能和一个文件绑定，在同一个文件中，可以取巧，使用同一个file scope
     if (parent.currentPath == debug.currentPath) {
-      _dBuilder = parent.dBuilder;
-      _unit = parent.unit;
+      init(parent);
       _fnScope = parent.scope;
     }
     isFnBBContext = true;
@@ -337,7 +253,7 @@ class BuildContext
       return null;
     }
 
-    final fnContext = BuildContext._compileRun(fn.currentContext ?? context);
+    final fnContext = BuildContext._compileRun(fn.currentContext!);
 
     fnContext._compileFn(context, fn.currentContext!);
 
@@ -363,72 +279,17 @@ class BuildContext
     return fnContext._compileRetValue;
   }
 
-  void ret(Variable? val) {
-    if (!canBr) {
-      // error
-      return;
-    }
-    _returned = true;
-
-    final fn = getLastFnContext()!;
-    if (fn.runFn != null) {
-      fn._compileRetValue = val;
-      var block = fn._runBbAfter;
-      if (this != fn) {
-        block = fn.buildSubBB(name: '_new_ret');
-        fn._runBbAfter = block;
-      }
-
-      if (block != null) _br(block.context);
-      return;
-    }
-
-    dropAll();
-
-    final retOffset = val?.offset ?? Offset.zero;
-
-    if (val != null) {
-      ImplStackTy.addStack(this, val);
-    }
-
-    freeHeap();
-
-    diSetCurrentLoc(retOffset);
-
-    /// return void
-    if (val == null) {
-      llvm.LLVMBuildRetVoid(builder);
-      return;
-    }
-
-    final sret = fn._sret;
-
-    /// return variable
-    if (sret == null) {
-      final fnty = fn.fn.ty as Fn;
-      final v = AbiFn.fnRet(this, fnty, val);
-      // diSetCurrentLoc(retOffset);
-      llvm.LLVMBuildRet(builder, v);
-      return;
-    }
-
-    /// struct ret
-    if (val is LLVMAllocaDelayVariable && !val.created) {
-      val.initProxy(this, sret);
-    } else {
-      sret.storeVariable(this, val);
-    }
-
-    diSetCurrentLoc(retOffset);
-    llvm.LLVMBuildRetVoid(builder);
-  }
-
   RawIdent? _sertOwner;
 
   /// todo:
   StoreVariable? sretFromVariable(Identifier? nameIdent, Variable variable) {
-    final fnContext = getLastFnContext()!;
-    final fnty = fnContext.fn.ty as Fn;
+    return _sretFromVariable(this, nameIdent, variable);
+  }
+
+  static StoreVariable? _sretFromVariable(
+      BuildContext context, Identifier? nameIdent, Variable variable) {
+    final fnContext = context.getLastFnContext()!;
+    final fnty = fnContext._fn.ty as Fn;
     StoreVariable? fnSret;
     fnSret = fnContext.sret;
     if (fnSret == null) return null;
@@ -442,11 +303,11 @@ class BuildContext
     if (fnContext._sertOwner == null &&
         variable is LLVMAllocaDelayVariable &&
         !variable.created) {
-      variable.initProxy(this, fnSret);
+      variable.initProxy(context, fnSret);
       fnContext._sertOwner = owner;
       return variable;
     } else {
-      fnSret.storeVariable(this, variable);
+      fnSret.storeVariable(context, variable);
       return fnSret;
     }
   }
@@ -508,213 +369,82 @@ class BuildContext
   }
 
   /// math
-
   Variable math(Variable lhs, Variable? rhs, OpKind op, Identifier opId) {
-    var isFloat = false;
-    var signed = false;
-    var ty = lhs.ty;
-    LLVMTypeRef? type;
-
-    var l = lhs.load(this);
-    var r = rhs?.load(this);
-
-    if (r == null || rhs == null) {
-      LLVMValueRef? value;
-
-      if (op == OpKind.Eq) {
-        value = llvm.LLVMBuildIsNull(builder, l, unname);
-      } else {
-        assert(op == OpKind.Ne);
-        value = llvm.LLVMBuildIsNotNull(builder, l, unname);
-      }
-      return LLVMConstVariable(value, BuiltInTy.kBool, opId);
-    }
-
-    if (ty is BuiltInTy && ty.ty.isNum) {
-      final kind = ty.ty;
-      final rty = rhs.ty;
-      if (rty is BuiltInTy) {
-        final rSize = rty.llty.getBytes(this);
-        final lSize = ty.llty.getBytes(this);
-        final max = rSize > lSize ? rty : ty;
-        type = max.typeOf(this);
-        ty = max;
-      }
-      if (kind.isFp) {
-        isFloat = true;
-      } else if (kind.isInt) {
-        signed = kind.signed;
-      }
-    } else if (ty is RefTy) {
-      ty = rhs.ty;
-      type = ty.typeOf(this);
-      l = llvm.LLVMBuildPtrToInt(builder, l, type, unname);
-    }
-
-    type ??= ty.typeOf(this);
-
-    if (isFloat) {
-      l = llvm.LLVMBuildFPCast(builder, l, type, unname);
-      r = llvm.LLVMBuildFPCast(builder, r, type, unname);
-    } else {
-      l = llvm.LLVMBuildIntCast2(builder, l, type, signed.llvmBool, unname);
-      r = llvm.LLVMBuildIntCast2(builder, r, type, signed.llvmBool, unname);
-    }
-
-    if (op == OpKind.And || op == OpKind.Or) {
-      final after = buildSubBB(name: 'op_after');
-      final opBB = buildSubBB(name: 'op_bb');
-      final allocaValue = alloctor(i1, name: 'op');
-      final variable =
-          LLVMAllocaVariable(allocaValue, BuiltInTy.kBool, i1, opId);
-
-      variable.store(this, l);
-      appendBB(opBB);
-
-      if (op == OpKind.And) {
-        llvm.LLVMBuildCondBr(builder, l, opBB.bb, after.bb);
-      } else {
-        llvm.LLVMBuildCondBr(builder, l, after.bb, opBB.bb);
-      }
-      final c = opBB.context;
-
-      variable.store(c, r);
-      c.br(after.context);
-      insertPointBB(after);
-      return variable;
-    }
-
-    LLVMValueRef Function(LLVMBuilderRef b, LLVMValueRef l, LLVMValueRef r,
-        Pointer<Char> name)? llfn;
-
-    diSetCurrentLoc(opId.offset);
-
-    if (isFloat) {
-      final id = op.getFCmpId(true);
-      if (id != null) {
-        final v = llvm.LLVMBuildFCmp(builder, id, l, r, unname);
-        return LLVMConstVariable(v, BuiltInTy.kBool, opId);
-      }
-      LLVMValueRef? value;
-      switch (op) {
-        case OpKind.Add:
-          value = llvm.LLVMBuildFAdd(builder, l, r, unname);
-        case OpKind.Sub:
-          value = llvm.LLVMBuildFSub(builder, l, r, unname);
-        case OpKind.Mul:
-          value = llvm.LLVMBuildFMul(builder, l, r, unname);
-        case OpKind.Div:
-          value = llvm.LLVMBuildFDiv(builder, l, r, unname);
-        case OpKind.Rem:
-          value = llvm.LLVMBuildFRem(builder, l, r, unname);
-        case OpKind.BitAnd:
-        case OpKind.BitOr:
-        case OpKind.BitXor:
-        // value = llvm.LLVMBuildAnd(builder, l, r, unname);
-        // value = llvm.LLVMBuildOr(builder, l, r, unname);
-        // value = llvm.LLVMBuildXor(builder, l, r, unname);
-        default:
-      }
-      if (value != null) {
-        return LLVMConstVariable(value, ty, opId);
-      }
-    }
-
-    final isConst = lhs is LLVMLitVariable && rhs is LLVMLitVariable;
-    final cmpId = op.getICmpId(signed);
-    if (cmpId != null) {
-      final v = llvm.LLVMBuildICmp(builder, cmpId, l, r, unname);
-      return LLVMConstVariable(v, BuiltInTy.kBool, opId);
-    }
-
-    LLVMValueRef? value;
-
-    LLVMIntrisics? k;
-    switch (op) {
-      case OpKind.Add:
-        if (isConst) {
-          llfn = llvm.LLVMBuildAdd;
-        } else {
-          k = LLVMIntrisics.getAdd(ty, signed, this);
-        }
-        break;
-      case OpKind.Sub:
-        if (!signed || isConst) {
-          llfn = llvm.LLVMBuildSub;
-        } else {
-          k = LLVMIntrisics.getSub(ty, signed, this);
-        }
-        break;
-      case OpKind.Mul:
-        if (isConst) {
-          llfn = llvm.LLVMBuildMul;
-        } else {
-          k = LLVMIntrisics.getMul(ty, signed, this);
-        }
-        break;
-      case OpKind.Div:
-        llfn = signed ? llvm.LLVMBuildSDiv : llvm.LLVMBuildUDiv;
-        break;
-      case OpKind.Rem:
-        llfn = signed ? llvm.LLVMBuildSRem : llvm.LLVMBuildURem;
-        break;
-      case OpKind.BitAnd:
-        llfn = llvm.LLVMBuildAnd;
-        break;
-      case OpKind.BitOr:
-        llfn = llvm.LLVMBuildOr;
-        break;
-      case OpKind.BitXor:
-        llfn = llvm.LLVMBuildXor;
-        break;
-      case OpKind.Shl:
-        llfn = llvm.LLVMBuildShl;
-        break;
-      case OpKind.Shr:
-        llfn = signed ? llvm.LLVMBuildAShr : llvm.LLVMBuildLShr;
-        break;
-      default:
-    }
-
-    assert(k != null || llfn != null);
-
-    if (k != null) {
-      final mathValue = oMath(l, r, k);
-      final after = buildSubBB(name: 'math');
-      final panicBB = buildSubBB(name: 'panic');
-      appendBB(panicBB);
-      llvm.LLVMBuildCondBr(builder, mathValue.condition, panicBB.bb, after.bb);
-      panicBB.context.diSetCurrentLoc(opId.offset);
-      panicBB.context.painc();
-      insertPointBB(after);
-
-      return LLVMConstVariable(mathValue.value, ty, opId);
-    }
-    if (llfn != null) {
-      value = llfn(builder, l, r, unname);
-    }
-
-    return LLVMConstVariable(value ?? l, ty, opId);
+    return OverflowMath.math(this, lhs, rhs, op, opId);
   }
-}
 
-mixin ChildContext on BuildMethods {
   bool _breaked = false;
   bool _returned = false;
 
-  LLVMConstVariable get fn;
-  BuildContext _createChildContext();
+  void ret(Variable? val) {
+    if (!canBr) {
+      // error
+      return;
+    }
+    _returned = true;
+
+    final fn = getLastFnContext()!;
+    if (fn.runFn != null) {
+      fn._compileRetValue = val;
+      var block = fn._runBbAfter;
+      if (this != fn) {
+        block = fn.buildSubBB(name: '_new_ret');
+        fn._runBbAfter = block;
+      }
+
+      if (block != null) _br(block.context);
+      return;
+    }
+
+    dropAll();
+
+    final retOffset = val?.offset ?? Offset.zero;
+
+    if (val != null) {
+      ImplStackTy.addStack(this, val);
+    }
+
+    freeHeap();
+
+    diSetCurrentLoc(retOffset);
+
+    /// return void
+    if (val == null) {
+      llvm.LLVMBuildRetVoid(builder);
+      return;
+    }
+
+    final sret = fn._sret;
+
+    /// return variable
+    if (sret == null) {
+      final fnty = fn._fn.ty as Fn;
+      final v = AbiFn.fnRet(this, fnty, val);
+      // diSetCurrentLoc(retOffset);
+      llvm.LLVMBuildRet(builder, v);
+      return;
+    }
+
+    /// struct ret
+    if (val is LLVMAllocaDelayVariable && !val.created) {
+      val.initProxy(this, sret);
+    } else {
+      sret.storeVariable(this, val);
+    }
+
+    diSetCurrentLoc(retOffset);
+    llvm.LLVMBuildRetVoid(builder);
+  }
 
   void instertFnEntryBB({String name = 'entry'}) {
     final bb = llvm.LLVMAppendBasicBlockInContext(
-        llvmContext, fn.value, name.toChar());
+        llvmContext, getLastFnContext()!.fnValue, name.toChar());
     llvm.LLVMPositionBuilderAtEnd(builder, bb);
   }
 
   LLVMBasicBlock buildSubBB({String name = 'entry'}) {
     final child = _createChildContext();
     final bb = llvm.LLVMCreateBasicBlockInContext(llvmContext, name.toChar());
-    child.fn = fn;
 
     llvm.LLVMPositionBuilderAtEnd(child.builder, bb);
     return LLVMBasicBlock(bb, child, false);
@@ -722,7 +452,7 @@ mixin ChildContext on BuildMethods {
 
   void appendBB(LLVMBasicBlock bb) {
     assert(!bb.inserted);
-    llvm.LLVMAppendExistingBasicBlock(fn.value, bb.bb);
+    llvm.LLVMAppendExistingBasicBlock(getLastFnContext()!.fnValue, bb.bb);
     bb.inserted = true;
   }
 
@@ -748,11 +478,9 @@ mixin ChildContext on BuildMethods {
     return bb;
   }
 
-  ChildContext? get _parent => parent as ChildContext?;
-
   LLVMBasicBlock _getLast() {
     if (loopBBs.isEmpty) {
-      return _parent!._getLast();
+      return parent!._getLast();
     }
     return loopBBs.last;
   }
@@ -760,7 +488,7 @@ mixin ChildContext on BuildMethods {
   LLVMBasicBlock? _getLable(String label) {
     var bb = loopBBs.lastWhereOrNull((element) => element.label == label);
     if (bb == null) {
-      return _parent?._getLable(label);
+      return parent?._getLable(label);
     }
     return bb;
   }
@@ -796,12 +524,12 @@ mixin ChildContext on BuildMethods {
 
   bool get canBr => !_returned && !_breaked;
 
-  void br(ChildContext to) {
+  void br(BuildContext to) {
     if (!canBr) return;
     _br(to);
   }
 
-  void _br(ChildContext to) {
+  void _br(BuildContext to) {
     _breaked = true;
     llvm.LLVMBuildBr(builder, llvm.LLVMGetInsertBlock(to.builder));
   }
@@ -824,6 +552,37 @@ mixin ChildContext on BuildMethods {
     _breaked = true;
 
     llvm.LLVMBuildBr(builder, getLoopBB(null).parent!.bb);
+  }
+
+  /// drop
+  final _freeVal = <Variable>[];
+
+  @override
+  void addFree(Variable val) {
+    _freeVal.add(val);
+  }
+
+  @override
+  void dropAll() {
+    for (var val in _freeVal) {
+      final ty = val.ty;
+      final ident = Identifier.builtIn('drop');
+      final impl = getImplForStruct(ty, ident);
+      final fn = impl?.getFn(ident)?.copyFrom(ty);
+      final fnv = fn?.build();
+      if (fn == null || fnv == null) continue;
+      LLVMValueRef v;
+
+      // fixme: remove
+      if (val.ty is BuiltInTy) {
+        v = val.load(this);
+      } else {
+        v = val.getBaseValue(this);
+      }
+      final type = fn.llty.createFnType(this);
+      llvm.LLVMBuildCall2(
+          builder, type, fnv.getBaseValue(this), [v].toNative(), 1, unname);
+    }
   }
 }
 

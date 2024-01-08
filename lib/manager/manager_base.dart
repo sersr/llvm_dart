@@ -120,7 +120,6 @@ abstract class ManagerBase extends GlobalContext {
     bool isRoot = true,
   }) {
     parser ??= getParser(path)!;
-    context.importHandler = this;
 
     parser.globalImportStmt.values.forEach(action);
 

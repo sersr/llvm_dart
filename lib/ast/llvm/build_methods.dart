@@ -1,15 +1,20 @@
 import 'dart:ffi';
 
+import '../../fs/fs.dart';
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../../parsers/str.dart';
 import '../ast.dart';
+import '../context.dart';
 import '../memory.dart';
 import 'variables.dart';
 
 mixin LLVMTypeMixin {
-  LLVMModuleRef get module;
-  LLVMContextRef get llvmContext;
+  LLVMModuleRef get module => root.module;
+  LLVMContextRef get llvmContext => root.llvmContext;
+  LLVMTargetMachineRef get tm => root.tm;
+
+  RootBuildContext get root => this as RootBuildContext;
 
   LLVMTypeRef get typeVoid {
     return llvm.LLVMVoidTypeInContext(llvmContext);
@@ -128,29 +133,6 @@ mixin LLVMTypeMixin {
     return llvm.LLVMABIAlignmentOfType(td, type);
   }
 
-  LLVMMetadataRef getStructExternDIType(int count) {
-    LLVMMetadataRef loadTy;
-    var size = pointerSize();
-    if (count > size) {
-      final d = count / size;
-      count = d.ceil();
-      loadTy = llvm.LLVMDIBuilderCreateArrayType(dBuilder!, count, size,
-          BuiltInTy.i64.llty.createDIType(this), nullptr, 0);
-    } else {
-      if (count > 4) {
-        loadTy = BuiltInTy.i64.llty.createDIType(this);
-      } else {
-        loadTy = BuiltInTy.i32.llty.createDIType(this);
-      }
-    }
-    return loadTy;
-  }
-
-  LLVMMetadataRef get unit;
-  LLVMMetadataRef get scope;
-
-  LLVMDIBuilderRef? get dBuilder;
-
   void setName(LLVMValueRef ref, String name) {
     llvm.LLVMSetValueName(ref, name.toChar());
   }
@@ -176,18 +158,101 @@ mixin LLVMTypeMixin {
     llvm.LLVMAddCallSiteAttribute(value, index, attr);
   }
 }
+
+mixin Consts on LLVMTypeMixin {
+  LLVMValueRef constI1(int v) {
+    return llvm.LLVMConstInt(i1, v, LLVMFalse);
+  }
+
+  LLVMValueRef constI8(int v, [bool signed = false]) {
+    return llvm.LLVMConstInt(i8, v, signed ? LLVMTrue : LLVMFalse);
+  }
+
+  LLVMValueRef constI16(int v, [bool signed = false]) {
+    return llvm.LLVMConstInt(i16, v, signed ? LLVMTrue : LLVMFalse);
+  }
+
+  LLVMValueRef constI32(int v, [bool signed = false]) {
+    return llvm.LLVMConstInt(i32, v, signed ? LLVMTrue : LLVMFalse);
+  }
+
+  LLVMValueRef constI64(int v, [bool signed = false]) {
+    return llvm.LLVMConstInt(i64, v, signed ? LLVMTrue : LLVMFalse);
+  }
+
+  LLVMValueRef constI128(String v, [bool signed = false]) {
+    return llvm.LLVMConstIntOfString(
+        i128, v.toChar(), signed ? LLVMTrue : LLVMFalse);
+  }
+
+  LLVMValueRef constF32(String v) {
+    return llvm.LLVMConstRealOfString(f32, v.toChar());
+  }
+
+  LLVMValueRef constF64(String v) {
+    return llvm.LLVMConstRealOfString(f64, v.toChar());
+  }
+
+  LLVMValueRef usizeValue(int size) {
+    return BuiltInTy.usize.llty
+        .createValue(ident: Identifier.builtIn('$size'))
+        .getValue(this);
+  }
+
+  LLVMValueRef getString(Identifier ident) {
+    var src = ident.src;
+    var key = src;
+
+    if (!ident.isStr) {
+      key = key.substring(1, key.length - 1);
+    }
+
+    return root.globalStringPut(key, () {
+      if (!ident.isStr) {
+        src = parseStr(src);
+      }
+
+      final (strPtr, length) = src.toNativeUtf8WithLength();
+      final strData = constStr('', strPtr: strPtr, length: length);
+
+      final type = arrayType(BuiltInTy.u8.llty.litType(this), length + 1);
+      final value = llvm.LLVMAddGlobal(module, type, '.str'.toChar());
+      llvm.LLVMSetLinkage(value, LLVMLinkage.LLVMPrivateLinkage);
+      llvm.LLVMSetGlobalConstant(value, LLVMTrue);
+      llvm.LLVMSetInitializer(value, strData);
+      llvm.LLVMSetUnnamedAddress(value, LLVMUnnamedAddr.LLVMGlobalUnnamedAddr);
+      return value;
+    });
+  }
+
+  /// length: 是 UTF-8 编码形式的数组长度，不可直接从 [String.length] 获取
+  LLVMValueRef constStr(String str, {Pointer<Char>? strPtr, int? length}) {
+    assert(strPtr == null || length != null);
+
+    if (length == null || strPtr == null) {
+      final (value, nLength) = str.toNativeUtf8WithLength();
+      strPtr = value;
+      length = nLength;
+    }
+
+    return llvm.LLVMConstStringInContext(
+        llvmContext, strPtr, length, LLVMFalse);
+  }
+
+  LLVMValueRef constArray(LLVMTypeRef ty, List<LLVMValueRef> vals) {
+    final alloca = llvm.LLVMConstArray(ty, vals.toNative(), vals.length);
+    return alloca;
+  }
+}
+
 mixin BuildMethods on LLVMTypeMixin {
   LLVMBuilderRef get builder;
-  BuildMethods? get parent;
 
   bool isFnBBContext = false;
   LLVMValueRef? _allocaInst;
-  BuildMethods? getLastFnContext() {
-    if (isFnBBContext) return this;
-    return parent?.getLastFnContext();
-  }
 
   LLVMValueRef get fnValue;
+  BuildMethods? getLastFnContext();
 
   LLVMBuilderRef? get allocaBuilder {
     final fnContext = getLastFnContext();
@@ -231,8 +296,30 @@ mixin BuildMethods on LLVMTypeMixin {
   }
 
   void addFree(Variable val) {}
-
   void dropAll() {}
+
+  LLVMMetadataRef getStructExternDIType(int count) {
+    LLVMMetadataRef loadTy;
+    var size = pointerSize();
+    if (count > size) {
+      final d = count / size;
+      count = d.ceil();
+      loadTy = llvm.LLVMDIBuilderCreateArrayType(dBuilder!, count, size,
+          BuiltInTy.i64.llty.createDIType(this), nullptr, 0);
+    } else {
+      if (count > 4) {
+        loadTy = BuiltInTy.i64.llty.createDIType(this);
+      } else {
+        loadTy = BuiltInTy.i32.llty.createDIType(this);
+      }
+    }
+    return loadTy;
+  }
+
+  LLVMMetadataRef get unit;
+  LLVMMetadataRef get scope;
+
+  LLVMDIBuilderRef? get dBuilder;
 
   void diBuilderDeclare(Identifier ident, LLVMValueRef alloca, Ty ty) {
     if (!ident.isValid) return;
@@ -292,117 +379,9 @@ mixin BuildMethods on LLVMTypeMixin {
     return llvm.LLVMBuildStore(builder, val, alloca);
   }
 
-  void memcopy(Variable dst, Variable src, LLVMValueRef size) {
-    final dstValue = dst.getBaseValue(this);
-    final srcValue = src.getBaseValue(this);
-    llvm.LLVMBuildMemCpy(builder, dstValue, 0, srcValue, 0, size);
-  }
-}
-
-mixin Consts on BuildMethods {
-  LLVMValueRef constI1(int v) {
-    return llvm.LLVMConstInt(i1, v, LLVMFalse);
-  }
-
-  LLVMValueRef constI8(int v, [bool signed = false]) {
-    return llvm.LLVMConstInt(i8, v, signed ? LLVMTrue : LLVMFalse);
-  }
-
-  LLVMValueRef constI16(int v, [bool signed = false]) {
-    return llvm.LLVMConstInt(i16, v, signed ? LLVMTrue : LLVMFalse);
-  }
-
-  LLVMValueRef constI32(int v, [bool signed = false]) {
-    return llvm.LLVMConstInt(i32, v, signed ? LLVMTrue : LLVMFalse);
-  }
-
-  LLVMValueRef constI64(int v, [bool signed = false]) {
-    return llvm.LLVMConstInt(i64, v, signed ? LLVMTrue : LLVMFalse);
-  }
-
-  LLVMValueRef constI128(String v, [bool signed = false]) {
-    return llvm.LLVMConstIntOfString(
-        i128, v.toChar(), signed ? LLVMTrue : LLVMFalse);
-  }
-
-  LLVMValueRef constF32(String v) {
-    return llvm.LLVMConstRealOfString(f32, v.toChar());
-  }
-
-  LLVMValueRef constF64(String v) {
-    return llvm.LLVMConstRealOfString(f64, v.toChar());
-  }
-
-  final _globalString = <String, LLVMValueRef>{};
-
-  Consts? _root;
-  Consts get root {
-    if (_root != null) return _root!;
-    Consts? c = this;
-    while (c != null) {
-      final parent = c.parent as Consts?;
-      if (parent == null) {
-        break;
-      }
-      c = parent;
-    }
-    return _root = c ?? this;
-  }
-
-  LLVMValueRef getString(Identifier ident) {
-    var src = ident.src;
-    var key = src;
-
-    if (!ident.isStr) {
-      key = key.substring(1, key.length - 1);
-    }
-
-    return root._globalString.putIfAbsent(key, () {
-      if (!ident.isStr) {
-        src = parseStr(src);
-      }
-
-      final (strPtr, length) = src.toNativeUtf8WithLength();
-      final strData = constStr('', strPtr: strPtr, length: length);
-
-      final type = arrayType(BuiltInTy.u8.llty.litType(this), length + 1);
-      final value = llvm.LLVMAddGlobal(module, type, '.str'.toChar());
-      llvm.LLVMSetLinkage(value, LLVMLinkage.LLVMPrivateLinkage);
-      llvm.LLVMSetGlobalConstant(value, LLVMTrue);
-      llvm.LLVMSetInitializer(value, strData);
-      llvm.LLVMSetUnnamedAddress(value, LLVMUnnamedAddr.LLVMGlobalUnnamedAddr);
-      return value;
-    });
-  }
-
-  /// length: 是 UTF-8 编码形式的数组长度，不可直接从 [String.length] 获取
-  LLVMValueRef constStr(String str, {Pointer<Char>? strPtr, int? length}) {
-    assert(strPtr == null || length != null);
-
-    if (length == null || strPtr == null) {
-      final (value, nLength) = str.toNativeUtf8WithLength();
-      strPtr = value;
-      length = nLength;
-    }
-
-    return llvm.LLVMConstStringInContext(
-        llvmContext, strPtr, length, LLVMFalse);
-  }
-
-  LLVMValueRef constArray(LLVMTypeRef ty, List<LLVMValueRef> vals) {
-    final alloca = llvm.LLVMConstArray(ty, vals.toNative(), vals.length);
-    return alloca;
-  }
-
   LLVMValueRef createArray(LLVMTypeRef ty, LLVMValueRef size, {String? name}) {
     final n = name ?? '_';
     return alloctorArr(ty, size, n);
-  }
-
-  LLVMValueRef usizeValue(int size) {
-    return BuiltInTy.usize.llty
-        .createValue(ident: Identifier.builtIn('$size'))
-        .getValue(this);
   }
 
   LLVMValueRef alloctorArr(LLVMTypeRef type, LLVMValueRef size, String name) {
@@ -415,16 +394,6 @@ mixin Consts on BuildMethods {
       llvm.LLVMDisposeBuilder(nb);
     }
     return alloca;
-  }
-
-  LLVMValueRef createMalloc(LLVMTypeRef type, {String? name}) {
-    final n = name ?? '_';
-    return llvm.LLVMBuildMalloc(builder, type, n.toChar());
-  }
-
-  LLVMValueRef createMallocArr(LLVMTypeRef type, int size, {String? name}) {
-    final n = name ?? '_';
-    return llvm.LLVMBuildArrayMalloc(builder, type, constI64(size), n.toChar());
   }
 }
 
@@ -459,4 +428,44 @@ mixin Cast on BuildMethods {
     }
     return null;
   }
+}
+
+mixin DebugMixin on BuildMethods {
+  /// ----
+
+  LLVMMetadataRef? _unit;
+  @override
+  LLVMMetadataRef get unit => _unit!;
+
+  LLVMDIBuilderRef? _dBuilder;
+
+  @override
+  LLVMDIBuilderRef? get dBuilder => _dBuilder;
+
+  // final _dBuilders = <LLVMDIBuilderRef>[];
+
+  void init(DebugMixin parent) {
+    _unit = parent._unit;
+    _dBuilder = parent._dBuilder;
+  }
+
+  String? get currentPath;
+
+  void debugInit() {
+    assert(this.currentPath != null && _unit == null && _dBuilder == null);
+    _dBuilder = llvm.LLVMCreateDIBuilder(module);
+    // _dBuilders.add(_dBuilder!);
+    final currentPath = this.currentPath!;
+    final path = currentDir.childFile(currentPath);
+    final dir = path.parent.path;
+
+    _unit = llvm.LLVMCreateCompileUnit(
+        _dBuilder!, path.basename.toChar(), dir.toChar());
+  }
+
+  // void finalize() {
+  //   for (var builder in _dBuilders) {
+  //     llvm.LLVMDIBuilderFinalize(builder);
+  //   }
+  // }
 }

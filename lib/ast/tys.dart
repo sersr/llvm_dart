@@ -93,7 +93,7 @@ abstract class GlobalContext {
 mixin Tys<V extends LifeCycleVariable> {
   Tys defaultImport(String path);
   String? currentPath;
-  late GlobalContext importHandler;
+  GlobalContext get importHandler;
 
   final imports = <ImportPath, Tys>{};
 

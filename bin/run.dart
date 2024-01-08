@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:llvm_dart/abi/abi_fn.dart';
 import 'package:llvm_dart/fs/fs.dart';
+import 'package:llvm_dart/llvm_dart.dart';
 import 'package:llvm_dart/manager/build_run.dart';
 import 'package:llvm_dart/manager/manager.dart';
 import 'package:llvm_dart/run.dart';
@@ -114,20 +115,26 @@ var abi = Abi.arm64;
 
 Future<void> run(Options options) {
   return runPrint(() async {
-    final project = ProjectManager(stdRoot: options.stdFix);
     final path = options.binFile.path;
-    project.isDebug = options.isDebug;
 
     var target = '$abi-apple-darwin22.4.0';
     if (Platform.isWindows) {
       abi = Abi.x86_64;
       target = "$abi-pc-windows-msvc";
     }
+    llvm.initLLVM();
+
+    final project = ProjectManager(
+      stdRoot: options.stdFix,
+      name: options.binFile.basename,
+      abi: abi,
+      triple: target,
+    );
+
+    project.isDebug = options.isDebug;
 
     final root = project.build(
       path,
-      abi: abi,
-      target: target,
       afterAnalysis: () {
         if (options.logAst) project.printAst();
       },

@@ -4,9 +4,13 @@ import '../ast/tys.dart';
 import 'manager_base.dart';
 
 class Analyzer extends ManagerBase {
+  Analyzer() {
+    rootAnalysis.importHandler = this;
+  }
+
   AnalysisContext addKcFile(String path) {
     return Identifier.run(() {
-      final alc = AnalysisContext.root();
+      final alc = AnalysisContext.root(rootAnalysis);
       baseProcess(
         context: alc,
         path: path,

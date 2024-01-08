@@ -7,20 +7,27 @@ class RootAnalysis with Tys<AnalysisVariable> {
   Tys<LifeCycleVariable> defaultImport(String path) {
     throw UnimplementedError();
   }
+
+  @override
+  late GlobalContext importHandler;
 }
 
 class AnalysisContext with Tys<AnalysisVariable> {
-  AnalysisContext.root() : parent = null;
+  AnalysisContext.root(this.root) : parent = null;
 
-  AnalysisContext._(AnalysisContext this.parent);
+  AnalysisContext._(AnalysisContext this.parent, this.root);
   @override
   AnalysisContext defaultImport(String path) {
-    return AnalysisContext.root()..currentPath = path;
+    return AnalysisContext.root(root)..currentPath = path;
   }
 
+  final RootAnalysis root;
+
+  @override
+  GlobalContext get importHandler => root.importHandler;
+
   AnalysisContext childContext() {
-    final c = AnalysisContext._(this);
-    c.importHandler = importHandler;
+    final c = AnalysisContext._(this, root);
     children.add(c);
     return c;
   }

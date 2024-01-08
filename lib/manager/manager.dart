@@ -5,12 +5,19 @@ import '../ast/buildin.dart';
 import '../ast/llvm/llvm_context.dart';
 import '../ast/llvm/variables.dart';
 import '../ast/tys.dart';
-import '../fs/fs.dart';
-import '../llvm_dart.dart';
 import 'manager_base.dart';
 
 class ProjectManager extends ManagerBase {
-  ProjectManager({this.stdRoot = ''});
+  ProjectManager(
+      {this.stdRoot = '',
+      String? triple,
+      String name = 'root',
+      Abi abi = Abi.arm64})
+      : rootBuildContext =
+            RootBuildContext(targetTriple: triple, name: name, abi: abi) {
+    rootBuildContext.importHandler = this;
+    rootAnalysisContext.importHandler = this;
+  }
 
   @override
   final String stdRoot;
@@ -18,7 +25,7 @@ class ProjectManager extends ManagerBase {
 
   AnalysisContext analysis(String path) {
     return Identifier.run(() {
-      final alc = AnalysisContext.root();
+      final alc = AnalysisContext.root(rootAnalysisContext);
       alcs[path] = alc;
       baseProcess(
         context: alc,
@@ -29,19 +36,15 @@ class ProjectManager extends ManagerBase {
     });
   }
 
-  final rootBuildContext = RootBuildContext();
+  final RootBuildContext rootBuildContext;
   final rootAnalysisContext = RootAnalysis();
 
-  BuildContext build(String path,
-      {String? target, Abi abi = Abi.arm64, void Function()? afterAnalysis}) {
+  BuildContext build(String path, {void Function()? afterAnalysis}) {
     return Identifier.run(() {
-      llvm.initLLVM();
-      final fileName = currentDir.childFile(path).basename;
-      final root =
-          BuildContext.root(targetTriple: target, abi: abi, name: fileName);
+      final root = BuildContext.root(rootBuildContext);
       llvmCtxs[path] = root;
       final parser = getParser(path);
-      final alc = AnalysisContext.root();
+      final alc = AnalysisContext.root(rootAnalysisContext);
       alcs[path] = alc;
 
       /// set path
@@ -63,7 +66,7 @@ class ProjectManager extends ManagerBase {
 
       baseProcess(context: alc, path: path, parser: parser, action: actionAlc);
       afterAnalysis?.call();
-      root.init(isDebug);
+      if (isDebug) root.debugInit();
 
       baseProcess(context: root, path: path, parser: parser, action: action);
 
@@ -82,7 +85,7 @@ class ProjectManager extends ManagerBase {
         mainFn.build();
       }
 
-      root.finalize();
+      // root.finalize();
 
       return root;
     });

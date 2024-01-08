@@ -61,7 +61,7 @@ class LLVMTypeLit extends LLVMType {
     return litType(c);
   }
 
-  LLVMTypeRef litType(BuildMethods c) {
+  LLVMTypeRef litType(LLVMTypeMixin c) {
     final kind = ty.ty.convert;
     LLVMTypeRef type;
     switch (kind) {
@@ -179,7 +179,7 @@ class LLVMTypeLit extends LLVMType {
   }
 
   @override
-  LLVMMetadataRef createDIType(LLVMTypeMixin c) {
+  LLVMMetadataRef createDIType(BuildMethods c) {
     final name = ty.ty.name;
 
     if (ty.ty == LitKind.kVoid) {
