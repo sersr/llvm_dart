@@ -1,7 +1,5 @@
 import '../../llvm_core.dart';
-import '../../llvm_dart.dart';
 import '../ast.dart';
-import '../context.dart';
 import '../tys.dart';
 import 'build_methods.dart';
 import 'llvm_types.dart';
@@ -9,13 +7,13 @@ import 'llvm_types.dart';
 abstract class Variable extends LifeCycleVariable {
   Variable(this.ident);
   bool isRef = false;
-  LLVMValueRef load(covariant BuildMethods c);
-  LLVMTypeRef getDerefType(BuildContext c);
-  Variable getRef(BuildContext c, Identifier ident) {
+  LLVMValueRef load(StoreLoadMixin c);
+
+  LLVMConstVariable getRef(StoreLoadMixin c, Identifier ident) {
     return LLVMConstVariable(getBaseValue(c), RefTy(ty), ident);
   }
 
-  LLVMValueRef getBaseValue(covariant BuildMethods c) => load(c);
+  LLVMValueRef getBaseValue(StoreLoadMixin c) => load(c);
   Ty get ty;
 
   @override
@@ -25,7 +23,7 @@ abstract class Variable extends LifeCycleVariable {
 
   Variable newIdent(Identifier id);
 
-  Variable defaultDeref(BuildContext c, Identifier ident) {
+  Variable defaultDeref(StoreLoadMixin c, Identifier ident) {
     final cTy = ty;
     if (cTy is! RefTy) return this;
 
@@ -51,14 +49,14 @@ abstract class StoreVariable extends Variable {
   /// 在 let 表达式使用，判断是否需要分配空间或者直接使用当前对象
   bool isTemp = true;
   LLVMValueRef get alloca;
-  LLVMValueRef store(BuildContext c, LLVMValueRef val);
-  LLVMValueRef storeVariable(BuildContext c, Variable val);
+  LLVMValueRef store(StoreLoadMixin c, LLVMValueRef val);
+  LLVMValueRef storeVariable(StoreLoadMixin c, Variable val);
 
   @override
   StoreVariable newIdent(Identifier id);
 
   @override
-  LLVMValueRef getBaseValue(BuildContext c) {
+  LLVMValueRef getBaseValue(StoreLoadMixin c) {
     return alloca;
   }
 }
@@ -75,18 +73,13 @@ class LLVMConstVariable extends Variable {
   final LLVMValueRef value;
 
   @override
-  LLVMValueRef getBaseValue(BuildContext c) {
+  LLVMValueRef getBaseValue(BuildMethods c) {
     return value;
   }
 
   @override
-  LLVMValueRef load(BuildContext c) {
+  LLVMValueRef load(BuildMethods c) {
     return value;
-  }
-
-  @override
-  LLVMTypeRef getDerefType(BuildContext c) {
-    return llvm.LLVMTypeOf(value);
   }
 
   @override
@@ -105,7 +98,7 @@ mixin DelayVariableMixin {
   bool get created => _alloca != null;
 
   /// 从 [proxy] 中获取地址空间
-  bool initProxy(BuildContext c, [StoreVariable? proxy]) {
+  bool initProxy(StoreLoadMixin c, [StoreVariable? proxy]) {
     final result = _alloca == null;
     _alloca ??= _delayLoad(proxy);
     if (result) {
@@ -114,7 +107,7 @@ mixin DelayVariableMixin {
     return result;
   }
 
-  void storeInit(BuildContext c);
+  void storeInit(StoreLoadMixin c);
 
   LLVMValueRef get alloca => _alloca ??= _delayLoad(null);
 }
@@ -136,12 +129,7 @@ class LLVMAllocaDelayVariable extends StoreVariable with DelayVariableMixin {
   final LLVMValueRef? initAlloca;
 
   @override
-  LLVMTypeRef getDerefType(BuildContext c) {
-    return type;
-  }
-
-  @override
-  LLVMValueRef getBaseValue(BuildContext c) {
+  LLVMValueRef getBaseValue(StoreLoadMixin c) {
     initProxy(c);
     return super.getBaseValue(c);
   }
@@ -153,25 +141,25 @@ class LLVMAllocaDelayVariable extends StoreVariable with DelayVariableMixin {
   }
 
   @override
-  LLVMValueRef load(BuildContext c, {Offset? o}) {
+  LLVMValueRef load(StoreLoadMixin c, {Offset? o}) {
     if (!created && initAlloca != null) return initAlloca!;
     return c.load2(type, alloca, '', o ?? offset);
   }
 
   @override
-  LLVMValueRef store(BuildContext c, LLVMValueRef val, {Offset? o}) {
+  LLVMValueRef store(StoreLoadMixin c, LLVMValueRef val, {Offset? o}) {
     initProxy(c);
     return c.store(alloca, val, o ?? offset);
   }
 
   @override
-  LLVMValueRef storeVariable(BuildContext c, Variable val, {Offset? o}) {
+  LLVMValueRef storeVariable(StoreLoadMixin c, Variable val, {Offset? o}) {
     initProxy(c);
     return c.store(alloca, val.load(c), o ?? offset);
   }
 
   @override
-  void storeInit(BuildContext c, {Offset? o}) {
+  void storeInit(StoreLoadMixin c, {Offset? o}) {
     if (initAlloca == null) return;
     c.store(alloca, initAlloca!, o ?? offset);
   }
@@ -201,17 +189,12 @@ class _LLVMAllocaDelayVariableProxy extends StoreVariable
   bool get created => _proxy.created;
 
   @override
-  LLVMValueRef getBaseValue(covariant BuildContext c) {
+  LLVMValueRef getBaseValue(StoreLoadMixin c) {
     return _proxy.getBaseValue(c);
   }
 
   @override
-  LLVMTypeRef getDerefType(BuildContext c) {
-    return _proxy.getDerefType(c);
-  }
-
-  @override
-  Variable getRef(BuildContext c, Identifier ident) {
+  LLVMConstVariable getRef(StoreLoadMixin c, Identifier ident) {
     return _proxy.getRef(c, ident);
   }
 
@@ -219,12 +202,12 @@ class _LLVMAllocaDelayVariableProxy extends StoreVariable
   LLVMValueRef? get initAlloca => _proxy.initAlloca;
 
   @override
-  bool initProxy(BuildContext c, [StoreVariable? proxy]) {
+  bool initProxy(StoreLoadMixin c, [StoreVariable? proxy]) {
     return _proxy.initProxy(c, proxy);
   }
 
   @override
-  LLVMValueRef load(covariant BuildContext c, {Offset? o}) {
+  LLVMValueRef load(StoreLoadMixin c, {Offset? o}) {
     return _proxy.load(c, o: o ?? offset);
   }
 
@@ -234,17 +217,17 @@ class _LLVMAllocaDelayVariableProxy extends StoreVariable
   }
 
   @override
-  LLVMValueRef store(BuildContext c, LLVMValueRef val, {Offset? o}) {
+  LLVMValueRef store(StoreLoadMixin c, LLVMValueRef val, {Offset? o}) {
     return _proxy.store(c, val, o: o ?? offset);
   }
 
   @override
-  void storeInit(BuildContext c, {Offset? o}) {
+  void storeInit(StoreLoadMixin c, {Offset? o}) {
     _proxy.storeInit(c, o: o ?? offset);
   }
 
   @override
-  LLVMValueRef storeVariable(BuildContext c, Variable val, {Offset? o}) {
+  LLVMValueRef storeVariable(StoreLoadMixin c, Variable val, {Offset? o}) {
     return _proxy.storeVariable(c, val, o: o ?? offset);
   }
 
@@ -268,23 +251,18 @@ class LLVMAllocaVariable extends StoreVariable {
   final Ty ty;
 
   @override
-  LLVMValueRef load(BuildContext c) {
+  LLVMValueRef load(StoreLoadMixin c) {
     return c.load2(type, alloca, '', offset);
   }
 
   @override
-  LLVMValueRef store(BuildContext c, LLVMValueRef val) {
+  LLVMValueRef store(StoreLoadMixin c, LLVMValueRef val) {
     return c.store(alloca, val, offset);
   }
 
   @override
-  LLVMValueRef storeVariable(BuildContext c, Variable val) {
+  LLVMValueRef storeVariable(StoreLoadMixin c, Variable val) {
     return c.store(alloca, val.load(c), offset);
-  }
-
-  @override
-  LLVMTypeRef getDerefType(BuildContext c) {
-    return type;
   }
 
   @override
@@ -303,7 +281,7 @@ class LLVMLitVariable extends Variable {
   final LLVMValueRef Function(Consts c, BuiltInTy? ty) _load;
   LLVMValueRef? _cache;
   @override
-  LLVMValueRef load(BuildContext c, {BuiltInTy? ty}) {
+  LLVMValueRef load(StoreLoadMixin c, {BuiltInTy? ty}) {
     return _cache ??= _load(c, ty);
   }
 
@@ -312,16 +290,11 @@ class LLVMLitVariable extends Variable {
   }
 
   @override
-  LLVMTypeRef getDerefType(BuildContext c) {
-    return llvm.LLVMTypeOf(load(c));
-  }
-
-  @override
   LLVMLitVariable newIdent(Identifier id) {
     return LLVMLitVariable(_load, ty, value, id);
   }
 
-  LLVMAllocaDelayVariable createAlloca(BuildContext c, Identifier ident,
+  LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident,
       [Ty? tty]) {
     if (tty is! BuiltInTy) {
       tty = ty;

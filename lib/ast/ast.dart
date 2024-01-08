@@ -545,7 +545,7 @@ abstract class Ty extends BuildMixin with EquatableMixin {
 
   LLVMType get llty;
 
-  LLVMTypeRef typeOf(LLVMTypeMixin c) => llty.typeOf(c);
+  LLVMTypeRef typeOf(StoreLoadMixin c) => llty.typeOf(c);
 
   Ty getRealTy(BuildContext c) => this;
 
@@ -1477,18 +1477,18 @@ class ArrayLLVMType extends LLVMType {
   @override
   final ArrayTy ty;
   @override
-  LLVMTypeRef typeOf(BuildContext c) {
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
     return c.arrayType(ty.elementTy.typeOf(c), ty.size);
   }
 
   @override
-  int getBytes(BuildContext c) {
+  int getBytes(StoreLoadMixin c) {
     return c.typeSize(typeOf(c));
   }
 
   @override
   LLVMAllocaDelayVariable createAlloca(
-      BuildContext c, Identifier ident, LLVMValueRef? base) {
+      StoreLoadMixin c, Identifier ident, LLVMValueRef? base) {
     final val = LLVMAllocaDelayVariable(base, (proxy) {
       if (proxy != null) return proxy.getBaseValue(c);
 
@@ -1499,13 +1499,13 @@ class ArrayLLVMType extends LLVMType {
     return val;
   }
 
-  LLVMConstVariable createArray(BuildContext c, List<LLVMValueRef> values) {
+  LLVMConstVariable createArray(StoreLoadMixin c, List<LLVMValueRef> values) {
     final value = c.constArray(ty.elementTy.typeOf(c), values);
     return LLVMConstVariable(value, ty, Identifier.none);
   }
 
   Variable getElement(
-      BuildContext c, Variable value, LLVMValueRef index, Identifier id) {
+      StoreLoadMixin c, Variable value, LLVMValueRef index, Identifier id) {
     final indics = <LLVMValueRef>[index];
 
     final p = value.getBaseValue(c);
@@ -1523,13 +1523,13 @@ class ArrayLLVMType extends LLVMType {
     return vv;
   }
 
-  Variable toStr(BuildContext c, Variable value) {
+  Variable toStr(StoreLoadMixin c, Variable value) {
     return LLVMConstVariable(
         value.getBaseValue(c), LitKind.kStr.ty, Identifier.none);
   }
 
   @override
-  LLVMMetadataRef createDIType(covariant BuildContext c) {
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
     return llvm.LLVMDIBuilderCreateArrayType(
         c.dBuilder!,
         ty.size,
@@ -1610,7 +1610,7 @@ class LLVMAliasType extends LLVMType {
   final TypeAliasTy ty;
 
   @override
-  LLVMTypeRef typeOf(BuildContext c) {
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
     final base = ty.baseTy;
     if (base == null) return c.pointer();
     final bty = base.grt(c);
@@ -1618,7 +1618,7 @@ class LLVMAliasType extends LLVMType {
   }
 
   @override
-  int getBytes(BuildContext c) {
+  int getBytes(StoreLoadMixin c) {
     final base = ty.baseTy;
     if (base == null) return c.pointerSize();
     final bty = base.grt(c);
@@ -1626,7 +1626,7 @@ class LLVMAliasType extends LLVMType {
   }
 
   @override
-  LLVMMetadataRef createDIType(covariant BuildContext c) {
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
     final base = ty.baseTy;
     if (base == null) {
       return llvm.LLVMDIBuilderCreateBasicType(

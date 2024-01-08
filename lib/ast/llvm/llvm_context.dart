@@ -88,12 +88,13 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
 
 class BuildContext
     with
+        Tys<Variable>,
         LLVMTypeMixin,
         BuildMethods,
-        Tys<Variable>,
         Consts,
-        OverflowMath,
         DebugMixin,
+        StoreLoadMixin,
+        OverflowMath,
         Cast {
   BuildContext._baseChild(BuildContext this.parent) : root = parent.root {
     init(parent!);
@@ -584,9 +585,7 @@ class BuildContext
           builder, type, fnv.getBaseValue(this), [v].toNative(), 1, unname);
     }
   }
-}
 
-extension FnContext on BuildContext {
   void initFnParamsStart(
       LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
       {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {

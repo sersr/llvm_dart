@@ -7,6 +7,7 @@ import '../../parsers/str.dart';
 import '../ast.dart';
 import '../context.dart';
 import '../memory.dart';
+import '../tys.dart';
 import 'variables.dart';
 
 mixin LLVMTypeMixin {
@@ -114,23 +115,6 @@ mixin LLVMTypeMixin {
       }
     }
     return loadTy;
-  }
-
-  int getAlignSize(Ty ty) {
-    final size = ty.llty.getBytes(this);
-    final max = pointerSize();
-    if (size >= max) {
-      return max;
-    } else if (size >= 4) {
-      return 4;
-    }
-    return 1;
-  }
-
-  int getBaseAlignSize(Ty ty) {
-    final type = ty.typeOf(this);
-    final td = llvm.LLVMGetModuleDataLayout(module);
-    return llvm.LLVMABIAlignmentOfType(td, type);
   }
 
   void setName(LLVMValueRef ref, String name) {
@@ -298,56 +282,10 @@ mixin BuildMethods on LLVMTypeMixin {
   void addFree(Variable val) {}
   void dropAll() {}
 
-  LLVMMetadataRef getStructExternDIType(int count) {
-    LLVMMetadataRef loadTy;
-    var size = pointerSize();
-    if (count > size) {
-      final d = count / size;
-      count = d.ceil();
-      loadTy = llvm.LLVMDIBuilderCreateArrayType(dBuilder!, count, size,
-          BuiltInTy.i64.llty.createDIType(this), nullptr, 0);
-    } else {
-      if (count > 4) {
-        loadTy = BuiltInTy.i64.llty.createDIType(this);
-      } else {
-        loadTy = BuiltInTy.i32.llty.createDIType(this);
-      }
-    }
-    return loadTy;
-  }
-
   LLVMMetadataRef get unit;
   LLVMMetadataRef get scope;
 
   LLVMDIBuilderRef? get dBuilder;
-
-  void diBuilderDeclare(Identifier ident, LLVMValueRef alloca, Ty ty) {
-    if (!ident.isValid) return;
-    final name = ident.src;
-    final (namePointer, length) = name.toNativeUtf8WithLength();
-    final dBuilder = this.dBuilder;
-    if (dBuilder == null) return;
-    final dTy = ty.llty.createDIType(this);
-    final dvariable = llvm.LLVMDIBuilderCreateParameterVariable(
-        dBuilder,
-        scope,
-        namePointer,
-        length,
-        0,
-        llvm.LLVMDIScopeGetFile(unit),
-        ident.offset.row,
-        dTy,
-        LLVMFalse,
-        0);
-
-    final expr = llvm.LLVMDIBuilderCreateExpression(dBuilder, nullptr, 0);
-    final loc = llvm.LLVMDIBuilderCreateDebugLocation(
-        llvmContext, ident.offset.row, ident.offset.column, scope, nullptr);
-
-    final bb = llvm.LLVMGetInsertBlock(builder);
-    llvm.LLVMDIBuilderInsertDeclareAtEnd(
-        dBuilder, alloca, dvariable, expr, loc, bb);
-  }
 
   void diSetCurrentLoc(Offset offset) {
     if (!offset.isValid) return;
@@ -468,4 +406,70 @@ mixin DebugMixin on BuildMethods {
   //     llvm.LLVMDIBuilderFinalize(builder);
   //   }
   // }
+}
+
+/// 隐藏[BuildContext]内容，为[LLVMType],[Variable] 提供类型支持
+mixin StoreLoadMixin on Tys<Variable>, BuildMethods, Consts, DebugMixin {
+  int getAlignSize(Ty ty) {
+    final size = ty.llty.getBytes(this);
+    final max = pointerSize();
+    if (size >= max) {
+      return max;
+    } else if (size >= 4) {
+      return 4;
+    }
+    return 1;
+  }
+
+  int getBaseAlignSize(Ty ty) {
+    final type = ty.typeOf(this);
+    final td = llvm.LLVMGetModuleDataLayout(module);
+    return llvm.LLVMABIAlignmentOfType(td, type);
+  }
+
+  LLVMMetadataRef getStructExternDIType(int count) {
+    LLVMMetadataRef loadTy;
+    var size = pointerSize();
+    if (count > size) {
+      final d = count / size;
+      count = d.ceil();
+      loadTy = llvm.LLVMDIBuilderCreateArrayType(dBuilder!, count, size,
+          BuiltInTy.i64.llty.createDIType(this), nullptr, 0);
+    } else {
+      if (count > 4) {
+        loadTy = BuiltInTy.i64.llty.createDIType(this);
+      } else {
+        loadTy = BuiltInTy.i32.llty.createDIType(this);
+      }
+    }
+    return loadTy;
+  }
+
+  void diBuilderDeclare(Identifier ident, LLVMValueRef alloca, Ty ty) {
+    if (!ident.isValid) return;
+    final name = ident.src;
+    final (namePointer, length) = name.toNativeUtf8WithLength();
+    final dBuilder = this.dBuilder;
+    if (dBuilder == null) return;
+    final dTy = ty.llty.createDIType(this);
+    final dvariable = llvm.LLVMDIBuilderCreateParameterVariable(
+        dBuilder,
+        scope,
+        namePointer,
+        length,
+        0,
+        llvm.LLVMDIScopeGetFile(unit),
+        ident.offset.row,
+        dTy,
+        LLVMFalse,
+        0);
+
+    final expr = llvm.LLVMDIBuilderCreateExpression(dBuilder, nullptr, 0);
+    final loc = llvm.LLVMDIBuilderCreateDebugLocation(
+        llvmContext, ident.offset.row, ident.offset.column, scope, nullptr);
+
+    final bb = llvm.LLVMGetInsertBlock(builder);
+    llvm.LLVMDIBuilderInsertDeclareAtEnd(
+        dBuilder, alloca, dvariable, expr, loc, bb);
+  }
 }

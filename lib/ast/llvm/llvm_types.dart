@@ -10,7 +10,6 @@ import '../ast.dart';
 import '../expr.dart';
 import '../memory.dart';
 import 'build_methods.dart';
-import 'llvm_context.dart';
 import 'variables.dart';
 
 class LLVMRawValue {
@@ -32,13 +31,13 @@ class LLVMRawValue {
 
 abstract class LLVMType {
   Ty get ty;
-  int getBytes(covariant LLVMTypeMixin c);
-  LLVMTypeRef typeOf(covariant LLVMTypeMixin c);
+  int getBytes(StoreLoadMixin c);
+  LLVMTypeRef typeOf(StoreLoadMixin c);
 
-  LLVMMetadataRef createDIType(covariant LLVMTypeMixin c);
+  LLVMMetadataRef createDIType(StoreLoadMixin c);
 
   LLVMAllocaDelayVariable createAlloca(
-      BuildContext c, Identifier ident, LLVMValueRef? base) {
+      StoreLoadMixin c, Identifier ident, LLVMValueRef? base) {
     final type = typeOf(c);
 
     return LLVMAllocaDelayVariable(base, (proxy) {
@@ -57,7 +56,7 @@ class LLVMTypeLit extends LLVMType {
   final BuiltInTy ty;
 
   @override
-  LLVMTypeRef typeOf(BuildContext c) {
+  LLVMTypeRef typeOf(LLVMTypeMixin c) {
     return litType(c);
   }
 
@@ -179,7 +178,7 @@ class LLVMTypeLit extends LLVMType {
   }
 
   @override
-  LLVMMetadataRef createDIType(BuildMethods c) {
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
     final name = ty.ty.name;
 
     if (ty.ty == LitKind.kVoid) {
@@ -212,17 +211,18 @@ class LLVMFnType extends LLVMType {
   Ty get ty => fn;
 
   Variable createAllocaParam(
-      BuildContext c, Identifier ident, LLVMValueRef val) {
+      StoreLoadMixin c, Identifier ident, LLVMValueRef val) {
     return LLVMConstVariable(val, ty, ident);
   }
 
   @protected
   @override
-  LLVMTypeRef typeOf(BuildContext c) {
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
     return c.pointer();
   }
 
-  LLVMTypeRef createFnType(BuildContext c, [Set<AnalysisVariable>? variables]) {
+  LLVMTypeRef createFnType(StoreLoadMixin c,
+      [Set<AnalysisVariable>? variables]) {
     final params = fn.fnSign.fnDecl.params;
     final list = <LLVMTypeRef>[];
     var retTy = fn.getRetTy(c);
@@ -276,7 +276,7 @@ class LLVMFnType extends LLVMType {
   late final _cacheFns = <ListKey, LLVMConstVariable>{};
 
   LLVMConstVariable createFunction(
-      BuildContext c,
+      StoreLoadMixin c,
       Set<AnalysisVariable>? variables,
       void Function(LLVMConstVariable fnValue) after) {
     final key = ListKey(variables?.toList() ?? []);
@@ -317,7 +317,7 @@ class LLVMFnType extends LLVMType {
   }
 
   LLVMMetadataRef? _scope;
-  LLVMMetadataRef? createScope(BuildContext c) {
+  LLVMMetadataRef? createScope(StoreLoadMixin c) {
     final dBuilder = c.dBuilder;
     if (dBuilder == null) return null;
 
@@ -359,12 +359,12 @@ class LLVMFnType extends LLVMType {
   }
 
   @override
-  int getBytes(BuildContext c) {
+  int getBytes(LLVMTypeMixin c) {
     return c.pointerSize();
   }
 
   @override
-  LLVMMetadataRef createDIType(covariant BuildContext c) {
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
     return llvm.LLVMDIBuilderCreateBasicType(
         c.dBuilder!, 'ptr'.toChar(), 3, getBytes(c) * 8, 1, 0);
   }
@@ -386,17 +386,17 @@ class LLVMStructType extends LLVMType {
 
   FieldsSize? _size;
 
-  FieldsSize getFieldsSize(BuildContext c) =>
+  FieldsSize getFieldsSize(StoreLoadMixin c) =>
       _size ??= LLVMEnumItemType.alignType(c, ty.fields, sort: !ty.extern);
 
   @override
-  LLVMTypeRef typeOf(BuildContext c) {
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
     if (_type != null) return _type!;
     return _type = getFieldsSize(c).getTypeStruct(c, ty.ident.src, null);
   }
 
   StoreVariable? getField(
-      Variable alloca, BuildContext context, Identifier ident) {
+      Variable alloca, StoreLoadMixin context, Identifier ident) {
     LLVMTypeRef type = typeOf(context);
 
     final fields = ty.fields;
@@ -420,12 +420,12 @@ class LLVMStructType extends LLVMType {
   }
 
   @override
-  int getBytes(BuildContext c) {
+  int getBytes(StoreLoadMixin c) {
     return c.typeSize(typeOf(c));
   }
 
   @override
-  LLVMMetadataRef createDIType(covariant BuildContext c) {
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
     final name = ty.ident.src;
     final offset = ty.ident.offset;
     final size = getFieldsSize(c);
@@ -493,21 +493,17 @@ class LLVMRefType extends LLVMType {
   final RefTy ty;
   Ty get parent => ty.parent;
   @override
-  LLVMTypeRef typeOf(BuildContext c) {
-    return ref(c);
-  }
-
-  LLVMTypeRef ref(BuildContext c) {
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
     return c.typePointer(parent.typeOf(c));
   }
 
   @override
-  int getBytes(BuildContext c) {
+  int getBytes(StoreLoadMixin c) {
     return c.pointerSize();
   }
 
   @override
-  LLVMMetadataRef createDIType(covariant BuildContext c) {
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
     return llvm.LLVMDIBuilderCreatePointerType(
         c.dBuilder!,
         parent.llty.createDIType(c),
@@ -530,7 +526,7 @@ class LLVMEnumType extends LLVMType {
   static const int8Max = (1 << 7) - 1;
 
   @override
-  LLVMTypeRef typeOf(BuildContext c) {
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
     if (_type != null) return _type!;
     final size = getItemBytes(c);
     final index = getIndexType(c);
@@ -549,7 +545,7 @@ class LLVMEnumType extends LLVMType {
     return _type = c.typeStruct([index, tyx], ty.ident.src);
   }
 
-  LLVMTypeRef getIndexType(BuildContext c) {
+  LLVMTypeRef getIndexType(StoreLoadMixin c) {
     final size = getRealIndexType(c);
     if (size == 8) {
       return c.i64;
@@ -559,7 +555,7 @@ class LLVMEnumType extends LLVMType {
     return c.i8;
   }
 
-  LLVMMetadataRef getIndexDIType(BuildContext c) {
+  LLVMMetadataRef getIndexDIType(StoreLoadMixin c) {
     final size = getRealIndexType(c);
     if (size == 8) {
       return BuiltInTy.i64.llty.createDIType(c);
@@ -569,7 +565,7 @@ class LLVMEnumType extends LLVMType {
     return BuiltInTy.i8.llty.createDIType(c);
   }
 
-  int getItemBytes(BuildContext c) {
+  int getItemBytes(StoreLoadMixin c) {
     final fSize = ty.variants.fold<int>(0, (previousValue, element) {
       final esize = element.llty.getSuperBytes(c);
       if (previousValue > esize) return previousValue;
@@ -578,7 +574,7 @@ class LLVMEnumType extends LLVMType {
     return fSize;
   }
 
-  LLVMValueRef getIndexValue(BuildContext c, int v) {
+  LLVMValueRef getIndexValue(StoreLoadMixin c, int v) {
     final s = getRealIndexType(c);
     if (s > 4) {
       return c.constI64(v);
@@ -590,7 +586,7 @@ class LLVMEnumType extends LLVMType {
 
   int? _minSize;
 
-  int getRealIndexType(BuildContext c) {
+  int getRealIndexType(StoreLoadMixin c) {
     if (_minSize != null) return _minSize!;
     final size = ty.variants.length;
     final minSize = ty.variants.fold<int>(100, (previousValue, element) {
@@ -615,7 +611,7 @@ class LLVMEnumType extends LLVMType {
 
   int? _total;
   @override
-  int getBytes(BuildContext c) {
+  int getBytes(StoreLoadMixin c) {
     if (_total != null) return _total!;
     final size = getItemBytes(c);
     final indexSize = getRealIndexType(c);
@@ -628,7 +624,7 @@ class LLVMEnumType extends LLVMType {
   }
 
   @override
-  LLVMMetadataRef createDIType(covariant BuildContext c) {
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
     final size = getItemBytes(c);
     final index = getIndexDIType(c);
     final minSize = getRealIndexType(c);
@@ -677,7 +673,7 @@ class LLVMEnumItemType extends LLVMStructType {
   EnumItem get ty => super.ty as EnumItem;
   LLVMEnumType get pTy => ty.parent.llty;
 
-  int getMinSize(BuildContext c) {
+  int getMinSize(StoreLoadMixin c) {
     return ty.fields.fold<int>(100, (p, e) {
       final size = e.grt(c).llty.getBytes(c);
       return p > size ? size : p;
@@ -685,7 +681,7 @@ class LLVMEnumItemType extends LLVMStructType {
   }
 
   @override
-  LLVMTypeRef typeOf(BuildContext c) {
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
     if (_type != null) return _type!;
 
     final m = pTy.getRealIndexType(c);
@@ -697,7 +693,7 @@ class LLVMEnumItemType extends LLVMStructType {
     return _type = size.getTypeStruct(c, ty.ident.src, idnexType);
   }
 
-  static FieldsSize alignType(BuildContext c, List<FieldDef> fields,
+  static FieldsSize alignType(StoreLoadMixin c, List<FieldDef> fields,
       {int initValue = 0, bool sort = false, bool minToMax = false}) {
     final targetSize = c.pointerSize();
     var alignSize = fields.fold<int>(0, (previousValue, element) {
@@ -784,7 +780,7 @@ class LLVMEnumItemType extends LLVMStructType {
 
   @override
   LLVMAllocaDelayVariable createAlloca(
-      BuildContext c, Identifier ident, LLVMValueRef? base) {
+      StoreLoadMixin c, Identifier ident, LLVMValueRef? base) {
     final type = pTy.typeOf(c);
     return LLVMAllocaDelayVariable(base, (proxy) {
       final ctype = typeOf(c);
@@ -802,7 +798,7 @@ class LLVMEnumItemType extends LLVMStructType {
     }, ty, type, ident);
   }
 
-  int load(BuildContext c, Variable parent, List<FieldExpr> params) {
+  int load(StoreLoadMixin c, Variable parent, List<FieldExpr> params) {
     final value = parent.load(c);
 
     final type = typeOf(c);
@@ -835,7 +831,7 @@ class LLVMEnumItemType extends LLVMStructType {
     return ty.parent.variants.indexOf(ty);
   }
 
-  LLVMValueRef loadIndex(BuildContext c, Variable parent) {
+  LLVMValueRef loadIndex(StoreLoadMixin c, Variable parent) {
     LLVMValueRef value;
     if (parent is StoreVariable) {
       value = parent.alloca;
@@ -852,12 +848,12 @@ class LLVMEnumItemType extends LLVMStructType {
     return llvm.LLVMBuildLoad2(c.builder, t, v, unname);
   }
 
-  int getSuperBytes(BuildContext c) {
+  int getSuperBytes(StoreLoadMixin c) {
     return super.getBytes(c);
   }
 
   @override
-  int getBytes(BuildContext c) {
+  int getBytes(StoreLoadMixin c) {
     return pTy.getBytes(c);
   }
 }
@@ -880,7 +876,7 @@ class FieldsSize {
   final int alignSize;
 
   LLVMTypeRef getTypeStruct(
-      BuildContext c, String? ident, LLVMTypeRef? enumIndexTy,
+      StoreLoadMixin c, String? ident, LLVMTypeRef? enumIndexTy,
       {int initSize = 0}) {
     final vals = <LLVMTypeRef>[];
     final fields = map.keys.toList();

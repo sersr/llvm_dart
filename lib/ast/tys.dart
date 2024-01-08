@@ -110,7 +110,7 @@ mixin Tys<V extends LifeCycleVariable> {
     }
   }
 
-  void initImportContext(covariant Tys child) {}
+  void initImportContext(Tys child) {}
 
   final variables = <Identifier, List<V>>{};
 
@@ -156,7 +156,7 @@ mixin Tys<V extends LifeCycleVariable> {
     return v as V?;
   }
 
-  void pushVariable(covariant V variable, {bool isAlloca = true}) {
+  void pushVariable(V variable, {bool isAlloca = true}) {
     final list = variables.putIfAbsent(variable.ident, () => []);
     if (!list.contains(variable)) {
       if (list.isEmpty) {

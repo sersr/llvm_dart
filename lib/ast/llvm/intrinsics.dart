@@ -53,7 +53,7 @@ enum LLVMIntrisics {
   final String name;
   const LLVMIntrisics(this.name);
 
-  static LLVMIntrisics? getAdd(Ty ty, bool isSigned, BuildContext context) {
+  static LLVMIntrisics? getAdd(Ty ty, bool isSigned, BuildMethods context) {
     final t = getTypeFrom(ty, context);
     if (t != null && !isSigned) {
       return values[t.index + 5];
@@ -61,7 +61,7 @@ enum LLVMIntrisics {
     return t;
   }
 
-  static LLVMIntrisics? getSub(Ty ty, bool isSigned, BuildContext context) {
+  static LLVMIntrisics? getSub(Ty ty, bool isSigned, BuildMethods context) {
     final t = getTypeFrom(ty, context);
     if (t != null) {
       if (isSigned) {
@@ -71,7 +71,7 @@ enum LLVMIntrisics {
     return t;
   }
 
-  static LLVMIntrisics? getMul(Ty ty, bool isSigned, BuildContext context) {
+  static LLVMIntrisics? getMul(Ty ty, bool isSigned, BuildMethods context) {
     final t = getTypeFrom(ty, context);
     if (t != null) {
       if (isSigned) {
@@ -83,7 +83,7 @@ enum LLVMIntrisics {
     return t;
   }
 
-  static LLVMIntrisics? getTypeFrom(Ty ty, BuildContext context) {
+  static LLVMIntrisics? getTypeFrom(Ty ty, BuildMethods context) {
     if (ty is! BuiltInTy) return null;
     switch (ty.ty.convert) {
       case LitKind.i8:
