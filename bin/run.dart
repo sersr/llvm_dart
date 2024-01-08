@@ -12,7 +12,7 @@ Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
 Directory get stdRoot => currentDir.childDirectory('kc').childDirectory('lib');
 void main(List<String> args) async {
   assert(() {
-    args = ['test/scope.kc'];
+    args = ['test/string.kc'];
     return true;
   }());
   buildDir.create();

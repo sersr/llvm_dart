@@ -284,7 +284,6 @@ class LLVMFnType extends LLVMType {
     return _cacheFns.putIfAbsent(key, () {
       final ty = fn.llty.createFnType(c, variables);
       var ident = fn.fnSign.fnDecl.ident.src;
-      final (namePointer, nameLength) = ident.toNativeUtf8WithLength();
 
       if (ident.isEmpty) {
         ident = '_fn';
@@ -302,41 +301,9 @@ class LLVMFnType extends LLVMType {
               : LLVMLinkage.LLVMInternalLinkage);
       llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
 
-      var retTy = fn.getRetTy(c);
-
-      final offset = fn.fnName.offset;
-
-      final dBuilder = c.dBuilder;
-      if (dBuilder != null && fn.block?.stmts.isNotEmpty == true) {
-        final file = llvm.LLVMDIScopeGetFile(c.unit);
-        final params = <Pointer>[];
-        params.add(retTy.llty.createDIType(c));
-
-        for (var p in fn.fnSign.fnDecl.params) {
-          final realTy = fn.getRty(c, p);
-          final ty = realTy.llty.createDIType(c);
-          params.add(ty);
-        }
-
-        final fnTy = llvm.LLVMDIBuilderCreateSubroutineType(
-            dBuilder, file, params.toNative(), params.length, 0);
-        final fnScope = llvm.LLVMDIBuilderCreateFunction(
-            dBuilder,
-            file,
-            namePointer,
-            nameLength,
-            unname,
-            0,
-            file,
-            offset.row,
-            fnTy,
-            LLVMFalse,
-            LLVMTrue,
-            offset.row,
-            0,
-            LLVMFalse);
-
-        llvm.LLVMSetSubprogram(v, fnScope);
+      final scope = createScope(c);
+      if (scope != null) {
+        llvm.LLVMSetSubprogram(v, scope);
       }
 
       c.setFnLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
@@ -347,6 +314,48 @@ class LLVMFnType extends LLVMType {
       after(fnVariable);
       return fnVariable;
     });
+  }
+
+  LLVMMetadataRef? _scope;
+  LLVMMetadataRef? createScope(BuildContext c) {
+    final dBuilder = c.dBuilder;
+    if (dBuilder == null) return null;
+
+    if (_scope != null) return _scope;
+    var retTy = fn.getRetTy(c);
+
+    if (fn.block?.stmts.isNotEmpty == true) {
+      final offset = fn.fnName.offset;
+      final (namePointer, nameLength) = fn.fnName.src.toNativeUtf8WithLength();
+      final file = llvm.LLVMDIScopeGetFile(c.unit);
+      final params = <Pointer>[];
+      params.add(retTy.llty.createDIType(c));
+
+      for (var p in fn.fnSign.fnDecl.params) {
+        final realTy = fn.getRty(c, p);
+        final ty = realTy.llty.createDIType(c);
+        params.add(ty);
+      }
+
+      final fnTy = llvm.LLVMDIBuilderCreateSubroutineType(
+          dBuilder, file, params.toNative(), params.length, 0);
+      return _scope = llvm.LLVMDIBuilderCreateFunction(
+          dBuilder,
+          c.unit,
+          namePointer,
+          nameLength,
+          unname,
+          0,
+          file,
+          offset.row,
+          fnTy,
+          LLVMFalse,
+          LLVMTrue,
+          offset.row,
+          0,
+          LLVMFalse);
+    }
+    return null;
   }
 
   @override

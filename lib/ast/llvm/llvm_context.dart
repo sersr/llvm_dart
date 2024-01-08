@@ -308,12 +308,22 @@ class BuildContext
     return fv;
   }
 
-  void _compileFn(BuildContext parent) {
+  /// 同一个文件支持跳转
+  bool compileRunMode(Fn fn) => currentPath == fn.currentContext!.currentPath;
+
+  void _compileFn(BuildContext parent, BuildContext debug) {
     llvmContext = parent.llvmContext;
     module = parent.module;
     tm = parent.tm;
     builder = parent.builder;
     fn = parent.fn;
+
+    // 一个函数只能和一个文件绑定，在同一个文件中，可以取巧，使用同一个file scope
+    if (parent.currentPath == debug.currentPath) {
+      _dBuilder = parent.dBuilder;
+      _unit = parent.unit;
+      _fnScope = parent.scope;
+    }
     isFnBBContext = true;
   }
 
@@ -329,7 +339,8 @@ class BuildContext
 
     final fnContext = BuildContext._compileRun(fn.currentContext ?? context);
 
-    fnContext._compileFn(context);
+    fnContext._compileFn(context, fn.currentContext!);
+
     fnContext.runFn = fn;
 
     for (var p in params) {

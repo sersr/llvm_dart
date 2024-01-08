@@ -60,7 +60,9 @@ abstract interface class AbiFn {
     final sortFields = alignParam(
         params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
 
-    if (fn is ImplStaticFn && fn.fnName.src == 'new') {
+    if (fn is ImplStaticFn &&
+        fn.fnName.src == 'new' &&
+        context.compileRunMode(fn)) {
       final newParams = <Variable>[];
       for (var i = 0; i < sortFields.length; i++) {
         final p = sortFields[i];
