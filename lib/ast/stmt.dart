@@ -51,15 +51,16 @@ class LetStmt extends Stmt {
       assert(tty is BuiltInTy);
 
       if (isFinal) {
-        context.pushVariable(nameIdent, variable);
+        context.pushVariable(variable.newIdent(nameIdent));
         return;
       }
 
       final alloca = variable.createAlloca(context, nameIdent, tty);
       alloca.initProxy(context);
+      assert(alloca.ident == nameIdent);
 
       alloca.isTemp = false;
-      context.pushVariable(nameIdent, alloca);
+      context.pushVariable(alloca);
       return;
     }
 
@@ -70,9 +71,10 @@ class LetStmt extends Stmt {
       letVariable = variable;
     }
 
+    letVariable = letVariable?.newIdent(nameIdent);
+
     if (letVariable != null && letVariable.isTemp) {
       letVariable.isTemp = false;
-      letVariable.ident = nameIdent;
 
       /// 不需要新建变量，但要初始化
       if (letVariable is LLVMAllocaDelayVariable) {
@@ -80,12 +82,12 @@ class LetStmt extends Stmt {
       }
 
       context.setName(letVariable.alloca, nameIdent.src);
-      context.pushVariable(nameIdent, letVariable);
+      context.pushVariable(letVariable);
       return;
     }
 
     if (isFinal) {
-      context.pushVariable(nameIdent, letVariable ?? variable);
+      context.pushVariable(letVariable ?? variable.newIdent(nameIdent));
       return;
     }
 
@@ -97,13 +99,13 @@ class LetStmt extends Stmt {
       if (variable.isRef) {
         rValue = variable.getBaseValue(context);
       } else {
-        rValue = variable.load(context, val!.currentIdent.offset);
+        rValue = variable.load(context);
       }
 
-      letVariable.store(context, rValue, nameIdent.offset);
+      letVariable.store(context, rValue);
     }
     letVariable.isTemp = false;
-    context.pushVariable(nameIdent, letVariable);
+    context.pushVariable(letVariable);
   }
 
   @override
@@ -116,7 +118,7 @@ class LetStmt extends Stmt {
 
     if (v == null) return;
     final value = v.copy(ty: realTy, ident: nameIdent);
-    context.pushVariable(nameIdent, value);
+    context.pushVariable(value);
   }
 }
 
@@ -198,7 +200,7 @@ class StaticStmt extends Stmt {
 
     llValue = llvm.LLVMAddGlobal(context.module, type, ident.src.toChar());
 
-    v = LLVMAllocaVariable(y, llValue, type);
+    v = LLVMAllocaVariable(llValue, y, type, ident);
     llvm.LLVMSetLinkage(llValue, LLVMLinkage.LLVMInternalLinkage);
     llvm.LLVMSetGlobalConstant(llValue, isConst.llvmBool);
 
@@ -233,7 +235,7 @@ class StaticStmt extends Stmt {
           llValue, llvm.LLVMGetMDKindID("dbg".toChar(), 3), globalExpr);
     }
 
-    context.pushVariable(ident, v);
+    context.pushVariable(v);
     _run = true;
   }
 
@@ -246,8 +248,7 @@ class StaticStmt extends Stmt {
     final val = expr.analysis(context);
     final vTy = realTy ?? val?.ty;
     if (vTy == null || val == null) return;
-    context.pushVariable(
-        ident, val.copy(ty: vTy, ident: ident, isGlobal: true));
+    context.pushVariable(val.copy(ty: vTy, ident: ident, isGlobal: true));
   }
 }
 

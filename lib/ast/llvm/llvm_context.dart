@@ -135,7 +135,6 @@ class BuildContext
   void init(bool isDebug) {
     if (!isDebug) return;
     final info = "Debug Info Version";
-    final version = "Dwarf Version";
 
     void add(int lv, String name, int size) {
       final (namePointer, nameLength) = name.toNativeUtf8WithLength();
@@ -146,6 +145,7 @@ class BuildContext
     if (Platform.isWindows) {
       add(1, "CodeView", 1);
     } else {
+      final version = "Dwarf Version";
       add(6, version, 2);
     }
 
@@ -262,8 +262,10 @@ class BuildContext
       final fnv = fn?.build();
       if (fn == null || fnv == null) continue;
       LLVMValueRef v;
+
+      // fixme: remove
       if (val.ty is BuiltInTy) {
-        v = val.load(this, Offset.zero);
+        v = val.load(this);
       } else {
         v = val.getBaseValue(this);
       }
@@ -286,7 +288,7 @@ class BuildContext
       final block = fn.block?.clone();
       if (block == null) return;
 
-      final fnContext = _createChildContext();
+      final fnContext = fn.currentContext!._createChildContext();
       fnContext.fn = fv;
       fnContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
       fnContext.isFnBBContext = true;
@@ -298,7 +300,7 @@ class BuildContext
 
       final retTy = fn.getRetTy(fnContext);
       if (retTy == BuiltInTy.kVoid) {
-        fnContext.ret(null, null);
+        fnContext.ret(null);
       } else {
         block.ret(fnContext);
       }
@@ -311,7 +313,6 @@ class BuildContext
     module = parent.module;
     tm = parent.tm;
     builder = parent.builder;
-    _dBuilder = parent._dBuilder;
     fn = parent.fn;
     isFnBBContext = true;
   }
@@ -332,7 +333,7 @@ class BuildContext
     fnContext.runFn = fn;
 
     for (var p in params) {
-      fnContext.pushVariable(p.ident!, p);
+      fnContext.pushVariable(p);
     }
 
     fn.pushTyGenerics(fnContext);
@@ -341,7 +342,7 @@ class BuildContext
 
     final retTy = fn.getRetTy(fnContext);
     if (retTy == BuiltInTy.kVoid) {
-      fnContext.ret(null, null);
+      fnContext.ret(null);
     } else {
       block.ret(fnContext);
     }
@@ -351,7 +352,7 @@ class BuildContext
     return fnContext._compileRetValue;
   }
 
-  void ret(Variable? val, Identifier? ident, [Offset retOffset = Offset.zero]) {
+  void ret(Variable? val) {
     if (!canBr) {
       // error
       return;
@@ -372,9 +373,8 @@ class BuildContext
     }
 
     dropAll();
-    ident ??= Identifier.none;
 
-    diSetCurrentLoc(ident.offset);
+    final retOffset = val?.offset ?? Offset.zero;
 
     if (val != null) {
       ImplStackTy.addStack(this, val);
@@ -382,9 +382,10 @@ class BuildContext
 
     freeHeap();
 
+    diSetCurrentLoc(retOffset);
+
     /// return void
     if (val == null) {
-      diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRetVoid(builder);
       return;
     }
@@ -394,8 +395,8 @@ class BuildContext
     /// return variable
     if (sret == null) {
       final fnty = fn.fn.ty as Fn;
-      final v = AbiFn.fnRet(this, fnty, val, ident.offset);
-      diSetCurrentLoc(retOffset);
+      final v = AbiFn.fnRet(this, fnty, val);
+      // diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRet(builder, v);
       return;
     }
@@ -404,8 +405,7 @@ class BuildContext
     if (val is LLVMAllocaDelayVariable && !val.created) {
       val.initProxy(this, sret);
     } else {
-      sret.store(
-          this, val.load(this, val.ident?.offset ?? Offset.zero), retOffset);
+      sret.storeVariable(this, val);
     }
 
     diSetCurrentLoc(retOffset);
@@ -422,7 +422,7 @@ class BuildContext
     fnSret = fnContext.sret;
     if (fnSret == null) return null;
 
-    nameIdent ??= variable.ident!;
+    nameIdent ??= variable.ident;
     final owner = nameIdent.toRawIdent;
     if (!fnty.returnVariables.contains(owner)) {
       return null;
@@ -435,8 +435,7 @@ class BuildContext
       fnContext._sertOwner = owner;
       return variable;
     } else {
-      final offset = variable.ident?.offset ?? Offset.zero;
-      fnSret.store(this, variable.load(this, offset), nameIdent.offset);
+      fnSret.storeVariable(this, variable);
       return fnSret;
     }
   }
@@ -455,7 +454,7 @@ class BuildContext
       if (ty is RefTy) {
         ty = ty.baseTy;
       }
-      variable = variable.defaultDeref(this);
+      variable = variable.defaultDeref(this, variable.ident);
 
       if (ty is StructTy) {
         for (var field in ty.fields) {
@@ -499,17 +498,14 @@ class BuildContext
 
   /// math
 
-  Variable math(Variable lhs, Variable? rhs, OpKind op,
-      {Offset lhsOffset = Offset.zero,
-      Offset rhsOffset = Offset.zero,
-      Offset opOffset = Offset.zero}) {
+  Variable math(Variable lhs, Variable? rhs, OpKind op, Identifier opId) {
     var isFloat = false;
     var signed = false;
     var ty = lhs.ty;
     LLVMTypeRef? type;
 
-    var l = lhs.load(this, lhsOffset);
-    var r = rhs?.load(this, rhsOffset);
+    var l = lhs.load(this);
+    var r = rhs?.load(this);
 
     if (r == null || rhs == null) {
       LLVMValueRef? value;
@@ -520,7 +516,7 @@ class BuildContext
         assert(op == OpKind.Ne);
         value = llvm.LLVMBuildIsNotNull(builder, l, unname);
       }
-      return LLVMConstVariable(value, BuiltInTy.kBool);
+      return LLVMConstVariable(value, BuiltInTy.kBool, opId);
     }
 
     if (ty is BuiltInTy && ty.ty.isNum) {
@@ -558,9 +554,10 @@ class BuildContext
       final after = buildSubBB(name: 'op_after');
       final opBB = buildSubBB(name: 'op_bb');
       final allocaValue = alloctor(i1, name: 'op');
-      final variable = LLVMAllocaVariable(BuiltInTy.kBool, allocaValue, i1);
+      final variable =
+          LLVMAllocaVariable(allocaValue, BuiltInTy.kBool, i1, opId);
 
-      variable.store(this, l, Offset.zero);
+      variable.store(this, l);
       appendBB(opBB);
 
       if (op == OpKind.And) {
@@ -570,7 +567,7 @@ class BuildContext
       }
       final c = opBB.context;
 
-      variable.store(c, r, Offset.zero);
+      variable.store(c, r);
       c.br(after.context);
       insertPointBB(after);
       return variable;
@@ -579,13 +576,13 @@ class BuildContext
     LLVMValueRef Function(LLVMBuilderRef b, LLVMValueRef l, LLVMValueRef r,
         Pointer<Char> name)? llfn;
 
-    diSetCurrentLoc(opOffset);
+    diSetCurrentLoc(opId.offset);
 
     if (isFloat) {
       final id = op.getFCmpId(true);
       if (id != null) {
         final v = llvm.LLVMBuildFCmp(builder, id, l, r, unname);
-        return LLVMConstVariable(v, BuiltInTy.kBool);
+        return LLVMConstVariable(v, BuiltInTy.kBool, opId);
       }
       LLVMValueRef? value;
       switch (op) {
@@ -608,7 +605,7 @@ class BuildContext
         default:
       }
       if (value != null) {
-        return LLVMConstVariable(value, ty);
+        return LLVMConstVariable(value, ty, opId);
       }
     }
 
@@ -616,7 +613,7 @@ class BuildContext
     final cmpId = op.getICmpId(signed);
     if (cmpId != null) {
       final v = llvm.LLVMBuildICmp(builder, cmpId, l, r, unname);
-      return LLVMConstVariable(v, BuiltInTy.kBool);
+      return LLVMConstVariable(v, BuiltInTy.kBool, opId);
     }
 
     LLVMValueRef? value;
@@ -676,17 +673,17 @@ class BuildContext
       final panicBB = buildSubBB(name: 'panic');
       appendBB(panicBB);
       llvm.LLVMBuildCondBr(builder, mathValue.condition, panicBB.bb, after.bb);
-      panicBB.context.diSetCurrentLoc(opOffset);
+      panicBB.context.diSetCurrentLoc(opId.offset);
       panicBB.context.painc();
       insertPointBB(after);
 
-      return LLVMConstVariable(mathValue.value, ty);
+      return LLVMConstVariable(mathValue.value, ty, opId);
     }
     if (llfn != null) {
       value = llfn(builder, l, r, unname);
     }
 
-    return LLVMConstVariable(value ?? l, ty);
+    return LLVMConstVariable(value ?? l, ty, opId);
   }
 }
 
@@ -771,7 +768,7 @@ mixin ChildContext on BuildMethods {
       final variable = v?.variable;
       if (variable != null) {
         final bb = buildSubBB(name: 'loop_body');
-        final v = variable.load(loopBB.context, Offset.zero);
+        final v = variable.load(loopBB.context);
         loopBB.context.expect(v);
         llvm.LLVMBuildCondBr(loopBB.context.builder, v, bb.bb, loopAfter.bb);
         appendBB(bb);
@@ -839,11 +836,11 @@ extension FnContext on BuildContext {
       final ident = Identifier.self;
 
       // 只读引用
-      final alloca = LLVMAllocaVariable(p, selfParam, p.typeOf(this));
+      final alloca = LLVMAllocaVariable(selfParam, p, p.typeOf(this), ident);
       setName(alloca.alloca, ident.src);
       alloca.isTemp = false;
       alloca.isRef = true;
-      pushVariable(ident, alloca);
+      pushVariable(alloca);
       index += 1;
     }
 
@@ -873,11 +870,11 @@ extension FnContext on BuildContext {
 
       final ty = val.ty;
       final type = ty.typeOf(this);
-      final alloca = LLVMAllocaVariable(ty, value, type);
+      final alloca = LLVMAllocaVariable(value, ty, type, ident);
       alloca.isTemp = false;
 
       setName(value, ident.src);
-      pushVariable(ident, alloca);
+      pushVariable(alloca);
     }
 
     for (var variable in fnty.variables) {
@@ -897,6 +894,6 @@ extension FnContext on BuildContext {
     final alloca = ty.llty.createAlloca(this, ident, fnParam);
     alloca.initProxy(this);
     alloca.isTemp = false;
-    pushVariable(ident, alloca);
+    pushVariable(alloca);
   }
 }

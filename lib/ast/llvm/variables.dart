@@ -7,40 +7,55 @@ import 'build_methods.dart';
 import 'llvm_types.dart';
 
 abstract class Variable extends LifeCycleVariable {
+  Variable(this.ident);
   bool isRef = false;
-  LLVMValueRef load(covariant BuildMethods c, Offset offset);
+  LLVMValueRef load(covariant BuildMethods c);
   LLVMTypeRef getDerefType(BuildContext c);
-  Variable getRef(BuildContext c) {
-    return LLVMConstVariable(getBaseValue(c), RefTy(ty));
+  Variable getRef(BuildContext c, Identifier ident) {
+    return LLVMConstVariable(getBaseValue(c), RefTy(ty), ident);
   }
 
-  LLVMValueRef getBaseValue(covariant BuildMethods c) => load(c, Offset.zero);
+  LLVMValueRef getBaseValue(covariant BuildMethods c) => load(c);
   Ty get ty;
 
-  Variable defaultDeref(BuildContext c) {
+  @override
+  final Identifier ident;
+
+  Offset get offset => ident.offset;
+
+  Variable newIdent(Identifier id);
+
+  Variable defaultDeref(BuildContext c, Identifier ident) {
     final cTy = ty;
     if (cTy is! RefTy) return this;
 
-    final v = load(c, Offset.zero);
+    final v = load(c);
     final parent = cTy.parent;
 
     Variable val;
 
     /// 如果是一个指针，说明还有下一级，满足 store, load
     if (parent is RefTy) {
-      val = LLVMAllocaVariable(parent, v, parent.typeOf(c))..isTemp = false;
+      val = LLVMAllocaVariable(v, parent, parent.typeOf(c), ident)
+        ..isTemp = false;
     } else {
-      val = LLVMConstVariable(v, parent);
+      val = LLVMConstVariable(v, parent, ident);
     }
     return val;
   }
 }
 
 abstract class StoreVariable extends Variable {
+  StoreVariable(super.ident);
+
   /// 在 let 表达式使用，判断是否需要分配空间或者直接使用当前对象
   bool isTemp = true;
   LLVMValueRef get alloca;
-  LLVMValueRef store(BuildContext c, LLVMValueRef val, Offset offset);
+  LLVMValueRef store(BuildContext c, LLVMValueRef val);
+  LLVMValueRef storeVariable(BuildContext c, Variable val);
+
+  @override
+  StoreVariable newIdent(Identifier id);
 
   @override
   LLVMValueRef getBaseValue(BuildContext c) {
@@ -53,7 +68,7 @@ abstract class StoreVariable extends Variable {
 /// 可以看作右值，临时变量
 /// 函数返回值，数值运算
 class LLVMConstVariable extends Variable {
-  LLVMConstVariable(this.value, this.ty);
+  LLVMConstVariable(this.value, this.ty, super.ident);
   @override
   final Ty ty;
 
@@ -65,13 +80,18 @@ class LLVMConstVariable extends Variable {
   }
 
   @override
-  LLVMValueRef load(BuildContext c, Offset offset) {
+  LLVMValueRef load(BuildContext c) {
     return value;
   }
 
   @override
   LLVMTypeRef getDerefType(BuildContext c) {
     return llvm.LLVMTypeOf(value);
+  }
+
+  @override
+  LLVMConstVariable newIdent(Identifier id) {
+    return LLVMConstVariable(value, ty, id);
   }
 }
 
@@ -104,7 +124,8 @@ mixin DelayVariableMixin {
 /// 一般用在复杂结构体中，如结构体内包含其他结构体，在作为字面量初始化时会使用外面
 /// 结构体[LLVMStructType.getField]创建的[Variable]
 class LLVMAllocaDelayVariable extends StoreVariable with DelayVariableMixin {
-  LLVMAllocaDelayVariable(this.ty, this.initAlloca, this._delayLoad, this.type);
+  LLVMAllocaDelayVariable(
+      this.initAlloca, this._delayLoad, this.ty, this.type, super.ident);
   @override
   final LoadFn _delayLoad;
   @override
@@ -132,28 +153,112 @@ class LLVMAllocaDelayVariable extends StoreVariable with DelayVariableMixin {
   }
 
   @override
-  LLVMValueRef load(BuildContext c, Offset offset) {
+  LLVMValueRef load(BuildContext c, {Offset? o}) {
     if (!created && initAlloca != null) return initAlloca!;
-    return c.load2(type, alloca, '', offset);
+    return c.load2(type, alloca, '', o ?? offset);
   }
 
   @override
-  LLVMValueRef store(BuildContext c, LLVMValueRef val, Offset offset) {
+  LLVMValueRef store(BuildContext c, LLVMValueRef val, {Offset? o}) {
     initProxy(c);
-    return c.store(alloca, val, offset);
+    return c.store(alloca, val, o ?? offset);
   }
 
   @override
-  void storeInit(BuildContext c) {
-    if (initAlloca == null) return;
-    c.store(alloca, initAlloca!, Offset.zero);
+  LLVMValueRef storeVariable(BuildContext c, Variable val, {Offset? o}) {
+    initProxy(c);
+    return c.store(alloca, val.load(c), o ?? offset);
   }
+
+  @override
+  void storeInit(BuildContext c, {Offset? o}) {
+    if (initAlloca == null) return;
+    c.store(alloca, initAlloca!, o ?? offset);
+  }
+
+  @override
+  LLVMAllocaDelayVariable newIdent(Identifier id) =>
+      _LLVMAllocaDelayVariableProxy(this, id);
+}
+
+class _LLVMAllocaDelayVariableProxy extends StoreVariable
+    implements LLVMAllocaDelayVariable {
+  _LLVMAllocaDelayVariableProxy(this._proxy, super.ident);
+  final LLVMAllocaDelayVariable _proxy;
+
+  // hide
+  @override
+  LLVMValueRef? _alloca;
+
+  @override
+  @override
+  LoadFn get _delayLoad => throw UnimplementedError();
+
+  @override
+  LLVMValueRef get alloca => _proxy.alloca;
+
+  @override
+  bool get created => _proxy.created;
+
+  @override
+  LLVMValueRef getBaseValue(covariant BuildContext c) {
+    return _proxy.getBaseValue(c);
+  }
+
+  @override
+  LLVMTypeRef getDerefType(BuildContext c) {
+    return _proxy.getDerefType(c);
+  }
+
+  @override
+  Variable getRef(BuildContext c, Identifier ident) {
+    return _proxy.getRef(c, ident);
+  }
+
+  @override
+  LLVMValueRef? get initAlloca => _proxy.initAlloca;
+
+  @override
+  bool initProxy(BuildContext c, [StoreVariable? proxy]) {
+    return _proxy.initProxy(c, proxy);
+  }
+
+  @override
+  LLVMValueRef load(covariant BuildContext c, {Offset? o}) {
+    return _proxy.load(c, o: o ?? offset);
+  }
+
+  @override
+  LLVMAllocaDelayVariable newIdent(Identifier id) {
+    return _proxy.newIdent(id);
+  }
+
+  @override
+  LLVMValueRef store(BuildContext c, LLVMValueRef val, {Offset? o}) {
+    return _proxy.store(c, val, o: o ?? offset);
+  }
+
+  @override
+  void storeInit(BuildContext c, {Offset? o}) {
+    _proxy.storeInit(c, o: o ?? offset);
+  }
+
+  @override
+  LLVMValueRef storeVariable(BuildContext c, Variable val, {Offset? o}) {
+    return _proxy.storeVariable(c, val, o: o ?? offset);
+  }
+
+  @override
+  Ty get ty => _proxy.ty;
+
+  @override
+  LLVMTypeRef get type => _proxy.type;
 }
 
 /// 使用已分配的地址
 /// 有[store],[load]功能
 class LLVMAllocaVariable extends StoreVariable {
-  LLVMAllocaVariable(this.ty, this.alloca, this.type);
+  LLVMAllocaVariable(this.alloca, this.ty, this.type, super.ident);
   @override
   final LLVMValueRef alloca;
 
@@ -163,24 +268,34 @@ class LLVMAllocaVariable extends StoreVariable {
   final Ty ty;
 
   @override
-  LLVMValueRef load(BuildContext c, Offset offset) {
+  LLVMValueRef load(BuildContext c) {
     return c.load2(type, alloca, '', offset);
   }
 
   @override
-  LLVMValueRef store(BuildContext c, LLVMValueRef val, Offset offset) {
+  LLVMValueRef store(BuildContext c, LLVMValueRef val) {
     return c.store(alloca, val, offset);
+  }
+
+  @override
+  LLVMValueRef storeVariable(BuildContext c, Variable val) {
+    return c.store(alloca, val.load(c), offset);
   }
 
   @override
   LLVMTypeRef getDerefType(BuildContext c) {
     return type;
   }
+
+  @override
+  LLVMAllocaVariable newIdent(Identifier id) {
+    return LLVMAllocaVariable(alloca, ty, type, id);
+  }
 }
 
 /// 内部的原生类型
 class LLVMLitVariable extends Variable {
-  LLVMLitVariable(this._load, this.ty, this.value);
+  LLVMLitVariable(this._load, this.ty, this.value, super.ident);
 
   final LLVMRawValue value;
   @override
@@ -188,7 +303,7 @@ class LLVMLitVariable extends Variable {
   final LLVMValueRef Function(Consts c, BuiltInTy? ty) _load;
   LLVMValueRef? _cache;
   @override
-  LLVMValueRef load(BuildContext c, Offset offset, {BuiltInTy? ty}) {
+  LLVMValueRef load(BuildContext c, {BuiltInTy? ty}) {
     return _cache ??= _load(c, ty);
   }
 
@@ -198,7 +313,12 @@ class LLVMLitVariable extends Variable {
 
   @override
   LLVMTypeRef getDerefType(BuildContext c) {
-    return llvm.LLVMTypeOf(load(c, Offset.zero));
+    return llvm.LLVMTypeOf(load(c));
+  }
+
+  @override
+  LLVMLitVariable newIdent(Identifier id) {
+    return LLVMLitVariable(_load, ty, value, id);
   }
 
   LLVMAllocaDelayVariable createAlloca(BuildContext c, Identifier ident,
@@ -207,7 +327,7 @@ class LLVMLitVariable extends Variable {
       tty = ty;
     }
 
-    final rValue = load(c, ident.offset, ty: tty);
+    final rValue = load(c, ty: tty);
     final alloca = ty.llty.createAlloca(c, ident, rValue);
 
     return alloca;

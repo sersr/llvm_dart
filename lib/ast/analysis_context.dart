@@ -123,12 +123,11 @@ class AnalysisContext with Tys<AnalysisVariable> {
   }
 
   @override
-  void pushVariable(Identifier ident, AnalysisVariable variable,
-      {bool isAlloca = true}) {
+  void pushVariable(AnalysisVariable variable, {bool isAlloca = true}) {
     variable.lifecycle.fnContext = getLastFnContext();
     allLifeCycyle.add(variable);
 
-    super.pushVariable(ident, variable, isAlloca: isAlloca);
+    super.pushVariable(variable, isAlloca: isAlloca);
   }
 
   AnalysisContext? getFnContext(Identifier ident) {

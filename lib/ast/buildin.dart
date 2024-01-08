@@ -84,8 +84,8 @@ ExprTempValue? sizeOf(BuildContext context, List<FieldExpr> params) {
   final size = context.typeSize(tyy);
 
   final v = context.usizeValue(size);
-  final vv = LLVMConstVariable(v, BuiltInTy.usize);
-  return ExprTempValue(vv, vv.ty, Identifier.none);
+  final vv = LLVMConstVariable(v, BuiltInTy.usize, Identifier.none);
+  return ExprTempValue(vv);
 }
 
 final sizeOfFn = BuiltinFn(Identifier.builtIn('sizeOf'), sizeOf);
@@ -114,14 +114,14 @@ ExprTempValue memSet(BuildContext context, List<FieldExpr> params) {
   Variable rhs = params[1].build(context)!.variable!;
   Variable len = params[2].build(context)!.variable!;
 
-  final lv = lhs.load(context, Offset.zero);
-  final rv = rhs.load(context, Offset.zero);
-  final lenv = len.load(context, Offset.zero);
+  final lv = lhs.load(context);
+  final rv = rhs.load(context);
+  final lenv = len.load(context);
   final align = context.getBaseAlignSize(rhs.ty);
   final value = llvm.LLVMBuildMemSet(context.builder, lv, rv, lenv, align);
 
-  final v = LLVMConstVariable(value, BuiltInTy.usize);
-  return ExprTempValue(v, v.ty, Identifier.none);
+  final v = LLVMConstVariable(value, BuiltInTy.usize, Identifier.none);
+  return ExprTempValue(v);
 }
 
 final memSetFn = BuiltinFn(Identifier.builtIn('memSet'), memSet);
@@ -131,16 +131,16 @@ ExprTempValue memCopy(BuildContext context, List<FieldExpr> params) {
   Variable rhs = params[1].build(context)!.variable!;
   Variable len = params[2].build(context)!.variable!;
 
-  final lv = lhs.load(context, Offset.zero);
-  final rv = rhs.load(context, Offset.zero);
-  final lenv = len.load(context, Offset.zero);
+  final lv = lhs.load(context);
+  final rv = rhs.load(context);
+  final lenv = len.load(context);
   final lalign = context.getBaseAlignSize(lhs.ty);
   final align = context.getBaseAlignSize(rhs.ty);
   final value =
       llvm.LLVMBuildMemCpy(context.builder, lv, lalign, rv, align, lenv);
 
-  final v = LLVMConstVariable(value, RefTy(BuiltInTy.kVoid));
-  return ExprTempValue(v, v.ty, Identifier.none);
+  final v = LLVMConstVariable(value, RefTy(BuiltInTy.kVoid), Identifier.none);
+  return ExprTempValue(v);
 }
 
 final memCopyFn = BuiltinFn(Identifier.builtIn('memCopy'), memCopy);

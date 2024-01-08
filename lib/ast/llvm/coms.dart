@@ -23,10 +23,9 @@ abstract class ImplStackTy {
       context,
       addFn,
       [],
-      LLVMConstVariable(variable.load(context, Offset.zero), ty),
+      LLVMConstVariable(variable.load(context), ty, Identifier.none),
       null,
       null,
-      Identifier.none,
     );
   }
 
@@ -58,10 +57,9 @@ abstract class ImplStackTy {
       context,
       removeFn,
       [],
-      LLVMConstVariable(variable.load(context, Offset.zero), ty),
+      LLVMConstVariable(variable.load(context), ty, Identifier.none),
       null,
       null,
-      Identifier.none,
     );
   }
 }
@@ -90,9 +88,8 @@ abstract class RefDerefCom {
 
     if (fn == null) return variable;
 
-    final param = LLVMAllocaVariable(variable.ty,
-        variable.getBaseValue(context), variable.ty.typeOf(context));
-    param.ident = Identifier.self;
+    final param = LLVMAllocaVariable(variable.getBaseValue(context),
+        variable.ty, variable.ty.typeOf(context), Identifier.self);
     return context.compileRun(fn, context, [param]) ?? variable;
   }
 
@@ -100,7 +97,8 @@ abstract class RefDerefCom {
       BuildContext context, Variable variable, bool Function(Variable) action) {
     if (action(variable)) return;
     for (;;) {
-      final v = getDeref(context, variable).defaultDeref(context);
+      final v =
+          getDeref(context, variable).defaultDeref(context, Identifier.none);
       if (action(v)) break;
       if (variable == v) break;
       variable = v;

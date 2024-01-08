@@ -23,12 +23,7 @@ enum Abi {
 }
 
 abstract interface class AbiFn {
-  ExprTempValue? fnCall(
-    BuildContext context,
-    Fn fn,
-    List<FieldExpr> params,
-    Identifier currentIdent,
-  );
+  ExprTempValue? fnCall(BuildContext context, Fn fn, List<FieldExpr> params);
 
   LLVMConstVariable createFunctionAbi(
       BuildContext c, Fn fn, void Function(LLVMConstVariable fnValue) after);
@@ -46,7 +41,7 @@ abstract interface class AbiFn {
 
   bool isSret(BuildContext c, Fn fn);
 
-  LLVMValueRef classifyFnRet(BuildContext context, Variable src, Offset offset);
+  LLVMValueRef classifyFnRet(BuildContext context, Variable src);
 
   static ExprTempValue? fnCallInternal(
       BuildContext context,
@@ -54,10 +49,9 @@ abstract interface class AbiFn {
       List<FieldExpr> params,
       Variable? struct,
       Set<AnalysisVariable>? extra,
-      Map<Identifier, Set<AnalysisVariable>>? map,
-      Identifier currentIdent) {
+      Map<Identifier, Set<AnalysisVariable>>? map) {
     if (fn.extern) {
-      return AbiFn.get(context.abi).fnCall(context, fn, params, currentIdent);
+      return AbiFn.get(context.abi).fnCall(context, fn, params);
     }
 
     fn = StructExpr.resolveGeneric(fn, context, params, []);
@@ -76,24 +70,25 @@ abstract interface class AbiFn {
         }
         baseTy ??= p.getTy(context);
         final temp = p.build(context, baseTy: baseTy);
-        final v = temp?.variable;
+        var v = temp?.variable;
         if (v != null) {
-          v.ident = fnParams[i].ident;
+          v = v.newIdent(fnParams[i].ident);
           newParams.add(v);
         }
       }
 
       final variable = context.compileRun(fn, context, newParams);
-      return ExprTempValue(
-          variable, variable?.ty ?? LitKind.kVoid.ty, currentIdent);
+      if (variable == null) return null;
+      return ExprTempValue(variable);
     }
 
     final args = <LLVMValueRef>[];
     final retTy = fn.getRetTy(context);
 
     if (struct != null && fn is ImplFn) {
+      // fixme: remove
       if (struct.ty is BuiltInTy) {
-        args.add(struct.load(context, Offset.zero));
+        args.add(struct.load(context));
       } else {
         args.add(struct.getBaseValue(context));
       }
@@ -107,7 +102,7 @@ abstract interface class AbiFn {
       final temp = p.build(context, baseTy: c);
       final v = temp?.variable;
       if (v != null) {
-        final value = v.load(context, temp!.currentIdent.offset);
+        final value = v.load(context);
 
         args.add(value);
       }
@@ -119,7 +114,7 @@ abstract interface class AbiFn {
         if (v is StoreVariable) {
           value = v.alloca;
         } else {
-          value = v.load(context, ident.offset);
+          value = v.load(context);
         }
         args.add(value);
       }
@@ -148,10 +143,9 @@ abstract interface class AbiFn {
     final fnType = fn.llty.createFnType(context, extra);
 
     final fnAlloca = fn.build(extra, map);
-    final fnValue = fnAlloca?.load(context, Offset.zero);
-    if (fnValue == null) return null;
+    if (fnAlloca == null) return null;
+    final fnValue = fnAlloca.load(context);
 
-    context.diSetCurrentLoc(currentIdent.offset);
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 
@@ -159,10 +153,11 @@ abstract interface class AbiFn {
       return null;
     }
 
-    final v = LLVMConstVariable(ret, retTy);
+    // 这里还是一个零时变量
+    final v = LLVMConstVariable(ret, retTy, Identifier.none);
     context.autoAddFreeHeap(v);
 
-    return ExprTempValue(v, v.ty, currentIdent);
+    return ExprTempValue(v);
   }
 
   static LLVMConstVariable createFunction(
@@ -191,11 +186,10 @@ abstract interface class AbiFn {
     return context.sret;
   }
 
-  static LLVMValueRef fnRet(
-      BuildContext context, Fn fn, Variable src, Offset offset) {
+  static LLVMValueRef fnRet(BuildContext context, Fn fn, Variable src) {
     if (fn.extern) {
-      return AbiFn.get(context.abi).classifyFnRet(context, src, offset);
+      return AbiFn.get(context.abi).classifyFnRet(context, src);
     }
-    return src.load(context, offset);
+    return src.load(context);
   }
 }

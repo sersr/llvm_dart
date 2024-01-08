@@ -11,7 +11,7 @@ fn main() i32 {
 
   let share_ptr = SharedPtr.new(Foo{ bar: Bar {y: 1234 }});
 
-  printf("y: %d\n", share_ptr.bar.y);
+  printf("y: %d\n", share_ptr.y);
 
 
   0;

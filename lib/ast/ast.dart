@@ -207,12 +207,11 @@ class Identifier with EquatableMixin {
 }
 
 class ExprTempValue {
-  ExprTempValue(this.variable, this.ty, this.currentIdent);
-  final Ty ty;
+  ExprTempValue(Variable this.variable) : _ty = null;
+  ExprTempValue.ty(Ty this._ty) : variable = null;
+  final Ty? _ty;
   final Variable? variable;
-  Identifier currentIdent;
-
-  Offset get offset => currentIdent.offset;
+  Ty get ty => variable?.ty ?? _ty!;
 }
 
 abstract class Expr extends BuildMixin {
@@ -439,11 +438,11 @@ class Block extends BuildMixin with EquatableMixin {
           // 获取缓存的value
           final valTemp = expr.build(context);
           final val = valTemp?.variable;
-          context.ret(val, valTemp?.currentIdent);
+          context.ret(val);
         }
       }
     } else {
-      context.ret(null, null);
+      context.ret(null);
     }
   }
 
@@ -513,7 +512,6 @@ class FnDecl with EquatableMixin {
     for (var p in params) {
       final t = fn.getRty(context, p);
       context.pushVariable(
-        p.ident,
         context.createVal(t, p.ident, p.rawTy.kind)..lifecycle.isOut = true,
       );
     }
@@ -1082,7 +1080,7 @@ class ImplFn extends Fn with ImplFnMixin {
     final ident = Identifier.self;
     final v = context.createVal(ty, ident);
     v.lifecycle.isOut = true;
-    context.pushVariable(ident, v);
+    context.pushVariable(v);
   }
 }
 
@@ -1491,44 +1489,43 @@ class ArrayLLVMType extends LLVMType {
   @override
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
-    final val = LLVMAllocaDelayVariable(ty, base, (proxy) {
+    final val = LLVMAllocaDelayVariable(base, (proxy) {
       if (proxy != null) return proxy.getBaseValue(c);
 
       final count = c.constI64(ty.size);
       return c.createArray(ty.elementTy.typeOf(c), count, name: ident.src);
-    }, typeOf(c));
-    if (ident.isValid) {
-      val.ident = ident;
-    }
+    }, ty, typeOf(c), ident);
+
     return val;
   }
 
   LLVMConstVariable createArray(BuildContext c, List<LLVMValueRef> values) {
     final value = c.constArray(ty.elementTy.typeOf(c), values);
-    return LLVMConstVariable(value, ty);
+    return LLVMConstVariable(value, ty, Identifier.none);
   }
 
-  Variable getElement(BuildContext c, Variable value, LLVMValueRef index,
-      {Offset offset = Offset.zero}) {
+  Variable getElement(
+      BuildContext c, Variable value, LLVMValueRef index, Identifier id) {
     final indics = <LLVMValueRef>[index];
 
     final p = value.getBaseValue(c);
 
     final elementTy = ty.elementTy.typeOf(c);
 
-    c.diSetCurrentLoc(offset);
+    c.diSetCurrentLoc(id.offset);
 
-    final vv = LLVMAllocaDelayVariable(ty.elementTy, null, (proxy) {
+    final vv = LLVMAllocaDelayVariable(null, (proxy) {
       assert(proxy == null);
 
       return llvm.LLVMBuildInBoundsGEP2(
           c.builder, elementTy, p, indics.toNative(), indics.length, unname);
-    }, elementTy);
+    }, ty.elementTy, elementTy, id);
     return vv;
   }
 
   Variable toStr(BuildContext c, Variable value) {
-    return LLVMConstVariable(value.getBaseValue(c), LitKind.kStr.ty);
+    return LLVMConstVariable(
+        value.getBaseValue(c), LitKind.kStr.ty, Identifier.none);
   }
 
   @override

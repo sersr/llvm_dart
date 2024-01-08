@@ -46,7 +46,7 @@ class LiteralExpr extends Expr {
     }
     final v = baseTy.llty.createValue(ident: ident);
 
-    return ExprTempValue(v, baseTy, ident);
+    return ExprTempValue(v);
   }
 
   @override
@@ -142,7 +142,7 @@ class IfExpr extends Expr {
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final v = createIfBlock(ifExpr, context, baseTy ?? _variable?.ty);
     if (v == null) return null;
-    return ExprTempValue(v, v.ty, Identifier.none);
+    return ExprTempValue(v);
   }
 
   StoreVariable? createIfBlock(IfExprBlock ifb, BuildContext context, Ty? ty) {
@@ -174,8 +174,7 @@ class IfExpr extends Expr {
             if (val is LLVMAllocaDelayVariable && !val.created) {
               val.initProxy(context, variable);
             } else {
-              final v = val.load(context, temp!.currentIdent.offset);
-              variable.store(context, v, Offset.zero);
+              variable.storeVariable(context, val);
             }
           }
         }
@@ -201,9 +200,9 @@ class IfExpr extends Expr {
 
     LLVMValueRef conv;
     if (con.ty == BuiltInTy.kBool) {
-      conv = con.load(c, conTemp!.currentIdent.offset);
+      conv = con.load(c);
     } else {
-      conv = c.math(con, null, OpKind.Ne).load(c, conTemp!.currentIdent.offset);
+      conv = c.math(con, null, OpKind.Ne, Identifier.none).load(c);
     }
 
     c.appendBB(then);
@@ -404,7 +403,7 @@ class RetExpr extends Expr {
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
     final e = expr?.build(context);
 
-    context.ret(e?.variable, e?.currentIdent, ident.offset);
+    context.ret(e?.variable);
     return e;
   }
 
@@ -600,7 +599,7 @@ class StructExpr extends Expr {
       context.diSetCurrentLoc(ident.offset);
 
       if (sortFields.length != fields.length) {
-        value.store(context, llvm.LLVMConstNull(structType), Offset.zero);
+        value.store(context, llvm.LLVMConstNull(structType));
         // final base = value.getBaseValue(context);
         // final len = struct.llvmType.getBytes(context);
         // final align = llvm.LLVMGetAlignment(base);
@@ -623,18 +622,16 @@ class StructExpr extends Expr {
           continue;
         }
 
-        final loadOffset = temp!.currentIdent.offset;
-        var offset = f.ident?.offset ?? loadOffset;
-
-        vv.store(context, v.load(context, loadOffset), offset);
+        vv.storeVariable(context, v);
         // llvm.LLVMSetAlignment(store, size);
       }
       return value.alloca;
     }
 
-    final value = LLVMAllocaDelayVariable(struct, null, create, structType);
+    final value =
+        LLVMAllocaDelayVariable(null, create, struct, structType, ident);
     context.autoAddStackCom(value);
-    return ExprTempValue(value, value.ty, ident);
+    return ExprTempValue(value);
   }
 
   @override
@@ -685,15 +682,14 @@ class AssignExpr extends Expr {
 
     if (lv is StoreVariable && rv != null) {
       var cav = rv;
-      final offset = rhs!.offset;
       if (lv.ty != rv.ty) {
-        cav = AsExpr.asType(context, rv, offset, lv.ty);
+        cav = AsExpr.asType(context, rv, Identifier.none, lv.ty);
       }
       if (cav is LLVMAllocaDelayVariable && !cav.created) {
         cav.initProxy(context, lv);
         cav.isTemp = false;
       } else {
-        lv.store(context, cav.load(context, offset), lhs!.offset);
+        lv.storeVariable(context, cav);
       }
     }
 
@@ -741,12 +737,10 @@ class AssignOpExpr extends AssignExpr {
     final lVariable = lhs?.variable;
 
     if (lVariable is StoreVariable) {
-      final val =
-          OpExpr.math(context, op, lVariable, expr, opIdent, lhs!.currentIdent);
+      final val = OpExpr.math(context, op, lVariable, expr, opIdent);
       final rValue = val?.variable;
       if (rValue != null) {
-        lVariable.store(context, rValue.load(context, val!.currentIdent.offset),
-            lhs.currentIdent.offset);
+        lVariable.store(context, rValue.load(context));
       }
     }
 
@@ -844,7 +838,7 @@ class FnExpr extends Expr {
     final fnV = fn.build();
     if (fnV == null) return null;
 
-    return ExprTempValue(fnV, fn, Identifier.none);
+    return ExprTempValue(fnV);
   }
 
   @override
@@ -909,12 +903,11 @@ mixin FnCallMixin {
   ExprTempValue? fnCall(
     BuildContext context,
     Fn fn,
-    List<FieldExpr> params,
-    Identifier currentIdent, {
+    List<FieldExpr> params, {
     Variable? struct,
   }) {
-    return AbiFn.fnCallInternal(context, fn, params, struct, catchVariables,
-        childrenVariables, currentIdent);
+    return AbiFn.fnCallInternal(
+        context, fn, params, struct, catchVariables, childrenVariables);
   }
 }
 
@@ -957,13 +950,15 @@ class FnCallExpr extends Expr with FnCallMixin {
     }
     final builtinFn = doBuiltFns(context, fn, params);
     if (builtinFn != null) {
-      builtinFn.currentIdent = fnV!.currentIdent;
       return builtinFn;
     }
 
     if (fn is! Fn) return null;
 
-    return fnCall(context, fn, params, fnV!.currentIdent);
+    if (variable != null) {
+      context.diSetCurrentLoc(variable.offset);
+    }
+    return fnCall(context, fn, params);
   }
 
   @override
@@ -1027,18 +1022,19 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
   @override
   ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
-    final variable = receiver.build(context);
+    final temp = receiver.build(context);
+    final variable = temp?.variable;
     final fnName = ident.src;
 
-    final val = variable?.variable?.defaultDeref(context);
+    final val = variable?.defaultDeref(context, variable.ident);
 
-    var valTy = val?.ty ?? variable?.ty;
+    var valTy = val?.ty ?? temp?.ty;
     if (valTy == null) return null;
 
     var structTy = valTy;
-    if (variable != null) {
-      final builiin = context.importHandler.arrayBuiltin(
-          context, variable, ident, fnName, val, structTy, params);
+    if (temp != null) {
+      final builiin = context.importHandler
+          .arrayBuiltin(context, ident, fnName, val, structTy, params);
       if (builiin != null) return builiin;
     }
 
@@ -1089,7 +1085,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
     if (fn == null) return null;
 
-    return fnCall(context, fn, params, ident, struct: val);
+    return fnCall(context, fn, params, struct: val);
   }
 
   Fn? _paramFn;
@@ -1170,7 +1166,7 @@ class StructDotFieldExpr extends Expr {
     final val = structVal?.variable;
     var newVal = val;
 
-    newVal = newVal?.defaultDeref(context);
+    newVal = newVal?.defaultDeref(context, newVal.ident);
 
     if (newVal == null) return null;
     ExprTempValue? temp;
@@ -1180,7 +1176,7 @@ class StructDotFieldExpr extends Expr {
       if (ty is StructTy) {
         final v = ty.llty.getField(variable, context, ident);
         if (v != null) {
-          temp = ExprTempValue(v, v.ty, ident);
+          temp = ExprTempValue(v);
           return true;
         }
       }
@@ -1430,20 +1426,17 @@ class OpExpr extends Expr {
     var r = rhs.build(context, baseTy: bestTy);
     if (l == null || r == null) return null;
 
-    return math(context, op, l.variable, rhs, opIdent, l.currentIdent);
+    return math(context, op, l.variable, rhs, opIdent);
   }
 
   static ExprTempValue? math(BuildContext context, OpKind op, Variable? l,
-      Expr? rhs, Identifier opIdent, Identifier lhsIdent) {
+      Expr? rhs, Identifier opIdent) {
     if (l == null) return null;
     final rhsExp = rhs?.build(context, baseTy: l.ty);
 
-    final v = context.math(l, rhsExp?.variable, op,
-        rhsOffset: rhsExp?.currentIdent.offset ?? Offset.zero,
-        lhsOffset: lhsIdent.offset,
-        opOffset: opIdent.offset);
+    final v = context.math(l, rhsExp?.variable, op, opIdent);
 
-    return ExprTempValue(v, v.ty, lhsIdent);
+    return ExprTempValue(v);
   }
 
   @override
@@ -1476,23 +1469,17 @@ enum PointerKind {
     return null;
   }
 
-  Variable? refDeref(Variable? val, BuildContext c) {
+  Variable? refDeref(Variable? val, BuildContext c, Identifier id) {
     if (this == PointerKind.none) return val;
     Variable? inst;
     if (val != null) {
       if (this == PointerKind.deref) {
-        inst = val.defaultDeref(c);
+        inst = val.defaultDeref(c, id);
       } else if (this == PointerKind.ref) {
-        inst = val.getRef(c);
+        inst = val.getRef(c, id);
       }
     }
     return inst ?? val;
-  }
-
-  static Variable? refDerefs(Variable? val, BuildContext c, PointerKind kind) {
-    if (val == null) return val;
-
-    return kind.refDeref(val, c);
   }
 
   @override
@@ -1565,15 +1552,15 @@ class VariableIdentExpr extends Expr {
       final ty = baseTy?.typeOf(context);
 
       if (ty == null) {
-        return ExprTempValue(null, BuiltInTy.kVoid, ident);
+        return ExprTempValue.ty(BuiltInTy.kVoid);
       }
-      final v = LLVMConstVariable(llvm.LLVMConstNull(ty), baseTy!);
-      return ExprTempValue(v, v.ty, ident);
+      final v = LLVMConstVariable(llvm.LLVMConstNull(ty), baseTy!, ident);
+      return ExprTempValue(v);
     }
 
     final val = context.getVariable(ident);
     if (val != null) {
-      return ExprTempValue(val, val.ty, ident);
+      return ExprTempValue(val.newIdent(ident));
     }
 
     final typeAlias = context.getAliasTy(ident);
@@ -1591,7 +1578,7 @@ class VariableIdentExpr extends Expr {
         struct =
             struct.newInstWithGenerics(context, localGenerics, struct.generics);
       }
-      return ExprTempValue(null, struct, ident);
+      return ExprTempValue.ty(struct);
     }
 
     var fn = context.getFn(ident);
@@ -1615,14 +1602,14 @@ class VariableIdentExpr extends Expr {
       if (enableBuild) {
         final value = fn.build();
         if (value != null) {
-          return ExprTempValue(value, value.ty, ident);
+          return ExprTempValue(value.newIdent(ident));
         }
       }
-      return ExprTempValue(null, fn, ident);
+      return ExprTempValue.ty(fn);
     }
 
     final builtinFn = context.getBuiltinFn(ident);
-    if (builtinFn != null) return ExprTempValue(null, builtinFn, ident);
+    if (builtinFn != null) return ExprTempValue.ty(builtinFn);
 
     return null;
   }
@@ -1697,9 +1684,9 @@ class RefExpr extends Expr {
     var variable = val?.variable;
     if (variable == null) return val;
 
-    var vv = PointerKind.refDerefs(val?.variable, context, kind);
+    var vv = kind.refDeref(val?.variable, context, pointerIdent);
     if (vv != null) {
-      return ExprTempValue(vv, vv.ty, pointerIdent);
+      return ExprTempValue(vv.newIdent(pointerIdent));
     }
     return val;
   }
@@ -1781,7 +1768,7 @@ class MatchItemExpr extends BuildMixin {
           }
           final f = enumTy.fields[i];
           final ident = p.ident ?? Identifier.none;
-          child.pushVariable(ident, child.createVal(f.grt(child), ident));
+          child.pushVariable(child.createVal(f.grt(child), ident));
         }
       }
     } else {
@@ -1820,13 +1807,13 @@ class MatchItemExpr extends BuildMixin {
       e = e.current;
     }
     e = e as VariableIdentExpr;
-    child.pushVariable(e.ident, parrern.variable!);
+    child.pushVariable(parrern.variable!.newIdent(e.ident));
     block.build(child);
   }
 
   ExprTempValue? build3(BuildContext context, ExprTempValue pattern) {
-    return OpExpr.math(context, op ?? OpKind.Eq, pattern.variable, expr,
-        Identifier.none, pattern.currentIdent);
+    return OpExpr.math(
+        context, op ?? OpKind.Eq, pattern.variable, expr, Identifier.none);
   }
 
   int? build2(BuildContext context, ExprTempValue pattern) {
@@ -1940,10 +1927,7 @@ class MatchExpr extends Expr {
 
       if (val != null) {
         llvm.LLVMBuildCondBr(
-            context.builder,
-            val.load(context, exprTempValue!.currentIdent.offset),
-            then.bb,
-            elseBB.bb);
+            context.builder, val.load(context), then.bb, elseBB.bb);
       }
 
       if (child != null) {
@@ -1971,7 +1955,7 @@ class MatchExpr extends Expr {
     if (retVariable == null) {
       return null;
     }
-    return ExprTempValue(retVariable, retVariable.ty, Identifier.none);
+    return ExprTempValue(retVariable);
   }
 
   @override
@@ -2091,7 +2075,7 @@ class MatchExpr extends Expr {
     if (retVariable == null) {
       return null;
     }
-    return ExprTempValue(retVariable, retVariable.ty, Identifier.none);
+    return ExprTempValue(retVariable);
   }
 
   @override
@@ -2132,32 +2116,32 @@ class AsExpr extends Expr {
     final lv = l?.variable;
     if (l == null || lv == null) return null;
 
-    final value = asType(context, lv, l.currentIdent.offset, r);
-    return ExprTempValue(value, value.ty, rhs.ident);
+    final value = asType(context, lv, rhs.ident, r);
+    return ExprTempValue(value);
   }
 
   static Variable asType(
-      BuildContext context, Variable lv, Offset lOffset, Ty asTy) {
+      BuildContext context, Variable lv, Identifier asId, Ty asTy) {
     final lty = lv.ty;
 
     if (asTy is BuiltInTy && lty is BuiltInTy) {
-      final val = context.castLit(lty.ty, lv.load(context, lOffset), asTy.ty);
-      return LLVMConstVariable(val, asTy);
+      final val = context.castLit(lty.ty, lv.load(context), asTy.ty);
+      return LLVMConstVariable(val, asTy, asId);
     }
     Variable? asValue;
 
-    final lValue = lv.load(context, lOffset);
+    final lValue = lv.load(context);
 
     if (lty is RefTy && asTy is BuiltInTy && asTy.ty.isInt) {
       final type = asTy.typeOf(context);
       final v = llvm.LLVMBuildPtrToInt(context.builder, lValue, type, unname);
-      asValue = LLVMConstVariable(v, asTy);
+      asValue = LLVMConstVariable(v, asTy, asId);
     } else if (lty is BuiltInTy && lty.ty.isInt && asTy is RefTy) {
       final type = asTy.typeOf(context);
       final v = llvm.LLVMBuildIntToPtr(context.builder, lValue, type, unname);
-      asValue = LLVMConstVariable(v, asTy);
+      asValue = LLVMConstVariable(v, asTy, asId);
     } else {
-      asValue = LLVMConstVariable(lValue, asTy);
+      asValue = LLVMConstVariable(lValue, asTy, asId);
     }
 
     return asValue;
@@ -2236,7 +2220,7 @@ class ArrayExpr extends Expr {
       final variable = v?.variable;
       if (variable != null) {
         elementTy ??= variable.ty;
-        values.add(variable.load(context, v!.currentIdent.offset));
+        values.add(variable.load(context));
       }
     }
 
@@ -2253,7 +2237,7 @@ class ArrayExpr extends Expr {
         values.addAll(List.generate(extra, (index) => zero));
       }
       final v = arrTy.llty.createArray(context, values);
-      return ExprTempValue(v, v.ty, Identifier.none);
+      return ExprTempValue(v);
     }
 
     return null;
@@ -2311,16 +2295,15 @@ class UnaryExpr extends Expr {
     if (val == null) return null;
     if (op == UnaryKind.Not) {
       if (val.ty == BuiltInTy.kBool) {
-        final value = val.load(context, temp!.currentIdent.offset);
+        final value = val.load(context);
         final notValue = llvm.LLVMBuildNot(context.builder, value, unname);
-        final variable = LLVMConstVariable(notValue, val.ty);
-        return ExprTempValue(variable, variable.ty, opIdent);
+        final variable = LLVMConstVariable(notValue, val.ty, opIdent);
+        return ExprTempValue(variable);
       }
 
-      return OpExpr.math(
-          context, OpKind.Eq, val, null, opIdent, temp!.currentIdent);
+      return OpExpr.math(context, OpKind.Eq, val, null, opIdent);
     } else if (op == UnaryKind.Neg) {
-      final va = val.load(context, Offset.zero);
+      final va = val.load(context);
       final t = llvm.LLVMTypeOf(va);
       final tyKind = llvm.LLVMGetTypeKind(t);
       final isFloat = tyKind == LLVMTypeKind.LLVMFloatTypeKind ||
@@ -2332,8 +2315,8 @@ class UnaryExpr extends Expr {
       } else {
         llvmValue = llvm.LLVMBuildNeg(context.builder, va, unname);
       }
-      final variable = LLVMConstVariable(llvmValue, val.ty);
-      return ExprTempValue(variable, variable.ty, opIdent);
+      final variable = LLVMConstVariable(llvmValue, val.ty, opIdent);
+      return ExprTempValue(variable);
     }
     return null;
   }
@@ -2372,8 +2355,8 @@ class ArrayOpExpr extends Expr {
       final implFn = impl?.getFn(elIdent)?.copyFrom(ty);
 
       if (implFn != null) {
-        return AbiFn.fnCallInternal(context, implFn, [FieldExpr(expr, ident)],
-            arrVal, null, null, ident);
+        return AbiFn.fnCallInternal(
+            context, implFn, [FieldExpr(expr, ident)], arrVal, null, null);
       }
     }
 
@@ -2382,31 +2365,28 @@ class ArrayOpExpr extends Expr {
     if (arrVal == null || locVal == null || loc == null) return null;
 
     if (ty is ArrayTy) {
-      final element = ty.llty.getElement(
-        context,
-        arrVal,
-        locVal.load(context, loc.offset),
-        offset: ident.offset,
-      );
-      return ExprTempValue(element, element.ty, ident);
+      final element =
+          ty.llty.getElement(context, arrVal, locVal.load(context), ident);
+      return ExprTempValue(element);
     } else if (ty is RefTy) {
       final offset = ident.offset;
-      final index = locVal.load(context, loc.offset);
+      final index = locVal.load(context);
       final indics = <LLVMValueRef>[index];
 
-      final p = arrVal.defaultDeref(context).getBaseValue(context);
+      final p =
+          arrVal.defaultDeref(context, arrVal.ident).getBaseValue(context);
 
       final elementTy = ty.parent.typeOf(context);
 
       context.diSetCurrentLoc(offset);
-      final vv = LLVMAllocaDelayVariable(ty.parent, null, (proxy) {
+      final vv = LLVMAllocaDelayVariable(null, (proxy) {
         assert(proxy == null);
 
         return llvm.LLVMBuildInBoundsGEP2(context.builder, elementTy, p,
             indics.toNative(), indics.length, unname);
-      }, elementTy);
+      }, ty.parent, elementTy, ident);
 
-      return ExprTempValue(vv, vv.ty, Identifier.none);
+      return ExprTempValue(vv);
     }
 
     return null;

@@ -25,11 +25,10 @@ class AbiFnArm64 implements AbiFn {
     BuildContext context,
     Fn fn,
     List<FieldExpr> params,
-    Identifier currentIdent,
   ) {
     final fnAlloca = fn.build(const {}, const {});
-    final fnValue = fnAlloca?.getBaseValue(context);
-    if (fnValue == null) return null;
+    if (fnAlloca == null) return null;
+    final fnValue = fnAlloca.getBaseValue(context);
 
     final fnParams = fn.fnSign.fnDecl.params;
     final args = <LLVMValueRef>[];
@@ -64,7 +63,7 @@ class AbiFnArm64 implements AbiFn {
           }
           value = tyValue;
         } else {
-          value = v.load(context, temp!.currentIdent.offset);
+          value = v.load(context);
         }
 
         args.add(value);
@@ -77,12 +76,11 @@ class AbiFnArm64 implements AbiFn {
         // error
         continue;
       }
-      args.add(v.load(context, variable.ident.offset));
+      args.add(v.load(context));
     }
 
     final fnType = createFnType(context, fn);
 
-    context.diSetCurrentLoc(currentIdent.offset);
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 
@@ -94,7 +92,7 @@ class AbiFnArm64 implements AbiFn {
 
     if (sret != null) {
       context.autoAddFreeHeap(sret);
-      return ExprTempValue(sret, retTy, currentIdent);
+      return ExprTempValue(sret);
     }
     if (retTy == BuiltInTy.kVoid) {
       return null;
@@ -104,11 +102,11 @@ class AbiFnArm64 implements AbiFn {
     if (retTy is StructTy) {
       v = fromFnParamsOrRet(context, retTy, ret);
     } else {
-      v = LLVMConstVariable(ret, retTy);
+      v = LLVMConstVariable(ret, retTy, Identifier.none);
     }
     context.autoAddFreeHeap(v);
 
-    return ExprTempValue(v, v.ty, currentIdent);
+    return ExprTempValue(v);
   }
 
   LLVMTypeRef getCStructFnParamTy(BuildContext context, StructTy ty) {
@@ -164,24 +162,24 @@ class AbiFnArm64 implements AbiFn {
   }
 
   Variable fromFnParamsOrRet(
-      BuildContext context, StructTy struct, LLVMValueRef src) {
+      BuildContext context, StructTy struct, LLVMValueRef src,
+      {Identifier? ident}) {
+    ident ??= Identifier.none;
     final byteSize = struct.llty.getBytes(context);
     final llType = struct.typeOf(context);
 
     if (byteSize <= 16) {
-      return struct.llty.createAlloca(context, Identifier.none, src)
-        ..initProxy(context);
+      return struct.llty.createAlloca(context, ident, src)..initProxy(context);
     }
 
     // ptr
-    return LLVMAllocaVariable(struct, src, llType);
+    return LLVMAllocaVariable(src, struct, llType, ident);
   }
 
   @override
-  LLVMValueRef classifyFnRet(
-      BuildContext context, Variable src, Offset offset) {
+  LLVMValueRef classifyFnRet(BuildContext context, Variable src) {
     final ty = src.ty;
-    if (ty is! StructTy) return src.load(context, offset);
+    if (ty is! StructTy) return src.load(context);
     final byteSize = ty.llty.getBytes(context);
 
     if (byteSize > 16) {
@@ -289,7 +287,7 @@ class AbiFnArm64 implements AbiFn {
     c.setFnLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
     c.setFnLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
     c.setFnLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
-    final fnVaraible = LLVMConstVariable(v, fn);
+    final fnVaraible = LLVMConstVariable(v, fn, fn.fnName);
     after(fnVaraible);
     return fnVaraible;
   }
@@ -306,7 +304,8 @@ class AbiFnArm64 implements AbiFn {
 
     if (isSret(context, fnty)) {
       final first = llvm.LLVMGetParam(fn, index);
-      final alloca = LLVMAllocaVariable(retTy, first, retTy.typeOf(context));
+      final alloca = LLVMAllocaVariable(
+          first, retTy, retTy.typeOf(context), Identifier.none);
       alloca.isTemp = false;
       index += 1;
       sret = alloca;
@@ -328,7 +327,7 @@ class AbiFnArm64 implements AbiFn {
       BuildContext context, Ty ty, LLVMValueRef fnParam, Identifier ident) {
     Variable alloca;
     if (ty is StructTy) {
-      alloca = fromFnParamsOrRet(context, ty, fnParam);
+      alloca = fromFnParamsOrRet(context, ty, fnParam, ident: ident);
     } else {
       final a = ty.llty.createAlloca(context, ident, fnParam);
       a.initProxy(context);
@@ -336,7 +335,7 @@ class AbiFnArm64 implements AbiFn {
       alloca = a;
     }
     if (alloca is StoreVariable) alloca.isTemp = false;
-    context.pushVariable(ident, alloca);
+    context.pushVariable(alloca);
   }
 }
 

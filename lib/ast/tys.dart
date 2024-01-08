@@ -10,7 +10,7 @@ import 'llvm/llvm_context.dart';
 import 'llvm/variables.dart';
 
 abstract class LifeCycleVariable {
-  Identifier? ident;
+  Identifier get ident;
 
   Identifier? lifeEnd;
 
@@ -49,22 +49,16 @@ abstract class GlobalContext {
   VA? getKVImpl<K, VA, T>(K k, Map<K, List<VA>> Function(Tys c) map,
       {ImportKV<VA>? handler, bool Function(VA v)? test});
 
-  ExprTempValue? arrayBuiltin(
-      BuildContext context,
-      ExprTempValue variable,
-      Identifier ident,
-      String fnName,
-      Variable? val,
-      Ty valTy,
-      List<FieldExpr> params) {
+  ExprTempValue? arrayBuiltin(BuildContext context, Identifier ident,
+      String fnName, Variable? val, Ty valTy, List<FieldExpr> params) {
     if (valTy is ArrayTy && val != null) {
       if (fnName == 'getSize') {
         final size = BuiltInTy.usize.llty
             .createValue(ident: Identifier.builtIn('${valTy.size}'));
-        return ExprTempValue(size, size.ty, ident);
+        return ExprTempValue(size);
       } else if (fnName == 'toStr') {
         final element = valTy.llty.toStr(context, val);
-        return ExprTempValue(element, element.ty, ident);
+        return ExprTempValue(element);
       }
     }
 
@@ -80,11 +74,11 @@ abstract class GlobalContext {
                 final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
                 final element = arr.llty.createAlloca(
                   context,
-                  Identifier.none,
+                  ident,
                   llvm.LLVMConstNull(arr.typeOf(context)),
                 );
 
-                return ExprTempValue(element, element.ty, ident);
+                return ExprTempValue(element);
               }
             }
           }
@@ -132,11 +126,11 @@ mixin Tys<V extends LifeCycleVariable> {
     if (list != null) {
       var last = list.last;
       // ignore: invalid_use_of_protected_member
-      if (last.ident!.data != ident.data) {
+      if (last.ident.data != ident.data) {
         return last;
       }
       for (var val in list) {
-        final valIdent = val.ident!;
+        final valIdent = val.ident;
         if (valIdent.start > ident.start) {
           break;
         }
@@ -162,15 +156,15 @@ mixin Tys<V extends LifeCycleVariable> {
     return v as V?;
   }
 
-  void pushVariable(Identifier ident, covariant V variable,
-      {bool isAlloca = true}) {
-    final list = variables.putIfAbsent(ident, () => []);
+  void pushVariable(covariant V variable, {bool isAlloca = true}) {
+    final list = variables.putIfAbsent(variable.ident, () => []);
     if (!list.contains(variable)) {
-      variable.ident = ident;
       if (list.isEmpty) {
+        assert(!identical(variable.ident, Identifier.none));
         list.add(variable);
       } else {
-        final index = list.indexWhere((e) => e.ident!.start > ident.start);
+        final index =
+            list.indexWhere((e) => e.ident.start > variable.ident.start);
         if (index == -1) {
           list.add(variable);
         } else {

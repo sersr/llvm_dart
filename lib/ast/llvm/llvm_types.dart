@@ -40,17 +40,14 @@ abstract class LLVMType {
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
     final type = typeOf(c);
-    final val = LLVMAllocaDelayVariable(ty, base, (proxy) {
+
+    return LLVMAllocaDelayVariable(base, (proxy) {
       if (proxy != null) return proxy.getBaseValue(c);
 
       final value = c.alloctor(type, ty: ty, name: ident.src);
       c.diBuilderDeclare(ident, value, ty);
       return value;
-    }, type);
-    if (ident.isValid) {
-      val.ident = ident;
-    }
-    return val;
+    }, ty, type, ident);
   }
 }
 
@@ -149,7 +146,7 @@ class LLVMTypeLit extends LLVMType {
       }
     }
 
-    return LLVMLitVariable(v, ty, raw);
+    return LLVMLitVariable(v, ty, raw, ident);
   }
 
   @override
@@ -216,7 +213,7 @@ class LLVMFnType extends LLVMType {
 
   Variable createAllocaParam(
       BuildContext c, Identifier ident, LLVMValueRef val) {
-    return LLVMConstVariable(val, ty);
+    return LLVMConstVariable(val, ty, ident);
   }
 
   @protected
@@ -307,7 +304,7 @@ class LLVMFnType extends LLVMType {
 
       var retTy = fn.getRetTy(c);
 
-      final offset = fn.fnSign.fnDecl.ident.offset;
+      final offset = fn.fnName.offset;
 
       final dBuilder = c.dBuilder;
       if (dBuilder != null && fn.block?.stmts.isNotEmpty == true) {
@@ -340,15 +337,13 @@ class LLVMFnType extends LLVMType {
             LLVMFalse);
 
         llvm.LLVMSetSubprogram(v, fnScope);
-
-        c.diSetCurrentLoc(offset);
       }
 
       c.setFnLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
       c.setFnLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
       c.setFnLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
 
-      final fnVariable = LLVMConstVariable(v, fn);
+      final fnVariable = LLVMConstVariable(v, fn, fn.fnName);
       after(fnVariable);
       return fnVariable;
     });
@@ -407,10 +402,10 @@ class LLVMStructType extends LLVMType {
     }
     LLVMValueRef v = alloca.getBaseValue(context);
 
-    final val = LLVMAllocaDelayVariable(rTy, null, (proxy) {
+    final val = LLVMAllocaDelayVariable(null, (proxy) {
       assert(proxy == null);
       return llvm.LLVMBuildStructGEP2(context.builder, type, v, rIndex, unname);
-    }, rTy.typeOf(context));
+    }, rTy, rTy.typeOf(context), ident);
 
     return val;
   }
@@ -782,7 +777,7 @@ class LLVMEnumItemType extends LLVMStructType {
   LLVMAllocaDelayVariable createAlloca(
       BuildContext c, Identifier ident, LLVMValueRef? base) {
     final type = pTy.typeOf(c);
-    return LLVMAllocaDelayVariable(ty, base, (proxy) {
+    return LLVMAllocaDelayVariable(base, (proxy) {
       final ctype = typeOf(c);
       final alloca = proxy != null
           ? proxy.getBaseValue(c)
@@ -795,16 +790,12 @@ class LLVMEnumItemType extends LLVMStructType {
       final index = ty.parent.variants.indexOf(ty);
       llvm.LLVMBuildStore(c.builder, pTy.getIndexValue(c, index), first);
       return alloca;
-    }, type);
+    }, ty, type, ident);
   }
 
   int load(BuildContext c, Variable parent, List<FieldExpr> params) {
-    LLVMValueRef value;
-    if (parent is StoreVariable) {
-      value = parent.alloca;
-    } else {
-      value = parent.load(c, Offset.zero);
-    }
+    final value = parent.load(c);
+
     final type = typeOf(c);
 
     final map = _size!.map;
@@ -817,9 +808,7 @@ class LLVMEnumItemType extends LLVMStructType {
         if (i < params.length) {
           final p = params[i];
           var e = p.expr;
-          if (e is RefExpr) {
-            e = e.current;
-          }
+
           if (e is VariableIdentExpr) {
             ident = e.ident;
           }
@@ -829,9 +818,9 @@ class LLVMEnumItemType extends LLVMStructType {
         final t = f.grt(c);
         final llValue = llvm.LLVMBuildInBoundsGEP2(
             c.builder, type, value, indices.toNative(), indices.length, unname);
-        final val = LLVMAllocaVariable(t, llValue, t.typeOf(c));
+        final val = LLVMAllocaVariable(llValue, t, t.typeOf(c), ident);
         val.isTemp = false;
-        c.pushVariable(ident, val);
+        c.pushVariable(val);
       }
     }
     return ty.parent.variants.indexOf(ty);
@@ -842,7 +831,7 @@ class LLVMEnumItemType extends LLVMStructType {
     if (parent is StoreVariable) {
       value = parent.alloca;
     } else {
-      value = parent.load(c, Offset.zero);
+      value = parent.load(c);
     }
 
     final indices = [c.constI32(0), c.constI32(0)];

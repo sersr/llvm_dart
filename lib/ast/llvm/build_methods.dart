@@ -214,7 +214,7 @@ mixin BuildMethods on LLVMTypeMixin {
     final alloca = llvm.LLVMBuildAlloca(nb ?? builder, type, name.toChar());
 
     if (ty != null) {
-      addFree(LLVMAllocaVariable(ty, alloca, type));
+      addFree(LLVMAllocaVariable(alloca, ty, type, Identifier.none));
     }
     setLastAlloca(alloca);
     if (nb != null) {
