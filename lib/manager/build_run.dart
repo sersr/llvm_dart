@@ -5,7 +5,8 @@ import '../fs/fs.dart';
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
 
-void buildRun(BuildContext root, {String name = 'out', bool optimize = false}) {
+void buildRun(BuildContextImpl root,
+    {String name = 'out', bool optimize = false}) {
   if (optimize) {
     llvm.optimize(
       root.module,

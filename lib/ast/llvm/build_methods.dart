@@ -8,6 +8,7 @@ import '../ast.dart';
 import '../context.dart';
 import '../memory.dart';
 import '../tys.dart';
+import 'intrinsics.dart';
 import 'variables.dart';
 
 mixin LLVMTypeMixin {
@@ -243,7 +244,7 @@ mixin BuildMethods on LLVMTypeMixin {
     if (fnContext != null) {
       final alloca = fnContext._allocaInst;
       final b = llvm.LLVMCreateBuilderInContext(llvmContext);
-      final fnEntry = llvm.LLVMGetFirstBasicBlock(fnValue);
+      final fnEntry = llvm.LLVMGetFirstBasicBlock(fnContext.fnValue);
       if (alloca != null) {
         // 在 entry 中分配
         final next = llvm.LLVMGetNextInstruction(alloca);
@@ -409,7 +410,8 @@ mixin DebugMixin on BuildMethods {
 }
 
 /// 隐藏[BuildContext]内容，为[LLVMType],[Variable] 提供类型支持
-mixin StoreLoadMixin on Tys<Variable>, BuildMethods, Consts, DebugMixin {
+mixin StoreLoadMixin
+    on Tys<Variable>, BuildMethods, Consts, DebugMixin, OverflowMath {
   int getAlignSize(Ty ty) {
     final size = ty.llty.getBytes(this);
     final max = pointerSize();
@@ -471,5 +473,21 @@ mixin StoreLoadMixin on Tys<Variable>, BuildMethods, Consts, DebugMixin {
     final bb = llvm.LLVMGetInsertBlock(builder);
     llvm.LLVMDIBuilderInsertDeclareAtEnd(
         dBuilder, alloca, dvariable, expr, loc, bb);
+  }
+
+  LLVMValueRef expect(LLVMValueRef lhs) {
+    final fn = root.maps.putIfAbsent("llvm.expect.i1",
+        () => FunctionDeclare([i1, i1], 'llvm.expect.i1', i1));
+    final f = fn.build(this);
+    return llvm.LLVMBuildCall2(builder, fn.type, f,
+        [lhs, constI1(LLVMTrue)].toNative(), 2, 'bool'.toChar());
+  }
+
+  LLVMValueRef assume(LLVMValueRef expr) {
+    final fn = root.maps.putIfAbsent(
+        "llvm.assume", () => FunctionDeclare([i1], 'llvm.assume', typeVoid));
+
+    return llvm.LLVMBuildCall2(
+        builder, fn.type, fn.build(this), [expr].toNative(), 1, unname);
   }
 }

@@ -39,9 +39,9 @@ class ProjectManager extends ManagerBase {
   final RootBuildContext rootBuildContext;
   final rootAnalysisContext = RootAnalysis();
 
-  BuildContext build(String path, {void Function()? afterAnalysis}) {
+  BuildContextImpl build(String path, {void Function()? afterAnalysis}) {
     return Identifier.run(() {
-      final root = BuildContext.root(rootBuildContext);
+      final root = BuildContextImpl.root(rootBuildContext);
       llvmCtxs[path] = root;
       final parser = getParser(path);
       final alc = AnalysisContext.root(rootAnalysisContext);

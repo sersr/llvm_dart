@@ -2,11 +2,12 @@ import 'package:nop/nop.dart';
 
 import '../../abi/abi_fn.dart';
 import '../ast.dart';
+import '../tys.dart';
 import 'llvm_context.dart';
 import 'variables.dart';
 
 abstract class ImplStackTy {
-  static void addStack(BuildContext context, Variable variable) {
+  static void addStack(FnBuildMixin context, Variable variable) {
     var ty = variable.ty;
     if (ty is RefTy) {
       ty = ty.baseTy;
@@ -29,7 +30,7 @@ abstract class ImplStackTy {
     );
   }
 
-  static bool isStackCom(BuildContext context, Variable variable) {
+  static bool isStackCom(FreeMixin context, Variable variable) {
     var ty = variable.ty;
     if (ty is RefTy) {
       ty = ty.baseTy;
@@ -37,7 +38,7 @@ abstract class ImplStackTy {
     return context.getImplWithIdent(ty, Identifier.builtIn('Stack')) != null;
   }
 
-  static void removeStack(BuildContext context, Variable variable) {
+  static void removeStack(FnBuildMixin context, Variable variable) {
     final ident = Identifier.builtIn('removeStack');
     var ty = variable.ty;
     if (ty is RefTy) {
@@ -66,7 +67,7 @@ abstract class ImplStackTy {
 
 abstract class RefDerefCom {
   static ImplFnMixin? getImplFn(
-      BuildContext context, Ty ty, Identifier com, Identifier fnIdent) {
+      Tys context, Ty ty, Identifier com, Identifier fnIdent) {
     if (ty is RefTy) {
       ty = ty.baseTy;
     }
@@ -74,15 +75,11 @@ abstract class RefDerefCom {
     final impl = context.getImplWithIdent(ty, com);
     if (impl == null) return null;
 
-    /// 内部方法不使用
-    final currentFn = context.getLastFnContext()!.runFn;
-    if (currentFn is ImplFn && currentFn.ty == ty) return null;
-
     var fn = impl.getFn(fnIdent);
     return fn?.copyFrom(ty);
   }
 
-  static Variable getDeref(BuildContext context, Variable variable) {
+  static Variable getDeref(FnBuildMixin context, Variable variable) {
     final fn = getImplFn(context, variable.ty, Identifier.builtIn('Deref'),
         Identifier.builtIn('deref'));
 
@@ -90,11 +87,11 @@ abstract class RefDerefCom {
 
     final param = LLVMAllocaVariable(variable.getBaseValue(context),
         variable.ty, variable.ty.typeOf(context), Identifier.self);
-    return context.compileRun(fn, context, [param]) ?? variable;
+    return context.compileRun(fn, [param]) ?? variable;
   }
 
   static void loopGetDeref(
-      BuildContext context, Variable variable, bool Function(Variable) action) {
+      FnBuildMixin context, Variable variable, bool Function(Variable) action) {
     if (action(variable)) return;
     for (;;) {
       final v =

@@ -96,7 +96,7 @@ abstract class ManagerBase extends GlobalContext {
         isRoot: false,
         action: (builder) {
           switch (child) {
-            case BuildContext context:
+            case BuildContextImpl context:
               if (builder is Ty) {
                 builder.currentContext = context;
                 builder.build();
@@ -126,7 +126,7 @@ abstract class ManagerBase extends GlobalContext {
     context.pushAllTy(parser.globalTy);
     parser.globalStmt.values.forEach(action);
 
-    if (context is BuildContext) {
+    if (context is FnBuildMixin) {
       for (var ty in parser.globalTy.values) {
         ty.currentContext = context;
       }

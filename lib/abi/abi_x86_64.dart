@@ -2,6 +2,7 @@ import 'dart:ffi';
 
 import '../ast/ast.dart';
 import '../ast/expr.dart';
+import '../ast/llvm/build_methods.dart';
 import '../ast/llvm/llvm_context.dart';
 import '../ast/llvm/variables.dart';
 import '../ast/memory.dart';
@@ -12,7 +13,7 @@ import 'abi_fn.dart';
 // ignore: camel_case_types
 class AbiFnx86_64 implements AbiFn {
   @override
-  bool isSret(BuildContext c, Fn fn) {
+  bool isSret(StoreLoadMixin c, Fn fn) {
     var retTy = fn.getRetTy(c);
     if (retTy is StructTy) {
       final size = retTy.llty.getBytes(c);
@@ -23,7 +24,7 @@ class AbiFnx86_64 implements AbiFn {
 
   @override
   ExprTempValue? fnCall(
-    BuildContext context,
+    FnBuildMixin context,
     Fn fn,
     List<FieldExpr> params,
   ) {
@@ -37,7 +38,7 @@ class AbiFnx86_64 implements AbiFn {
 
     StoreVariable? sret;
     if (isSret(context, fn)) {
-      sret = retTy.llty.createAlloca(context, Identifier.builtIn('sret'), null);
+      sret = retTy.llty.createAlloca(context, Identifier.builtIn('sret'));
 
       args.add(sret.alloca);
     }
@@ -109,7 +110,7 @@ class AbiFnx86_64 implements AbiFn {
     return ExprTempValue(v);
   }
 
-  LLVMTypeRef getCStructFnParamTy(BuildContext context, StructTy ty) {
+  LLVMTypeRef getCStructFnParamTy(StoreLoadMixin context, StructTy ty) {
     var count = ty.llty.getBytes(context);
     if (count > 16) {
       return context.pointer();
@@ -155,7 +156,7 @@ class AbiFnx86_64 implements AbiFn {
   }
 
   (Reg, LLVMValueRef) toFnParams(
-      BuildContext context, StructTy struct, Variable variable) {
+      StoreLoadMixin context, StructTy struct, Variable variable) {
     final byteSize = struct.llty.getBytes(context);
     if (byteSize > 16) {
       return (Reg.byval, variable.getBaseValue(context));
@@ -169,14 +170,14 @@ class AbiFnx86_64 implements AbiFn {
   }
 
   Variable fromFnParamsOrRet(
-      BuildContext context, StructTy struct, LLVMValueRef src,
+      StoreLoadMixin context, StructTy struct, LLVMValueRef src,
       {Identifier? ident}) {
     ident ??= Identifier.none;
     final byteSize = struct.llty.getBytes(context);
     final llType = struct.typeOf(context);
 
     if (byteSize <= 16) {
-      return struct.llty.createAlloca(context, ident, src)..initProxy(context);
+      return struct.llty.createAlloca(context, ident)..store(context, src);
     }
 
     // ptr
@@ -184,7 +185,7 @@ class AbiFnx86_64 implements AbiFn {
   }
 
   @override
-  LLVMValueRef classifyFnRet(BuildContext context, Variable src) {
+  LLVMValueRef classifyFnRet(StoreLoadMixin context, Variable src) {
     final ty = src.ty;
     if (ty is! StructTy) return src.load(context);
     final byteSize = ty.llty.getBytes(context);
@@ -199,7 +200,7 @@ class AbiFnx86_64 implements AbiFn {
         context.builder, llType, src.getBaseValue(context), unname);
   }
 
-  LLVMTypeRef createFnType(BuildContext c, Fn fn) {
+  LLVMTypeRef createFnType(StoreLoadMixin c, Fn fn) {
     final params = fn.fnSign.fnDecl.params;
     final list = <LLVMTypeRef>[];
     var retTy = fn.getRetTy(c);
@@ -238,7 +239,7 @@ class AbiFnx86_64 implements AbiFn {
 
   @override
   LLVMConstVariable createFunctionAbi(
-      BuildContext c, Fn fn, void Function(LLVMConstVariable fnValue) after) {
+      StoreLoadMixin c, Fn fn, void Function(LLVMConstVariable fnValue) after) {
     final ty = createFnType(c, fn);
     var ident = fn.fnName.src;
     if (ident.isEmpty) {
@@ -317,7 +318,7 @@ class AbiFnx86_64 implements AbiFn {
 
   @override
   LLVMAllocaVariable? initFnParamsImpl(
-      BuildContext context, LLVMValueRef fn, Fn fnty) {
+      StoreLoadMixin context, LLVMValueRef fn, Fn fnty) {
     var index = 0;
     assert(context.isFnBBContext);
 
@@ -329,7 +330,6 @@ class AbiFnx86_64 implements AbiFn {
       final first = llvm.LLVMGetParam(fn, index);
       final alloca = LLVMAllocaVariable(
           first, retTy, retTy.typeOf(context), Identifier.none);
-      alloca.isTemp = false;
       index += 1;
       sret = alloca;
     }
@@ -347,17 +347,17 @@ class AbiFnx86_64 implements AbiFn {
   }
 
   void resolveParam(
-      BuildContext context, Ty ty, LLVMValueRef fnParam, Identifier ident) {
+      StoreLoadMixin context, Ty ty, LLVMValueRef fnParam, Identifier ident) {
     Variable alloca;
     if (ty is StructTy) {
       alloca = fromFnParamsOrRet(context, ty, fnParam);
     } else {
-      final a = ty.llty.createAlloca(context, ident, fnParam);
-      a.initProxy(context);
+      final a = ty.llty.createAlloca(context, ident);
+      a.store(context, fnParam);
       context.setName(a.alloca, ident.src);
       alloca = a;
     }
-    if (alloca is StoreVariable) alloca.isTemp = false;
+
     context.pushVariable(alloca);
   }
 }

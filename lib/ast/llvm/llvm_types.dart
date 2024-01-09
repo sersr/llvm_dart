@@ -36,11 +36,10 @@ abstract class LLVMType {
 
   LLVMMetadataRef createDIType(StoreLoadMixin c);
 
-  LLVMAllocaDelayVariable createAlloca(
-      StoreLoadMixin c, Identifier ident, LLVMValueRef? base) {
+  LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident) {
     final type = typeOf(c);
 
-    return LLVMAllocaDelayVariable(base, (proxy) {
+    return LLVMAllocaDelayVariable((proxy) {
       if (proxy != null) return proxy.getBaseValue(c);
 
       final value = c.alloctor(type, ty: ty, name: ident.src);
@@ -395,26 +394,23 @@ class LLVMStructType extends LLVMType {
     return _type = getFieldsSize(c).getTypeStruct(c, ty.ident.src, null);
   }
 
-  StoreVariable? getField(
+  LLVMDelayVariable? getField(
       Variable alloca, StoreLoadMixin context, Identifier ident) {
     LLVMTypeRef type = typeOf(context);
 
     final fields = ty.fields;
-    final index = fields.indexWhere((element) => element.ident == ident);
-    if (index == -1) return null;
-    final field = fields[index];
-    final rTy = field.grt(context);
+    final fi = fields.indexWhere((element) => element.ident == ident);
+    if (fi == -1) return null;
+    final field = fields[fi];
+    final pty = field.grt(context);
 
-    final rIndex = _size!.map[field]!.index;
-    if (alloca is LLVMAllocaDelayVariable && !alloca.created) {
-      alloca.initProxy(context);
-    }
-    LLVMValueRef v = alloca.getBaseValue(context);
+    final ind = _size!.map[field]!.index;
 
-    final val = LLVMAllocaDelayVariable(null, (proxy) {
-      assert(proxy == null);
-      return llvm.LLVMBuildStructGEP2(context.builder, type, v, rIndex, unname);
-    }, rTy, rTy.typeOf(context), ident);
+    final ptr = alloca.getBaseValue(context);
+
+    final val = LLVMDelayVariable(() {
+      return llvm.LLVMBuildStructGEP2(context.builder, type, ptr, ind, unname);
+    }, pty, pty.typeOf(context), ident);
 
     return val;
   }
@@ -779,14 +775,11 @@ class LLVMEnumItemType extends LLVMStructType {
   }
 
   @override
-  LLVMAllocaDelayVariable createAlloca(
-      StoreLoadMixin c, Identifier ident, LLVMValueRef? base) {
+  LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident) {
     final type = pTy.typeOf(c);
-    return LLVMAllocaDelayVariable(base, (proxy) {
+    return LLVMAllocaDelayVariable((proxy) {
       final ctype = typeOf(c);
-      final alloca = proxy != null
-          ? proxy.getBaseValue(c)
-          : c.alloctor(type, ty: ty, name: ident.src);
+      final alloca = c.alloctor(type, ty: ty, name: ident.src);
 
       c.diBuilderDeclare(ident, alloca, ty);
       final indices = [c.constI32(0), c.constI32(0)];
@@ -799,11 +792,11 @@ class LLVMEnumItemType extends LLVMStructType {
   }
 
   int load(StoreLoadMixin c, Variable parent, List<FieldExpr> params) {
-    final value = parent.load(c);
-
     final type = typeOf(c);
 
     final map = _size!.map;
+
+    final value = parent.getBaseValue(c);
 
     if (ty.fields.length == params.length || params.isEmpty) {
       for (var i = 0; i < ty.fields.length; i++) {
@@ -821,10 +814,12 @@ class LLVMEnumItemType extends LLVMStructType {
 
         final indices = [c.constI32(0), c.constI32(index)];
         final t = f.grt(c);
-        final llValue = llvm.LLVMBuildInBoundsGEP2(
-            c.builder, type, value, indices.toNative(), indices.length, unname);
-        final val = LLVMAllocaVariable(llValue, t, t.typeOf(c), ident);
-        val.isTemp = false;
+
+        final val = LLVMDelayVariable(() {
+          return llvm.LLVMBuildInBoundsGEP2(c.builder, type, value,
+              indices.toNative(), indices.length, unname);
+        }, t, t.typeOf(c), ident);
+
         c.pushVariable(val);
       }
     }

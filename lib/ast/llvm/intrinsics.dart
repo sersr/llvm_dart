@@ -116,21 +116,6 @@ enum LLVMIntrisics {
 
 mixin OverflowMath on BuildMethods, Consts {
   late final typeList = [i8, i16, i32, i64, i128];
-  LLVMValueRef expect(LLVMValueRef lhs) {
-    final fn = root.maps.putIfAbsent("llvm.expect.i1",
-        () => FunctionDeclare([i1, i1], 'llvm.expect.i1', i1));
-    final f = fn.build(this);
-    return llvm.LLVMBuildCall2(builder, fn.type, f,
-        [lhs, constI1(LLVMTrue)].toNative(), 2, 'bool'.toChar());
-  }
-
-  LLVMValueRef assume(LLVMValueRef expr) {
-    final fn = root.maps.putIfAbsent(
-        "llvm.assume", () => FunctionDeclare([i1], 'llvm.assume', typeVoid));
-
-    return llvm.LLVMBuildCall2(
-        builder, fn.type, fn.build(this), [expr].toNative(), 1, unname);
-  }
 
   MathValue oMath(LLVMValueRef lhs, LLVMValueRef rhs, LLVMIntrisics fn) {
     final ty = typeList[fn.index % 5];
@@ -153,7 +138,7 @@ mixin OverflowMath on BuildMethods, Consts {
     llvm.LLVMBuildUnreachable(builder);
   }
 
-  static Variable math(BuildContext context, Variable lhs, Variable? rhs,
+  static Variable math(FlowMixin context, Variable lhs, Variable? rhs,
       OpKind op, Identifier opId) {
     final builder = context.builder;
 

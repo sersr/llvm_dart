@@ -37,7 +37,7 @@ class LetStmt extends Stmt {
   }
 
   @override
-  void build(BuildContext context) {
+  void build(FnBuildMixin context) {
     final realTy = ty?.grt(context);
     ExprTempValue? val = rExpr?.build(context, baseTy: realTy);
 
@@ -56,30 +56,21 @@ class LetStmt extends Stmt {
       }
 
       final alloca = variable.createAlloca(context, nameIdent, tty);
-      alloca.initProxy(context);
+      alloca.initProxy();
       assert(alloca.ident == nameIdent);
 
-      alloca.isTemp = false;
       context.pushVariable(alloca);
       return;
     }
 
     /// 先判断是否是 struct ret
-    StoreVariable? letVariable = context.sretFromVariable(nameIdent, variable);
+    var letVariable = context.sretFromVariable(nameIdent, variable) ?? variable;
 
-    if (letVariable == null && variable is StoreVariable) {
-      letVariable = variable;
-    }
+    letVariable = letVariable.newIdent(nameIdent);
 
-    letVariable = letVariable?.newIdent(nameIdent);
-
-    if (letVariable != null && letVariable.isTemp) {
-      letVariable.isTemp = false;
-
+    if (letVariable is LLVMAllocaDelayVariable && letVariable.isTemp) {
       /// 不需要新建变量，但要初始化
-      if (letVariable is LLVMAllocaDelayVariable) {
-        letVariable.initProxy(context);
-      }
+      letVariable.initProxy();
 
       context.setName(letVariable.alloca, nameIdent.src);
       context.pushVariable(letVariable);
@@ -87,25 +78,22 @@ class LetStmt extends Stmt {
     }
 
     if (isFinal) {
-      context.pushVariable(letVariable ?? variable.newIdent(nameIdent));
+      context.pushVariable(letVariable);
       return;
     }
 
-    /// 如果是
-    if (letVariable == null) {
-      letVariable = tty.llty.createAlloca(context, nameIdent, null);
+    final newVar = tty.llty.createAlloca(context, nameIdent);
 
-      LLVMValueRef rValue;
-      if (variable.isRef) {
-        rValue = variable.getBaseValue(context);
-      } else {
-        rValue = variable.load(context);
-      }
-
-      letVariable.store(context, rValue);
+    LLVMValueRef rValue;
+    if (variable.isRef) {
+      rValue = variable.getBaseValue(context);
+    } else {
+      rValue = variable.load(context);
     }
-    letVariable.isTemp = false;
-    context.pushVariable(letVariable);
+
+    newVar.store(context, rValue);
+
+    context.pushVariable(newVar);
   }
 
   @override
@@ -143,7 +131,7 @@ class ExprStmt extends Stmt {
   }
 
   @override
-  void build(BuildContext context) {
+  void build(FnBuildMixin context) {
     expr.build(context);
   }
 
@@ -178,7 +166,7 @@ class StaticStmt extends Stmt {
 
   bool _run = false;
   @override
-  void build(BuildContext context) {
+  void build(FnBuildMixin context) {
     if (_run) return;
     final realTy = ty?.grtOrT(context);
     if (ty != null && realTy == null) return;
@@ -261,7 +249,7 @@ class TyStmt extends Stmt {
   }
 
   @override
-  void build(BuildContext context) {
+  void build(FnBuildMixin context) {
     ty.currentContext ??= context;
     ty.build();
   }
@@ -296,7 +284,7 @@ class StructStmt extends Stmt {
   final StructTy ty;
 
   @override
-  void build(BuildContext context) {
+  void build(FnBuildMixin context) {
     ty.currentContext ??= context;
     ty.build();
   }
@@ -331,7 +319,7 @@ class EnumStmt extends Stmt {
   final EnumTy ty;
 
   @override
-  void build(BuildContext context) {
+  void build(FnBuildMixin context) {
     ty.currentContext ??= context;
     ty.build();
   }

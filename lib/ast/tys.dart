@@ -49,7 +49,7 @@ abstract class GlobalContext {
   VA? getKVImpl<K, VA, T>(K k, Map<K, List<VA>> Function(Tys c) map,
       {ImportKV<VA>? handler, bool Function(VA v)? test});
 
-  ExprTempValue? arrayBuiltin(BuildContext context, Identifier ident,
+  ExprTempValue? arrayBuiltin(FnBuildMixin context, Identifier ident,
       String fnName, Variable? val, Ty valTy, List<FieldExpr> params) {
     if (valTy is ArrayTy && val != null) {
       if (fnName == 'getSize') {
@@ -75,6 +75,9 @@ abstract class GlobalContext {
                 final element = arr.llty.createAlloca(
                   context,
                   ident,
+                );
+                element.store(
+                  context,
                   llvm.LLVMConstNull(arr.typeOf(context)),
                 );
 

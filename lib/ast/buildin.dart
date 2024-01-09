@@ -23,7 +23,7 @@ void _init() {
 }
 
 ExprTempValue? doBuiltFns(
-    BuildContext context, Ty? fn, List<FieldExpr> params) {
+    FnBuildMixin context, Ty? fn, List<FieldExpr> params) {
   if (fn is BuiltinFn) {
     return fn.runFn(context, params);
   }
@@ -40,7 +40,7 @@ BuiltinFn? isBuiltinFn(Identifier ident) {
 }
 
 typedef BuiltinFnRun = ExprTempValue? Function(
-    BuildContext context, List<FieldExpr> params);
+    FnBuildMixin context, List<FieldExpr> params);
 
 final class BuiltinFn extends Ty {
   BuiltinFn(this.name, this.runFn) {
@@ -62,7 +62,7 @@ final class BuiltinFn extends Ty {
   List<Object?> get props => [name];
 }
 
-ExprTempValue? sizeOf(BuildContext context, List<FieldExpr> params) {
+ExprTempValue? sizeOf(FnBuildMixin context, List<FieldExpr> params) {
   assert(params.isNotEmpty);
 
   final first = params.first;
@@ -108,7 +108,7 @@ final sizeOfFn = BuiltinFn(Identifier.builtIn('sizeOf'), sizeOf);
 
 // final elementAt = BuiltinFn(Identifier.builtIn('getElement'));
 
-ExprTempValue memSet(BuildContext context, List<FieldExpr> params) {
+ExprTempValue memSet(FnBuildMixin context, List<FieldExpr> params) {
   Variable lhs = params[0].build(context)!.variable!;
 
   Variable rhs = params[1].build(context)!.variable!;
@@ -125,7 +125,7 @@ ExprTempValue memSet(BuildContext context, List<FieldExpr> params) {
 }
 
 final memSetFn = BuiltinFn(Identifier.builtIn('memSet'), memSet);
-ExprTempValue memCopy(BuildContext context, List<FieldExpr> params) {
+ExprTempValue memCopy(FnBuildMixin context, List<FieldExpr> params) {
   Variable lhs = params[0].build(context)!.variable!;
 
   Variable rhs = params[1].build(context)!.variable!;

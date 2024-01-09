@@ -1,6 +1,7 @@
 import '../ast/analysis_context.dart';
 import '../ast/ast.dart';
 import '../ast/expr.dart';
+import '../ast/llvm/build_methods.dart';
 import '../ast/llvm/llvm_context.dart';
 import '../ast/llvm/variables.dart';
 import '../ast/memory.dart';
@@ -23,10 +24,10 @@ enum Abi {
 }
 
 abstract interface class AbiFn {
-  ExprTempValue? fnCall(BuildContext context, Fn fn, List<FieldExpr> params);
+  ExprTempValue? fnCall(FnBuildMixin context, Fn fn, List<FieldExpr> params);
 
   LLVMConstVariable createFunctionAbi(
-      BuildContext c, Fn fn, void Function(LLVMConstVariable fnValue) after);
+      StoreLoadMixin c, Fn fn, void Function(LLVMConstVariable fnValue) after);
 
   static final _instances = <Abi, AbiFn>{};
 
@@ -39,12 +40,12 @@ abstract interface class AbiFn {
     });
   }
 
-  bool isSret(BuildContext c, Fn fn);
+  bool isSret(StoreLoadMixin c, Fn fn);
 
-  LLVMValueRef classifyFnRet(BuildContext context, Variable src);
+  LLVMValueRef classifyFnRet(StoreLoadMixin context, Variable src);
 
   static ExprTempValue? fnCallInternal(
-      BuildContext context,
+      FnBuildMixin context,
       Fn fn,
       List<FieldExpr> params,
       Variable? struct,
@@ -79,7 +80,7 @@ abstract interface class AbiFn {
         }
       }
 
-      final variable = context.compileRun(fn, context, newParams);
+      final variable = context.compileRun(fn, newParams);
       if (variable == null) return null;
       return ExprTempValue(variable);
     }
@@ -163,7 +164,7 @@ abstract interface class AbiFn {
   }
 
   static LLVMConstVariable createFunction(
-      BuildContext c,
+      FnBuildMixin c,
       Fn fn,
       Set<AnalysisVariable>? variables,
       void Function(LLVMConstVariable fnValue) after) {
@@ -176,9 +177,9 @@ abstract interface class AbiFn {
   }
 
   LLVMAllocaVariable? initFnParamsImpl(
-      BuildContext context, LLVMValueRef fn, Fn fnty);
+      StoreLoadMixin context, LLVMValueRef fn, Fn fnty);
 
-  static StoreVariable? initFnParams(BuildContext context, LLVMValueRef fn,
+  static StoreVariable? initFnParams(FnBuildMixin context, LLVMValueRef fn,
       FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
       {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
     if (fnty.extern) {

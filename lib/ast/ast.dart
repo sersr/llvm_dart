@@ -225,7 +225,7 @@ abstract class Expr extends BuildMixin {
   }
 
   ExprTempValue? _temp;
-  ExprTempValue? build(BuildContext context, {Ty? baseTy}) {
+  ExprTempValue? build(FnBuildMixin context, {Ty? baseTy}) {
     if (!_first) return _temp;
     _first = false;
     return _temp ??= buildExpr(context, baseTy);
@@ -233,13 +233,13 @@ abstract class Expr extends BuildMixin {
 
   Expr clone();
 
-  Ty? getTy(BuildContext context) => null;
+  Ty? getTy(StoreLoadMixin context) => null;
 
   @override
   AnalysisVariable? analysis(AnalysisContext context);
 
   @protected
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy);
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy);
 }
 
 class UnknownExpr extends Expr {
@@ -261,7 +261,7 @@ class UnknownExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     context.errorExpr(this);
     return null;
   }
@@ -293,7 +293,7 @@ abstract class BuildMixin {
 }
 
 abstract class Stmt extends BuildMixin with EquatableMixin {
-  void build(BuildContext context);
+  void build(FnBuildMixin context);
   Stmt clone();
 }
 
@@ -429,7 +429,7 @@ class Block extends BuildMixin with EquatableMixin {
     return '${ident ?? ''} {\n$s$p}';
   }
 
-  void ret(BuildContext context) {
+  void ret(FnBuildMixin context) {
     if (stmts.isNotEmpty) {
       final stmt = stmts.last;
       if (stmt is ExprStmt) {
@@ -446,7 +446,7 @@ class Block extends BuildMixin with EquatableMixin {
     }
   }
 
-  void build(BuildContext context, {bool free = true}) {
+  void build(FnBuildMixin context, {bool free = true}) {
     for (var expr in _fnExprs) {
       expr.fn.pushFn(context);
     }
@@ -547,14 +547,14 @@ abstract class Ty extends BuildMixin with EquatableMixin {
 
   LLVMTypeRef typeOf(StoreLoadMixin c) => llty.typeOf(c);
 
-  Ty getRealTy(BuildContext c) => this;
+  Ty getRealTy(StoreLoadMixin c) => this;
 
   bool extern = false;
-  BuildContext? _buildContext;
+  FnBuildMixin? _buildContext;
   // ignore: unnecessary_getters_setters
-  BuildContext? get currentContext => _buildContext;
+  FnBuildMixin? get currentContext => _buildContext;
 
-  set currentContext(BuildContext? context) {
+  set currentContext(FnBuildMixin? context) {
     _buildContext = context;
   }
 
@@ -669,7 +669,7 @@ class PathTy with EquatableMixin {
   @override
   List<Object?> get props => [ident];
 
-  void build(BuildContext context) {
+  void build(StoreLoadMixin context) {
     if (ty != null) return;
 
     final tySrc = ident.src;
@@ -888,7 +888,7 @@ class Fn extends Ty with NewInst<Fn> {
 
   Fn get root => _parent ?? this;
 
-  LLVMConstVariable? customBuild(BuildContext context,
+  LLVMConstVariable? customBuild(FnBuildMixin context,
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
     final vk = [];
@@ -916,7 +916,7 @@ class Fn extends Ty with NewInst<Fn> {
     });
   }
 
-  void pushTyGenerics(BuildContext context) {
+  void pushTyGenerics(Tys context) {
     context.pushDyTys(tys);
   }
 
@@ -997,14 +997,14 @@ mixin ImplFnMixin on Fn {
   }
 
   @override
-  BuildContext? get currentContext =>
+  FnBuildMixin? get currentContext =>
       super.currentContext ?? implty.currentContext;
 
   @override
   ImplFnMixin newTy(List<FieldDef> fields);
 
   @override
-  void pushTyGenerics(BuildContext context) {
+  void pushTyGenerics(Tys context) {
     super.pushTyGenerics(context);
     final structTy = ty;
     if (structTy is! StructTy) return;
@@ -1251,7 +1251,7 @@ class StructTy extends Ty
     throw UnimplementedError('use buildItem instead.');
   }
 
-  void buildItem(BuildContext context) {
+  void buildItem(StoreLoadMixin context) {
     final context = currentContext;
     if (context == null) return;
     context.pushStruct(ident, this);
@@ -1487,11 +1487,9 @@ class ArrayLLVMType extends LLVMType {
   }
 
   @override
-  LLVMAllocaDelayVariable createAlloca(
-      StoreLoadMixin c, Identifier ident, LLVMValueRef? base) {
-    final val = LLVMAllocaDelayVariable(base, (proxy) {
-      if (proxy != null) return proxy.getBaseValue(c);
-
+  LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident,
+      {DelayFn? delay}) {
+    final val = LLVMAllocaDelayVariable((proxy) {
       final count = c.constI64(ty.size);
       return c.createArray(ty.elementTy.typeOf(c), count, name: ident.src);
     }, ty, typeOf(c), ident);
@@ -1508,18 +1506,15 @@ class ArrayLLVMType extends LLVMType {
       StoreLoadMixin c, Variable value, LLVMValueRef index, Identifier id) {
     final indics = <LLVMValueRef>[index];
 
-    final p = value.getBaseValue(c);
-
     final elementTy = ty.elementTy.typeOf(c);
 
-    c.diSetCurrentLoc(id.offset);
-
-    final vv = LLVMAllocaDelayVariable(null, (proxy) {
-      assert(proxy == null);
-
+    final vv = LLVMDelayVariable(() {
+      c.diSetCurrentLoc(id.offset);
+      final p = value.getBaseValue(c);
       return llvm.LLVMBuildInBoundsGEP2(
           c.builder, elementTy, p, indics.toNative(), indics.length, unname);
     }, ty.elementTy, elementTy, id);
+
     return vv;
   }
 

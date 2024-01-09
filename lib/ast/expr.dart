@@ -10,6 +10,7 @@ import 'analysis_context.dart';
 import 'ast.dart';
 import 'buildin.dart';
 import 'context.dart';
+import 'llvm/build_methods.dart';
 import 'llvm/coms.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
@@ -35,12 +36,12 @@ class LiteralExpr extends Expr {
   }
 
   @override
-  Ty? getTy(BuildContext context) {
+  Ty? getTy(StoreLoadMixin context) {
     return ty;
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     if (baseTy is! BuiltInTy) {
       baseTy = ty;
     }
@@ -139,16 +140,16 @@ class IfExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final v = createIfBlock(ifExpr, context, baseTy ?? _variable?.ty);
     if (v == null) return null;
     return ExprTempValue(v);
   }
 
-  StoreVariable? createIfBlock(IfExprBlock ifb, BuildContext context, Ty? ty) {
+  StoreVariable? createIfBlock(IfExprBlock ifb, FnBuildMixin context, Ty? ty) {
     StoreVariable? variable;
     if (ty != null) {
-      variable = ty.llty.createAlloca(context, Identifier.none, null);
+      variable = ty.llty.createAlloca(context, Identifier.none);
       context.autoAddFreeHeap(variable);
     }
     buildIfExprBlock(ifb, context, variable);
@@ -157,7 +158,7 @@ class IfExpr extends Expr {
   }
 
   static void _blockRetValue(
-      Block block, BuildContext context, StoreVariable? variable) {
+      Block block, FnBuildMixin context, StoreVariable? variable) {
     if (variable == null) return;
     if (block.stmts.isNotEmpty) {
       final lastStmt = block.stmts.last;
@@ -172,7 +173,7 @@ class IfExpr extends Expr {
           } else {
             context.removeFreeVariable(val);
             if (val is LLVMAllocaDelayVariable && !val.created) {
-              val.initProxy(context, variable);
+              val.initProxy(proxy: variable);
             } else {
               variable.storeVariable(context, val);
             }
@@ -183,7 +184,7 @@ class IfExpr extends Expr {
   }
 
   void buildIfExprBlock(
-      IfExprBlock ifEB, BuildContext c, StoreVariable? variable) {
+      IfExprBlock ifEB, FnBuildMixin c, StoreVariable? variable) {
     final elseifBlock = ifEB.child;
     final elseBlock = ifEB.elseBlock;
     final onlyIf = elseifBlock == null && elseBlock == null;
@@ -281,7 +282,7 @@ class BreakExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     context.brLoop();
     return null;
   }
@@ -306,7 +307,7 @@ class ContinueExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     context.brContinue();
     return null;
   }
@@ -339,7 +340,7 @@ class LoopExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     context.forLoop(block, null, null);
     // todo: phi
     return null;
@@ -376,7 +377,7 @@ class WhileExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     context.forLoop(block, null, expr);
     return null;
   }
@@ -400,7 +401,7 @@ class RetExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final e = expr?.build(context);
 
     context.ret(e?.variable);
@@ -469,7 +470,7 @@ class StructExpr extends Expr {
   final List<PathTy> generics;
 
   @override
-  StructTy? getTy(BuildContext context, {void Function()? gen}) {
+  StructTy? getTy(StoreLoadMixin context, {void Function()? gen}) {
     var struct = context.getStruct(ident);
 
     if (struct == null) {
@@ -494,7 +495,7 @@ class StructExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     var genericsInst = generics;
     final struct = getTy(context, gen: () {
       genericsInst = const [];
@@ -552,7 +553,7 @@ class StructExpr extends Expr {
         }
       }
 
-      bool isBuild = context is BuildContext;
+      bool isBuild = context is FnBuildMixin;
       Ty? gen(Identifier ident) {
         return gMap[ident];
       }
@@ -581,11 +582,11 @@ class StructExpr extends Expr {
     return nt;
   }
 
-  static ExprTempValue? buildTupeOrStruct(StructTy struct, BuildContext context,
+  static ExprTempValue? buildTupeOrStruct(StructTy struct, FnBuildMixin context,
       Identifier ident, List<FieldExpr> params, List<PathTy> genericsInst) {
     struct = resolveGeneric(struct, context, params, genericsInst);
     final structType = struct.typeOf(context);
-
+    LLVMAllocaDelayVariable? variable;
     LLVMValueRef create(StoreVariable? proxy) {
       StoreVariable? value = proxy;
       // final min = struct.llvmType.getMaxSize(context);
@@ -593,8 +594,7 @@ class StructExpr extends Expr {
       final sortFields = alignParam(
           params, (p) => fields.indexWhere((e) => e.ident == p.ident));
       // final size = min > 4 ? 8 : 4;
-
-      value ??= struct.llty.createAlloca(context, ident, null);
+      value ??= struct.llty.createAlloca(context, variable?.ident ?? ident);
 
       context.diSetCurrentLoc(ident.offset);
 
@@ -617,10 +617,10 @@ class StructExpr extends Expr {
         final v = temp?.variable;
         if (v == null) continue;
         final vv = struct.llty.getField(value, context, fd.ident)!;
-        if (v is LLVMAllocaDelayVariable && !v.created) {
-          v.initProxy(context, vv);
-          continue;
-        }
+        // if (v is LLVMAllocaDelayVariable && !v.created) {
+        //   v.initProxy(context, vv);
+        //   continue;
+        // }
 
         vv.storeVariable(context, v);
         // llvm.LLVMSetAlignment(store, size);
@@ -629,7 +629,8 @@ class StructExpr extends Expr {
     }
 
     final value =
-        LLVMAllocaDelayVariable(null, create, struct, structType, ident);
+        variable = LLVMAllocaDelayVariable(create, struct, structType, ident);
+
     context.autoAddStackCom(value);
     return ExprTempValue(value);
   }
@@ -673,7 +674,7 @@ class AssignExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final lhs = ref.build(context);
     final rhs = expr.build(context, baseTy: lhs?.ty);
 
@@ -686,8 +687,7 @@ class AssignExpr extends Expr {
         cav = AsExpr.asType(context, rv, Identifier.none, lv.ty);
       }
       if (cav is LLVMAllocaDelayVariable && !cav.created) {
-        cav.initProxy(context, lv);
-        cav.isTemp = false;
+        cav.initProxy(proxy: lv);
       } else {
         lv.storeVariable(context, cav);
       }
@@ -732,7 +732,7 @@ class AssignOpExpr extends AssignExpr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final lhs = ref.build(context);
     final lVariable = lhs?.variable;
 
@@ -767,7 +767,7 @@ class FieldExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     return expr.build(context, baseTy: baseTy);
   }
 
@@ -834,7 +834,7 @@ class FnExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final fnV = fn.build();
     if (fnV == null) return null;
 
@@ -901,7 +901,7 @@ mixin FnCallMixin {
   }
 
   ExprTempValue? fnCall(
-    BuildContext context,
+    FnBuildMixin context,
     Fn fn,
     List<FieldExpr> params, {
     Variable? struct,
@@ -940,7 +940,7 @@ class FnCallExpr extends Expr with FnCallMixin {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final fnV = expr.build(context);
     final variable = fnV?.variable;
     final fn = variable?.ty ?? fnV?.ty;
@@ -1021,7 +1021,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final temp = receiver.build(context);
     final variable = temp?.variable;
     final fnName = ident.src;
@@ -1161,7 +1161,7 @@ class StructDotFieldExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final structVal = struct.build(context);
     final val = structVal?.variable;
     var newVal = val;
@@ -1412,7 +1412,7 @@ class OpExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final lty = lhs.getTy(context);
     final rty = rhs.getTy(context);
     Ty? bestTy = lty ?? rty;
@@ -1429,7 +1429,7 @@ class OpExpr extends Expr {
     return math(context, op, l.variable, rhs, opIdent);
   }
 
-  static ExprTempValue? math(BuildContext context, OpKind op, Variable? l,
+  static ExprTempValue? math(FnBuildMixin context, OpKind op, Variable? l,
       Expr? rhs, Identifier opIdent) {
     if (l == null) return null;
     final rhsExp = rhs?.build(context, baseTy: l.ty);
@@ -1469,7 +1469,7 @@ enum PointerKind {
     return null;
   }
 
-  Variable? refDeref(Variable? val, BuildContext c, Identifier id) {
+  Variable? refDeref(Variable? val, StoreLoadMixin c, Identifier id) {
     if (this == PointerKind.none) return val;
     Variable? inst;
     if (val != null) {
@@ -1537,7 +1537,7 @@ class VariableIdentExpr extends Expr {
   }
 
   @override
-  Ty? getTy(BuildContext context) {
+  Ty? getTy(StoreLoadMixin context) {
     return context.getVariable(ident)?.ty;
   }
 
@@ -1547,7 +1547,7 @@ class VariableIdentExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     if (ident.src == 'null') {
       final ty = baseTy?.typeOf(context);
 
@@ -1679,7 +1679,7 @@ class RefExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final val = current.build(context);
     var variable = val?.variable;
     if (variable == null) return val;
@@ -1723,7 +1723,7 @@ class BlockExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     throw StateError('use block.build(context) instead.');
   }
 
@@ -1800,7 +1800,7 @@ class MatchItemExpr extends BuildMixin {
     return false;
   }
 
-  void build4(BuildContext context, ExprTempValue parrern) {
+  void build4(FnBuildMixin context, ExprTempValue parrern) {
     final child = context;
     var e = expr;
     if (e is RefExpr) {
@@ -1811,12 +1811,12 @@ class MatchItemExpr extends BuildMixin {
     block.build(child);
   }
 
-  ExprTempValue? build3(BuildContext context, ExprTempValue pattern) {
+  ExprTempValue? build3(FnBuildMixin context, ExprTempValue pattern) {
     return OpExpr.math(
         context, op ?? OpKind.Eq, pattern.variable, expr, Identifier.none);
   }
 
-  int? build2(BuildContext context, ExprTempValue pattern) {
+  int? build2(FnBuildMixin context, ExprTempValue pattern) {
     final child = context;
     var e = expr;
     int? value;
@@ -1883,7 +1883,7 @@ class MatchExpr extends Expr {
   }
 
   ExprTempValue? commonExpr(
-      BuildContext context, ExprTempValue variable, Ty? baseTy) {
+      FnBuildMixin context, ExprTempValue variable, Ty? baseTy) {
     // match 表达式
     MatchItemExpr? last;
     MatchItemExpr? valIdentItem =
@@ -1903,9 +1903,9 @@ class MatchExpr extends Expr {
     StoreVariable? retVariable;
 
     if (baseTy != null) {
-      retVariable = baseTy.llty.createAlloca(context, Identifier.none, null);
+      retVariable = baseTy.llty.createAlloca(context, Identifier.none);
     }
-    void buildItem(MatchItemExpr item, BuildContext context) {
+    void buildItem(MatchItemExpr item, FnBuildMixin context) {
       final then = context.buildSubBB(name: 'm_then');
       final after = context.buildSubBB(name: 'm_after');
       LLVMBasicBlock elseBB;
@@ -1959,7 +1959,7 @@ class MatchExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final variable = expr.build(context);
     if (variable == null) return null;
     final ty = variable.ty;
@@ -1975,7 +1975,7 @@ class MatchExpr extends Expr {
     StoreVariable? retVariable;
     final retTy = baseTy ?? _variable?.ty;
     if (retTy != null) {
-      retVariable = retTy.llty.createAlloca(context, Identifier.none, null);
+      retVariable = retTy.llty.createAlloca(context, Identifier.none);
     }
 
     var indexValue = ty.llty.loadIndex(context, parent);
@@ -1984,7 +1984,7 @@ class MatchExpr extends Expr {
     var length = items.length;
 
     if (length <= 2) {
-      void buildItem(MatchItemExpr item, BuildContext context) {
+      void buildItem(MatchItemExpr item, FnBuildMixin context) {
         final then = context.buildSubBB(name: 'm_then');
         final after = context.buildSubBB(name: 'm_after');
         LLVMBasicBlock elseBB;
@@ -2096,7 +2096,7 @@ class AsExpr extends Expr {
   final PathTy rhs;
 
   @override
-  Ty? getTy(BuildContext context) {
+  Ty? getTy(StoreLoadMixin context) {
     return rhs.grt(context);
   }
 
@@ -2110,7 +2110,7 @@ class AsExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final r = rhs.grt(context);
     final l = lhs.build(context, baseTy: r);
     final lv = l?.variable;
@@ -2121,7 +2121,7 @@ class AsExpr extends Expr {
   }
 
   static Variable asType(
-      BuildContext context, Variable lv, Identifier asId, Ty asTy) {
+      FnBuildMixin context, Variable lv, Identifier asId, Ty asTy) {
     final lty = lv.ty;
 
     if (asTy is BuiltInTy && lty is BuiltInTy) {
@@ -2169,7 +2169,7 @@ class ImportExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     context.pushImport(path, name: name);
     return null;
   }
@@ -2205,7 +2205,7 @@ class ArrayExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final values = <LLVMValueRef>[];
     Ty? arrTy = baseTy;
 
@@ -2289,7 +2289,7 @@ class UnaryExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final temp = expr.build(context);
     var val = temp?.variable;
     if (val == null) return null;
@@ -2343,7 +2343,7 @@ class ArrayOpExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(BuildContext context, Ty? baseTy) {
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final array = arrayOrPtr.build(context);
     if (array == null) return null;
     final arrVal = array.variable;
@@ -2378,10 +2378,8 @@ class ArrayOpExpr extends Expr {
 
       final elementTy = ty.parent.typeOf(context);
 
-      context.diSetCurrentLoc(offset);
-      final vv = LLVMAllocaDelayVariable(null, (proxy) {
-        assert(proxy == null);
-
+      final vv = LLVMDelayVariable(() {
+        context.diSetCurrentLoc(offset);
         return llvm.LLVMBuildInBoundsGEP2(context.builder, elementTy, p,
             indics.toNative(), indics.length, unname);
       }, ty.parent, elementTy, ident);
