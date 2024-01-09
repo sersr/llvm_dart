@@ -1508,7 +1508,7 @@ class ArrayLLVMType extends LLVMType {
 
     final elementTy = ty.elementTy.typeOf(c);
 
-    final vv = LLVMDelayVariable(() {
+    final vv = LLVMAllocaVariable.delay(() {
       c.diSetCurrentLoc(id.offset);
       final p = value.getBaseValue(c);
       return llvm.LLVMBuildInBoundsGEP2(

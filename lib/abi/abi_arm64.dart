@@ -25,6 +25,7 @@ class AbiFnArm64 implements AbiFn {
   ExprTempValue? fnCall(
     FnBuildMixin context,
     Fn fn,
+    Identifier ident,
     List<FieldExpr> params,
   ) {
     final fnAlloca = fn.build(const {}, const {});
@@ -81,6 +82,8 @@ class AbiFnArm64 implements AbiFn {
     }
 
     final fnType = createFnType(context, fn);
+
+    context.diSetCurrentLoc(ident.offset);
 
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);

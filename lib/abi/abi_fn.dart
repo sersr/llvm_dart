@@ -24,7 +24,8 @@ enum Abi {
 }
 
 abstract interface class AbiFn {
-  ExprTempValue? fnCall(FnBuildMixin context, Fn fn, List<FieldExpr> params);
+  ExprTempValue? fnCall(
+      FnBuildMixin context, Fn fn, Identifier ident, List<FieldExpr> params);
 
   LLVMConstVariable createFunctionAbi(
       StoreLoadMixin c, Fn fn, void Function(LLVMConstVariable fnValue) after);
@@ -47,12 +48,13 @@ abstract interface class AbiFn {
   static ExprTempValue? fnCallInternal(
       FnBuildMixin context,
       Fn fn,
+      Identifier ident,
       List<FieldExpr> params,
       Variable? struct,
       Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>>? map) {
     if (fn.extern) {
-      return AbiFn.get(context.abi).fnCall(context, fn, params);
+      return AbiFn.get(context.abi).fnCall(context, fn, ident, params);
     }
 
     fn = StructExpr.resolveGeneric(fn, context, params, []);
@@ -149,6 +151,7 @@ abstract interface class AbiFn {
     if (fnAlloca == null) return null;
     final fnValue = fnAlloca.load(context);
 
+    context.diSetCurrentLoc(ident.offset);
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 

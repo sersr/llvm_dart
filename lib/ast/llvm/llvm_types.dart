@@ -394,7 +394,7 @@ class LLVMStructType extends LLVMType {
     return _type = getFieldsSize(c).getTypeStruct(c, ty.ident.src, null);
   }
 
-  LLVMDelayVariable? getField(
+  LLVMAllocaVariable? getField(
       Variable alloca, StoreLoadMixin context, Identifier ident) {
     LLVMTypeRef type = typeOf(context);
 
@@ -408,7 +408,8 @@ class LLVMStructType extends LLVMType {
 
     final ptr = alloca.getBaseValue(context);
 
-    final val = LLVMDelayVariable(() {
+    final val = LLVMAllocaVariable.delay(() {
+      context.diSetCurrentLoc(ident.offset);
       return llvm.LLVMBuildStructGEP2(context.builder, type, ptr, ind, unname);
     }, pty, pty.typeOf(context), ident);
 
@@ -815,7 +816,7 @@ class LLVMEnumItemType extends LLVMStructType {
         final indices = [c.constI32(0), c.constI32(index)];
         final t = f.grt(c);
 
-        final val = LLVMDelayVariable(() {
+        final val = LLVMAllocaVariable.delay(() {
           return llvm.LLVMBuildInBoundsGEP2(c.builder, type, value,
               indices.toNative(), indices.length, unname);
         }, t, t.typeOf(c), ident);

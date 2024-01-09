@@ -586,7 +586,7 @@ class StructExpr extends Expr {
       Identifier ident, List<FieldExpr> params, List<PathTy> genericsInst) {
     struct = resolveGeneric(struct, context, params, genericsInst);
     final structType = struct.typeOf(context);
-    LLVMAllocaDelayVariable? variable;
+
     LLVMValueRef create(StoreVariable? proxy) {
       StoreVariable? value = proxy;
       // final min = struct.llvmType.getMaxSize(context);
@@ -594,7 +594,7 @@ class StructExpr extends Expr {
       final sortFields = alignParam(
           params, (p) => fields.indexWhere((e) => e.ident == p.ident));
       // final size = min > 4 ? 8 : 4;
-      value ??= struct.llty.createAlloca(context, variable?.ident ?? ident);
+      value ??= struct.llty.createAlloca(context, ident);
 
       context.diSetCurrentLoc(ident.offset);
 
@@ -628,8 +628,7 @@ class StructExpr extends Expr {
       return value.alloca;
     }
 
-    final value =
-        variable = LLVMAllocaDelayVariable(create, struct, structType, ident);
+    final value = LLVMAllocaDelayVariable(create, struct, structType, ident);
 
     context.autoAddStackCom(value);
     return ExprTempValue(value);
@@ -752,6 +751,15 @@ class FieldExpr extends Expr {
   FieldExpr(this.expr, this.ident);
   final Identifier? ident;
   final Expr expr;
+
+  Identifier? get pattern {
+    if (ident != null) return ident;
+    final e = expr;
+    if (e is VariableIdentExpr) {
+      return e.ident;
+    }
+    return null;
+  }
 
   @override
   FieldExpr clone() {
@@ -903,11 +911,12 @@ mixin FnCallMixin {
   ExprTempValue? fnCall(
     FnBuildMixin context,
     Fn fn,
+    Identifier ident,
     List<FieldExpr> params, {
     Variable? struct,
   }) {
     return AbiFn.fnCallInternal(
-        context, fn, params, struct, catchVariables, childrenVariables);
+        context, fn, ident, params, struct, catchVariables, childrenVariables);
   }
 }
 
@@ -955,10 +964,7 @@ class FnCallExpr extends Expr with FnCallMixin {
 
     if (fn is! Fn) return null;
 
-    if (variable != null) {
-      context.diSetCurrentLoc(variable.offset);
-    }
-    return fnCall(context, fn, params);
+    return fnCall(context, fn, variable?.ident ?? Identifier.none, params);
   }
 
   @override
@@ -1085,7 +1091,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
     if (fn == null) return null;
 
-    return fnCall(context, fn, params, struct: val);
+    return fnCall(context, fn, ident, params, struct: val);
   }
 
   Fn? _paramFn;
@@ -1176,7 +1182,7 @@ class StructDotFieldExpr extends Expr {
       if (ty is StructTy) {
         final v = ty.llty.getField(variable, context, ident);
         if (v != null) {
-          temp = ExprTempValue(v);
+          temp = ExprTempValue(v.newIdent(ident));
           return true;
         }
       }
@@ -1384,11 +1390,6 @@ class OpExpr extends Expr {
     var ls = '$lhs';
 
     var rc = rhs;
-    if (rc is RefExpr) {
-      if (rc.current is OpExpr) {
-        rc = rc.current;
-      }
-    }
 
     if (rc is OpExpr) {
       if (op.level > rc.op.level) {
@@ -1396,11 +1397,7 @@ class OpExpr extends Expr {
       }
     }
     var lc = lhs;
-    if (lc is RefExpr) {
-      if (lc.current is OpExpr) {
-        lc = lc.current;
-      }
-    }
+
     if (lc is OpExpr) {
       if (op.level > lc.op.level) {
         ls = '($ls)';
@@ -1767,8 +1764,10 @@ class MatchItemExpr extends BuildMixin {
             break;
           }
           final f = enumTy.fields[i];
-          final ident = p.ident ?? Identifier.none;
-          child.pushVariable(child.createVal(f.grt(child), ident));
+          final ident = p.pattern;
+          if (ident != null) {
+            child.pushVariable(child.createVal(f.grt(child), ident));
+          }
         }
       }
     } else {
@@ -1780,18 +1779,11 @@ class MatchItemExpr extends BuildMixin {
   }
 
   bool get isValIdent {
-    var e = expr;
-    if (e is RefExpr) {
-      e = e.current;
-    }
-    return op == null && e is VariableIdentExpr;
+    return op == null && expr is VariableIdentExpr;
   }
 
   bool get isOther {
-    var e = expr;
-    if (e is RefExpr) {
-      e = e.current;
-    }
+    final e = expr;
     if (e is VariableIdentExpr) {
       if (e.ident.src == '_') {
         return true;
@@ -1802,11 +1794,7 @@ class MatchItemExpr extends BuildMixin {
 
   void build4(FnBuildMixin context, ExprTempValue parrern) {
     final child = context;
-    var e = expr;
-    if (e is RefExpr) {
-      e = e.current;
-    }
-    e = e as VariableIdentExpr;
+    final e = expr as VariableIdentExpr;
     child.pushVariable(parrern.variable!.newIdent(e.ident));
     block.build(child);
   }
@@ -1820,9 +1808,6 @@ class MatchItemExpr extends BuildMixin {
     final child = context;
     var e = expr;
     int? value;
-    if (e is RefExpr) {
-      e = e.current;
-    }
     List<FieldExpr> params = const [];
 
     if (e is FnCallExpr) {
@@ -2355,8 +2340,8 @@ class ArrayOpExpr extends Expr {
       final implFn = impl?.getFn(elIdent)?.copyFrom(ty);
 
       if (implFn != null) {
-        return AbiFn.fnCallInternal(
-            context, implFn, [FieldExpr(expr, ident)], arrVal, null, null);
+        return AbiFn.fnCallInternal(context, implFn, ident,
+            [FieldExpr(expr, ident)], arrVal, null, null);
       }
     }
 
@@ -2378,7 +2363,7 @@ class ArrayOpExpr extends Expr {
 
       final elementTy = ty.parent.typeOf(context);
 
-      final vv = LLVMDelayVariable(() {
+      final vv = LLVMAllocaVariable.delay(() {
         context.diSetCurrentLoc(offset);
         return llvm.LLVMBuildInBoundsGEP2(context.builder, elementTy, p,
             indics.toNative(), indics.length, unname);

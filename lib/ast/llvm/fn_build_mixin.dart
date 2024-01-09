@@ -51,7 +51,7 @@ mixin FnBuildMixin
       // 只读引用
       final alloca = LLVMAllocaVariable(selfParam, p, p.typeOf(this), ident);
       setName(alloca.alloca, ident.src);
-      alloca.isRef = true;
+
       pushVariable(alloca);
       index += 1;
     }

@@ -23,6 +23,7 @@ abstract class ImplStackTy {
     AbiFn.fnCallInternal(
       context,
       addFn,
+      Identifier.none,
       [],
       LLVMConstVariable(variable.load(context), ty, Identifier.none),
       null,
@@ -57,6 +58,7 @@ abstract class ImplStackTy {
     AbiFn.fnCallInternal(
       context,
       removeFn,
+      Identifier.none,
       [],
       LLVMConstVariable(variable.load(context), ty, Identifier.none),
       null,

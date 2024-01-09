@@ -66,34 +66,30 @@ class LetStmt extends Stmt {
     /// 先判断是否是 struct ret
     var letVariable = context.sretFromVariable(nameIdent, variable) ?? variable;
 
-    letVariable = letVariable.newIdent(nameIdent);
-
-    if (letVariable is LLVMAllocaDelayVariable && letVariable.isTemp) {
-      /// 不需要新建变量，但要初始化
-      letVariable.initProxy();
-
-      context.setName(letVariable.alloca, nameIdent.src);
-      context.pushVariable(letVariable);
-      return;
-    }
-
     if (isFinal) {
-      context.pushVariable(letVariable);
+      context.pushVariable(letVariable.newIdent(nameIdent));
       return;
     }
 
-    final newVar = tty.llty.createAlloca(context, nameIdent);
+    final newVal = letVariable.ty.llty.createAlloca(context, nameIdent);
+    context.setName(newVal.alloca, nameIdent.src);
+    if (letVariable is LLVMAllocaDelayVariable && !letVariable.created) {
+      letVariable.initProxy(proxy: newVal);
 
-    LLVMValueRef rValue;
-    if (variable.isRef) {
-      rValue = variable.getBaseValue(context);
-    } else {
-      rValue = variable.load(context);
+      context.pushVariable(newVal);
+      return;
     }
 
-    newVar.store(context, rValue);
+    // LLVMValueRef rValue;
+    // if (variable.isRef) {
+    //   rValue = variable.getBaseValue(context);
+    // } else {
+    //   rValue = variable.load(context);
+    // }
+    newVal.storeVariable(context, variable);
+    // newVal.store(context, rValue);
 
-    context.pushVariable(newVar);
+    context.pushVariable(newVal);
   }
 
   @override
