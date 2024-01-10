@@ -1044,14 +1044,13 @@ class MethodCallExpr extends Expr with FnCallMixin {
       if (builiin != null) return builiin;
     }
 
-    Fn? fn;
-    if (structTy is StructTy) {
-      if (baseTy is StructTy && structTy.ident == baseTy.ident) {
-        structTy = baseTy;
-      }
+    var implFn = context.getImplFnForStruct(structTy, ident);
 
-      var implFn = context.getImplFnForStruct(structTy, ident);
-      if (implFn != null) {
+    if (structTy is StructTy) {
+      /// 对于类方法(静态方法)，struct 中存在泛型，并且没有指定时，从静态方法中的参数列表
+      /// 自动获取
+
+      if (implFn is ImplStaticFn) {
         implFn = StructExpr.resolveGeneric(implFn, context, params, [],
             others: structTy.generics) as ImplFnMixin;
         if (structTy.tys.length != structTy.generics.length) {
@@ -1066,10 +1065,15 @@ class MethodCallExpr extends Expr with FnCallMixin {
         }
       }
 
-      fn = implFn;
+      if (structTy.tys.isEmpty) {
+        if (baseTy is StructTy && structTy.ident == baseTy.ident) {
+          structTy = baseTy;
+        }
+      }
     }
 
-    fn ??= context.getImplFnForStruct(structTy, ident);
+    // 上面已经确定了structTy的具体类型了
+    Fn? fn = implFn?.copyFrom(structTy);
 
     // 字段有可能是一个函数指针
     if (fn == null) {
@@ -1096,7 +1100,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     var variable = receiver.analysis(context);
     if (variable == null) return null;
     var structTy = variable.ty;
-    // if (structTy is! StructTy) return null;
+    if (structTy is! StructTy) return null;
 
     if (variable is AnalysisStructVariable) {
       final p = variable.getParam(ident);
@@ -1108,30 +1112,26 @@ class MethodCallExpr extends Expr with FnCallMixin {
       if (p != null) return p;
     }
 
-    Fn? fn;
-    if (structTy is StructTy) {
-      var implFn = context.getImplFnForStruct(structTy, ident);
+    structTy = StructExpr.resolveGeneric(structTy, context, params, []);
+    var implFn = context.getImplFnForStruct(structTy, ident);
 
-      if (implFn != null) {
-        implFn = StructExpr.resolveGeneric(implFn, context, params, [],
-            others: structTy.generics) as ImplFnMixin;
-        if (structTy.tys.length != structTy.generics.length) {
-          final newTys = <Identifier, Ty>{};
-          for (var g in structTy.generics) {
-            final ty = implFn.tys[g.ident];
-            if (ty != null) {
-              newTys[g.ident] = ty;
-            }
+    if (implFn != null) {
+      implFn = StructExpr.resolveGeneric(implFn, context, params, [],
+          others: structTy.generics) as ImplFnMixin;
+      if (structTy.tys.length != structTy.generics.length) {
+        final newTys = <Identifier, Ty>{};
+        for (var g in structTy.generics) {
+          final ty = implFn.tys[g.ident];
+          if (ty != null) {
+            newTys[g.ident] = ty;
           }
-          structTy = structTy.newInst(newTys, context);
         }
+        structTy = structTy.newInst(newTys, context);
       }
-      fn = implFn;
     }
+    Fn? fn = implFn?.copyFrom(structTy);
 
-    fn ??= context.getImplFnForStruct(structTy, ident);
-
-    if (fn == null && structTy is StructTy) {
+    if (fn == null) {
       final field =
           structTy.fields.firstWhereOrNull((element) => element.ident == ident);
       final ty = field?.grtOrT(context);
@@ -1141,6 +1141,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
       }
     }
     if (fn == null) return null;
+    fn = StructExpr.resolveGeneric(fn, context, params, []);
 
     fn.analysis(context.getLastFnContext() ?? context);
 
@@ -2333,7 +2334,6 @@ class ArrayOpExpr extends Expr {
 
     if (ty is StructTy) {
       final elIdent = Identifier.builtIn('elementAt');
-
       final implFn = context.getImplFnForStruct(ty, elIdent);
 
       if (implFn != null) {
