@@ -448,7 +448,7 @@ class Block extends BuildMixin with EquatableMixin {
 
   void build(FnBuildMixin context, {bool free = true}) {
     for (var expr in _fnExprs) {
-      expr.fn.pushFn(context);
+      expr.build(context);
     }
 
     // 先处理普通语句，在内部函数中可能会引用到变量等
@@ -876,17 +876,15 @@ class Fn extends Ty with NewInst<Fn> {
   }
 
   Fn cloneDefault() {
-    return Fn(fnSign, block?.clone())..copy(this);
+    return Fn(fnSign, block)..copy(this);
   }
 
   void copy(Fn from) {
-    _parent = from.root;
+    _parent = from.parentOrCurrent;
     selfVariables = from.selfVariables;
     _get = from._get;
     currentContext = from.currentContext;
   }
-
-  Fn get root => _parent ?? this;
 
   LLVMConstVariable? customBuild(FnBuildMixin context,
       [Set<AnalysisVariable>? variables,
@@ -910,7 +908,7 @@ class Fn extends Ty with NewInst<Fn> {
     }
     final key = ListKey(vk);
 
-    return root._cache.putIfAbsent(key, () {
+    return parentOrCurrent._cache.putIfAbsent(key, () {
       return context.buildFnBB(
           this, variables, map ?? const {}, pushTyGenerics);
     });
@@ -976,7 +974,7 @@ class Fn extends Ty with NewInst<Fn> {
   @override
   Fn newTy(List<FieldDef> fields) {
     final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
-    return Fn(s, block?.clone())..copy(this);
+    return Fn(s, block)..copy(this);
   }
 }
 
@@ -991,7 +989,7 @@ mixin ImplFnMixin on Fn {
 
     return (parentOrCurrent as ImplFnMixin)
         ._cachesImpl
-        .putIfAbsent(other, () => cloneImpl(other));
+        .putIfAbsent(other, () => cloneImpl(other)..copy(this));
   }
 
   @override
@@ -1065,12 +1063,12 @@ class ImplFn extends Fn with ImplFnMixin {
   @override
   ImplFnMixin newTy(List<FieldDef> fields) {
     final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
-    return ImplFn(s, block?.clone(), ty, implty)..copy(this);
+    return ImplFn(s, block, ty, implty)..copy(this);
   }
 
   @override
   ImplFn cloneImpl(Ty other) {
-    return ImplFn(fnSign, block?.clone(), other, implty)..copy(this);
+    return ImplFn(fnSign, block, other, implty);
   }
 
   @override
@@ -1097,7 +1095,7 @@ class ImplStaticFn extends Fn with ImplFnMixin {
 
   @override
   ImplStaticFn cloneImpl(Ty other) {
-    return ImplStaticFn(fnSign, block?.clone(), other, implty)..copy(this);
+    return ImplStaticFn(fnSign, block, other, implty);
   }
 }
 

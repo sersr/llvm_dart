@@ -843,10 +843,10 @@ class FnExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    final fnV = fn.build();
-    if (fnV == null) return null;
-
-    return ExprTempValue(fnV);
+    assert(fn.currentContext == null);
+    fn.currentContext ??= context;
+    fn.pushFn(context);
+    return ExprTempValue.ty(fn);
   }
 
   @override

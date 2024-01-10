@@ -45,14 +45,16 @@ mixin FnBuildMixin
 
     if (fnty is ImplFn) {
       final p = fnty.ty;
-      final selfParam = llvm.LLVMGetParam(fn, index);
+      final selfValue = llvm.LLVMGetParam(fn, index);
       final ident = Identifier.self;
 
-      // 只读引用
-      final alloca = LLVMAllocaVariable(selfParam, p, p.typeOf(this), ident);
-      setName(alloca.alloca, ident.src);
+      final value = switch (p) {
+        BuiltInTy() => LLVMConstVariable(selfValue, p, ident),
+        _ => LLVMAllocaVariable(selfValue, p, p.typeOf(this), ident),
+      };
 
-      pushVariable(alloca);
+      setName(selfValue, ident.src);
+      pushVariable(value);
       index += 1;
     }
 
@@ -89,14 +91,14 @@ mixin FnBuildMixin
     }
 
     for (var variable in fnty.variables) {
-      index += 1;
       fnCatchVariable(variable, index);
+      index += 1;
     }
 
     if (extra != null) {
       for (var variable in extra) {
-        index += 1;
         fnCatchVariable(variable, index);
+        index += 1;
       }
     }
   }
