@@ -261,6 +261,10 @@ mixin Tys<V extends LifeCycleVariable> {
   }
 
   final implForStructs = <Ty, List<ImplTy>>{};
+  ImplFnMixin? getImplFnForStruct(Ty structTy, Identifier ident) {
+    return getImplForStruct(structTy, ident)?.getFn(structTy, ident);
+  }
+
   ImplTy? getImplForStruct(Ty structTy, Identifier ident) {
     ImplTy? cache;
     if (structTy is StructTy) {

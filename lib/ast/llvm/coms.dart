@@ -14,8 +14,7 @@ abstract class ImplStackTy {
     }
     final stackImpl = context.getImplWithIdent(ty, Identifier.builtIn('Stack'));
     if (stackImpl == null) return;
-    var addFn = stackImpl.getFn(Identifier.builtIn('addStack'));
-    addFn = addFn?.copyFrom(ty);
+    var addFn = stackImpl.getFn(ty, Identifier.builtIn('addStack'));
     if (addFn == null) {
       Log.e('error addFn == null.', onlyDebug: false);
       return;
@@ -48,8 +47,7 @@ abstract class ImplStackTy {
 
     final stackImpl = context.getImplWithIdent(ty, Identifier.builtIn('Stack'));
     if (stackImpl == null) return;
-    var removeFn = stackImpl.getFn(ident);
-    removeFn = removeFn?.copyFrom(ty);
+    var removeFn = stackImpl.getFn(ty, ident);
 
     if (removeFn == null) {
       Log.e('error removeFn == null.', onlyDebug: false);
@@ -77,8 +75,7 @@ abstract class RefDerefCom {
     final impl = context.getImplWithIdent(ty, com);
     if (impl == null) return null;
 
-    var fn = impl.getFn(fnIdent);
-    return fn?.copyFrom(ty);
+    return impl.getFn(ty, fnIdent);
   }
 
   static Variable getDeref(FnBuildMixin context, Variable variable) {

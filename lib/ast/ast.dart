@@ -984,16 +984,20 @@ mixin ImplFnMixin on Fn {
   Ty get ty;
   ImplTy get implty;
 
-  ImplFnMixin get rootImpl => _parentImpl ?? this;
   final _cachesImpl = <Ty, ImplFnMixin>{};
-  ImplFnMixin? _parentImpl;
 
-  ImplFnMixin copyFrom(Ty other) {
+  bool get _isRoot;
+
+  ImplFnMixin _copyFrom(Ty other) {
+    assert(_isRoot);
+    assert(parentOrCurrent == this);
     if (ty == other) return this;
-    _parent ??= root;
+    if (other is StructTy) {
+      other = other.parentOrCurrent;
+    }
 
-    return rootImpl._cachesImpl
-        .putIfAbsent(other, () => cloneImpl(other).._parentImpl = this);
+    return _cachesImpl.putIfAbsent(
+        other, () => cloneImpl(other).._parent = root);
   }
 
   @override
@@ -1058,21 +1062,25 @@ mixin ImplFnMixin on Fn {
 }
 
 class ImplFn extends Fn with ImplFnMixin {
-  ImplFn(super.fnSign, super.block, this.ty, this.implty);
+  ImplFn._in(super.fnSign, super.block, this.ty, this.implty) : _isRoot = false;
+  ImplFn._(super.fnSign, super.block, this.ty, this.implty) : _isRoot = true;
   @override
   final Ty ty;
   @override
   final ImplTy implty;
 
   @override
+  final bool _isRoot;
+
+  @override
   ImplFnMixin newTy(List<FieldDef> fields) {
     final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
-    return ImplFn(s, block?.clone(), ty, implty)..copy(this);
+    return ImplFn._in(s, block?.clone(), ty, implty)..copy(this);
   }
 
   @override
   ImplFn cloneImpl(Ty other) {
-    return ImplFn(fnSign, block?.clone(), other, implty);
+    return ImplFn._in(fnSign, block?.clone(), other, implty)..copy(this);
   }
 
   @override
@@ -1085,21 +1093,26 @@ class ImplFn extends Fn with ImplFnMixin {
 }
 
 class ImplStaticFn extends Fn with ImplFnMixin {
-  ImplStaticFn(super.fnSign, super.block, this.ty, this.implty);
+  ImplStaticFn._in(super.fnSign, super.block, this.ty, this.implty)
+      : _isRoot = false;
+  ImplStaticFn._(super.fnSign, super.block, this.ty, this.implty)
+      : _isRoot = true;
   @override
   final Ty ty;
   @override
   final ImplTy implty;
+  @override
+  final bool _isRoot;
 
   @override
   ImplFnMixin newTy(List<FieldDef> fields) {
     final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
-    return ImplStaticFn(s, block, ty, implty)..copy(this);
+    return ImplStaticFn._in(s, block, ty, implty)..copy(this);
   }
 
   @override
   ImplStaticFn cloneImpl(Ty other) {
-    return ImplStaticFn(fnSign, block?.clone(), other, implty);
+    return ImplStaticFn._in(fnSign, block?.clone(), other, implty)..copy(this);
   }
 }
 
@@ -1396,9 +1409,11 @@ class ImplTy extends Ty {
     }
   }
 
-  ImplFnMixin? getFn(Identifier ident) {
-    return _fns?.firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident) ??
-        _staticFns?.firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident);
+  ImplFnMixin? getFn(Ty parent, Identifier ident) {
+    final implFn =
+        _fns?.firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident) ??
+            _staticFns?.firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident);
+    return implFn?._copyFrom(parent);
   }
 
   List<ImplFn>? _fns;
@@ -1410,9 +1425,9 @@ class ImplTy extends Ty {
     if (ty == null) return;
     context.pushImplForStruct(ty, this);
 
-    _fns ??= fns.map((e) => ImplFn(e.fnSign, e.block, ty, this)).toList();
+    _fns ??= fns.map((e) => ImplFn._(e.fnSign, e.block, ty, this)).toList();
     _staticFns ??= staticFns
-        .map((e) => ImplStaticFn(e.fnSign, e.block, ty, this))
+        .map((e) => ImplStaticFn._(e.fnSign, e.block, ty, this))
         .toList();
   }
 

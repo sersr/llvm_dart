@@ -50,8 +50,7 @@ mixin FreeMixin on BuildContext {
     for (var val in _freeVal) {
       final ty = val.ty;
       final ident = Identifier.builtIn('drop');
-      final impl = getImplForStruct(ty, ident);
-      final fn = impl?.getFn(ident)?.copyFrom(ty);
+      final fn = getImplFnForStruct(ty, ident);
       final fnv = fn?.build();
       if (fn == null || fnv == null) continue;
       LLVMValueRef v;
