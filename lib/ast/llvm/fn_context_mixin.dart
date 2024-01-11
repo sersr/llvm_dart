@@ -16,7 +16,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
 
   void _updateDebugFn(FnContextMixin parent, FnContextMixin debug) {
     builder = parent.builder;
-    _fnValue = parent.fnValue;
+    _fnValue = parent.getLastFnContext()?.fnValue;
     assert(dBuilder == null);
 
     // 一个函数只能和一个文件绑定，在同一个文件中，可以取巧，使用同一个file scope

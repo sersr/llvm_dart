@@ -104,7 +104,7 @@ class AbiFnx86_64 implements AbiFn {
 
     Variable v;
     if (retTy is StructTy) {
-      v = fromFnParamsOrRet(context, retTy, ret);
+      v = fromFnParamsOrRet(context, retTy, ret, Identifier.none);
     } else {
       v = LLVMConstVariable(ret, retTy, Identifier.none);
     }
@@ -172,10 +172,8 @@ class AbiFnx86_64 implements AbiFn {
     return (Reg.none, llValue);
   }
 
-  Variable fromFnParamsOrRet(
-      StoreLoadMixin context, StructTy struct, LLVMValueRef src,
-      {Identifier? ident}) {
-    ident ??= Identifier.none;
+  Variable fromFnParamsOrRet(StoreLoadMixin context, StructTy struct,
+      LLVMValueRef src, Identifier ident) {
     final byteSize = struct.llty.getBytes(context);
     final llType = struct.typeOf(context);
 
@@ -353,7 +351,7 @@ class AbiFnx86_64 implements AbiFn {
       StoreLoadMixin context, Ty ty, LLVMValueRef fnParam, Identifier ident) {
     Variable alloca;
     if (ty is StructTy) {
-      alloca = fromFnParamsOrRet(context, ty, fnParam);
+      alloca = fromFnParamsOrRet(context, ty, fnParam, ident);
     } else {
       final a = ty.llty.createAlloca(context, ident);
       a.store(context, fnParam);

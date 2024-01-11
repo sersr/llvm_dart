@@ -1,4 +1,4 @@
-import "allocator.kc"
+import "std:allocator.kc"
 
 struct Vec<T> {
   data: *T,
@@ -16,4 +16,10 @@ impl Vec<T> {
     free(self.data);
     self.size = 0;
   }
+}
+
+
+fn main() i32 {
+
+  0;
 }

@@ -1038,6 +1038,13 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (valTy == null) return null;
 
     var structTy = valTy;
+
+    if (structTy is StructTy && structTy.tys.isEmpty) {
+      if (baseTy is StructTy && structTy.ident == baseTy.ident) {
+        structTy = baseTy;
+      }
+    }
+
     if (temp != null) {
       final builiin = context.importHandler
           .arrayBuiltin(context, ident, fnName, val, structTy, params);
@@ -1062,12 +1069,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
             }
           }
           structTy = structTy.newInst(newTys, context);
-        }
-      }
-
-      if (structTy.tys.isEmpty) {
-        if (baseTy is StructTy && structTy.ident == baseTy.ident) {
-          structTy = baseTy;
         }
       }
     }

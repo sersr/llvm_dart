@@ -1,4 +1,4 @@
-import '../lib/d.kc';
+import "std:d.kc";
 
 
 static vv = 111;
@@ -34,7 +34,5 @@ fn main() i32 {
 }
 
 extern
-fn hh(gen: Gen) i32 {
-  let hx = 10;
-  hx
+fn hh(gen: Gen) {
 }

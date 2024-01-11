@@ -1,4 +1,4 @@
-import 'd.kc'
+import "std:d.kc"
 
 fn main() i32 {
   type BaseAlias<T> = Base<T>;
@@ -10,7 +10,9 @@ fn main() i32 {
 
   let doubleAlias = DoubleAlias {12, 22, };
   doubleAlias.z = 555.0;
-  printf("double alias: %f\n", doubleAlias.z);
+
+  // f32 需要转换成 f64
+  printf("double alias: %f\n", doubleAlias.z as f64);
 
   0;
 }

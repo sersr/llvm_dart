@@ -1,19 +1,19 @@
-import 'std:d.kc';
-import 'std:heap_pointer.d.kc';
+import "std:d.kc";
+import "std:heap_pointer.d.kc";
 
 fn main() i32 {
   let base_ptr = ret(false);
-  printf('base_ptr: data: %d\n', base_ptr.data);
+  printf("base_ptr: data: %d\n", base_ptr.data);
   test();
 
   // 自动调用 deref(),实际为 Base.data: i32
   // let data: &i32;
   let data = *base_ptr; 
-  printf('alias Base.data: %d\n', *hh);
+  printf("alias Base.data: %d\n", *hh);
 
 
   let base64 = Base.new( 6666i64);
-  printf('base64: data: %d\n', base64.data);
+  printf("base64: data: %d\n", base64.data);
   0;
 }
 
@@ -25,7 +25,7 @@ struct Base<T> {
 
 fn test() {
   let base = ret(true);
-  printf('test: data: %d\n', base.data);
+  printf("test: data: %d\n", base.data);
 }
 fn ret(c: bool) *Base<i32> {
   if c {
@@ -52,12 +52,12 @@ impl Stack for Base<T> {
 
   fn addStack() {
     self.count +=1;
-    printf('add count: %d\n', self.count);
+    printf("add count: %d\n", self.count);
   }
 
   fn removeStack() {
     self.count -=1;
-      printf('remove count: %d\n', self.count);
+      printf("remove count: %d\n", self.count);
     if self.count == 0 {
       free(&self);
     }

@@ -163,7 +163,7 @@ mixin Tys<V extends LifeCycleVariable> {
     final list = variables.putIfAbsent(variable.ident, () => []);
     if (!list.contains(variable)) {
       if (list.isEmpty) {
-        assert(!identical(variable.ident, Identifier.none));
+        assert(!identical(variable.ident, Identifier.none), variable);
         list.add(variable);
       } else {
         final index =
