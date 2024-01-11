@@ -251,7 +251,7 @@ class AbiFnArm64 implements AbiFn {
     final offset = fn.fnSign.fnDecl.ident.offset;
 
     final dBuilder = c.dBuilder;
-    if (dBuilder != null && fn.block?.stmts.isNotEmpty == true) {
+    if (dBuilder != null && fn.block?.isNotEmpty == true) {
       final file = llvm.LLVMDIScopeGetFile(c.unit);
       final params = <Pointer>[];
       params.add(retTy.llty.createDIType(c));

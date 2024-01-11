@@ -359,9 +359,9 @@ mixin Tys<V extends LifeCycleVariable> {
     }
   }
 
-  void pushAllTy(Map<Object, Ty> all) {
-    final impls = all.values.whereType<ImplTy>();
-    for (var ty in all.values) {
+  void pushAllTy(Iterable<Ty> all) {
+    final impls = all.whereType<ImplTy>();
+    for (var ty in all) {
       if (ty is StructTy) {
         pushStruct(ty.ident, ty);
       } else if (ty is Fn) {

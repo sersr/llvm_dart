@@ -25,6 +25,7 @@ class Parser {
     final reader = TokenReader(src);
     final root = reader.parse(false);
 
+    _start = Identifier.fromToken(root.token, src);
     final it = root.child.tokenIt;
     loop(it, () {
       final token = getToken(it);
@@ -36,9 +37,18 @@ class Parser {
       }
       return false;
     });
+
+    _end = it.current.end != null ? getEndIdent(it) : getIdent(it);
   }
 
   final stmts = <Stmt>[];
+
+  late Identifier _start;
+  late Identifier _end;
+
+  Block get block {
+    return Block(stmts.map((e) => e.clone()).toList(), null, _start, _end);
+  }
 
   Ty? parseIdent(TokenIterator it, {bool global = true}) {
     final token = getToken(it);
@@ -417,7 +427,7 @@ class Parser {
     if (key == Key.fn) {
       final fn = parseFn(it);
       if (fn != null) {
-        stmt = ExprStmt(FnExpr(fn));
+        stmt = TyStmt(fn);
       }
     } else if (key == Key.struct) {
       final struct = parseStruct(it);

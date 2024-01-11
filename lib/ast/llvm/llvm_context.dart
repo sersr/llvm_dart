@@ -155,10 +155,11 @@ class BuildContextImpl extends BuildContext
 
   /// override: Tys
   @override
-  void pushAllTy(Map<Object, Ty> all) {
-    super.pushAllTy(all);
-    for (var item in all.values) {
+  void pushAllTy(Iterable<Ty> all) {
+    for (var item in all) {
+      assert(item.currentContext == null);
       item.currentContext = this;
+      item.build();
     }
   }
 

@@ -326,7 +326,7 @@ class LLVMFnType extends LLVMType {
     if (_scope != null) return _scope;
     var retTy = fn.getRetTy(c);
 
-    if (fn.block?.stmts.isNotEmpty == true) {
+    if (fn.block?.isNotEmpty == true) {
       final offset = fn.fnName.offset;
       final (namePointer, nameLength) = fn.fnName.src.toNativeUtf8WithLength();
       final file = llvm.LLVMDIScopeGetFile(c.unit);

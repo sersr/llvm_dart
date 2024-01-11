@@ -84,8 +84,8 @@ class IfExprBlock {
   }
 
   static AnalysisVariable? retFromBlock(Block block, AnalysisContext context) {
-    if (block.stmts.isNotEmpty) {
-      final last = block.stmts.last;
+    if (block.isNotEmpty) {
+      final last = block.lastOrNull;
       if (last is ExprStmt) {
         final expr = last.expr;
         if (expr is! RetExpr) {
@@ -160,8 +160,8 @@ class IfExpr extends Expr {
   static void _blockRetValue(
       Block block, FnBuildMixin context, StoreVariable? variable) {
     if (variable == null) return;
-    if (block.stmts.isNotEmpty) {
-      final lastStmt = block.stmts.last;
+    if (block.isNotEmpty) {
+      final lastStmt = block.lastOrNull;
       if (lastStmt is ExprStmt) {
         final expr = lastStmt.expr;
         if (expr is! RetExpr) {

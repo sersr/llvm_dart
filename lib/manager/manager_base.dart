@@ -35,8 +35,8 @@ abstract class ManagerBase extends GlobalContext {
 
   void printAst() {
     void printParser(Parser parser, String path) {
-      Log.w('--- $path', showTag: false);
-      print(parser.stmts.join('\n'));
+      Log.i('--- $path', showTag: false);
+      Log.w(parser.stmts.join('\n'), showTag: false);
     }
 
     Identifier.run(() {
@@ -101,9 +101,8 @@ mixin BuildContextMixin on ManagerBase {
   void initBuildContext({required FnBuildMixin context, required String path}) {
     final parser = getParser(path)!;
 
-    for (var stmt in parser.stmts) {
-      stmt.build(context);
-    }
+    final block = parser.block;
+    block.build(context);
   }
 }
 
@@ -112,8 +111,14 @@ mixin AnalysisContextMixin on ManagerBase {
       {required AnalysisContext context, required String path}) {
     final parser = getParser(path)!;
 
-    for (var stmt in parser.stmts) {
-      stmt.analysis(context);
+    final block = parser.block;
+
+    block.analysis(context);
+
+    for (var fns in context.fns.values) {
+      for (var fn in fns) {
+        fn.analysis(context);
+      }
     }
   }
 }

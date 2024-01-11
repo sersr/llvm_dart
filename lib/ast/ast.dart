@@ -372,74 +372,84 @@ enum LitKind {
 }
 
 class Block extends BuildMixin with EquatableMixin {
-  Block(this.stmts, this.ident, this.blockStart, this.blockEnd) {
+  Block(this._innerStmts, this.ident, this.blockStart, this.blockEnd) {
     _init();
-    final fnStmt = <FnExpr>[];
+    final fnStmt = <Fn>[];
     final others = <Stmt>[];
+    final tyStmts = <Stmt>[];
     // 函数声明前置
-    for (var stmt in stmts) {
-      if (stmt is ExprStmt) {
-        final expr = stmt.expr;
-        if (expr is FnExpr) {
-          fnStmt.add(expr);
-          continue;
+    for (var stmt in _innerStmts) {
+      if (stmt is TyStmt) {
+        if (stmt case TyStmt(ty: Fn ty)) {
+          fnStmt.add(ty);
+        } else {
+          tyStmts.add(stmt);
         }
+        continue;
       }
       others.add(stmt);
     }
     _fnExprs = fnStmt;
     _stmts = others;
+    _tyStmts = tyStmts;
   }
+
+  Block._(this._innerStmts, this.ident, this.blockStart, this.blockEnd);
 
   void _init() {
     // {
     //   stmt
     // }
-    for (var s in stmts) {
+    for (var s in _innerStmts) {
       s.incLevel();
     }
   }
 
   final Identifier? ident;
-  final List<Stmt> stmts;
+  final List<Stmt> _innerStmts;
 
-  late List<FnExpr> _fnExprs;
+  late List<Fn> _fnExprs;
   late List<Stmt> _stmts;
+  late List<Stmt> _tyStmts;
   final Identifier blockStart;
   final Identifier blockEnd;
+
+  bool get isNotEmpty => _stmts.isNotEmpty;
+
+  Stmt? get lastOrNull => _stmts.lastOrNull;
 
   @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
 
-    for (var s in stmts) {
+    for (var s in _innerStmts) {
       s.incLevel(count);
     }
   }
 
   Block clone() {
-    return Block(
-        stmts.map((e) => e.clone()).toList(), ident, blockStart, blockEnd);
+    return Block._(_innerStmts, ident, blockStart, blockEnd)
+      .._fnExprs = _fnExprs.map((e) => e.cloneDefault()).toList()
+      .._stmts = _stmts.map((e) => e.clone()).toList()
+      .._tyStmts = _tyStmts.map((e) => e.clone()).toList();
   }
 
   @override
   String toString() {
     final p = getWhiteSpace(level, BuildMixin.padSize);
-    final s = stmts.map((e) => '$e\n').join();
+    final s = _innerStmts.map((e) => '$e\n').join();
     return '${ident ?? ''} {\n$s$p}';
   }
 
   void ret(FnBuildMixin context) {
-    if (stmts.isNotEmpty) {
-      final stmt = stmts.last;
-      if (stmt is ExprStmt) {
-        final expr = stmt.expr;
-        if (expr is! RetExpr) {
-          // 获取缓存的value
-          final valTemp = expr.build(context);
-          final val = valTemp?.variable;
-          context.ret(val);
-        }
+    final stmt = lastOrNull;
+    if (stmt is ExprStmt) {
+      final expr = stmt.expr;
+      if (expr is! RetExpr) {
+        // 获取缓存的value
+        final valTemp = expr.build(context);
+        final val = valTemp?.variable;
+        context.ret(val);
       }
     } else {
       context.ret(null);
@@ -447,8 +457,13 @@ class Block extends BuildMixin with EquatableMixin {
   }
 
   void build(FnBuildMixin context, {bool free = true}) {
-    for (var expr in _fnExprs) {
-      expr.build(context);
+    for (var fn in _fnExprs) {
+      fn.currentContext = context;
+      fn.build();
+    }
+
+    for (var ty in _tyStmts) {
+      ty.build(context);
     }
 
     // 先处理普通语句，在内部函数中可能会引用到变量等
@@ -460,16 +475,20 @@ class Block extends BuildMixin with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [stmts];
+  List<Object?> get props => [_innerStmts];
 
   @override
   void analysis(AnalysisContext context) {
-    for (var expr in _fnExprs) {
-      context.pushFn(expr.fn.fnName, expr.fn);
+    for (var fn in _fnExprs) {
+      context.pushFn(fn.fnName, fn);
+    }
+
+    for (var ty in _tyStmts) {
+      ty.analysis(context);
     }
 
     for (var i = 0; i < _stmts.length; i += 1) {
-      final stmt = stmts[i];
+      final stmt = _innerStmts[i];
       stmt.analysis(context);
     }
     for (var fn in _fnExprs) {
