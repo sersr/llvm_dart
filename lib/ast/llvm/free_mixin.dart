@@ -51,7 +51,7 @@ mixin FreeMixin on BuildContext {
       final ty = val.ty;
       final ident = Identifier.builtIn('drop');
       final fn = getImplFnForStruct(ty, ident);
-      final fnv = fn?.build();
+      final fnv = fn?.genFn();
       if (fn == null || fnv == null) continue;
       LLVMValueRef v;
 

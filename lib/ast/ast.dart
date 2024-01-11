@@ -465,7 +465,7 @@ class Block extends BuildMixin with EquatableMixin {
   @override
   void analysis(AnalysisContext context) {
     for (var expr in _fnExprs) {
-      expr.fn.pushFn(context);
+      context.pushFn(expr.fn.fnName, expr.fn);
     }
 
     for (var i = 0; i < _stmts.length; i += 1) {
@@ -861,18 +861,12 @@ class Fn extends Ty with NewInst<Fn> {
 
   final _cache = <ListKey, LLVMConstVariable>{};
 
-  void pushFn(Tys context) {
-    context.pushFn(fnSign.fnDecl.ident, this);
-  }
-
   @override
-  LLVMConstVariable? build(
-      [Set<AnalysisVariable>? variables,
-      Map<Identifier, Set<AnalysisVariable>>? map]) {
+  void build() {
     final context = currentContext;
     assert(context != null);
-    if (context == null) return null;
-    return customBuild(context, variables, map);
+    if (context == null) return;
+    context.pushFn(fnName, this);
   }
 
   Fn cloneDefault() {
@@ -886,7 +880,16 @@ class Fn extends Ty with NewInst<Fn> {
     currentContext = from.currentContext;
   }
 
-  LLVMConstVariable? customBuild(FnBuildMixin context,
+  LLVMConstVariable? genFn(
+      [Set<AnalysisVariable>? variables,
+      Map<Identifier, Set<AnalysisVariable>>? map]) {
+    final context = currentContext;
+    assert(context != null);
+    if (context == null) return null;
+    return _customBuild(context, variables, map);
+  }
+
+  LLVMConstVariable? _customBuild(FnBuildMixin context,
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
     final vk = [];
@@ -944,6 +947,7 @@ class Fn extends Ty with NewInst<Fn> {
   void analysis(AnalysisContext context) {
     if (_anaysised) return;
     _anaysised = true;
+    if (context.getFn(fnName) == null) context.pushFn(fnName, this);
     if (generics.isNotEmpty && tys.isEmpty) {
       return;
     }
@@ -1244,16 +1248,8 @@ class StructTy extends Ty
 
   @override
   void build() {
-    throw UnimplementedError('use buildItem instead.');
-  }
-
-  void buildItem(StoreLoadMixin context) {
     final context = currentContext;
     if (context == null) return;
-    context.pushStruct(ident, this);
-  }
-
-  void push(Tys context) {
     context.pushStruct(ident, this);
   }
 
@@ -1286,11 +1282,6 @@ class EnumTy extends Ty {
 
   @override
   List<Object?> get props => [ident, variants];
-  void push(Tys context) {
-    for (var v in variants) {
-      v.push(context);
-    }
-  }
 
   @override
   void build() {
@@ -1298,7 +1289,8 @@ class EnumTy extends Ty {
     if (context == null) return;
     context.pushEnum(ident, this);
     for (var v in variants) {
-      v.buildItem(context);
+      v.currentContext ??= context;
+      v.build();
     }
   }
 

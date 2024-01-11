@@ -845,7 +845,7 @@ class FnExpr extends Expr {
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     assert(fn.currentContext == null);
     fn.currentContext ??= context;
-    fn.pushFn(context);
+    fn.build();
     return ExprTempValue.ty(fn);
   }
 
@@ -1596,7 +1596,7 @@ class VariableIdentExpr extends Expr {
       }
 
       if (enableBuild) {
-        final value = fn.build();
+        final value = fn.genFn();
         if (value != null) {
           return ExprTempValue(value.newIdent(ident));
         }

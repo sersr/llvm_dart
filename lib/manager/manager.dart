@@ -1,3 +1,5 @@
+import 'package:nop/nop.dart';
+
 import '../abi/abi_fn.dart';
 import '../ast/analysis_context.dart';
 import '../ast/ast.dart';
@@ -7,7 +9,8 @@ import '../ast/llvm/variables.dart';
 import '../ast/tys.dart';
 import 'manager_base.dart';
 
-class ProjectManager extends ManagerBase {
+class ProjectManager extends ManagerBase
+    with AnalysisContextMixin, BuildContextMixin {
   ProjectManager(
       {this.stdRoot = '',
       String? triple,
@@ -27,11 +30,7 @@ class ProjectManager extends ManagerBase {
     return Identifier.run(() {
       final alc = AnalysisContext.root(rootAnalysisContext);
       alcs[path] = alc;
-      baseProcess(
-        context: alc,
-        path: path,
-        action: (builder) => builder.analysis(alc),
-      );
+      initAnalysisContext(context: alc, path: path);
       return alc;
     });
   }
@@ -43,7 +42,6 @@ class ProjectManager extends ManagerBase {
     return Identifier.run(() {
       final root = BuildContextImpl.root(rootBuildContext);
       llvmCtxs[path] = root;
-      final parser = getParser(path);
       final alc = AnalysisContext.root(rootAnalysisContext);
       alcs[path] = alc;
 
@@ -54,21 +52,11 @@ class ProjectManager extends ManagerBase {
       initBuiltinFns(rootAnalysisContext);
       initBuiltinFns(rootBuildContext);
 
-      void actionAlc(BuildMixin builder) => builder.analysis(alc);
-      void action(BuildMixin builder) {
-        if (builder is Ty) {
-          builder.currentContext = root;
-          builder.build();
-        } else if (builder is Stmt) {
-          builder.build(root);
-        }
-      }
-
-      baseProcess(context: alc, path: path, parser: parser, action: actionAlc);
+      initAnalysisContext(context: alc, path: path);
       afterAnalysis?.call();
       if (isDebug) root.debugInit();
 
-      baseProcess(context: root, path: path, parser: parser, action: action);
+      initBuildContext(context: root, path: path);
 
       Fn? mainFn;
       for (var fns in root.fns.values) {
@@ -82,10 +70,8 @@ class ProjectManager extends ManagerBase {
       }
 
       if (mainFn != null) {
-        mainFn.build();
+        mainFn.genFn();
       }
-
-      // root.finalize();
 
       return root;
     });
@@ -117,5 +103,18 @@ class ProjectManager extends ManagerBase {
   void dispose() {
     rootBuildContext.dispose();
     llvmCtxs.values.firstOrNull?.dispose();
+  }
+
+  @override
+  void initChildContext(Tys<LifeCycleVariable> context, String path) {
+    switch (context) {
+      case FnBuildMixin():
+        initBuildContext(context: context, path: path);
+        break;
+      case AnalysisContext():
+        initAnalysisContext(context: context, path: path);
+      default:
+        Log.e('error: unknown type <$context>');
+    }
   }
 }

@@ -212,9 +212,7 @@ mixin Tys<V extends LifeCycleVariable> {
   }
 
   void pushEnum(Identifier ident, EnumTy ty) {
-    if (pushKV(ident, ty, enums)) {
-      ty.push(this);
-    }
+    pushKV(ident, ty, enums);
   }
 
   final fns = <Identifier, List<Fn>>{};

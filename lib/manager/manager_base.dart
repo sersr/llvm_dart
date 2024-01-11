@@ -73,71 +73,74 @@ abstract class ManagerBase extends GlobalContext {
   Tys<LifeCycleVariable> import(
       Tys<LifeCycleVariable> current, ImportPath path) {
     var pname = parseStr(path.name.src);
-    var pathName = '';
+
     final currentPath = current.currentPath;
     assert(currentPath != null, 'current == null.');
     if (pname.startsWith('std:')) {
       pname = pname.replaceFirst(RegExp('^std:'), stdRoot);
     }
 
-    pathName = join(currentDir.childDirectory(currentPath!).parent.path, pname);
+    final filePath =
+        join(currentDir.childDirectory(currentPath!).parent.path, pname);
 
-    final pn = normalize(pathName);
+    final pn = normalize(filePath);
     final map = getMap(current);
     var child = map[pn];
     if (child == null) {
       child = current.defaultImport(pn);
 
       map[pn] = child;
-
-      baseProcess(
-        context: child,
-        path: pn,
-        isRoot: false,
-        action: (builder) {
-          switch (child) {
-            case BuildContextImpl context:
-              if (builder is Ty) {
-                builder.currentContext = context;
-                builder.build();
-              } else if (builder is Stmt) {
-                builder.build(context);
-              }
-            case AnalysisContext child:
-              return builder.analysis(child);
-          }
-        },
-      );
+      initChildContext(child, pn);
     }
     return child;
   }
 
-  void baseProcess({
-    required Tys context,
-    required String path,
-    Parser? parser,
-    required void Function(BuildMixin builder) action,
-    bool isRoot = true,
-  }) {
-    parser ??= getParser(path)!;
-
-    parser.globalImportStmt.values.forEach(action);
-
-    context.pushAllTy(parser.globalTy);
-    parser.globalStmt.values.forEach(action);
-
-    if (context is FnBuildMixin) {
-      for (var ty in parser.globalTy.values) {
-        ty.currentContext = context;
-      }
-    } else {
-      for (var fns in context.fns.values) {
-        for (var fn in fns) {
-          action(fn);
-        }
-      }
-    }
-  }
+  void initChildContext(Tys context, String path);
 
   void dispose() {}
+}
+
+mixin BuildContextMixin on ManagerBase {
+  void initBuildContext({required FnBuildMixin context, required String path}) {
+    final parser = getParser(path)!;
+    // for (var stmt in parser.globalImportStmt.values) {
+    //   stmt.build(context);
+    // }
+    // context.pushAllTy(parser.globalTy);
+    // for (var stmt in parser.globalStmt.values) {
+    //   stmt.build(context);
+    // }
+
+    // for (var ty in parser.globalTy.values) {
+    //   ty.currentContext = context;
+    // }
+
+    for (var stmt in parser.stmts) {
+      stmt.build(context);
+    }
+  }
+}
+
+mixin AnalysisContextMixin on ManagerBase {
+  void initAnalysisContext(
+      {required AnalysisContext context, required String path}) {
+    final parser = getParser(path)!;
+    // for (var stmt in parser.globalImportStmt.values) {
+    //   stmt.analysis(context);
+    // }
+    // context.pushAllTy(parser.globalTy);
+
+    // for (var stmt in parser.globalStmt.values) {
+    //   stmt.analysis(context);
+    // }
+    // for (var fns in context.fns.values) {
+    //   for (var fn in fns) {
+    //     fn.analysis(context);
+    //   }
+    // }
+
+    for (var stmt in parser.stmts) {
+      stmt.analysis(context);
+    }
+  }
 }

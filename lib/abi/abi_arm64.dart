@@ -28,7 +28,7 @@ class AbiFnArm64 implements AbiFn {
     Identifier ident,
     List<FieldExpr> params,
   ) {
-    final fnAlloca = fn.build(const {}, const {});
+    final fnAlloca = fn.genFn();
     if (fnAlloca == null) return null;
     final fnValue = fnAlloca.getBaseValue(context);
 

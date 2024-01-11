@@ -147,7 +147,7 @@ abstract interface class AbiFn {
 
     final fnType = fn.llty.createFnType(context, extra);
 
-    final fnAlloca = fn.build(extra, map);
+    final fnAlloca = fn.genFn(extra, map);
     if (fnAlloca == null) return null;
     final fnValue = fnAlloca.load(context);
 

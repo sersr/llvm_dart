@@ -42,12 +42,16 @@ class Parser {
   final globalStmt = <Token, Stmt>{};
   final globalImportStmt = <Token, Stmt>{};
 
+  final stmts = <Stmt>[];
+
   Ty? parseIdent(TokenIterator it, {bool global = true}) {
     final token = getToken(it);
     assert(token.kind == TokenKind.ident);
 
     final key = getKey(it);
     Ty? ty;
+
+    Stmt? stmt;
     if (key != null) {
       switch (key) {
         case Key.fn:
@@ -57,11 +61,11 @@ class Parser {
         case Key.kEnum:
           ty = parseEnum(it);
         case Key.kStatic:
-          final token = getToken(it);
-          final stmt = parseStaticExpr(it);
-          if (stmt != null) {
-            globalStmt[token] = stmt;
-          }
+          // final token = getToken(it);
+          stmt = parseStaticExpr(it);
+        // if (stmt != null) {
+        //   globalStmt[token] = stmt;
+        // }
         case Key.kComponent:
           ty = parseCom(it);
         case Key.kImpl:
@@ -69,18 +73,23 @@ class Parser {
         case Key.kExtern:
           ty = parseExtern(it);
         case Key.kImport:
-          final token = getToken(it);
-          final stmt = parseImportStmt(it);
-          if (stmt != null) {
-            globalImportStmt[token] = stmt;
-          }
+          // final token = getToken(it);
+          stmt = parseImportStmt(it);
+        // if (stmt != null) {
+        //   globalImportStmt[token] = stmt;
+        // }
         case Key.kType:
           ty = parseType(it);
         default:
       }
-      if (ty != null && global) {
-        globalTy[token] = ty;
+
+      if (global) {
+        if (ty != null) {
+          // globalTy[token] = ty;
+          stmt = TyStmt(ty);
+        }
       }
+      if (stmt != null) stmts.add(stmt);
     }
     return ty;
   }

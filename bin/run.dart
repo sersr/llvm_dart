@@ -7,7 +7,7 @@ Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
 Directory get stdRoot => currentDir.childDirectory('kc').childDirectory('lib');
 void main(List<String> args) async {
   assert(() {
-    args = ['test/string.kc'];
+    args = ['main.kc'];
     return true;
   }());
   buildDir.create();

@@ -3,7 +3,7 @@ import '../ast/ast.dart';
 import '../ast/tys.dart';
 import 'manager_base.dart';
 
-class Analyzer extends ManagerBase {
+class Analyzer extends ManagerBase with AnalysisContextMixin {
   Analyzer() {
     rootAnalysis.importHandler = this;
   }
@@ -11,13 +11,7 @@ class Analyzer extends ManagerBase {
   AnalysisContext addKcFile(String path) {
     return Identifier.run(() {
       final alc = AnalysisContext.root(rootAnalysis);
-      baseProcess(
-        context: alc,
-        path: path,
-        action: (builder) {
-          builder.analysis(alc);
-        },
-      );
+      initAnalysisContext(context: alc, path: path);
       return alc;
     });
   }
@@ -51,5 +45,10 @@ class Analyzer extends ManagerBase {
   @override
   V? getVariable<V>(Identifier ident) {
     return rootAnalysis.getVariableImpl(ident) as V?;
+  }
+
+  @override
+  void initChildContext(Tys<LifeCycleVariable> context, String path) {
+    initAnalysisContext(context: context as AnalysisContext, path: path);
   }
 }
