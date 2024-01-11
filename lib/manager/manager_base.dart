@@ -36,10 +36,7 @@ abstract class ManagerBase extends GlobalContext {
   void printAst() {
     void printParser(Parser parser, String path) {
       Log.w('--- $path', showTag: false);
-      if (parser.globalStmt.isNotEmpty) {
-        print(parser.globalStmt.values.join('\n'));
-      }
-      print(parser.globalTy.values.join('\n'));
+      print(parser.stmts.join('\n'));
     }
 
     Identifier.run(() {
@@ -103,17 +100,6 @@ abstract class ManagerBase extends GlobalContext {
 mixin BuildContextMixin on ManagerBase {
   void initBuildContext({required FnBuildMixin context, required String path}) {
     final parser = getParser(path)!;
-    // for (var stmt in parser.globalImportStmt.values) {
-    //   stmt.build(context);
-    // }
-    // context.pushAllTy(parser.globalTy);
-    // for (var stmt in parser.globalStmt.values) {
-    //   stmt.build(context);
-    // }
-
-    // for (var ty in parser.globalTy.values) {
-    //   ty.currentContext = context;
-    // }
 
     for (var stmt in parser.stmts) {
       stmt.build(context);
@@ -125,19 +111,6 @@ mixin AnalysisContextMixin on ManagerBase {
   void initAnalysisContext(
       {required AnalysisContext context, required String path}) {
     final parser = getParser(path)!;
-    // for (var stmt in parser.globalImportStmt.values) {
-    //   stmt.analysis(context);
-    // }
-    // context.pushAllTy(parser.globalTy);
-
-    // for (var stmt in parser.globalStmt.values) {
-    //   stmt.analysis(context);
-    // }
-    // for (var fns in context.fns.values) {
-    //   for (var fn in fns) {
-    //     fn.analysis(context);
-    //   }
-    // }
 
     for (var stmt in parser.stmts) {
       stmt.analysis(context);

@@ -38,10 +38,6 @@ class Parser {
     });
   }
 
-  final globalTy = <Token, Ty>{};
-  final globalStmt = <Token, Stmt>{};
-  final globalImportStmt = <Token, Stmt>{};
-
   final stmts = <Stmt>[];
 
   Ty? parseIdent(TokenIterator it, {bool global = true}) {
@@ -61,11 +57,7 @@ class Parser {
         case Key.kEnum:
           ty = parseEnum(it);
         case Key.kStatic:
-          // final token = getToken(it);
           stmt = parseStaticExpr(it);
-        // if (stmt != null) {
-        //   globalStmt[token] = stmt;
-        // }
         case Key.kComponent:
           ty = parseCom(it);
         case Key.kImpl:
@@ -73,11 +65,7 @@ class Parser {
         case Key.kExtern:
           ty = parseExtern(it);
         case Key.kImport:
-          // final token = getToken(it);
           stmt = parseImportStmt(it);
-        // if (stmt != null) {
-        //   globalImportStmt[token] = stmt;
-        // }
         case Key.kType:
           ty = parseType(it);
         default:
@@ -85,7 +73,6 @@ class Parser {
 
       if (global) {
         if (ty != null) {
-          // globalTy[token] = ty;
           stmt = TyStmt(ty);
         }
       }
