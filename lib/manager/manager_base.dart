@@ -138,4 +138,6 @@ abstract class ManagerBase extends GlobalContext {
       }
     }
   }
+
+  void dispose() {}
 }

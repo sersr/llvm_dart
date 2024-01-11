@@ -98,5 +98,6 @@ Future<void> run(Options options) {
         Log.w(ctx, onlyDebug: false);
       }
     }
+    project.dispose();
   });
 }

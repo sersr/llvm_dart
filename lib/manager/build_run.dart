@@ -29,6 +29,4 @@ void buildRun(BuildContextImpl root,
   //     buildFileChar('$name.S'));
   llvm.writeOutput(root.module, root.tm, LLVMCodeGenFileType.LLVMObjectFile,
       buildFileChar('$name.o'));
-
-  root.dispose();
 }

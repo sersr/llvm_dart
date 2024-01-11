@@ -71,6 +71,7 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
     llvm.LLVMDisposeModule(module);
     llvm.LLVMDisposeTargetMachine(tm);
     llvm.LLVMContextDispose(llvmContext);
+    llvmMalloc.releaseAll();
   }
 }
 
@@ -174,15 +175,13 @@ class BuildContextImpl extends BuildContext
     return super.getVariableImpl(ident) ?? parent?.getVariableImpl(ident);
   }
 
+  @override
   void dispose() {
-    _dispose();
-    llvmMalloc.releaseAll();
-  }
-
-  void _dispose() {
     llvm.LLVMDisposeBuilder(builder);
+
+    finalize();
     for (var child in children) {
-      child._dispose();
+      child.dispose();
     }
   }
 }

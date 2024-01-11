@@ -112,4 +112,10 @@ class ProjectManager extends ManagerBase {
       _ => null,
     };
   }
+
+  @override
+  void dispose() {
+    rootBuildContext.dispose();
+    llvmCtxs.values.firstOrNull?.dispose();
+  }
 }

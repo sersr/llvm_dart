@@ -239,37 +239,35 @@ mixin BuildMethods on LLVMTypeMixin {
   LLVMValueRef get fnValue;
   BuildMethods? getLastFnContext();
 
-  LLVMBuilderRef? get allocaBuilder {
-    final fnContext = getLastFnContext();
-    if (fnContext != null) {
-      final alloca = fnContext._allocaInst;
-      final b = llvm.LLVMCreateBuilderInContext(llvmContext);
-      final fnEntry = llvm.LLVMGetFirstBasicBlock(fnContext.fnValue);
-      if (alloca != null) {
-        // 在 entry 中分配
-        final next = llvm.LLVMGetNextInstruction(alloca);
-        llvm.LLVMPositionBuilder(b, fnEntry, next);
-      } else {
-        final first = llvm.LLVMGetFirstInstruction(fnEntry);
-        llvm.LLVMPositionBuilder(b, fnEntry, first);
-      }
-      return b;
+  LLVMBuilderRef? _allocaBuilder;
+
+  LLVMBuilderRef get allocaBuilder {
+    final fnContext = getLastFnContext()!;
+
+    final alloca = fnContext._allocaInst;
+    final b = fnContext._allocaBuilder ??=
+        llvm.LLVMCreateBuilderInContext(llvmContext);
+    final fnEntry = llvm.LLVMGetFirstBasicBlock(fnContext.fnValue);
+    if (alloca != null) {
+      // 在 entry 中分配
+      final next = llvm.LLVMGetNextInstruction(alloca);
+      llvm.LLVMPositionBuilder(b, fnEntry, next);
+    } else {
+      final first = llvm.LLVMGetFirstInstruction(fnEntry);
+      llvm.LLVMPositionBuilder(b, fnEntry, first);
     }
-    return null;
+    return b;
   }
 
   LLVMValueRef alloctor(LLVMTypeRef type, {Ty? ty, String name = '_'}) {
-    final nb = allocaBuilder;
-    llvm.LLVMSetCurrentDebugLocation2(nb ?? builder, nullptr);
-    final alloca = llvm.LLVMBuildAlloca(nb ?? builder, type, name.toChar());
+    llvm.LLVMSetCurrentDebugLocation2(allocaBuilder, nullptr);
+    final alloca = llvm.LLVMBuildAlloca(allocaBuilder, type, name.toChar());
 
     if (ty != null) {
       addFree(LLVMAllocaVariable(alloca, ty, type, Identifier.none));
     }
     setLastAlloca(alloca);
-    if (nb != null) {
-      llvm.LLVMDisposeBuilder(nb);
-    }
+
     return alloca;
   }
 
@@ -324,14 +322,10 @@ mixin BuildMethods on LLVMTypeMixin {
   }
 
   LLVMValueRef alloctorArr(LLVMTypeRef type, LLVMValueRef size, String name) {
-    final nb = allocaBuilder;
     final alloca =
-        llvm.LLVMBuildArrayAlloca(nb ?? builder, type, size, name.toChar());
+        llvm.LLVMBuildArrayAlloca(allocaBuilder, type, size, name.toChar());
     setLastAlloca(alloca);
 
-    if (nb != null) {
-      llvm.LLVMDisposeBuilder(nb);
-    }
     return alloca;
   }
 }
@@ -381,8 +375,6 @@ mixin DebugMixin on BuildMethods {
   @override
   LLVMDIBuilderRef? get dBuilder => _dBuilder;
 
-  // final _dBuilders = <LLVMDIBuilderRef>[];
-
   void init(DebugMixin parent) {
     _unit = parent._unit;
     _dBuilder = parent._dBuilder;
@@ -390,23 +382,29 @@ mixin DebugMixin on BuildMethods {
 
   String? get currentPath;
 
+  bool _isRoot = false;
+
   void debugInit() {
     assert(this.currentPath != null && _unit == null && _dBuilder == null);
     _dBuilder = llvm.LLVMCreateDIBuilder(module);
-    // _dBuilders.add(_dBuilder!);
     final currentPath = this.currentPath!;
     final path = currentDir.childFile(currentPath);
     final dir = path.parent.path;
+
+    _isRoot = true;
 
     _unit = llvm.LLVMCreateCompileUnit(
         _dBuilder!, path.basename.toChar(), dir.toChar());
   }
 
-  // void finalize() {
-  //   for (var builder in _dBuilders) {
-  //     llvm.LLVMDIBuilderFinalize(builder);
-  //   }
-  // }
+  void finalize() {
+    if (_isRoot && _dBuilder != null) {
+      llvm.LLVMDIBuilderFinalize(_dBuilder!);
+    }
+    if (_allocaBuilder != null) {
+      llvm.LLVMDisposeBuilder(_allocaBuilder!);
+    }
+  }
 }
 
 /// 隐藏[BuildContext]内容，为[LLVMType],[Variable] 提供类型支持
