@@ -14,6 +14,12 @@ dart run bin/run.dart stack_com
 ```
 stack_com.kc 在 `kc/bin` 文件夹下
 
+测试 所有kc文件：
+
+```sh
+dart test test/test_all_test.dart 
+```
+
 在运行之前要做一些准备
 
 ## windows
