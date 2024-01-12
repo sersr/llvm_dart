@@ -21,11 +21,11 @@ fn main() i32 {
   apiFnf64(basef64);
   apiFn64Float(base64Float);
   apiFn96(base96);
-  apiFn128(base128);
-  apiFnBig(basebig);
+  // apiFn128(base128);
+  // apiFnBig(basebig);
 
   print('----');
-  run();
+  // run();
   0;
 }
 extern fn run();

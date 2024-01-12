@@ -7,7 +7,7 @@ Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
 Directory get stdRoot => currentDir.childDirectory('kc').childDirectory('lib');
 void main(List<String> args) async {
   assert(() {
-    args = ['compile_run.kc'];
+    args = ['stack_com.kc'];
     return true;
   }());
   buildDir.create();
@@ -21,6 +21,7 @@ void main(List<String> args) async {
   argParser.addFlag('logast', abbr: 'a', defaultsTo: false, help: 'log ast');
   argParser.addOption('std', defaultsTo: stdRoot.path, help: '--std ./bin/lib');
   argParser.addFlag('logfile', abbr: 'f', defaultsTo: false, help: 'log files');
+  argParser.addFlag('Optimize', abbr: 'O', defaultsTo: false, help: 'optimize');
 
   final results = argParser.parse(args);
   final kcFiles = results.rest;
@@ -38,6 +39,7 @@ void main(List<String> args) async {
   final logAst = results['logast'] as bool;
   final stdDir = results['std'] as String;
   final logFile = results['logfile'] as bool;
+  final optimize = results['Optimize'] as bool;
 
   File? runFile = kcBinDir.childFile(name);
   if (!runFile.existsSync()) {
@@ -72,7 +74,8 @@ void main(List<String> args) async {
     logAst: logAst,
     binFile: runFile,
     cFiles: cFiles,
+    opt: optimize,
   );
 
-  return run(options);
+  await run(options);
 }

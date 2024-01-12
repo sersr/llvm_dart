@@ -34,23 +34,13 @@ abstract class Variable extends LifeCycleVariable {
 
     final v = load(c);
     final parent = cTy.parent;
-
-    Variable val;
-
-    /// 如果是一个指针，说明还有下一级，满足 store, load
-    if (parent is RefTy) {
-      val = LLVMAllocaVariable(v, parent, parent.typeOf(c), ident);
-    } else {
-      val = LLVMConstVariable(v, parent, ident);
-    }
-    return val;
+    return LLVMAllocaVariable(v, parent, parent.typeOf(c), ident);
   }
 }
 
 abstract class StoreVariable extends Variable {
   StoreVariable(super.ident);
 
-  /// 在 let 表达式使用，判断是否需要分配空间或者直接使用当前对象
   LLVMValueRef get alloca;
   LLVMTypeRef get type;
 
@@ -82,7 +72,6 @@ abstract class StoreVariable extends Variable {
 /// 没有[store]功能
 ///
 /// 可以看作右值，临时变量
-/// 函数返回值，数值运算
 class LLVMConstVariable extends Variable {
   LLVMConstVariable(this.value, this.ty, super.ident);
   @override

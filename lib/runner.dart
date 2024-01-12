@@ -4,7 +4,6 @@ import 'package:nop/nop.dart';
 
 import 'abi/abi_fn.dart';
 import 'fs/fs.dart';
-import 'llvm_dart.dart';
 import 'manager/build_run.dart';
 import 'manager/manager.dart';
 import 'run.dart';
@@ -18,6 +17,7 @@ class Options {
     required this.logAst,
     required this.binFile,
     required this.cFiles,
+    this.opt = false,
   });
   final bool logFile;
   final String std;
@@ -26,20 +26,14 @@ class Options {
   final bool logAst;
   final File binFile;
   final List<String> cFiles;
-
-  String get stdFix {
-    if (!std.endsWith('/')) {
-      return '$std/';
-    }
-    return std;
-  }
+  final bool opt;
 }
 
 final rq = TaskQueue();
 
 var abi = Abi.arm64;
 
-Future<void> run(Options options) {
+Future<bool> run(Options options) {
   return runPrint(() async {
     final path = options.binFile.path;
 
@@ -48,56 +42,53 @@ Future<void> run(Options options) {
       abi = Abi.x86_64;
       target = "$abi-pc-windows-msvc";
     }
-    llvm.initLLVM();
 
     final project = ProjectManager(
-      stdRoot: options.stdFix,
+      stdRoot: options.std,
       name: options.binFile.basename,
       abi: abi,
       triple: target,
+      isDebug: options.isDebug,
     );
 
-    project.isDebug = options.isDebug;
+    final genMain = project.genFn(path, logAst: options.logAst);
+    if (genMain) {
+      final name = options.binFile.basename.replaceFirst(RegExp('.kc\$'), '');
+      writeOut(project.rootBuildContext, name: name, optimize: options.opt);
 
-    final root = project.build(
-      path,
-      afterAnalysis: () {
-        if (options.logAst) project.printAst();
-      },
-    );
+      final files = options.cFiles.map((e) {
+        final path = currentDir.childFile(e).path;
+        if (Platform.isWindows) return path.replaceAll(r'\', '/');
+        return path;
+      }).join(' ');
 
-    final name = options.binFile.basename.replaceFirst(RegExp('.kc\$'), '');
-    buildRun(root, name: name);
+      final verbose = options.isVerbose ? ' -v' : '';
+      final debug = options.isDebug ? ' -g' : '';
+      final abiV = Platform.isWindows ? '' : '-arch $abi';
 
-    final files = options.cFiles.map((e) {
-      final path = currentDir.childFile(e).path;
-      if (Platform.isWindows) return path.replaceAll(r'\', '/');
-      return path;
-    }).join(' ');
+      var main = 'main';
+      if (Platform.isWindows) {
+        main = 'main.exe';
+      }
 
-    final verbose = options.isVerbose ? ' -v' : '';
-    final debug = options.isDebug ? ' -g' : '';
-    final abiV = Platform.isWindows ? '' : '-arch $abi';
+      var linkName = '$name.o';
+      if (Platform.isWindows && options.isDebug) {
+        linkName = '$name.ll';
+      }
 
-    var main = 'main';
-    if (Platform.isWindows) {
-      main = 'main.exe';
-    }
-
-    var linkName = '$name.o';
-    if (Platform.isWindows && options.isDebug) {
-      linkName = '$name.ll';
-    }
-
-    await runCmd([
-      'clang $debug $verbose $linkName $files $abiV -o $main -Wno-override-module && ./$main "hello world"'
-    ], dir: buildDir);
-    if (options.logFile) {
-      Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);
-      for (var ctx in project.alcs.keys) {
-        Log.w(ctx, onlyDebug: false);
+      await runCmd([
+        'clang $debug $verbose $linkName $files $abiV -o $main -Wno-override-module && ./$main "hello world"'
+      ], dir: buildDir);
+      if (options.logFile) {
+        Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);
+        for (var ctx in project.alcs.keys) {
+          Log.w(ctx, onlyDebug: false);
+        }
       }
     }
+
     project.dispose();
+
+    return genMain;
   });
 }

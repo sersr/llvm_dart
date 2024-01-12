@@ -22,23 +22,25 @@ class Parser {
   Parser(this.src);
   final String src;
   void parse() {
-    final reader = TokenReader(src);
-    final root = reader.parse(false);
+    Identifier.run(() {
+      final reader = TokenReader(src);
+      final root = reader.parse(false);
 
-    _start = Identifier.fromToken(root.token, src);
-    final it = root.child.tokenIt;
-    loop(it, () {
-      final token = getToken(it);
-      if (token.kind == TokenKind.lf) return false;
-      if (token.kind == TokenKind.semi) return false;
+      _start = Identifier.fromToken(root.token, src);
+      final it = root.child.tokenIt;
+      loop(it, () {
+        final token = getToken(it);
+        if (token.kind == TokenKind.lf) return false;
+        if (token.kind == TokenKind.semi) return false;
 
-      if (token.kind == TokenKind.ident) {
-        parseIdent(it, global: true);
-      }
-      return false;
+        if (token.kind == TokenKind.ident) {
+          parseIdent(it, global: true);
+        }
+        return false;
+      });
+
+      _end = it.current.end != null ? getEndIdent(it) : getIdent(it);
     });
-
-    _end = it.current.end != null ? getEndIdent(it) : getIdent(it);
   }
 
   final stmts = <Stmt>[];
@@ -463,7 +465,8 @@ class Parser {
   ArrayExpr? parseArrayExpr(TokenIterator it) {
     final isArrayKind = getToken(it).kind == TokenKind.openBracket;
     if (!isArrayKind) return null;
-
+    final identStart = getIdent(it);
+    final identEnd = getEndIdent(it);
     it = it.current.child.tokenIt;
     final exprs = <Expr>[];
     loop(it, () {
@@ -478,7 +481,7 @@ class Parser {
     });
 
     if (exprs.isNotEmpty) {
-      return ArrayExpr(exprs);
+      return ArrayExpr(exprs, identStart, identEnd);
     }
 
     return null;

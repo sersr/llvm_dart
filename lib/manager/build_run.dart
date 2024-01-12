@@ -5,7 +5,7 @@ import '../fs/fs.dart';
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
 
-void buildRun(BuildContextImpl root,
+void writeOut(RootBuildContext root,
     {String name = 'out', bool optimize = false}) {
   if (optimize) {
     llvm.optimize(

@@ -4,36 +4,30 @@ import 'tys.dart';
 
 class RootAnalysis with Tys<AnalysisVariable> {
   @override
-  Tys<LifeCycleVariable> defaultImport(String path) {
-    throw UnimplementedError();
-  }
+  late GlobalContext global;
 
   @override
-  late GlobalContext importHandler;
+  String get currentPath => throw UnimplementedError();
 }
 
 class AnalysisContext with Tys<AnalysisVariable> {
-  AnalysisContext.root(this.root) : parent = null;
+  AnalysisContext.root(this.root, this.currentPath) : parent = null;
 
-  AnalysisContext._(AnalysisContext this.parent, this.root);
-  @override
-  AnalysisContext defaultImport(String path) {
-    return AnalysisContext.root(root)..currentPath = path;
-  }
+  AnalysisContext._(AnalysisContext this.parent, this.root, this.currentPath);
 
   final RootAnalysis root;
 
   @override
-  GlobalContext get importHandler => root.importHandler;
+  GlobalContext get global => root.global;
 
   AnalysisContext childContext() {
-    final c = AnalysisContext._(this, root);
+    final c = AnalysisContext._(this, root, currentPath);
     children.add(c);
     return c;
   }
 
   @override
-  String? get currentPath => super.currentPath ??= parent?.currentPath;
+  final String currentPath;
 
   final children = <AnalysisContext>[];
 

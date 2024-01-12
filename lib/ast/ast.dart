@@ -114,7 +114,8 @@ class Identifier with EquatableMixin {
   static final Identifier none = Identifier.builtIn('');
   static final Identifier self = Identifier.builtIn('self');
 
-  static bool get enableIdentEq {
+  /// 在parser下要求更多字段相等
+  static bool get identicalEq {
     return Zone.current[#data] == true;
   }
 
@@ -125,17 +126,10 @@ class Identifier with EquatableMixin {
 
   @override
   List<Object?> get props {
-    if (identical(this, none)) {
-      return [''];
+    if (identicalEq) {
+      return [data, start, end, name];
     }
-    if (builtInValue.isNotEmpty) {
-      return [builtInValue];
-    }
-
-    if (enableIdentEq) {
-      return [data.substring(start, end)];
-    }
-    return [name, start, end];
+    return [src];
   }
 
   String? _src;
@@ -940,10 +934,6 @@ class Fn extends Ty with NewInst<Fn> {
     context.pushDyTys(tys);
   }
 
-  void pushTyAnalysis(AnalysisContext context) {
-    context.pushDyTys(tys);
-  }
-
   Object? getKey() {
     return null;
   }
@@ -972,7 +962,7 @@ class Fn extends Ty with NewInst<Fn> {
     }
 
     final child = context.childContext();
-    pushTyAnalysis(child);
+    pushTyGenerics(child);
 
     child.setFnContext(this);
     fnSign.fnDecl.analysis(child, this);
@@ -1025,15 +1015,14 @@ mixin ImplFnMixin on Fn {
   @override
   void pushTyGenerics(Tys context) {
     super.pushTyGenerics(context);
-    final structTy = ty;
-    if (structTy is! StructTy) return;
-    context.pushDyTys(structTy.tys);
+    _pushSelf(context);
   }
 
-  @override
-  void pushTyAnalysis(AnalysisContext context) {
-    super.pushTyAnalysis(context);
+  void _pushSelf(Tys context) {
     final structTy = ty;
+    final ident = Identifier.builtIn('Self');
+    context.pushDyTy(ident, structTy);
+
     if (structTy is! StructTy) return;
     context.pushDyTys(structTy.tys);
   }
@@ -1500,9 +1489,9 @@ class ArrayLLVMType extends LLVMType {
   }
 
   @override
-  LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident,
-      {DelayFn? delay}) {
+  LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident) {
     final val = LLVMAllocaDelayVariable((proxy) {
+      if (proxy != null) return proxy.alloca;
       final count = c.constI64(ty.size);
       return c.createArray(ty.elementTy.typeOf(c), count, name: ident.src);
     }, ty, typeOf(c), ident);

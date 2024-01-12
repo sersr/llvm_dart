@@ -1046,7 +1046,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
 
     if (temp != null) {
-      final builiin = context.importHandler
+      final builiin = context.global
           .arrayBuiltin(context, ident, fnName, val, structTy, params);
       if (builiin != null) return builiin;
     }
@@ -2171,7 +2171,10 @@ class ImportExpr extends Expr {
 }
 
 class ArrayExpr extends Expr {
-  ArrayExpr(this.elements);
+  ArrayExpr(this.elements, this.identStart, this.identEnd);
+
+  final Identifier identStart;
+  final Identifier identEnd;
 
   final List<Expr> elements;
   @override
@@ -2229,7 +2232,8 @@ class ArrayExpr extends Expr {
 
   @override
   ArrayExpr clone() {
-    return ArrayExpr(elements.map((e) => e.clone()).toList());
+    return ArrayExpr(
+        elements.map((e) => e.clone()).toList(), identStart, identEnd);
   }
 
   @override
@@ -2356,8 +2360,7 @@ class ArrayOpExpr extends Expr {
       final index = locVal.load(context);
       final indics = <LLVMValueRef>[index];
 
-      final p =
-          arrVal.defaultDeref(context, arrVal.ident).getBaseValue(context);
+      final p = arrVal.load(context);
 
       final elementTy = ty.parent.typeOf(context);
 

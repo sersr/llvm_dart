@@ -380,14 +380,13 @@ mixin DebugMixin on BuildMethods {
     _dBuilder = parent._dBuilder;
   }
 
-  String? get currentPath;
+  String get currentPath;
 
   bool _isRoot = false;
 
   void debugInit() {
-    assert(this.currentPath != null && _unit == null && _dBuilder == null);
+    assert(_unit == null && _dBuilder == null);
     _dBuilder = llvm.LLVMCreateDIBuilder(module);
-    final currentPath = this.currentPath!;
     final path = currentDir.childFile(currentPath);
     final dir = path.parent.path;
 
@@ -473,12 +472,12 @@ mixin StoreLoadMixin
         dBuilder, alloca, dvariable, expr, loc, bb);
   }
 
-  LLVMValueRef expect(LLVMValueRef lhs) {
+  LLVMValueRef expect(LLVMValueRef lhs, {bool v = true}) {
     final fn = root.maps.putIfAbsent("llvm.expect.i1",
         () => FunctionDeclare([i1, i1], 'llvm.expect.i1', i1));
     final f = fn.build(this);
     return llvm.LLVMBuildCall2(builder, fn.type, f,
-        [lhs, constI1(LLVMTrue)].toNative(), 2, 'bool'.toChar());
+        [lhs, constI1(v.llvmBool)].toNative(), 2, 'bool'.toChar());
   }
 
   LLVMValueRef assume(LLVMValueRef expr) {

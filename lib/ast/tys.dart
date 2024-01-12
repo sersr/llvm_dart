@@ -72,16 +72,17 @@ abstract class GlobalContext {
             if (first is LLVMLitVariable) {
               if (valTy.tys.isNotEmpty) {
                 final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
-                final element = arr.llty.createAlloca(
-                  context,
-                  ident,
-                );
-                element.store(
-                  context,
-                  llvm.LLVMConstNull(arr.typeOf(context)),
-                );
 
-                return ExprTempValue(element);
+                final value = LLVMAllocaDelayVariable((proxy) {
+                  final alloca = proxy ?? arr.llty.createAlloca(context, ident);
+                  alloca.store(
+                    context,
+                    llvm.LLVMConstNull(arr.typeOf(context)),
+                  );
+                  return alloca.alloca;
+                }, arr, arr.llty.typeOf(context), ident);
+
+                return ExprTempValue(value);
               }
             }
           }
@@ -94,9 +95,9 @@ abstract class GlobalContext {
 }
 
 mixin Tys<V extends LifeCycleVariable> {
-  Tys defaultImport(String path);
-  String? currentPath;
-  GlobalContext get importHandler;
+  // Tys defaultImport(String path);
+  String get currentPath;
+  GlobalContext get global;
 
   final imports = <ImportPath, Tys>{};
 
@@ -107,7 +108,7 @@ mixin Tys<V extends LifeCycleVariable> {
 
   void pushImport(ImportPath path, {Identifier? name}) {
     if (!imports.containsKey(path)) {
-      final im = importHandler.import(this, path);
+      final im = global.import(this, path);
       imports[path] = im;
       initImportContext(im);
     }
@@ -122,7 +123,7 @@ mixin Tys<V extends LifeCycleVariable> {
   }
 
   V? getVariable(Identifier ident) =>
-      getVariableImpl(ident) ?? importHandler.getVariable(ident);
+      getVariableImpl(ident) ?? global.getVariable(ident);
 
   V? getVariableImpl(Identifier ident) {
     final list = variables[ident];
@@ -406,7 +407,7 @@ mixin Tys<V extends LifeCycleVariable> {
   VA? getKV<K, VA>(K k, Map<K, List<VA>> Function(Tys c) map,
       {ImportKV<VA>? handler, bool Function(VA v)? test}) {
     return getKVImpl(k, map, handler: handler, test: test) ??
-        importHandler.getKVImpl<K, VA, V>(k, map, handler: handler, test: test);
+        global.getKVImpl<K, VA, V>(k, map, handler: handler, test: test);
   }
 
   VA? getKVImpl<K, VA>(K k, Map<K, List<VA>> Function(Tys c) map,

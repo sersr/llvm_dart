@@ -1,14 +1,14 @@
-import 'std:d.kc';
+import "std:d.kc";
 
 fn main() i32 {
   let value = apiFnRet64Float();
   printf("return value: %f, x: %f, c: %d\n", value.y as double, value.x as double, value.c);
 
   let s = test_sret();
-  printf('sret: %d, x: %d, z: %d, f: %d\n', s.y, s.x, s.z, s.f);
+  printf("sret: %d, x: %d, z: %d, f: %d\n", s.y, s.x, s.z, s.f);
 
   let baseValue = test_fn();
-  printf('baseValue: %d, x: %d\n', baseValue.y, baseValue.x);
+  printf("baseValue: %d, x: %d\n", baseValue.y, baseValue.x);
   test_fn_param(baseValue);
   0;
 
@@ -66,5 +66,5 @@ fn test_fn() BaseValue {
 }
 
 fn test_fn_param(base: BaseValue) {
-  printf('test_fn_param: %d, x: %d\n', base.y, base.x);
+  printf("test_fn_param: %d, x: %d\n", base.y, base.x);
 }

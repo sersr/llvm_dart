@@ -127,7 +127,6 @@ mixin FlowMixin on BuildContext, FreeMixin {
       if (variable != null) {
         final bb = buildSubBB(name: 'loop_body');
         final v = variable.load(loopBB.context);
-        loopBB.context.expect(v);
         llvm.LLVMBuildCondBr(loopBB.context.builder, v, bb.bb, loopAfter.bb);
         appendBB(bb);
         block.build(bb.context);

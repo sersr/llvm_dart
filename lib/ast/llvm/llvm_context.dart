@@ -14,12 +14,16 @@ import 'variables.dart';
 export 'build_context_mixin.dart';
 
 class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
-  RootBuildContext(
-      {this.abi = Abi.arm64, String name = 'root', String? targetTriple}) {
+  RootBuildContext({this.abi = Abi.arm64, this.name = 'root', this.triple});
+
+  bool _initContext = false;
+  void init() {
+    assert(!_initContext);
+    _initContext = true;
     llvmContext = llvm.LLVMContextCreate();
     module = llvm.LLVMModuleCreateWithNameInContext(name.toChar(), llvmContext);
-    if (targetTriple != null) {
-      tm = llvm.createTarget(module, targetTriple.toChar());
+    if (triple != null) {
+      tm = llvm.createTarget(module, triple!.toChar());
     } else {
       final tt = llvm.LLVMGetDefaultTargetTriple();
       tm = llvm.createTarget(module, tt);
@@ -45,12 +49,7 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
   }
 
   @override
-  Tys<LifeCycleVariable> defaultImport(String path) {
-    throw UnimplementedError();
-  }
-
-  @override
-  late final GlobalContext importHandler;
+  late final GlobalContext global;
 
   @override
   late final LLVMModuleRef module;
@@ -58,7 +57,10 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
   late final LLVMContextRef llvmContext;
   @override
   late final LLVMTargetMachineRef tm;
+
   final Abi abi;
+  final String name;
+  final String? triple;
 
   final maps = <String, FunctionDeclare>{};
 
@@ -73,19 +75,22 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
     llvm.LLVMContextDispose(llvmContext);
     llvmMalloc.releaseAll();
   }
+
+  @override
+  String get currentPath => throw UnimplementedError();
 }
 
 class BuildContextImpl extends BuildContext
     with FreeMixin, FlowMixin, FnContextMixin, SretMixin, FnBuildMixin {
-  BuildContextImpl._baseChild(BuildContextImpl this.parent)
+  BuildContextImpl._baseChild(BuildContextImpl this.parent, this.currentPath)
       : root = parent.root {
     init(parent!);
   }
 
-  BuildContextImpl._compileRun(BuildContextImpl this.parent)
+  BuildContextImpl._compileRun(BuildContextImpl this.parent, this.currentPath)
       : root = parent.root;
 
-  BuildContextImpl.root(this.root) : parent = null;
+  BuildContextImpl.root(this.root, this.currentPath) : parent = null;
 
   @override
   final BuildContextImpl? parent;
@@ -96,10 +101,10 @@ class BuildContextImpl extends BuildContext
   Abi get abi => root.abi;
 
   @override
-  String? get currentPath => super.currentPath ??= parent?.currentPath;
+  final String currentPath;
 
   @override
-  GlobalContext get importHandler => root.importHandler;
+  GlobalContext get global => root.global;
 
   LLVMBuilderRef? _builder;
   @override
@@ -114,29 +119,18 @@ class BuildContextImpl extends BuildContext
     _builder = v;
   }
 
-  final List<BuildContextImpl> children = [];
-
-  @override
-  BuildContextImpl defaultImport(String path) {
-    final child = BuildContextImpl.root(root);
-    child.currentPath = path;
-    children.add(child);
-    if (dBuilder != null) {
-      child.debugInit();
-    }
-    return child;
-  }
+  final List<BuildContextImpl> _children = [];
 
   @override
   BuildContextImpl createChildContext() {
-    final child = BuildContextImpl._baseChild(this);
-    children.add(child);
+    final child = BuildContextImpl._baseChild(this, currentPath);
+    _children.add(child);
     return child;
   }
 
   @override
   BuildContextImpl createNewRunContext() {
-    return BuildContextImpl._compileRun(this);
+    return BuildContextImpl._compileRun(this, currentPath);
   }
 
   @override
@@ -148,7 +142,7 @@ class BuildContextImpl extends BuildContext
   void log(int level) {
     print('${' ' * level}$currentPath');
     level += 2;
-    for (var child in children) {
+    for (var child in _children) {
       child.log(level);
     }
   }
@@ -181,7 +175,7 @@ class BuildContextImpl extends BuildContext
     llvm.LLVMDisposeBuilder(builder);
 
     finalize();
-    for (var child in children) {
+    for (var child in _children) {
       child.dispose();
     }
   }

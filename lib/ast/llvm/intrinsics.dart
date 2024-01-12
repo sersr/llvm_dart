@@ -315,6 +315,7 @@ mixin OverflowMath on BuildMethods, Consts {
       final after = context.buildSubBB(name: 'math');
       final panicBB = context.buildSubBB(name: 'panic');
       context.appendBB(panicBB);
+      context.expect(mathValue.condition, v: false);
       llvm.LLVMBuildCondBr(builder, mathValue.condition, panicBB.bb, after.bb);
       panicBB.context.diSetCurrentLoc(opId.offset);
       panicBB.context.painc();

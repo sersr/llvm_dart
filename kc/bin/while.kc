@@ -10,8 +10,8 @@ fn main() i32 {
     printf("max: %d\n", max);
 
     loop {
-        if i > max {
-            printf("hello\n");
+        if i >= max {
+            printf("done: i == %i\n", i);
             break;
         }
         arr[i] = i + 1;
