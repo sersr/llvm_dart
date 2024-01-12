@@ -53,8 +53,8 @@ typedef struct Base96
 
 typedef struct Base128
 {
-  double x;
   double y;
+  double x;
 } Base128;
 
 typedef struct BaseBig
@@ -94,7 +94,7 @@ void apiFnf64(Basef64 base)
 {
   printf("fnf64: y = %f\n", base.y);
 }
-extern
+
 void apiFn64Float(Base64Float base)
 {
   printf("fn64Float: y = %f, x = %f\n", base.y, base.x);

@@ -8,14 +8,17 @@ import '../ast/memory.dart';
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'abi_arm64.dart';
+import 'abi_win_x86_64.dart';
 import 'abi_x86_64.dart';
 
 enum Abi {
-  arm64('arm64'),
-  x86_64('x86_64');
+  winx86_64('x86_64', true),
+  arm64('arm64', false),
+  x86_64('x86_64', false);
 
   final String name;
-  const Abi(this.name);
+  final bool isWindows;
+  const Abi(this.name, this.isWindows);
 
   @override
   String toString() {
@@ -36,6 +39,7 @@ abstract interface class AbiFn {
     return _instances.putIfAbsent(abi, () {
       return switch (abi) {
         Abi.x86_64 => AbiFnx86_64(),
+        Abi.winx86_64 => AbiFnWinx86_64(),
         _ => AbiFnArm64(),
       };
     });

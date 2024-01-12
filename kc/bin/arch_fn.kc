@@ -21,8 +21,12 @@ fn main() i32 {
   apiFnf64(basef64);
   apiFn64Float(base64Float);
   apiFn96(base96);
-  // apiFn128(base128);
-  // apiFnBig(basebig);
+  apiFn128(base128);
+  apiFnBig(basebig);
+
+  let hax = apiFnRet64Float();
+
+  printf("Ret 64 Float: %f, %f, %d \n", hax.y as f64, hax.x as f64, hax.c);
 
   print('----');
   // run();
@@ -66,8 +70,8 @@ extern struct Base96 {
   z: f32,
 }
 extern struct Base128 {
-  x: f64,
   y: f64,
+  x: f64,
 }
 
 extern struct BaseBig {
@@ -89,3 +93,5 @@ extern fn apiFn64Float(base: Base64Float);
 extern fn apiFn96(base: Base96);
 extern fn apiFn128(base: Base128);
 extern fn apiFnBig(base: BaseBig);
+
+extern fn apiFnRet64Float() Base64Float;

@@ -39,7 +39,7 @@ Future<bool> run(Options options) {
 
     var target = '$abi-apple-darwin22.4.0';
     if (Platform.isWindows) {
-      abi = Abi.x86_64;
+      abi = Abi.winx86_64;
       target = "$abi-pc-windows-msvc";
     }
 
