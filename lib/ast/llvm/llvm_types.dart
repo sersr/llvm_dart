@@ -283,10 +283,6 @@ class LLVMFnType extends LLVMType {
     return _cacheFns.putIfAbsent(key, () {
       final ty = fn.llty.createFnType(c, variables);
       var ident = fn.fnSign.fnDecl.ident.src;
-      if (ident == 'inn') {
-        Log.w('...${fn.variables}');
-        llvm.LLVMDumpType(ty);
-      }
       if (ident.isEmpty) {
         ident = '_fn';
       }

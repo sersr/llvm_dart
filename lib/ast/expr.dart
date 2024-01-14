@@ -509,21 +509,25 @@ class StructExpr extends Expr {
   static T resolveGeneric<T extends Ty>(NewInst<T> t, Tys context,
       List<FieldExpr> params, List<PathTy> genericsInst,
       {List<FieldDef> others = const []}) {
-    final fields = t.fields;
     final generics = [...t.generics, ...others];
     var nt = t as T;
-    if (genericsInst.isNotEmpty) {
-      nt = t.newInstWithGenerics(context, genericsInst, generics, extra: t.tys);
-    } else if (t.tys.length < generics.length) {
-      final gMap = <Identifier, Ty>{}..addAll(t.tys);
 
-      final sg = generics;
+    if (genericsInst.isNotEmpty) {
+      return t.newInstWithGenerics(context, genericsInst, generics,
+          extra: t.tys);
+    }
+
+    final fields = t.fields;
+    if (t.tys.length < generics.length) {
+      final genMapTy = <Identifier, Ty>{}..addAll(t.tys);
+
+      final genList = generics;
 
       // 从上下文中获取具体类型
-      for (var g in sg) {
+      for (var g in genList) {
         final tyVal = context.getTy(g.ident);
         if (tyVal != null) {
-          gMap.putIfAbsent(g.ident, () => tyVal);
+          genMapTy.putIfAbsent(g.ident, () => tyVal);
         }
       }
       final sortFields = alignParam(
@@ -531,31 +535,57 @@ class StructExpr extends Expr {
 
       // x: Arc<Gen<T>> => first fdTy => Arc<Gen<T>>
       // child fdTy:  Gen<T> => T => real type
-      void visitor(Ty ty, PathTy fdTy) {
-        final index = sg.indexWhere((e) => e.ident == fdTy.ident);
-        if (index != -1) {
-          final gen = sg[index];
-          if (gen.rawTy.generics.isNotEmpty && ty is PathInterFace) {
-            for (var f in gen.rawTy.generics) {
-              final tyg = (ty as PathInterFace).tys[f.ident];
-              visitor(tyg!, f);
+      //
+      // fn hello<T>(y: T);
+      //
+      // hello(y: 1000);
+      // ==> exactTy: i32; fieldTy: T
+      //
+      // fn foo<T>(x: Gen<T>);
+      //
+      // foo(x: Gen<i32> { foo: 1000 } );
+      // ==> exactTy: Gen<i32>; fieldTy: Gen<T>
+      //
+      void visitor(Ty exactTy, PathTy fieldTy) {
+        void checkTy(Ty exactTy, PathTy fieldTy) {
+          if (exactTy case NewInst(tys: var tys, generics: var gBase)) {
+            assert(gBase.length == exactTy.generics.length, "generic error.");
+
+            for (var i = 0; i < fieldTy.generics.length; i += 1) {
+              final fdIdent = fieldTy.generics[i];
+              // 内部与外部名称不一致，从内部获取具体内省
+              final tyg = tys[gBase[i].ident];
+              visitor(tyg!, fdIdent);
             }
           }
-          gMap.putIfAbsent(fdTy.ident, () => ty);
         }
 
-        if (fdTy.generics.isNotEmpty && ty is PathInterFace) {
-          for (var i = 0; i < fdTy.generics.length; i += 1) {
-            final fdIdent = fdTy.generics[i];
-            final tyg = (ty as PathInterFace).tys[fdIdent.ident];
-            visitor(tyg!, fdIdent);
-          }
+        exactTy = fieldTy.kind.unWrapRefTy(exactTy);
+
+        final currentGenField =
+            genList.firstWhereOrNull((e) => e.ident == fieldTy.ident);
+        if (currentGenField != null) {
+          // fn bar<T, X: Bar<T>>(x: X);
+          // 处理泛型内部依赖，X已知晓，处理T
+
+          genMapTy.putIfAbsent(fieldTy.ident, () {
+            checkTy(exactTy, currentGenField.rawTy);
+            return exactTy;
+          });
         }
+
+        if (genMapTy.length == genList.length) {
+          return;
+        }
+
+        // Gen<i32> : Gen<T>
+        // 泛型在下一级中
+        checkTy(exactTy, fieldTy);
       }
 
       bool isBuild = context is FnBuildMixin;
       Ty? gen(Identifier ident) {
-        return gMap[ident];
+        return genMapTy[ident];
       }
 
       for (var i = 0; i < sortFields.length; i += 1) {
@@ -564,10 +594,7 @@ class StructExpr extends Expr {
 
         Ty? ty;
         if (isBuild) {
-          ty = f
-              .build(context, baseTy: fd.grtOrT(context, gen: gen))
-              ?.variable
-              ?.ty;
+          ty = f.build(context, baseTy: fd.grtOrT(context, gen: gen))?.ty;
         } else {
           // fd.grtOrT(context, gen: gen)
           ty = f.analysis(context as AnalysisContext)?.ty;
@@ -577,8 +604,9 @@ class StructExpr extends Expr {
         }
       }
 
-      nt = t.newInst(gMap, context);
+      nt = t.newInst(genMapTy, context);
     }
+
     return nt;
   }
 
@@ -1449,7 +1477,7 @@ class OpExpr extends Expr {
 }
 
 enum PointerKind {
-  deref('*'),
+  pointer('*'),
   none(''),
   ref('&');
 
@@ -1460,7 +1488,7 @@ enum PointerKind {
     if (kind == TokenKind.and) {
       return PointerKind.ref;
     } else if (kind == TokenKind.star) {
-      return PointerKind.deref;
+      return PointerKind.pointer;
     }
     return null;
   }
@@ -1469,7 +1497,7 @@ enum PointerKind {
     if (this == PointerKind.none) return val;
     Variable? inst;
     if (val != null) {
-      if (this == PointerKind.deref) {
+      if (this == PointerKind.pointer) {
         inst = val.defaultDeref(c, id);
       } else if (this == PointerKind.ref) {
         inst = val.getRef(c, id);
@@ -1484,39 +1512,20 @@ enum PointerKind {
 
 extension ListPointerKind on List<PointerKind> {
   bool get isRef {
-    var refCount = 0;
-    for (var k in reversed) {
-      if (k == PointerKind.ref) {
-        refCount += 1;
-      } else {
-        refCount -= 1;
-      }
-    }
-    return refCount > 0;
+    return firstOrNull == PointerKind.ref;
   }
 
-  List<PointerKind> drefRef() {
-    final list = <PointerKind>[];
-    for (var v in this) {
-      if (v == PointerKind.ref) {
-        list.add(PointerKind.deref);
-      } else if (v == PointerKind.deref) {
-        list.add(PointerKind.ref);
-      } else {
-        list.add(v);
-      }
-    }
-    return list;
-  }
-
-  Ty resolveTy(Ty baseTy) {
+  Ty wrapRefTy(Ty baseTy) {
     for (var kind in this) {
-      if (kind == PointerKind.ref || kind == PointerKind.deref) {
-        baseTy = RefTy(baseTy);
-      } else {
-        if (baseTy is RefTy) {
-          baseTy = baseTy.parent;
-        }
+      baseTy = RefTy.from(baseTy, kind == PointerKind.pointer);
+    }
+    return baseTy;
+  }
+
+  Ty unWrapRefTy(Ty baseTy) {
+    for (var kind in this) {
+      if (kind != PointerKind.none && baseTy is RefTy) {
+        baseTy = baseTy.parent;
       }
     }
     return baseTy;

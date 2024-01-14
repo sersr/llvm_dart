@@ -52,6 +52,9 @@ final class BuiltinFn extends Ty {
   final Identifier name;
 
   @override
+  Identifier get ident => name;
+
+  @override
   void analysis(AnalysisContext context) {}
 
   final BuiltinFnRun runFn;
@@ -139,7 +142,8 @@ ExprTempValue memCopy(FnBuildMixin context, List<FieldExpr> params) {
   final value =
       llvm.LLVMBuildMemCpy(context.builder, lv, lalign, rv, align, lenv);
 
-  final v = LLVMConstVariable(value, RefTy(BuiltInTy.kVoid), Identifier.none);
+  final v =
+      LLVMConstVariable(value, RefTy.pointer(BuiltInTy.kVoid), Identifier.none);
   return ExprTempValue(v);
 }
 

@@ -1,68 +1,27 @@
-import '../lib/d.kc';
+import "std:d.kc";
 
-struct Gen {
-    y: i32,
-    s: str,
+
+struct Bar<S>{
+  y: S,
 }
 
-com Print {
-  fn printx();
+struct Foo<A> {
+  x: A,
 }
 
-impl Print:test for Gen {
-  fn printx() {
-    print(self.s);
-	}
+fn foo<T, X: Bar<T>>(x: &Foo<X>) {
+  printf("foo: %f\n", x.x.y as f64);
 }
 
-fn hello<T>(y: &T) {
-  y.printx();
+fn bar<T, X: Bar<T>>(x: &X) {
+  printf("bar: %f\n", x.y as f64);
 }
 
 fn main() i32 {
-  let g = Gen { 10 , "hello"};
- hello(&g);
-
- // let gg = g;
-
-  let hh = hello<Gen>;
-  hh(&g);
-  let t = ttt;
-  t(&g);
-
-  let yaa = g.hh().hh();
-  printf("yaa: %d\n", yaa.y);
-  let x =  Gen {3};
-  let xx = x.xxx();
-
- // init_sig_stack();
-  print("end");
+  let x = Bar { y: 333.0 };
+  let f = Foo{ x: x};
+  bar(&x);
+  foo(&f);
   0;
 }
-
-fn ttt(y: &Gen) {
-  print('base');
-}
-
-impl Gen {
-
-  fn hh() &Gen {
-    print('hh');
-    &self
-  }
-
-  fn drop() {
-    print("gen drop");
-  }
-
-  fn xxx() &i32 {
-    let y = 100;
-    &y;
-  }
-}
-
-impl i32 {
-  fn drop() {
-    print("i32 drop");
-  }
-}
+ 

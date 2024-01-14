@@ -558,6 +558,8 @@ abstract class Ty extends BuildMixin with EquatableMixin {
 
   LLVMType get llty;
 
+  Identifier get ident;
+
   LLVMTypeRef typeOf(StoreLoadMixin c) => llty.typeOf(c);
 
   Ty getRealTy(StoreLoadMixin c) => this;
@@ -575,14 +577,26 @@ abstract class Ty extends BuildMixin with EquatableMixin {
 }
 
 class RefTy extends Ty {
-  RefTy(this.parent);
+  RefTy(this.parent)
+      : isPointer = false,
+        ident = Identifier.builtIn('&');
+  RefTy.pointer(this.parent)
+      : isPointer = true,
+        ident = Identifier.builtIn('*');
+  RefTy.from(this.parent, this.isPointer)
+      : ident = Identifier.builtIn(isPointer ? '*' : '&');
+
+  final bool isPointer;
   final Ty parent;
 
+  @override
+  final Identifier ident;
+
   Ty get baseTy {
-    if (parent is RefTy) {
-      return (parent as RefTy).baseTy;
-    }
-    return parent;
+    return switch (parent) {
+      RefTy p => p.baseTy,
+      _ => parent,
+    };
   }
 
   @override
@@ -630,6 +644,10 @@ class BuiltInTy extends Ty {
   final LitKind _ty;
   LitKind get ty => _ty;
 
+  Identifier? _ident;
+  @override
+  Identifier get ident => _ident ??= Identifier.builtIn(_ty.name);
+
   static BuiltInTy? from(String src) {
     final lit = LitKind.values.firstWhereOrNull((e) => e.lit == src);
     if (lit == null) return null;
@@ -665,8 +683,7 @@ class PathTy with EquatableMixin {
 
   final List<PathTy> generics;
 
-  bool? _isRef;
-  bool get isRef => _isRef ??= kind.isRef;
+  bool get isRef => kind.isRef;
 
   @override
   String toString() {
@@ -682,31 +699,6 @@ class PathTy with EquatableMixin {
   @override
   List<Object?> get props => [ident];
 
-  void build(StoreLoadMixin context) {
-    if (ty != null) return;
-
-    final tySrc = ident.src;
-    var rty = BuiltInTy.from(tySrc);
-    if (rty != null) {
-      final hasTy = context.contains(rty);
-      assert(hasTy);
-    }
-  }
-
-  Ty? grtBase(Tys c) {
-    var rty = ty;
-
-    final tySrc = ident.src;
-    rty ??= BuiltInTy.from(tySrc);
-
-    rty ??= c.getTy(ident);
-    if (rty == null) {
-      // error
-    }
-
-    return rty;
-  }
-
   Ty? grtOrT(Tys c, {GenTy? gen, GenTy? getTy}) {
     var rty = ty;
 
@@ -720,8 +712,8 @@ class PathTy with EquatableMixin {
     }
     rty ??= gen?.call(ident);
 
-    if (rty is StructTy && generics.isNotEmpty) {
-      final gMap = <Identifier, Ty>{};
+    if (rty is NewInst && !rty.done) {
+      final gMap = <Identifier, Ty>{...rty.tys};
 
       for (var i = 0; i < generics.length; i += 1) {
         final g = generics[i];
@@ -738,7 +730,7 @@ class PathTy with EquatableMixin {
     if (rty == null) {
       return null;
     }
-    return kind.resolveTy(rty);
+    return kind.wrapRefTy(rty);
   }
 
   Ty grt(Tys c, {GenTy? gen}) {
@@ -813,6 +805,9 @@ class Fn extends Ty with NewInst<Fn> {
   Fn(this.fnSign, this.block);
 
   Identifier get fnName => fnSign.fnDecl.ident;
+
+  @override
+  Identifier get ident => fnName;
 
   Ty getRetTy(Tys c) {
     return getRetTyOrT(c)!;
@@ -1156,51 +1151,52 @@ class FieldDef with EquatableMixin {
 
 typedef GenTy = Ty? Function(Identifier ident);
 
-mixin NewInst<T extends Ty> {
+mixin NewInst<T extends Ty> on Ty {
   List<FieldDef> get fields;
   List<FieldDef> get generics;
 
   Map<Identifier, Ty>? _tys;
 
   Map<Identifier, Ty> get tys => _tys ?? const {};
+
+  bool get done => tys.length == generics.length;
+
   final _tyLists = <ListKey, T>{};
 
   T? _parent;
   T get parentOrCurrent => _parent ?? this as T;
+
+  @override
+  FnBuildMixin? get currentContext =>
+      super.currentContext ??= _parent?.currentContext;
+
+  /// todo: 使用 `context.pushDyty` 实现
   T newInst(Map<Identifier, Ty> tys, Tys c, {GenTy? gen}) {
-    _parent ??= this as T;
-    if (tys.isEmpty) return _parent!;
+    final parent = parentOrCurrent;
+    if (tys.isEmpty) return parent;
     final key = ListKey(tys);
 
-    final newInst = (_parent as NewInst)._tyLists.putIfAbsent(key, () {
+    final newInst = (parent as NewInst)._tyLists.putIfAbsent(key, () {
       final newFields = <FieldDef>[];
       for (var f in fields) {
-        final g = f.grtOrT(c, gen: (ident) {
-          final data = tys[ident];
-          if (data != null) {
-            var d = data;
-            for (var k in f.kinds) {
-              if ((k == PointerKind.ref || k == PointerKind.deref) &&
-                  d is RefTy) {
-                d = d.parent;
-              }
-            }
-            return d;
+        final fieldTy = f.grtOrT(c, gen: (ident) {
+          final baseTy = tys[ident];
+          if (baseTy != null) {
+            return f.kinds.unWrapRefTy(baseTy);
           }
           return gen?.call(ident);
         });
-        final nf = f.copyWithTy(g);
-        newFields.add(nf);
+        final fieldCopy = f.copyWithTy(fieldTy);
+        newFields.add(fieldCopy);
       }
 
       final ty = newTy(newFields);
-      (ty as NewInst)
-        .._parent = _parent
+      ty as NewInst
+        .._parent = parentOrCurrent
         .._tys = tys;
+
       return ty;
     });
-
-    newInst.currentContext = parentOrCurrent.currentContext;
 
     return newInst as T;
   }
@@ -1220,10 +1216,9 @@ mixin NewInst<T extends Ty> {
   T newTy(List<FieldDef> fields);
 }
 
-class StructTy extends Ty
-    with EquatableMixin, NewInst<StructTy>
-    implements PathInterFace {
+class StructTy extends Ty with EquatableMixin, NewInst<StructTy> {
   StructTy(this.ident, this.fields, this.generics);
+  @override
   final Identifier ident;
   @override
   final List<FieldDef> fields;
@@ -1280,6 +1275,7 @@ class EnumTy extends Ty {
       v.parent = this;
     }
   }
+  @override
   final Identifier ident;
   final List<EnumItem> variants;
 
@@ -1332,6 +1328,7 @@ class EnumItem extends StructTy {
 class ComponentTy extends Ty {
   ComponentTy(this.ident, this.fns);
 
+  @override
   final Identifier ident;
   List<FnSign> fns;
 
@@ -1374,6 +1371,9 @@ class ImplTy extends Ty {
   final PathTy? label;
   final List<Fn> fns;
   final List<Fn> staticFns;
+
+  @override
+  Identifier get ident => label?.ident ?? com?.ident ?? struct.ident;
 
   bool contains(Identifier ident) {
     return fns.any((e) => e.fnSign.fnDecl.ident == ident) ||
@@ -1462,6 +1462,10 @@ class ArrayTy extends Ty {
   final Ty elementTy;
   final int size;
 
+  Identifier? _ident;
+  @override
+  Identifier get ident => _ident ??= Identifier.builtIn('[$size; $elementTy]');
+
   @override
   void analysis(AnalysisContext context) {}
 
@@ -1537,12 +1541,9 @@ class ArrayLLVMType extends LLVMType {
   }
 }
 
-abstract class PathInterFace {
-  Map<Identifier, Ty> get tys;
-}
-
 class TypeAliasTy extends Ty {
   TypeAliasTy(this.ident, this.generics, this.baseTy);
+  @override
   final Identifier ident;
 
   final List<FieldDef> generics;

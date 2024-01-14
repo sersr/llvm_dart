@@ -2,7 +2,7 @@ import "std:d.kc";
 
 fn main() i32 {
   let value = apiFnRet64Float();
-  printf("return value: %f, x: %f, c: %d\n", value.y as double, value.x as double, value.c);
+  printf("return value: %f, x: %f, c: %d\n", value.y as f64, value.x as f64, value.c as i32);
 
   let s = test_sret();
   printf("sret: %d, x: %d, z: %d, f: %d\n", s.y, s.x, s.z, s.f);
