@@ -127,6 +127,15 @@ mixin LLVMTypeMixin {
     llvm.LLVMAddAttributeAtIndex(value, index, attr);
   }
 
+  void setFnStringLLVMAttr(LLVMValueRef value, String key, String kValue) {
+    final (nc, length) = key.toNativeUtf8WithLength();
+    final (vname, vlength) = kValue.toNativeUtf8WithLength();
+    final vv =
+        llvm.LLVMCreateStringAttribute(llvmContext, nc, length, vname, vlength);
+
+    llvm.LLVMAddAttributeAtIndex(value, -1, vv);
+  }
+
   void setFnTypeAttr(LLVMValueRef value, int index, int kind, LLVMTypeRef ty) {
     final attr = llvm.LLVMCreateTypeAttribute(llvmContext, kind, ty);
     llvm.LLVMAddAttributeAtIndex(value, index, attr);
@@ -399,6 +408,13 @@ mixin DebugMixin on BuildMethods {
   void finalize() {
     if (_isRoot && _dBuilder != null) {
       llvm.LLVMDIBuilderFinalize(_dBuilder!);
+    }
+  }
+
+  void dispose() {
+    if (_isRoot && _dBuilder != null) {
+      llvm.LLVMDisposeDIBuilder(_dBuilder!);
+      _dBuilder = null;
     }
     if (_allocaBuilder != null) {
       llvm.LLVMDisposeBuilder(_allocaBuilder!);

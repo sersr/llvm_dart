@@ -113,6 +113,12 @@ void apiFnBig(BaseBig base)
   printf("fnBig: y = %d, x = %d, z = %d, s = %d, h = %d\n", base.y, base.x, base.z, base.s, base.h);
 }
 
+BaseChar apiFnRetChar() {
+
+  BaseChar base = { 22 };
+  return base;
+}
+
 Base128 apiFnRet128()
 {
   Base128 base = {128.00, 130.00};
@@ -142,4 +148,5 @@ void run()
   apiFn128(b128);
   apiFnBig(bbig);
   apiFn64Float(b64float);
+  apiFnRetChar();
 }

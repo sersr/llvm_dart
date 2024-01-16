@@ -1450,7 +1450,19 @@ class OpExpr extends Expr {
     var r = rhs.build(context, baseTy: bestTy);
     if (l == null || r == null) return null;
 
-    return math(context, op, l.variable, rhs, opIdent);
+    final value = math(context, op, l.variable, rhs, opIdent);
+    var val = value?.variable;
+    final valTy = val?.ty;
+    if (baseTy is BuiltInTy && baseTy != valTy && valTy is BuiltInTy) {
+      final v = context.castLit(valTy.ty, val!.load(context), baseTy.ty);
+      val = LLVMConstVariable(v, baseTy, Identifier.none);
+      return ExprTempValue(val);
+    } else if (l.ty is RefTy && valTy is BuiltInTy && valTy.ty.isInt) {
+      return ExprTempValue(
+          LLVMConstVariable(val!.getBaseValue(context), l.ty, Identifier.none));
+    }
+
+    return value;
   }
 
   static ExprTempValue? math(FnBuildMixin context, OpKind op, Variable? l,

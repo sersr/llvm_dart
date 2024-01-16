@@ -29,12 +29,9 @@ class Options {
   final bool opt;
 }
 
-final rq = TaskQueue();
-
-var abi = Abi.arm64;
-
 Future<bool> run(Options options) {
   return runPrint(() async {
+    var abi = Abi.arm64;
     final path = options.binFile.path;
 
     var target = '$abi-apple-darwin22.4.0';
@@ -77,7 +74,7 @@ Future<bool> run(Options options) {
       }
 
       await runCmd([
-        'clang $debug $verbose $linkName $files $abiV -o $main -Wno-override-module && ./$main "hello world"'
+        'clang $debug $verbose $linkName $files $abiV -o $main --target=$target -Wno-override-module && ./$main "hello world"'
       ], dir: buildDir);
       if (options.logFile) {
         Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);

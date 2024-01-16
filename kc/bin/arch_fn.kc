@@ -28,12 +28,15 @@ fn main() i32 {
 
   printf("Ret 64 Float: %f, %f, %d \n", hax.y as f64, hax.x as f64, hax.c);
 
+  let retChar = apiFnRetChar();
+  printf("ret: %d\n", retChar.y as i64);
   print('----');
   // run();
   0;
 }
 extern fn run();
 
+extern fn apiFnRetChar() BaseChar;
 extern struct BaseChar {
   y: u8,
 }

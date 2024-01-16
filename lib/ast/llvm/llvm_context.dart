@@ -30,22 +30,19 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
       llvm.LLVMDisposeMessage(tt);
     }
 
-    final info = "Debug Info Version";
-
     void add(int lv, String name, int size) {
-      final (namePointer, nameLength) = name.toNativeUtf8WithLength();
-      llvm.LLVMAddModuleFlag(module, lv, namePointer, nameLength,
-          llvm.LLVMValueAsMetadata(constI32(size)));
+      llvm.LLVMAddFlag(module, lv, name.toChar(), size);
     }
 
     if (Platform.isWindows) {
-      add(1, "CodeView", 1);
+      add(2, "CodeView", 1);
+      // add(8, "PIC Level", 2);
+      // add(8, "PIE Level", 2);
     } else {
-      final version = "Dwarf Version";
-      add(6, version, 2);
+      add(8, "Dwarf Version", 2);
     }
 
-    add(1, info, 3);
+    add(2, "Debug Info Version", 3);
   }
 
   @override
@@ -173,8 +170,8 @@ class BuildContextImpl extends BuildContext
   @override
   void dispose() {
     llvm.LLVMDisposeBuilder(builder);
+    super.dispose();
 
-    finalize();
     for (var child in _children) {
       child.dispose();
     }

@@ -1159,9 +1159,9 @@ class LLVMCore {
   }
 
   late final _LLVMSetModuleDataLayoutPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              LLVMModuleRef, LLVMTargetDataRef)>>('LLVMSetModuleDataLayout');
+          ffi
+          .NativeFunction<ffi.Void Function(LLVMModuleRef, LLVMTargetDataRef)>>(
+      'LLVMSetModuleDataLayout');
   late final _LLVMSetModuleDataLayout = _LLVMSetModuleDataLayoutPtr.asFunction<
       void Function(LLVMModuleRef, LLVMTargetDataRef)>();
 
@@ -1176,9 +1176,9 @@ class LLVMCore {
   }
 
   late final _LLVMCreateTargetDataPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMTargetDataRef Function(
-              ffi.Pointer<ffi.Char>)>>('LLVMCreateTargetData');
+          ffi
+          .NativeFunction<LLVMTargetDataRef Function(ffi.Pointer<ffi.Char>)>>(
+      'LLVMCreateTargetData');
   late final _LLVMCreateTargetData = _LLVMCreateTargetDataPtr.asFunction<
       LLVMTargetDataRef Function(ffi.Pointer<ffi.Char>)>();
 
@@ -1231,9 +1231,9 @@ class LLVMCore {
   }
 
   late final _LLVMCopyStringRepOfTargetDataPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              LLVMTargetDataRef)>>('LLVMCopyStringRepOfTargetData');
+          ffi
+          .NativeFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetDataRef)>>(
+      'LLVMCopyStringRepOfTargetData');
   late final _LLVMCopyStringRepOfTargetData = _LLVMCopyStringRepOfTargetDataPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(LLVMTargetDataRef)>();
 
@@ -2898,8 +2898,8 @@ class LLVMCore {
   }
 
   late final _LLVMDisposeModuleFlagsMetadataPtr = _lookup<
-          ffi.NativeFunction<
-              ffi.Void Function(ffi.Pointer<LLVMModuleFlagEntry>)>>(
+          ffi
+          .NativeFunction<ffi.Void Function(ffi.Pointer<LLVMModuleFlagEntry>)>>(
       'LLVMDisposeModuleFlagsMetadata');
   late final _LLVMDisposeModuleFlagsMetadata =
       _LLVMDisposeModuleFlagsMetadataPtr.asFunction<
@@ -2995,6 +2995,23 @@ class LLVMCore {
               ffi.Size)>>('LLVMGetModuleFlag');
   late final _LLVMGetModuleFlag = _LLVMGetModuleFlagPtr.asFunction<
       LLVMMetadataRef Function(LLVMModuleRef, ffi.Pointer<ffi.Char>, int)>();
+
+  void LLVMAddFlag(LLVMModuleRef M, int MergeBehavior,
+      ffi.Pointer<ffi.Char> Name, int Value) {
+    return _LLVMAddFlag(
+      M,
+      MergeBehavior,
+      Name,
+      Value,
+    );
+  }
+
+  late final _LLVMAddFlagPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(LLVMModuleRef, ffi.Int32, ffi.Pointer<ffi.Char>,
+              ffi.Int32)>>('LLVMAddFlag');
+  late final _LLVMAddFlag = _LLVMAddFlagPtr.asFunction<
+      void Function(LLVMModuleRef, int, ffi.Pointer<ffi.Char>, int)>();
 
   /// Add a module-level flag to the module-level flags metadata if it doesn't
   /// already exist.
@@ -4369,9 +4386,9 @@ class LLVMCore {
   }
 
   late final _LLVMStructGetTypeAtIndexPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMTypeRef Function(
-              LLVMTypeRef, ffi.UnsignedInt)>>('LLVMStructGetTypeAtIndex');
+          ffi
+          .NativeFunction<LLVMTypeRef Function(LLVMTypeRef, ffi.UnsignedInt)>>(
+      'LLVMStructGetTypeAtIndex');
   late final _LLVMStructGetTypeAtIndex = _LLVMStructGetTypeAtIndexPtr
       .asFunction<LLVMTypeRef Function(LLVMTypeRef, int)>();
 
@@ -4540,9 +4557,9 @@ class LLVMCore {
   }
 
   late final _LLVMPointerTypePtr = _lookup<
-      ffi.NativeFunction<
-          LLVMTypeRef Function(
-              LLVMTypeRef, ffi.UnsignedInt)>>('LLVMPointerType');
+          ffi
+          .NativeFunction<LLVMTypeRef Function(LLVMTypeRef, ffi.UnsignedInt)>>(
+      'LLVMPointerType');
   late final _LLVMPointerType =
       _LLVMPointerTypePtr.asFunction<LLVMTypeRef Function(LLVMTypeRef, int)>();
 
@@ -4622,9 +4639,9 @@ class LLVMCore {
   }
 
   late final _LLVMVectorTypePtr = _lookup<
-      ffi.NativeFunction<
-          LLVMTypeRef Function(
-              LLVMTypeRef, ffi.UnsignedInt)>>('LLVMVectorType');
+          ffi
+          .NativeFunction<LLVMTypeRef Function(LLVMTypeRef, ffi.UnsignedInt)>>(
+      'LLVMVectorType');
   late final _LLVMVectorType =
       _LLVMVectorTypePtr.asFunction<LLVMTypeRef Function(LLVMTypeRef, int)>();
 
@@ -4646,9 +4663,9 @@ class LLVMCore {
   }
 
   late final _LLVMScalableVectorTypePtr = _lookup<
-      ffi.NativeFunction<
-          LLVMTypeRef Function(
-              LLVMTypeRef, ffi.UnsignedInt)>>('LLVMScalableVectorType');
+          ffi
+          .NativeFunction<LLVMTypeRef Function(LLVMTypeRef, ffi.UnsignedInt)>>(
+      'LLVMScalableVectorType');
   late final _LLVMScalableVectorType = _LLVMScalableVectorTypePtr.asFunction<
       LLVMTypeRef Function(LLVMTypeRef, int)>();
 
@@ -6415,9 +6432,9 @@ class LLVMCore {
   }
 
   late final _LLVMGetOperandUsePtr = _lookup<
-      ffi.NativeFunction<
-          LLVMUseRef Function(
-              LLVMValueRef, ffi.UnsignedInt)>>('LLVMGetOperandUse');
+          ffi
+          .NativeFunction<LLVMUseRef Function(LLVMValueRef, ffi.UnsignedInt)>>(
+      'LLVMGetOperandUse');
   late final _LLVMGetOperandUse = _LLVMGetOperandUsePtr.asFunction<
       LLVMUseRef Function(LLVMValueRef, int)>();
 
@@ -7157,9 +7174,9 @@ class LLVMCore {
   }
 
   late final _LLVMConstNSWAddPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(
-              LLVMValueRef, LLVMValueRef)>>('LLVMConstNSWAdd');
+          ffi
+          .NativeFunction<LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>>(
+      'LLVMConstNSWAdd');
   late final _LLVMConstNSWAdd = _LLVMConstNSWAddPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>();
 
@@ -7174,9 +7191,9 @@ class LLVMCore {
   }
 
   late final _LLVMConstNUWAddPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(
-              LLVMValueRef, LLVMValueRef)>>('LLVMConstNUWAdd');
+          ffi
+          .NativeFunction<LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>>(
+      'LLVMConstNUWAdd');
   late final _LLVMConstNUWAdd = _LLVMConstNUWAddPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>();
 
@@ -7207,9 +7224,9 @@ class LLVMCore {
   }
 
   late final _LLVMConstNSWSubPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(
-              LLVMValueRef, LLVMValueRef)>>('LLVMConstNSWSub');
+          ffi
+          .NativeFunction<LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>>(
+      'LLVMConstNSWSub');
   late final _LLVMConstNSWSub = _LLVMConstNSWSubPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>();
 
@@ -7224,9 +7241,9 @@ class LLVMCore {
   }
 
   late final _LLVMConstNUWSubPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(
-              LLVMValueRef, LLVMValueRef)>>('LLVMConstNUWSub');
+          ffi
+          .NativeFunction<LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>>(
+      'LLVMConstNUWSub');
   late final _LLVMConstNUWSub = _LLVMConstNUWSubPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>();
 
@@ -7257,9 +7274,9 @@ class LLVMCore {
   }
 
   late final _LLVMConstNSWMulPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(
-              LLVMValueRef, LLVMValueRef)>>('LLVMConstNSWMul');
+          ffi
+          .NativeFunction<LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>>(
+      'LLVMConstNSWMul');
   late final _LLVMConstNSWMul = _LLVMConstNSWMulPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>();
 
@@ -7274,9 +7291,9 @@ class LLVMCore {
   }
 
   late final _LLVMConstNUWMulPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(
-              LLVMValueRef, LLVMValueRef)>>('LLVMConstNUWMul');
+          ffi
+          .NativeFunction<LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>>(
+      'LLVMConstNUWMul');
   late final _LLVMConstNUWMul = _LLVMConstNUWMulPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>();
 
@@ -7798,9 +7815,9 @@ class LLVMCore {
   }
 
   late final _LLVMConstExtractElementPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(
-              LLVMValueRef, LLVMValueRef)>>('LLVMConstExtractElement');
+          ffi
+          .NativeFunction<LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>>(
+      'LLVMConstExtractElement');
   late final _LLVMConstExtractElement = _LLVMConstExtractElementPtr.asFunction<
       LLVMValueRef Function(LLVMValueRef, LLVMValueRef)>();
 
@@ -9919,9 +9936,9 @@ class LLVMCore {
   }
 
   late final _LLVMGetBasicBlockNamePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              LLVMBasicBlockRef)>>('LLVMGetBasicBlockName');
+          ffi
+          .NativeFunction<ffi.Pointer<ffi.Char> Function(LLVMBasicBlockRef)>>(
+      'LLVMGetBasicBlockName');
   late final _LLVMGetBasicBlockName = _LLVMGetBasicBlockNamePtr.asFunction<
       ffi.Pointer<ffi.Char> Function(LLVMBasicBlockRef)>();
 
@@ -10126,9 +10143,9 @@ class LLVMCore {
   }
 
   late final _LLVMAppendExistingBasicBlockPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(LLVMValueRef,
-              LLVMBasicBlockRef)>>('LLVMAppendExistingBasicBlock');
+          ffi
+          .NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBasicBlockRef)>>(
+      'LLVMAppendExistingBasicBlock');
   late final _LLVMAppendExistingBasicBlock = _LLVMAppendExistingBasicBlockPtr
       .asFunction<void Function(LLVMValueRef, LLVMBasicBlockRef)>();
 
@@ -11017,9 +11034,9 @@ class LLVMCore {
   }
 
   late final _LLVMSetNormalDestPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              LLVMValueRef, LLVMBasicBlockRef)>>('LLVMSetNormalDest');
+          ffi
+          .NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBasicBlockRef)>>(
+      'LLVMSetNormalDest');
   late final _LLVMSetNormalDest = _LLVMSetNormalDestPtr.asFunction<
       void Function(LLVMValueRef, LLVMBasicBlockRef)>();
 
@@ -11042,9 +11059,9 @@ class LLVMCore {
   }
 
   late final _LLVMSetUnwindDestPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              LLVMValueRef, LLVMBasicBlockRef)>>('LLVMSetUnwindDest');
+          ffi
+          .NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBasicBlockRef)>>(
+      'LLVMSetUnwindDest');
   late final _LLVMSetUnwindDest = _LLVMSetUnwindDestPtr.asFunction<
       void Function(LLVMValueRef, LLVMBasicBlockRef)>();
 
@@ -11350,9 +11367,9 @@ class LLVMCore {
   }
 
   late final _LLVMGetIndicesPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.UnsignedInt> Function(
-              LLVMValueRef)>>('LLVMGetIndices');
+          ffi
+          .NativeFunction<ffi.Pointer<ffi.UnsignedInt> Function(LLVMValueRef)>>(
+      'LLVMGetIndices');
   late final _LLVMGetIndices = _LLVMGetIndicesPtr.asFunction<
       ffi.Pointer<ffi.UnsignedInt> Function(LLVMValueRef)>();
 
@@ -11549,9 +11566,9 @@ class LLVMCore {
   }
 
   late final _LLVMSetCurrentDebugLocation2Ptr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(LLVMBuilderRef,
-              LLVMMetadataRef)>>('LLVMSetCurrentDebugLocation2');
+          ffi
+          .NativeFunction<ffi.Void Function(LLVMBuilderRef, LLVMMetadataRef)>>(
+      'LLVMSetCurrentDebugLocation2');
   late final _LLVMSetCurrentDebugLocation2 = _LLVMSetCurrentDebugLocation2Ptr
       .asFunction<void Function(LLVMBuilderRef, LLVMMetadataRef)>();
 
@@ -11632,9 +11649,9 @@ class LLVMCore {
   }
 
   late final _LLVMBuilderSetDefaultFPMathTagPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(LLVMBuilderRef,
-              LLVMMetadataRef)>>('LLVMBuilderSetDefaultFPMathTag');
+          ffi
+          .NativeFunction<ffi.Void Function(LLVMBuilderRef, LLVMMetadataRef)>>(
+      'LLVMBuilderSetDefaultFPMathTag');
   late final _LLVMBuilderSetDefaultFPMathTag =
       _LLVMBuilderSetDefaultFPMathTagPtr.asFunction<
           void Function(LLVMBuilderRef, LLVMMetadataRef)>();
@@ -11871,9 +11888,9 @@ class LLVMCore {
   }
 
   late final _LLVMBuildResumePtr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(
-              LLVMBuilderRef, LLVMValueRef)>>('LLVMBuildResume');
+          ffi
+          .NativeFunction<LLVMValueRef Function(LLVMBuilderRef, LLVMValueRef)>>(
+      'LLVMBuildResume');
   late final _LLVMBuildResume = _LLVMBuildResumePtr.asFunction<
       LLVMValueRef Function(LLVMBuilderRef, LLVMValueRef)>();
 
@@ -12049,9 +12066,9 @@ class LLVMCore {
   }
 
   late final _LLVMAddDestinationPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              LLVMValueRef, LLVMBasicBlockRef)>>('LLVMAddDestination');
+          ffi
+          .NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBasicBlockRef)>>(
+      'LLVMAddDestination');
   late final _LLVMAddDestination = _LLVMAddDestinationPtr.asFunction<
       void Function(LLVMValueRef, LLVMBasicBlockRef)>();
 
@@ -12143,9 +12160,9 @@ class LLVMCore {
   }
 
   late final _LLVMAddHandlerPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              LLVMValueRef, LLVMBasicBlockRef)>>('LLVMAddHandler');
+          ffi
+          .NativeFunction<ffi.Void Function(LLVMValueRef, LLVMBasicBlockRef)>>(
+      'LLVMAddHandler');
   late final _LLVMAddHandler = _LLVMAddHandlerPtr.asFunction<
       void Function(LLVMValueRef, LLVMBasicBlockRef)>();
 
@@ -13147,9 +13164,9 @@ class LLVMCore {
   }
 
   late final _LLVMBuildFreePtr = _lookup<
-      ffi.NativeFunction<
-          LLVMValueRef Function(
-              LLVMBuilderRef, LLVMValueRef)>>('LLVMBuildFree');
+          ffi
+          .NativeFunction<LLVMValueRef Function(LLVMBuilderRef, LLVMValueRef)>>(
+      'LLVMBuildFree');
   late final _LLVMBuildFree = _LLVMBuildFreePtr.asFunction<
       LLVMValueRef Function(LLVMBuilderRef, LLVMValueRef)>();
 
@@ -14628,9 +14645,9 @@ class LLVMCore {
   }
 
   late final _LLVMGetBufferStartPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              LLVMMemoryBufferRef)>>('LLVMGetBufferStart');
+          ffi
+          .NativeFunction<ffi.Pointer<ffi.Char> Function(LLVMMemoryBufferRef)>>(
+      'LLVMGetBufferStart');
   late final _LLVMGetBufferStart = _LLVMGetBufferStartPtr.asFunction<
       ffi.Pointer<ffi.Char> Function(LLVMMemoryBufferRef)>();
 
@@ -14716,9 +14733,9 @@ class LLVMCore {
   }
 
   late final _LLVMCreateFunctionPassManagerPtr = _lookup<
-      ffi.NativeFunction<
-          LLVMPassManagerRef Function(
-              LLVMModuleProviderRef)>>('LLVMCreateFunctionPassManager');
+          ffi
+          .NativeFunction<LLVMPassManagerRef Function(LLVMModuleProviderRef)>>(
+      'LLVMCreateFunctionPassManager');
   late final _LLVMCreateFunctionPassManager = _LLVMCreateFunctionPassManagerPtr
       .asFunction<LLVMPassManagerRef Function(LLVMModuleProviderRef)>();
 
@@ -14737,9 +14754,9 @@ class LLVMCore {
   }
 
   late final _LLVMRunPassManagerPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Int Function(
-              LLVMPassManagerRef, LLVMModuleRef)>>('LLVMRunPassManager');
+          ffi
+          .NativeFunction<ffi.Int Function(LLVMPassManagerRef, LLVMModuleRef)>>(
+      'LLVMRunPassManager');
   late final _LLVMRunPassManager = _LLVMRunPassManagerPtr.asFunction<
       int Function(LLVMPassManagerRef, LLVMModuleRef)>();
 
@@ -14776,9 +14793,9 @@ class LLVMCore {
   }
 
   late final _LLVMRunFunctionPassManagerPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Int Function(
-              LLVMPassManagerRef, LLVMValueRef)>>('LLVMRunFunctionPassManager');
+          ffi
+          .NativeFunction<ffi.Int Function(LLVMPassManagerRef, LLVMValueRef)>>(
+      'LLVMRunFunctionPassManager');
   late final _LLVMRunFunctionPassManager = _LLVMRunFunctionPassManagerPtr
       .asFunction<int Function(LLVMPassManagerRef, LLVMValueRef)>();
 
@@ -17806,9 +17823,9 @@ class LLVMCore {
   }
 
   late final _LLVMMetadataReplaceAllUsesWithPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(LLVMMetadataRef,
-              LLVMMetadataRef)>>('LLVMMetadataReplaceAllUsesWith');
+          ffi
+          .NativeFunction<ffi.Void Function(LLVMMetadataRef, LLVMMetadataRef)>>(
+      'LLVMMetadataReplaceAllUsesWith');
   late final _LLVMMetadataReplaceAllUsesWith =
       _LLVMMetadataReplaceAllUsesWithPtr.asFunction<
           void Function(LLVMMetadataRef, LLVMMetadataRef)>();
@@ -19056,8 +19073,8 @@ typedef LLVMDiagnosticInfoRef = ffi.Pointer<LLVMOpaqueDiagnosticInfo>;
 final class LLVMOpaqueDiagnosticInfo extends ffi.Opaque {}
 
 typedef LLVMYieldCallback = ffi.Pointer<
-    ffi.NativeFunction<
-        ffi.Void Function(LLVMContextRef, ffi.Pointer<ffi.Void>)>>;
+    ffi
+    .NativeFunction<ffi.Void Function(LLVMContextRef, ffi.Pointer<ffi.Void>)>>;
 
 /// Used to represent an attributes.
 ///

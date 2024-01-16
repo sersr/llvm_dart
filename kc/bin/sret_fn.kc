@@ -1,11 +1,11 @@
-import '../lib/d.kc';
-import '../lib/heap_pointer.d.kc';
+import "std:d.kc";
+import "std:heap_pointer.d.kc";
 
 fn main() i32 {
   let base = sret(true);
-  printf('y: %d, x: %d\n', base.y, base.x);  
+  printf("y: %d, x: %d\n", base.y, base.x);  
   let base = sret(false);
-  printf('y: %d, x: %d\n', base.y, base.x);
+  printf("y: %d, x: %d\n", base.y, base.x);
 
  let newBase = new Base { 11, 22, 33 };
 
@@ -32,6 +32,6 @@ extern fn sret(isBase: bool) Base {
 }
 
 fn heap_fn() *HeapCount<Base> {
-  let ss = new Base { 10, 220 ,33};
-  ss
+  let ss = Base { 10, 220 ,33};
+  &ss
 }
