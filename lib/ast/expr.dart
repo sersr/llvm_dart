@@ -644,7 +644,7 @@ class StructExpr extends Expr {
         final temp = f.build(context, baseTy: fd.grt(context));
         final v = temp?.variable;
         if (v == null) continue;
-        final vv = struct.llty.getField(value, context, fd.ident)!;
+        final vv = struct.llty.getField(value, context, f.ident ?? fd.ident)!;
         // if (v is LLVMAllocaDelayVariable && !v.created) {
         //   v.initProxy(context, vv);
         //   continue;

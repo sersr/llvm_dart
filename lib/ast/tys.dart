@@ -416,8 +416,10 @@ mixin Tys<V extends LifeCycleVariable> {
     final hasTest = test != null;
 
     if (list != null) {
-      for (var item in list.reversed) {
-        if (hasTest && !test(item)) continue;
+      if (!hasTest) return list.last;
+      for (var i = list.length - 1; i >= 0; i--) {
+        var item = list[i];
+        if (!test(item)) continue;
 
         return item;
       }

@@ -1113,23 +1113,22 @@ class FieldDef with EquatableMixin {
   final PathTy _ty;
   PathTy get rawTy => _ty;
   final Ty? _rty;
+  Ty? _cache;
+
   Ty grt(Tys c) {
-    if (_rty != null) return _rty;
-    return _ty.grt(c);
+    return _rty ?? (_cache ??= _ty.grt(c));
   }
 
   Ty grts(Tys c, GenTy gen) {
-    if (_rty != null) return _rty;
-    return _ty.grt(c, gen: gen);
+    return _rty ?? (_cache ??= _ty.grt(c, gen: gen));
   }
 
   Ty? grtOrT(Tys c, {GenTy? gen}) {
-    if (_rty != null) return _rty;
-    return _ty.grtOrT(c, gen: gen);
+    return _rty ?? (_cache ??= _ty.grtOrT(c, gen: gen));
   }
 
   FieldDef clone() {
-    return FieldDef(ident, _ty);
+    return FieldDef._internal(ident, _ty, _rty);
   }
 
   FieldDef copyWithTy(Ty? ty) {

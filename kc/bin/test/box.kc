@@ -7,7 +7,7 @@ fn main() i32 {
 
   let foo = Foo { bar: Bar { y: 1000 }};
 
-  printf("...y: %d\n", foo.bar.y);
+  printf("...y: %d\n", foo.y);
 
   let share_ptr = SharedPtr.new(Foo{ bar: Bar {y: 1234 }});
 
