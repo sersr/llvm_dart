@@ -66,6 +66,24 @@ typedef struct BaseBig
   int h;
 } BaseBig;
 
+
+typedef union BaseUnion {
+  Base96 x;
+  float y;
+} BaseUnion;
+
+typedef union BaseUnionFloat {
+  float y;
+  int x;
+} BaseUnionFloat;
+
+void apiFnUnion(BaseUnion base, BaseUnion bb, BaseUnion bx, BaseUnion xa, BaseUnion xaa) {
+  printf("union: %f\n", base.x.x);
+}
+void apiFnUnionFloat(BaseUnionFloat base) {
+  printf("union: %f\n", base.y);
+}
+
 void apiFnChar(BaseChar base)
 {
   printf("fnChar: y = %d\n", base.y);

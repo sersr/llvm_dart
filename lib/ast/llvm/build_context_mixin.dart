@@ -45,8 +45,6 @@ abstract class BuildContext
   FnBuildMixin? getLastFnContext();
   FnBuildMixin createNewRunContext();
   FnBuildMixin createChildContext();
-
-  void dispose();
 }
 
 mixin SretMixin on BuildContext {
