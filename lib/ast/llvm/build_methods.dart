@@ -269,7 +269,6 @@ mixin BuildMethods on LLVMTypeMixin {
   }
 
   LLVMValueRef alloctor(LLVMTypeRef type, {Ty? ty, String name = '_'}) {
-    llvm.LLVMSetCurrentDebugLocation2(allocaBuilder, nullptr);
     final alloca = llvm.LLVMBuildAlloca(allocaBuilder, type, name.toChar());
 
     if (ty != null) {

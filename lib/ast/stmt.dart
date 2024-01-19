@@ -50,7 +50,7 @@ class LetStmt extends Stmt {
     if (variable is LLVMLitVariable) {
       assert(tty is BuiltInTy);
 
-      if (isFinal) {
+      if (isFinal && !context.root.isDebug) {
         context.pushVariable(variable.newIdent(nameIdent));
         return;
       }
@@ -66,7 +66,7 @@ class LetStmt extends Stmt {
     /// 先判断是否是 struct ret
     var letVariable = context.sretFromVariable(nameIdent, variable) ?? variable;
 
-    if (isFinal) {
+    if (isFinal && !context.root.isDebug) {
       context.pushVariable(letVariable.newIdent(nameIdent));
       return;
     }

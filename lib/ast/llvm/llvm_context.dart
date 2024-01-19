@@ -14,7 +14,12 @@ import 'variables.dart';
 export 'build_context_mixin.dart';
 
 class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
-  RootBuildContext({this.abi = Abi.arm64, this.name = 'root', this.triple});
+  RootBuildContext({
+    this.abi = Abi.arm64,
+    this.name = 'root',
+    this.triple,
+    this.isDebug = false,
+  });
 
   bool _initContext = false;
   void init() {
@@ -58,6 +63,7 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
   final Abi abi;
   final String name;
   final String? triple;
+  final bool isDebug;
 
   final maps = <String, FunctionDeclare>{};
 

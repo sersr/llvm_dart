@@ -10,8 +10,8 @@ class ProjectManager extends ManagerBase
       String name = 'root',
       Abi abi = Abi.arm64,
       this.isDebug = false})
-      : rootBuildContext =
-            RootBuildContext(triple: triple, name: name, abi: abi);
+      : rootBuildContext = RootBuildContext(
+            triple: triple, name: name, abi: abi, isDebug: isDebug);
 
   @override
   final String stdRoot;
