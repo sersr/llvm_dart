@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:nop/nop.dart';
 
 import 'abi/abi_fn.dart';
+import 'ast/context.dart';
 import 'fs/fs.dart';
 import 'manager/build_run.dart';
 import 'manager/manager.dart';
@@ -18,6 +17,7 @@ class Options {
     required this.binFile,
     required this.cFiles,
     this.opt = false,
+    this.compileIR = false,
   });
   final bool logFile;
   final String std;
@@ -27,65 +27,97 @@ class Options {
   final File binFile;
   final List<String> cFiles;
   final bool opt;
+  final bool compileIR;
 }
 
 Future<bool> run(Options options) {
   return runPrint(() async {
-    var abi = Abi.arm64;
     final path = options.binFile.path;
-
-    var target = '$abi-apple-darwin22.4.0';
-    if (Platform.isWindows) {
-      abi = Abi.winx86_64;
-      target = "$abi-pc-windows-msvc";
+    var defaultTarget = await runStr(['clang -dumpmachine']);
+    if (defaultTarget == 'clang not found') return false;
+    final list = defaultTarget.trim().split('-');
+    if (list.isEmpty) {
+      Log.e('target error: $defaultTarget');
+      return false;
     }
+    final isWin = list.any((e) => e == 'windows');
+    final isGnu = list.any((e) => e == 'gnu');
+    final isMsvc = list.any((e) => e == 'msvc');
+    var abi = Abi.from(list.first, isWin) ?? Abi.arm64;
+
+    var target = list.join('-');
+
+    final configs = Configs(
+      abi: abi,
+      isGnu: isGnu,
+      isDebug: options.isDebug,
+      targetTriple: target,
+      isMsvc: isMsvc,
+    );
 
     final project = ProjectManager(
       stdRoot: options.std,
       name: options.binFile.basename,
-      abi: abi,
-      triple: target,
-      isDebug: options.isDebug,
+      configs: configs,
     );
 
-    final genMain = project.genFn(path, logAst: options.logAst);
-    if (genMain) {
-      final name = options.binFile.basename.replaceFirst(RegExp('.kc\$'), '');
-      writeOut(project.rootBuildContext, name: name, optimize: options.opt);
+    if (!project.genFn(path, logAst: options.logAst)) {
+      project.dispose();
+      return false;
+    }
 
-      final files = options.cFiles.map((e) {
-        final path = currentDir.childFile(e).path;
-        if (Platform.isWindows) return path.replaceAll(r'\', '/');
-        return path;
-      }).join(' ');
+    final name = options.binFile.basename.replaceFirst(RegExp('.kc\$'), '');
+    writeOut(project.rootBuildContext, name: name, optimize: options.opt);
 
-      final verbose = options.isVerbose ? ' -v' : '';
-      final debug = options.isDebug ? ' -g' : '';
-      final abiV = Platform.isWindows ? '' : '-arch $abi';
+    final args = StringBuffer();
 
-      var main = 'main';
-      if (Platform.isWindows) {
-        main = 'main.exe';
-      }
+    if (options.isVerbose) {
+      args.write(' -v');
+    }
+    if (options.isDebug) {
+      args.write(' -g');
+    }
 
-      var linkName = '$name.o';
-      if (Platform.isWindows && options.isDebug) {
-        linkName = '$name.ll';
-      }
+    args.write(' --target=${configs.targetTriple}');
 
-      await runCmd([
-        'clang $debug $verbose $linkName $files $abiV -o $main --target=$target -Wno-override-module && ./$main "hello world"'
-      ], dir: buildDir);
-      if (options.logFile) {
-        Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);
-        for (var ctx in project.alcs.keys) {
-          Log.w(ctx, onlyDebug: false);
-        }
+    if (!options.compileIR) {
+      args.write(' $name.o');
+    } else {
+      args.write(' $name.ll');
+      args.write(' -Wno-override-module');
+    }
+
+    for (var file in options.cFiles) {
+      var path = currentDir.childFile(file).path;
+      if (configs.isWin) path = path.replaceAll(r'\', '/');
+      args.write(' $path');
+    }
+
+    var main = 'main';
+    if (configs.isWin) {
+      args.write(' -o $main.exe');
+    } else {
+      args.write(' -o $main');
+    }
+
+    await runCmd(
+      [
+        'clang$args',
+        '&&',
+        './$main "hello world"',
+      ],
+      dir: buildDir,
+    );
+
+    if (options.logFile) {
+      Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);
+      for (var ctx in project.alcs.keys) {
+        Log.w(ctx, onlyDebug: false);
       }
     }
 
     project.dispose();
 
-    return genMain;
+    return true;
   });
 }

@@ -74,13 +74,11 @@ mixin BuildContextMixin on ManagerBase {
 
   RootBuildContext get rootBuildContext;
 
-  bool get isDebug;
-
   BuildContextImpl build(String path) {
     final root = BuildContextImpl.root(rootBuildContext, path);
     llvmCtxs[path] = root;
 
-    if (isDebug) root.debugInit();
+    root.debugInit();
 
     initBuildContext(context: root, path: path);
     return root;

@@ -393,6 +393,7 @@ mixin DebugMixin on BuildMethods {
   bool _isRoot = false;
 
   void debugInit() {
+    if (!root.isDebug) return;
     assert(_unit == null && _dBuilder == null);
     _dBuilder = llvm.LLVMCreateDIBuilder(module);
     final path = currentDir.childFile(currentPath);

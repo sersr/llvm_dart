@@ -25,19 +25,15 @@ class LLVMInstance {
   static LLVMCore getInstance() {
     if (_bindings != null) return _bindings!;
     DynamicLibrary library;
-    var dir = currentDir
-        .childDirectory('llvm_lang')
-        .childDirectory('install')
-        .childDirectory('lib');
+    final install =
+        currentDir.childDirectory('llvm_lang').childDirectory('install');
+    var dir = install.childDirectory('lib');
 
-    var name = 'libllvm_wrapper.dylib';
+    var name = 'llvm_wrapper.dylib';
     if (Platform.isWindows) {
       name = 'llvm_wrapper.dll';
 
-      final bin = currentDir
-          .childDirectory('llvm_lang')
-          .childDirectory('install')
-          .childDirectory('bin');
+      final bin = install.childDirectory('bin');
 
       final file = bin.childFile(name);
       if (file.existsSync()) {
@@ -46,7 +42,7 @@ class LLVMInstance {
         dir = currentDir.childDirectory('dll');
       }
     } else if (Platform.isLinux) {
-      name = 'libllvm_wrapper.so';
+      name = 'llvm_wrapper.so';
     }
     final p = dir.childFile(name);
     library = DynamicLibrary.open(p.path);

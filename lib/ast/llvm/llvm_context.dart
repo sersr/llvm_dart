@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import '../../abi/abi_fn.dart';
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
@@ -13,12 +11,36 @@ import 'variables.dart';
 
 export 'build_context_mixin.dart';
 
+final class Configs {
+  Configs({
+    required this.isGnu,
+    required this.isMsvc,
+    required this.abi,
+    required this.targetTriple,
+    required this.isDebug,
+  });
+
+  final bool isGnu;
+  final bool isMsvc;
+  final Abi abi;
+  final String targetTriple;
+  final bool isDebug;
+  bool get isWin => abi.isWindows;
+
+  @override
+  String toString() {
+    return '''target: $targetTriple
+abi: $abi, isWin: ${abi.isWindows}
+isMsvc: $isMsvc
+isGnu: $isGnu
+isDebug: $isDebug''';
+  }
+}
+
 class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
   RootBuildContext({
-    this.abi = Abi.arm64,
     this.name = 'root',
-    this.triple,
-    this.isDebug = false,
+    required this.configs,
   });
 
   bool _initContext = false;
@@ -27,19 +49,13 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
     _initContext = true;
     llvmContext = llvm.LLVMContextCreate();
     module = llvm.LLVMModuleCreateWithNameInContext(name.toChar(), llvmContext);
-    if (triple != null) {
-      tm = llvm.createTarget(module, triple!.toChar());
-    } else {
-      final tt = llvm.LLVMGetDefaultTargetTriple();
-      tm = llvm.createTarget(module, tt);
-      llvm.LLVMDisposeMessage(tt);
-    }
+    tm = llvm.createTarget(module, configs.targetTriple.toChar());
 
     void add(int lv, String name, int size) {
       llvm.LLVMAddFlag(module, lv, name.toChar(), size);
     }
 
-    if (Platform.isWindows) {
+    if (configs.isWin && configs.isMsvc) {
       add(2, "CodeView", 1);
       // add(8, "PIC Level", 2);
       // add(8, "PIE Level", 2);
@@ -49,6 +65,8 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
 
     add(2, "Debug Info Version", 3);
   }
+
+  final Configs configs;
 
   @override
   late final GlobalContext global;
@@ -60,10 +78,10 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
   @override
   late final LLVMTargetMachineRef tm;
 
-  final Abi abi;
   final String name;
-  final String? triple;
-  final bool isDebug;
+
+  Abi get abi => configs.abi;
+  bool get isDebug => configs.isDebug;
 
   final maps = <String, FunctionDeclare>{};
 

@@ -1,3 +1,5 @@
+import 'package:collection/collection.dart';
+
 import '../ast/analysis_context.dart';
 import '../ast/ast.dart';
 import '../ast/expr.dart';
@@ -20,6 +22,11 @@ enum Abi {
   final String name;
   final bool isWindows;
   const Abi(this.name, this.isWindows);
+
+  static Abi? from(String text, bool isWin) {
+    return values
+        .firstWhereOrNull((e) => e.name == text && e.isWindows == isWin);
+  }
 
   @override
   String toString() {

@@ -6,7 +6,7 @@
 通过 dart FFI 和 `ffi_gen` 调用 LLVM-C 接口；
 在dart端处理词法分析、构建模块并生成 .o 目标文件然后使用`clang`完成链接，生成一个可执行文件。
 
-llvm version: 16.0.6
+llvm version: >= 16.0.6
 
 在根文件夹下可以简单运行：
 ```sh
@@ -23,47 +23,39 @@ dart test test/test_all_test.dart
 在运行之前要做一些准备
 
 ## windows
-需要安装Visual Studio, Window SDK, llvm
+需要安装Visual Studio, Window SDK, msys2
 
-安装 llvm:
+### 安装 msys2:
+ - scoop install msys2 [scoop](https://scoop.sh/)
+ - 官网下载 [msys2](https://www.msys2.org/)
 
-    scoop install llvm
+### msys2 三种环境: clang64(推荐) mingw64 ucrt64
 
-### 使用预编译的 dll
-
-下载 dll
-```pwsh
-curl https://github.com/sersr/llvm_lang/releases/download/0.1.0/llvm_wrapper.zip -o llvm_wrapper.zip
-7z e .\llvm_wrapper.zip -odll
+选择一个配置环境:  
+打开cmd/pwsh
+```sh
+clang64
+pacman -S mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-llvm mingw-w64-clang-x86_64-lldb mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-ninja mingw-w64-clang-x86_64-zstd mingw-w64-clang-x86_64-zlib
 ```
-或手动解压并添加到PATH中
-```pwsh
-$env:path="$(Get-Location)\dll;$env:path"
-```
+mingw64: mingw-w64-clang-x86_64 => mingw-w64-x86_64  
+ucrt64: mingw-w64-clang-x86_64 => mingw-w64-ucrt-x86_64
 
-### 编译
-安装 `vcpkg`
-
-    scoop install vcpkg
-
-vcpkg 安装 `llvm`，LLVM官方windows默认不包括共享库
-```pwsh
-vcpkg install llvm[target-all]
+安装 mingw-w64-x86_64-clang:
+```sh
+pacman -S mingw-w64-x86_64-clang
 ```
-在使用 cmake 中添加 `-DCMAKE_TOOLCHAIN_FILE=/path/to/scripts/buildsystems/vcpkg.cmake`  
-推荐使用 vscode，在 settings.json 中添加
-```json
-    "cmake.configureArgs": [
-        "-DCMAKE_TOOLCHAIN_FILE=/path/to/scripts/buildsystems/vcpkg.cmake",
-         "-DCMAKE_INSTALL_PREFIX=./install"
-    ],
-```
-安装 [cmake-tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
+`clang64`toolchain默认包含`clang`,其他环境使用`gcc`,所以这里需要在`mingw64`环境下装一个`clang`
 
-打开`llvm_lang`项目，选择 Release，配置完成之后，生成目标选择`install`并运行，完成后会将所需的dll文件复制到`./install/bin`路径中，接着将这个添加到环境PATH路径中
-```pwsh
-$env:path=$(Get-Location)\install\bin;$env:path"
+进入 [llvm_lang](./llvm_lang/)目录:
+```sh
+cmake -S. -B build -G Ninja
+ninja -C build install
+cd ..
 ```
+注意在执行`dart run bin/run.dart `时，确保和上面是同一个环境，不然需要修改`PATH`变量，如：`export PATH="/clang64/bin:$PATH"`
+
+## 调试
+可以使用 `-g` 开启调试，推荐使用`lldb`
 
 ## Mac
 
