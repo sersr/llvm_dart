@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:nop/nop.dart';
 
 import 'abi/abi_fn.dart';
@@ -30,30 +32,63 @@ class Options {
   final bool compileIR;
 }
 
-Future<bool> run(Options options) {
-  return runPrint(() async {
-    final path = options.binFile.path;
-    var defaultTarget = await runStr(['clang -dumpmachine']);
-    if (defaultTarget == 'clang not found') return false;
-    final list = defaultTarget.trim().split('-');
-    if (list.isEmpty) {
-      Log.e('target error: $defaultTarget');
-      return false;
+abstract class Cmd {
+  String get command;
+
+  String get defaultTarget => _defaultTarget ?? '';
+  bool get isActive => _defaultTarget != null;
+
+  String? _defaultTarget;
+
+  Configs getConfigs(bool isDebug);
+
+  Future<void> obtainClang() async {
+    if (isActive) return;
+    final target = await runStr(['$command -dumpmachine']);
+    if (target.isNotEmpty) {
+      _defaultTarget = target;
     }
+  }
+}
+
+class ClangCmd extends Cmd {
+  @override
+  String get command => 'clang';
+
+  @override
+  Configs getConfigs(bool isDebug) {
+    assert(isActive);
+
+    final list = defaultTarget.split('-');
+
     final isWin = list.any((e) => e == 'windows');
     final isGnu = list.any((e) => e == 'gnu');
     final isMsvc = list.any((e) => e == 'msvc');
     var abi = Abi.from(list.first, isWin) ?? Abi.arm64;
 
-    var target = list.join('-');
-
-    final configs = Configs(
-      abi: abi,
+    final targetTriple = list.join('-');
+    return Configs(
       isGnu: isGnu,
-      isDebug: options.isDebug,
-      targetTriple: target,
       isMsvc: isMsvc,
+      abi: abi,
+      targetTriple: targetTriple,
+      isDebug: isDebug,
     );
+  }
+}
+
+Future<bool> run(Options options) {
+  return runPrint(() async {
+    final path = options.binFile.path;
+    final cmd = ClangCmd();
+    await cmd.obtainClang();
+
+    if (!cmd.isActive) {
+      Log.e('clang not found');
+      return false;
+    }
+
+    final configs = cmd.getConfigs(options.isDebug);
 
     final project = ProjectManager(
       stdRoot: options.std,
@@ -89,12 +124,12 @@ Future<bool> run(Options options) {
 
     for (var file in options.cFiles) {
       var path = currentDir.childFile(file).path;
-      if (configs.isWin) path = path.replaceAll(r'\', '/');
+      if (Platform.isWindows) path = path.replaceAll(r'\', '/');
       args.write(' $path');
     }
 
     var main = 'main';
-    if (configs.isWin) {
+    if (Platform.isWindows) {
       args.write(' -o $main.exe');
     } else {
       args.write(' -o $main');
@@ -102,7 +137,7 @@ Future<bool> run(Options options) {
 
     await runCmd(
       [
-        'clang$args',
+        '${cmd.command}$args',
         '&&',
         './$main "hello world"',
       ],

@@ -33,29 +33,42 @@ dart test test/test_all_test.dart
 
 选择一个配置环境:  
 打开cmd/pwsh
+## pacman:
 ```sh
 clang64
-pacman -S mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-llvm mingw-w64-clang-x86_64-lldb mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-ninja mingw-w64-clang-x86_64-zstd mingw-w64-clang-x86_64-zlib
+pacman -S mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-llvm mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-ninja mingw-w64-clang-x86_64-zstd mingw-w64-clang-x86_64-zlib
 ```
-mingw64: mingw-w64-clang-x86_64 => mingw-w64-x86_64  
-ucrt64: mingw-w64-clang-x86_64 => mingw-w64-ucrt-x86_64
 
-安装 mingw-w64-x86_64-clang:
+`clang64`toolchain默认包含`clang`,其他环境使用`gcc`,所以这里需要在`mingw64`环境下装一个`clang`:
 ```sh
 pacman -S mingw-w64-x86_64-clang
 ```
-`clang64`toolchain默认包含`clang`,其他环境使用`gcc`,所以这里需要在`mingw64`环境下装一个`clang`
 
-进入 [llvm_lang](./llvm_lang/)目录:
+## pacboy:
+首先安装 [pactoys](https://www.msys2.org/docs/package-naming/):
+```sh
+pacman -S pactoys
+```
+使用`:p`省略前缀:
+
+`clang64`:
+```sh
+pacboy -S toolchain:p llvm:p ninja:p cmake:p zlib:p zstd:p
+pacman -S mingw-w64-x86_64-lldb
+```
+`lldb`调试使用，`mingw64`的`lldb`好像支持中文，比较好用
+
+接着进入[llvm_lang](./llvm_lang/)目录:
 ```sh
 cmake -S. -B build -G Ninja
 ninja -C build install
 cd ..
 ```
-注意在执行`dart run bin/run.dart `时，确保和上面是同一个环境，不然需要修改`PATH`变量，如：`export PATH="/clang64/bin:$PATH"`
+注意在执行`dart run bin/run.dart `时，确保和上面是同一个环境
 
 ## 调试
-可以使用 `-g` 开启调试，推荐使用`lldb`
+参数添加`-g`开启调试；
+如果不是`clang64`环境，`lldb`好像有些问题，可以使用`gdb`
 
 ## Mac
 

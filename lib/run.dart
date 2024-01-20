@@ -114,7 +114,7 @@ Future<void> runCmd(List<String> cmd, {Directory? dir}) async {
   final p = dir.path;
 
   final process =
-      await Process.start('sh', ['-c', cmd.join(' ')], workingDirectory: p);
+      await Process.start('zsh', ['-c', cmd.join(' ')], workingDirectory: p);
   stdout.addStream(process.stdout);
   stderr.addStream(process.stderr);
   await process.exitCode;
@@ -127,17 +127,19 @@ Future<String> runStr(List<String> cmd, {Directory? dir}) async {
 
   final process = await Process.start('sh', ['-c', cmd.join(' ')],
       workingDirectory: p, runInShell: true);
-  late StreamSubscription sb;
-  sb = process.stdout.listen((event) {
-    final value = utf8.decode(event);
-    if (!completer.isCompleted) {
-      completer.complete(value.trim());
-      sb.cancel();
-    }
+  String last = '';
+  process.stdout.listen((event) {
+    last = utf8.decode(event);
   });
 
-  process.exitCode.whenComplete(() {
-    if (!completer.isCompleted) completer.complete('');
+  process.exitCode.then((code) {
+    if (!completer.isCompleted) {
+      if (code == 0) {
+        completer.complete(last.trim());
+      } else {
+        completer.complete('');
+      }
+    }
   });
 
   return completer.future;
