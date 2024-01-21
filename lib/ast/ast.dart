@@ -225,6 +225,8 @@ abstract class Expr extends BuildMixin {
     return _temp ??= buildExpr(context, baseTy);
   }
 
+  ExprTempValue? get temp => _temp;
+
   Expr clone();
 
   Ty? getTy(StoreLoadMixin context) => null;
@@ -725,7 +727,7 @@ class PathTy with EquatableMixin {
       }
       rty = rty.newInst(gMap, c, gen: gen);
     } else if (rty is TypeAliasTy) {
-      rty = rty.getTy(c, generics);
+      rty = rty.getTy(c, generics, gen: gen);
     }
     if (rty == null) {
       return null;
@@ -809,35 +811,6 @@ class Fn extends Ty with NewInst<Fn> {
   @override
   Identifier get ident => fnName;
 
-  Ty getRetTy(Tys c) {
-    return getRetTyOrT(c)!;
-  }
-
-  Ty? getRetTyOrT(Tys c) {
-    return _getRtyOrT(c, fnSign.fnDecl.returnTy);
-  }
-
-  Ty getRty(Tys c, FieldDef p) {
-    return p.grts(c, (ident) {
-      final v = tys[ident] ?? grt(c, ident);
-      return v;
-    });
-  }
-
-  Ty? getRtyOrT(Tys c, FieldDef p) {
-    return p.grtOrT(c, gen: (ident) {
-      final v = tys[ident] ?? grt(c, ident);
-      return v;
-    });
-  }
-
-  Ty? _getRtyOrT(Tys c, PathTy ty) {
-    return ty.grtOrT(c, gen: (ident) {
-      final v = tys[ident] ?? grt(c, ident);
-      return v;
-    });
-  }
-
   @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
@@ -862,9 +835,14 @@ class Fn extends Ty with NewInst<Fn> {
   @override
   List<Object?> get props => [fnSign, block];
 
-  @mustCallSuper
-  Ty? grt(Tys c, Identifier ident) {
-    return tys[ident];
+  Ty getRetTy(Tys c) {
+    return getRetTyOrT(c)!;
+  }
+
+  Ty? getRetTyOrT(Tys c) {
+    return fnSign.fnDecl.returnTy.grtOrT(c, gen: (ident) {
+      return grt(c, ident);
+    });
   }
 
   final _cache = <ListKey, LLVMConstVariable>{};
@@ -1176,23 +1154,17 @@ mixin NewInst<T extends Ty> on Ty {
     final key = ListKey(tys);
 
     final newInst = (parent as NewInst)._tyLists.putIfAbsent(key, () {
-      final newFields = <FieldDef>[];
-      for (var f in fields) {
-        final fieldTy = f.grtOrT(c, gen: (ident) {
-          final baseTy = tys[ident];
-          if (baseTy != null) {
-            return f.kinds.unWrapRefTy(baseTy);
-          }
-          return gen?.call(ident);
-        });
-        final fieldCopy = f.copyWithTy(fieldTy);
-        newFields.add(fieldCopy);
-      }
+      final newFields = fields.map((e) => e.clone()).toList();
 
       final ty = newTy(newFields);
       ty as NewInst
         .._parent = parentOrCurrent
         .._tys = tys;
+
+      // init ty
+      for (var fd in newFields) {
+        ty.getRtyOrT(c, fd);
+      }
 
       return ty;
     });
@@ -1213,6 +1185,21 @@ mixin NewInst<T extends Ty> on Ty {
   }
 
   T newTy(List<FieldDef> fields);
+
+  @mustCallSuper
+  Ty? grt(Tys c, Identifier ident) {
+    return tys[ident];
+  }
+
+  Ty getRty(Tys c, FieldDef fd) {
+    return getRtyOrT(c, fd)!;
+  }
+
+  Ty? getRtyOrT(Tys c, FieldDef fd) {
+    return fd.grtOrT(c, gen: (ident) {
+      return grt(c, ident);
+    });
+  }
 }
 
 class StructTy extends Ty with EquatableMixin, NewInst<StructTy> {

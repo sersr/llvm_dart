@@ -9,7 +9,7 @@ struct Vec<T> {
 impl Vec<T> {
   static fn new(size: usize) Vec<T> {
     final data = malloc(sizeOf(T) * size);
-    Vec { data, usize }
+    Vec { data, size }
   }
 
   fn drop() {

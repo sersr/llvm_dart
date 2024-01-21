@@ -393,6 +393,51 @@ class LLVMStructType extends LLVMType {
     return _type = getFieldsSize(c).getTypeStruct(c, ty.ident.src, null);
   }
 
+  void setIndex(StoreLoadMixin c, LLVMValueRef alloca) {
+    assert(false, "used by enum.");
+  }
+
+  LLVMAllocaDelayVariable buildTupeOrStruct(
+      StoreLoadMixin context, Identifier ident, List<FieldExpr> params,
+      {List<FieldExpr>? sFields}) {
+    final structType = ty.typeOf(context);
+    final fields = ty.fields;
+    final sortFields = sFields ??
+        alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
+
+    LLVMValueRef create(StoreVariable? proxy) {
+      StoreVariable? value = proxy;
+      final resetEnumIndex = value != null && ty is EnumItem;
+
+      value ??= createAlloca(context, ident);
+
+      context.diSetCurrentLoc(value.ident.offset);
+
+      if (sortFields.length != fields.length) {
+        value.store(context, llvm.LLVMConstNull(structType));
+      } else if (resetEnumIndex) {
+        setIndex(context, value.getBaseValue(context));
+      }
+
+      for (var i = 0; i < sortFields.length; i++) {
+        final f = sortFields[i];
+        final fd = fields[i];
+
+        final temp = f.temp;
+        final v = temp?.variable;
+        if (v == null) {
+          Log.e('$fd return null.');
+          continue;
+        }
+        final vv = getField(value, context, f.ident ?? fd.ident)!;
+        vv.storeVariable(context, v);
+      }
+      return value.alloca;
+    }
+
+    return LLVMAllocaDelayVariable(create, ty, structType, ident);
+  }
+
   LLVMAllocaVariable? getField(
       Variable alloca, StoreLoadMixin context, Identifier ident) {
     LLVMTypeRef type = typeOf(context);
@@ -778,6 +823,7 @@ class LLVMEnumItemType extends LLVMStructType {
   LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident) {
     final type = pTy.typeOf(c);
     return LLVMAllocaDelayVariable((proxy) {
+      assert(proxy == null);
       final alloca = c.alloctor(type, ty: ty, name: ident.src);
 
       c.diBuilderDeclare(ident, alloca, ty);
@@ -786,6 +832,7 @@ class LLVMEnumItemType extends LLVMStructType {
     }, ty, type, ident);
   }
 
+  @override
   void setIndex(StoreLoadMixin c, LLVMValueRef alloca) {
     final indices = [c.constI32(0), c.constI32(0)];
     final ctype = typeOf(c);

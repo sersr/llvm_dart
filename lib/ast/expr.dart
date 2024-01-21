@@ -613,40 +613,24 @@ class StructExpr extends Expr {
   static ExprTempValue? buildTupeOrStruct(StructTy struct, FnBuildMixin context,
       Identifier ident, List<FieldExpr> params, List<PathTy> genericsInst) {
     struct = resolveGeneric(struct, context, params, genericsInst);
-    final structType = struct.typeOf(context);
+    var fields = struct.fields;
+    final sortFields =
+        alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
-    LLVMValueRef create(StoreVariable? proxy) {
-      StoreVariable? value = proxy;
-      final resetEnumIndex = value != null && struct is EnumItem;
-
-      var fields = struct.fields;
-      final sortFields = alignParam(
-          params, (p) => fields.indexWhere((e) => e.ident == p.ident));
-
-      value ??= struct.llty.createAlloca(context, ident);
-
-      context.diSetCurrentLoc(ident.offset);
-
-      if (sortFields.length != fields.length) {
-        value.store(context, llvm.LLVMConstNull(structType));
-      } else if (resetEnumIndex) {
-        struct.llty.setIndex(context, value.getBaseValue(context));
-      }
-
-      for (var i = 0; i < sortFields.length; i++) {
-        final f = sortFields[i];
-        final fd = fields[i];
-
-        final temp = f.build(context, baseTy: fd.grt(context));
-        final v = temp?.variable;
-        if (v == null) continue;
-        final vv = struct.llty.getField(value, context, f.ident ?? fd.ident)!;
-        vv.storeVariable(context, v);
-      }
-      return value.alloca;
+    for (var i = 0; i < params.length; i++) {
+      final param = params[i];
+      final sfIndex = sortFields.indexOf(param);
+      assert(sfIndex >= 0);
+      final fd = fields[sfIndex];
+      param.build(context, baseTy: struct.getRty(context, fd));
     }
 
-    final value = LLVMAllocaDelayVariable(create, struct, structType, ident);
+    final value = struct.llty.buildTupeOrStruct(
+      context,
+      ident,
+      params,
+      sFields: sortFields,
+    );
 
     context.autoAddStackCom(value);
     return ExprTempValue(value);
@@ -1884,7 +1868,6 @@ class MatchExpr extends Expr {
     final valIdentItem =
         items.firstWhereOrNull((element) => element.isValIdent);
     for (var item in items) {
-      Log.w('.${item.child}', onlyDebug: false);
       if (item == valIdentItem) continue;
       if (last == null) {
         last = item;

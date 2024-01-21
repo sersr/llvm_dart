@@ -9,8 +9,9 @@ void main(List<String> args) async {
   assert(() {
     final argsFile = currentDir.childFile('.debug_args');
     if (argsFile.existsSync()) {
-      final debugArgs = argsFile.readAsStringSync();
-      args = debugArgs.split(' ');
+      final debugArgs =
+          argsFile.readAsStringSync().replaceAll(RegExp('\r\n|\n'), ' ');
+      args = debugArgs.split(' ')..removeWhere((e) => e.isEmpty);
     } else {
       args = ['c_array'];
     }
