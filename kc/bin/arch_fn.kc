@@ -26,7 +26,7 @@ fn main() i32 {
 
   let hax = apiFnRet64Float();
 
-  printf("Ret 64 Float: %f, %f, %d \n", hax.y as f64, hax.x as f64, hax.c);
+  printf("Ret 64 Float: %f, %f, %d \n", hax.y as f64, hax.x as f64, hax.c as i32);
 
   let retChar = apiFnRetChar();
   printf("ret: %d\n", retChar.y as i64);

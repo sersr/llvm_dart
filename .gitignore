@@ -6,3 +6,5 @@
 
 # ignore dll
 /dll
+.debug_args
+.vscode

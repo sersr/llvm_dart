@@ -1891,14 +1891,15 @@ class MatchExpr extends Expr {
       FnBuildMixin context, ExprTempValue variable, Ty? baseTy) {
     // match 表达式
     MatchItemExpr? last;
-    MatchItemExpr? valIdentItem =
+    final valIdentItem =
         items.firstWhereOrNull((element) => element.isValIdent);
     for (var item in items) {
+      Log.w('.${item.child}', onlyDebug: false);
+      if (item == valIdentItem) continue;
       if (last == null) {
         last = item;
         continue;
       }
-      if (item == valIdentItem) continue;
       last.child = item;
       last = item;
     }
@@ -1972,14 +1973,12 @@ class MatchExpr extends Expr {
       return commonExpr(context, variable, baseTy);
     }
 
-    final itemLength = ty.parent.variants.length;
-
     final parent = variable.variable;
     if (parent == null) return null;
 
     StoreVariable? retVariable;
     final retTy = baseTy ?? _variable?.ty;
-    if (retTy != null) {
+    if (retTy != null && retTy != BuiltInTy.kVoid) {
       retVariable = retTy.llty.createAlloca(context, Identifier.none);
     }
 
@@ -1989,59 +1988,47 @@ class MatchExpr extends Expr {
     var length = items.length;
 
     if (length <= 2) {
-      void buildItem(MatchItemExpr item, FnBuildMixin context) {
-        final then = context.buildSubBB(name: 'm_then');
-        final after = context.buildSubBB(name: 'm_after');
-        LLVMBasicBlock elseBB;
-        final child = item.child;
-        if (child != null) {
-          elseBB = context.buildSubBB(name: 'm_else');
-        } else {
-          elseBB = after;
-        }
+      final first = items.first;
+      final child = items.lastOrNull;
 
-        context.appendBB(then);
-        final itemIndex = item.build2(then.context, variable);
-        IfExpr._blockRetValue(item.block, then.context, retVariable);
-        if (then.context.canBr) {
-          then.context.br(after.context);
-        }
-        if (itemIndex != null) {
-          final con = llvm.LLVMBuildICmp(
-              context.builder,
-              LLVMIntPredicate.LLVMIntEQ,
-              indexValue,
-              ty.parent.llty.getIndexValue(context, itemIndex),
-              unname);
-          llvm.LLVMBuildCondBr(context.builder, con, then.bb, elseBB.bb);
-        }
+      final then = context.buildSubBB(name: 'm_then');
+      final after = context.buildSubBB(name: 'm_after');
+      LLVMBasicBlock elseBB;
 
-        if (child != null) {
-          context.appendBB(elseBB);
-          if (child.isOther || itemLength == 2) {
-            child.build2(elseBB.context, variable);
-            IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
-          } else {
-            buildItem(child, elseBB.context);
-          }
-          if (elseBB.context.canBr) {
-            elseBB.context.br(after.context);
-          }
-        }
-
-        context.insertPointBB(after);
+      if (child != null) {
+        elseBB = context.buildSubBB(name: 'm_else');
+      } else {
+        elseBB = after;
       }
 
-      MatchItemExpr? last;
-      for (var item in items) {
-        if (last == null) {
-          last = item;
-          continue;
-        }
-        last.child = item;
-        last = item;
+      context.appendBB(then);
+      final itemIndex = first.build2(then.context, variable);
+      IfExpr._blockRetValue(first.block, then.context, retVariable);
+      if (then.context.canBr) {
+        then.context.br(after.context);
       }
-      buildItem(items.first, context);
+      assert(itemIndex != null, "$first error.");
+
+      final con = llvm.LLVMBuildICmp(
+          context.builder,
+          LLVMIntPredicate.LLVMIntEQ,
+          indexValue,
+          ty.parent.llty.getIndexValue(context, itemIndex!),
+          unname);
+      llvm.LLVMBuildCondBr(context.builder, con, then.bb, elseBB.bb);
+
+      if (child != null) {
+        context.appendBB(elseBB);
+
+        child.build2(elseBB.context, variable);
+        IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
+
+        if (elseBB.context.canBr) {
+          elseBB.context.br(after.context);
+        }
+      }
+
+      context.insertPointBB(after);
     } else {
       final elseBb = context.buildSubBB(name: 'match_else');
       LLVMBasicBlock after = elseBb;
@@ -2128,6 +2115,11 @@ class AsExpr extends Expr {
   static Variable asType(
       FnBuildMixin context, Variable lv, Identifier asId, Ty asTy) {
     final lty = lv.ty;
+    if (lty is EnumItem && asTy is EnumItem) {
+      if (lty.parent == asTy.parent) {
+        return lv;
+      }
+    }
 
     if (asTy is BuiltInTy && lty is BuiltInTy) {
       final val = context.castLit(lty.ty, lv.load(context), asTy.ty);

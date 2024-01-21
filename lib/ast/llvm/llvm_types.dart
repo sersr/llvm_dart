@@ -797,31 +797,30 @@ class LLVMEnumItemType extends LLVMStructType {
     final map = _size!.map;
 
     final value = parent.getBaseValue(c);
+    final keyList = _size!.idents;
 
-    if (ty.fields.length == params.length || params.isEmpty) {
-      for (var i = 0; i < ty.fields.length; i++) {
-        final f = ty.fields[i];
-        var ident = f.ident;
-        final index = map[f]!.index;
-        if (i < params.length) {
-          final p = params[i];
-          var e = p.expr;
-
-          if (e is VariableIdentExpr) {
-            ident = e.ident;
-          }
-        }
-
-        final indices = [c.constI32(0), c.constI32(index)];
-        final t = f.grt(c);
-
-        final val = LLVMAllocaVariable.delay(() {
-          return llvm.LLVMBuildInBoundsGEP2(c.builder, type, value,
-              indices.toNative(), indices.length, unname);
-        }, t, t.typeOf(c), ident);
-
-        c.pushVariable(val);
+    for (var p in params) {
+      final ident = p.pattern;
+      if (ident == null) {
+        Log.e('$p error.');
+        continue;
       }
+
+      final fIndex = keyList.indexOf(ident);
+      if (fIndex == -1) continue;
+
+      final fd = map.keys.elementAt(fIndex);
+      final index = map[fd]!.index;
+
+      final indices = [c.constI32(0), c.constI32(index)];
+      final t = fd.grt(c);
+
+      final val = LLVMAllocaVariable.delay(() {
+        return llvm.LLVMBuildInBoundsGEP2(
+            c.builder, type, value, indices.toNative(), indices.length, unname);
+      }, t, t.typeOf(c), ident);
+
+      c.pushVariable(val);
     }
     return ty.parent.variants.indexOf(ty);
   }
@@ -869,6 +868,11 @@ class FieldsSize {
   final Map<FieldDef, FieldIndex> map;
   final int count;
   final int alignSize;
+
+  List<Identifier>? _identList;
+
+  List<Identifier> get idents =>
+      _identList ??= map.keys.map((e) => e.ident).toList();
 
   LLVMTypeRef getTypeStruct(
       StoreLoadMixin c, String? ident, LLVMTypeRef? enumIndexTy,

@@ -7,9 +7,16 @@ Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
 Directory get stdRoot => currentDir.childDirectory('kc').childDirectory('lib');
 void main(List<String> args) async {
   assert(() {
-    args = ['stack_com.kc'];
+    final argsFile = currentDir.childFile('.debug_args');
+    if (argsFile.existsSync()) {
+      final debugArgs = argsFile.readAsStringSync();
+      args = debugArgs.split(' ');
+    } else {
+      args = ['c_array'];
+    }
     return true;
   }());
+
   buildDir.create();
 
   final argParser = ArgParser();

@@ -114,7 +114,7 @@ Future<void> runCmd(List<String> cmd, {Directory? dir}) async {
   final p = dir.path;
 
   final process =
-      await Process.start('zsh', ['-c', cmd.join(' ')], workingDirectory: p);
+      await Process.start('sh', ['-c', cmd.join(' ')], workingDirectory: p);
   stdout.addStream(process.stdout);
   stderr.addStream(process.stderr);
   await process.exitCode;
