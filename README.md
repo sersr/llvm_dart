@@ -79,3 +79,16 @@ brew install llvm
 之后使用 vscode 打开 `llvm_lang`项目运行`install`完成安装。
 
 
+## dart 调试
+windows msys2 需要添加环境变量
+
+将`clang64`添加到环境`PATH`中
+
+修改`.vscode\launch.json`:
+
+ 下面`<msys2-path>`替换为真实路径
+```json
+"env":{
+    "PATH":"<msys2-path>\\clang64\\bin;${env:PATH}",
+},
+```
