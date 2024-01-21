@@ -6,7 +6,7 @@ fn main(argc: i32, ptr: **u8) i32 {
 
   let args = CArray {argc, ptr};
 
-    print(args.elementAt(0));
+    print(args[0]);
 
   let op = None();
 

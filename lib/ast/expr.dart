@@ -617,24 +617,20 @@ class StructExpr extends Expr {
 
     LLVMValueRef create(StoreVariable? proxy) {
       StoreVariable? value = proxy;
-      // final min = struct.llvmType.getMaxSize(context);
+      final resetEnumIndex = value != null && struct is EnumItem;
+
       var fields = struct.fields;
       final sortFields = alignParam(
           params, (p) => fields.indexWhere((e) => e.ident == p.ident));
-      // final size = min > 4 ? 8 : 4;
+
       value ??= struct.llty.createAlloca(context, ident);
 
       context.diSetCurrentLoc(ident.offset);
 
       if (sortFields.length != fields.length) {
         value.store(context, llvm.LLVMConstNull(structType));
-        // final base = value.getBaseValue(context);
-        // final len = struct.llvmType.getBytes(context);
-        // final align = llvm.LLVMGetAlignment(base);
-        // // final vb = llvm.LLVMBuildBitCast(
-        // //     context.builder, base, context.pointer(), unname);
-        // llvm.LLVMBuildMemSet(context.builder, base, context.constI8(0),
-        //     BuiltInTy.constUsize(context, len), align);
+      } else if (resetEnumIndex) {
+        struct.llty.setIndex(context, value.getBaseValue(context));
       }
 
       for (var i = 0; i < sortFields.length; i++) {
@@ -645,13 +641,7 @@ class StructExpr extends Expr {
         final v = temp?.variable;
         if (v == null) continue;
         final vv = struct.llty.getField(value, context, f.ident ?? fd.ident)!;
-        // if (v is LLVMAllocaDelayVariable && !v.created) {
-        //   v.initProxy(context, vv);
-        //   continue;
-        // }
-
         vv.storeVariable(context, v);
-        // llvm.LLVMSetAlignment(store, size);
       }
       return value.alloca;
     }

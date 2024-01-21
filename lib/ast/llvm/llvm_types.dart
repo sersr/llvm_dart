@@ -778,17 +778,22 @@ class LLVMEnumItemType extends LLVMStructType {
   LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident) {
     final type = pTy.typeOf(c);
     return LLVMAllocaDelayVariable((proxy) {
-      final ctype = typeOf(c);
       final alloca = c.alloctor(type, ty: ty, name: ident.src);
 
       c.diBuilderDeclare(ident, alloca, ty);
-      final indices = [c.constI32(0), c.constI32(0)];
-      final first = llvm.LLVMBuildInBoundsGEP2(
-          c.builder, ctype, alloca, indices.toNative(), indices.length, unname);
-      final index = ty.parent.variants.indexOf(ty);
-      llvm.LLVMBuildStore(c.builder, pTy.getIndexValue(c, index), first);
+      setIndex(c, alloca);
       return alloca;
     }, ty, type, ident);
+  }
+
+  void setIndex(StoreLoadMixin c, LLVMValueRef alloca) {
+    final indices = [c.constI32(0), c.constI32(0)];
+    final ctype = typeOf(c);
+
+    final first = llvm.LLVMBuildInBoundsGEP2(
+        c.builder, ctype, alloca, indices.toNative(), indices.length, unname);
+    final index = ty.parent.variants.indexOf(ty);
+    llvm.LLVMBuildStore(c.builder, pTy.getIndexValue(c, index), first);
   }
 
   int load(StoreLoadMixin c, Variable parent, List<FieldExpr> params) {
