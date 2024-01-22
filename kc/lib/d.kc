@@ -40,3 +40,7 @@ impl CArray<T> {
 com OperatorArray<T> {
   fn elementAt(index: usize) &T;
 }
+
+com Drop {
+  fn drop();
+}

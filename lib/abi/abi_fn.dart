@@ -171,9 +171,11 @@ abstract interface class AbiFn {
       return null;
     }
 
-    // 这里还是一个零时变量
-    final v = LLVMConstVariable(ret, retTy, Identifier.none);
-    context.autoAddFreeHeap(v);
+    final v = LLVMAllocaDelayVariable((proxy) {
+      final alloca = proxy ?? retTy.llty.createAlloca(context, Identifier.none);
+      alloca.store(context, ret);
+      return alloca.alloca;
+    }, retTy, retTy.typeOf(context), Identifier.none);
 
     return ExprTempValue(v);
   }

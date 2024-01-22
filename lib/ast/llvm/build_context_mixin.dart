@@ -15,9 +15,9 @@ import 'intrinsics.dart';
 import 'variables.dart';
 
 part 'flow_mixin.dart';
-part 'free_mixin.dart';
-part 'fn_context_mixin.dart';
 part 'fn_build_mixin.dart';
+part 'fn_context_mixin.dart';
+part 'free_mixin.dart';
 
 class LLVMBasicBlock {
   LLVMBasicBlock(this.bb, this.context, this.inserted);

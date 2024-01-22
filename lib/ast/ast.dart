@@ -1479,9 +1479,8 @@ class ArrayLLVMType extends LLVMType {
   }
 
   @override
-  LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident) {
-    final val = LLVMAllocaDelayVariable((proxy) {
-      if (proxy != null) return proxy.alloca;
+  LLVMAllocaVariable createAlloca(StoreLoadMixin c, Identifier ident) {
+    final val = LLVMAllocaVariable.delay(() {
       final count = c.constI64(ty.size);
       return c.createArray(ty.elementTy.typeOf(c), count, name: ident.src);
     }, ty, typeOf(c), ident);

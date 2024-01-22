@@ -13,28 +13,35 @@ struct HeapCount<T> {
 }
 
 impl HeapPointer<T> {
-
   static fn new(data: T) Self {
     final ptr = malloc(sizeOf(HeapCount<T>)) as *HeapCount<T>;
     ptr.data = data;
-    ptr.count = 0;
+    ptr.count = 1;
     return HeapPointer { ptr: ptr };
   }
+}
 
+impl Stack for HeapPointer<T> {
   fn addStack() {
-    final ptr = self.ptr;
-    ptr.count += 1;
-    printf("add %d\n", ptr.count);
+    self.onClone();
   }
 
   fn removeStack() {
+    self.drop();
+  }
+}
+
+impl Drop for HeapPointer<T> {
+  fn drop() {
     final ptr = self.ptr;
     ptr.count -= 1;
     printf("remove %d\n", ptr.count);
     if ptr.count == 0 {
-      free(&ptr);
+      autoDrop(ptr);
+      free(ptr);
     }
   }
+
 }
 
 impl Deref<T> for HeapPointer<T> {
@@ -43,10 +50,22 @@ impl Deref<T> for HeapPointer<T> {
   }
 }
 
+impl Clone for HeapPointer<T> {
+  fn onClone() {
+    final ptr = self.ptr;
+    ptr.count += 1;
+    printf("add %d\n", ptr.count);
+  }
+}
+
 com Deref<T> {
   fn deref() &T;
 }
 
+
+com Clone {
+  fn onClone();
+}
 
 
 com Stack {

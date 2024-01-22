@@ -268,11 +268,12 @@ mixin BuildMethods on LLVMTypeMixin {
     return b;
   }
 
-  LLVMValueRef alloctor(LLVMTypeRef type, {Ty? ty, String name = '_'}) {
-    final alloca = llvm.LLVMBuildAlloca(allocaBuilder, type, name.toChar());
+  LLVMValueRef alloctor(LLVMTypeRef type, {Ty? ty, Identifier? name}) {
+    final alloca =
+        llvm.LLVMBuildAlloca(allocaBuilder, type, name?.src.toChar() ?? unname);
 
     if (ty != null) {
-      addFree(LLVMAllocaVariable(alloca, ty, type, Identifier.none));
+      addFree(LLVMAllocaVariable(alloca, ty, type, name ?? Identifier.none));
     }
     setLastAlloca(alloca);
 
@@ -286,8 +287,7 @@ mixin BuildMethods on LLVMTypeMixin {
     }
   }
 
-  void addFree(Variable val) {}
-  void dropAll() {}
+  void addFree(LLVMAllocaVariable val) {}
 
   LLVMMetadataRef get unit;
   LLVMMetadataRef get scope;

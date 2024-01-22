@@ -95,7 +95,6 @@ class AbiFnWinx86_64 implements AbiFn {
     }
 
     if (sret != null) {
-      context.autoAddFreeHeap(sret);
       return ExprTempValue(sret);
     }
     if (retTy == BuiltInTy.kVoid) {
@@ -106,9 +105,13 @@ class AbiFnWinx86_64 implements AbiFn {
     if (retTy is StructTy) {
       v = fromFnParamsOrRet(context, retTy, ret, Identifier.none);
     } else {
-      v = LLVMConstVariable(ret, retTy, Identifier.none);
+      v = LLVMAllocaDelayVariable((proxy) {
+        final alloca =
+            proxy ?? retTy.llty.createAlloca(context, Identifier.none);
+        alloca.store(context, ret);
+        return alloca.alloca;
+      }, retTy, retTy.typeOf(context), Identifier.none);
     }
-    context.autoAddFreeHeap(v);
 
     return ExprTempValue(v);
   }

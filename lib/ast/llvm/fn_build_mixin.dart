@@ -150,13 +150,8 @@ mixin FnBuildMixin
     if (_freeDone) return;
     _freeDone = true;
 
-    for (var variable in _stackComVariables) {
-      ImplStackTy.removeStack(this, variable);
+    for (var val in _ptrMap.values) {
+      DropImpl.drop(this, val);
     }
-  }
-
-  @override
-  void addStackCom(Variable variable) {
-    ImplStackTy.addStack(this, variable);
   }
 }

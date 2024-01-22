@@ -15,13 +15,10 @@ mixin FlowMixin on BuildContext, FreeMixin {
     final fn = getLastFnContext()!;
     if (fn._updateRunAfter(val, this)) return;
 
-    dropAll();
+    removeVal(val);
+    freeHeap();
 
     final retOffset = val?.offset ?? Offset.zero;
-
-    if (val != null) addStackCom(val);
-
-    freeHeap();
 
     diSetCurrentLoc(retOffset);
 

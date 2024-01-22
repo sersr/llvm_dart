@@ -196,7 +196,7 @@ mixin OverflowMath on BuildMethods, Consts {
     if (op == OpKind.And || op == OpKind.Or) {
       final after = context.buildSubBB(name: 'op_after');
       final opBB = context.buildSubBB(name: 'op_bb');
-      final allocaValue = context.alloctor(context.i1, name: 'op');
+      final allocaValue = context.alloctor(context.i1);
       final variable =
           LLVMAllocaVariable(allocaValue, BuiltInTy.kBool, context.i1, opId);
 
@@ -344,13 +344,13 @@ class FunctionDeclare {
   FunctionDeclare(this.params, this.name, this.retType);
 
   LLVMValueRef? _fn;
+  LLVMTypeRef? _type;
   LLVMTypeRef get type {
-    return llvm.LLVMFunctionType(
+    return _type ??= llvm.LLVMFunctionType(
         retType, params.toNative(), params.length, LLVMFalse);
   }
 
   LLVMValueRef build(BuildMethods context) {
-    if (_fn != null) return _fn!;
-    return _fn = llvm.LLVMAddFunction(context.module, name.toChar(), type);
+    return _fn ??= llvm.LLVMAddFunction(context.module, name.toChar(), type);
   }
 }

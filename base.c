@@ -15,9 +15,12 @@ typedef struct
   int z;
 } Base;
 
-Base hh()
+typedef struct {
+  int x;
+} BaseC;
+BaseC hh()
 {
-  Base b = {1, 2, 3};
+  BaseC b = {1};
   return b;
 }
 
@@ -33,6 +36,7 @@ int main(int argc, char **argv)
   test_main();
   Base base = {1, 2, 6};
   test_base(base);
+  BaseC xa = hh();
   printf("字符串分开的两种形式 ");
   return 0;
 }

@@ -2,6 +2,7 @@ import '../llvm_dart.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
 import 'expr.dart';
+import 'llvm/coms.dart';
 import 'llvm/llvm_context.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';
@@ -20,6 +21,8 @@ void _init() {
   sizeOfFn;
   memSetFn;
   memCopyFn;
+  autoDropFn;
+  onCloneFn;
 }
 
 ExprTempValue? doBuiltFns(
@@ -93,24 +96,6 @@ ExprTempValue? sizeOf(FnBuildMixin context, List<FieldExpr> params) {
 
 final sizeOfFn = BuiltinFn(Identifier.builtIn('sizeOf'), sizeOf);
 
-// LLVMAllocaVariable elmentAt(
-//     BuildContext c, Ty elementTy, Variable v, Variable index) {
-//   if (elementTy is RefTy) {
-//     elementTy = elementTy.parent;
-//   }
-//   final tyy = elementTy.llvmType.createType(c);
-
-//   final ptr = v.getBaseValue(c);
-//   final indics = <LLVMValueRef>[index.load(c, Offset.zero)];
-
-//   final llValue = llvm.LLVMBuildInBoundsGEP2(
-//       c.builder, tyy, ptr, indics.toNative(), indics.length, unname);
-
-//   return LLVMAllocaVariable(elementTy, llValue, tyy);
-// }
-
-// final elementAt = BuiltinFn(Identifier.builtIn('getElement'));
-
 ExprTempValue memSet(FnBuildMixin context, List<FieldExpr> params) {
   Variable lhs = params[0].build(context)!.variable!;
 
@@ -148,3 +133,21 @@ ExprTempValue memCopy(FnBuildMixin context, List<FieldExpr> params) {
 }
 
 final memCopyFn = BuiltinFn(Identifier.builtIn('memCopy'), memCopy);
+
+ExprTempValue? autoDrop(FnBuildMixin context, List<FieldExpr> params) {
+  final variable = params[0].build(context)!.variable!;
+  DropImpl.drop(context, variable);
+
+  return null;
+}
+
+final autoDropFn = BuiltinFn(Identifier.builtIn('autoDrop'), autoDrop);
+
+ExprTempValue? onClone(FnBuildMixin context, List<FieldExpr> params) {
+  final variable = params[0].build(context)!.variable!;
+  Clone.onClone(context, variable);
+
+  return null;
+}
+
+final onCloneFn = BuiltinFn(Identifier.builtIn('onClone'), onClone);

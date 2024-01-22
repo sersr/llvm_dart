@@ -150,7 +150,6 @@ class IfExpr extends Expr {
     StoreVariable? variable;
     if (ty != null) {
       variable = ty.llty.createAlloca(context, Identifier.none);
-      context.autoAddFreeHeap(variable);
     }
     buildIfExprBlock(ifb, context, variable);
 
@@ -171,7 +170,6 @@ class IfExpr extends Expr {
           if (val == null) {
             // error
           } else {
-            context.removeFreeVariable(val);
             if (val is LLVMAllocaDelayVariable && !val.created) {
               val.initProxy(proxy: variable);
             } else {
@@ -503,7 +501,7 @@ class StructExpr extends Expr {
 
     if (struct == null) return null;
 
-    return buildTupeOrStruct(struct, context, ident, fields, genericsInst);
+    return buildTupeOrStruct(struct, context, fields, genericsInst);
   }
 
   static T resolveGeneric<T extends Ty>(NewInst<T> t, Tys context,
@@ -611,7 +609,7 @@ class StructExpr extends Expr {
   }
 
   static ExprTempValue? buildTupeOrStruct(StructTy struct, FnBuildMixin context,
-      Identifier ident, List<FieldExpr> params, List<PathTy> genericsInst) {
+      List<FieldExpr> params, List<PathTy> genericsInst) {
     struct = resolveGeneric(struct, context, params, genericsInst);
     var fields = struct.fields;
     final sortFields =
@@ -627,12 +625,10 @@ class StructExpr extends Expr {
 
     final value = struct.llty.buildTupeOrStruct(
       context,
-      ident,
       params,
       sFields: sortFields,
     );
 
-    context.autoAddStackCom(value);
     return ExprTempValue(value);
   }
 
@@ -691,6 +687,9 @@ class AssignExpr extends Expr {
         cav.initProxy(proxy: lv);
       } else {
         lv.storeVariable(context, cav);
+
+        ImplStackTy.addStack(context, lv);
+        ImplStackTy.removeStack(context, cav);
       }
     }
 
@@ -956,8 +955,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     final variable = fnV?.variable;
     final fn = variable?.ty ?? fnV?.ty;
     if (fn is StructTy) {
-      return StructExpr.buildTupeOrStruct(
-          fn, context, Identifier.none, params, const []);
+      return StructExpr.buildTupeOrStruct(fn, context, params, const []);
     }
     final builtinFn = doBuiltFns(context, fn, params);
     if (builtinFn != null) {

@@ -6,6 +6,7 @@ import 'analysis_context.dart';
 import 'ast.dart';
 import 'context.dart';
 import 'expr.dart';
+import 'llvm/coms.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
 
@@ -56,7 +57,7 @@ class LetStmt extends Stmt {
       }
 
       final alloca = variable.createAlloca(context, nameIdent, tty);
-      alloca.initProxy();
+      alloca.init();
       assert(alloca.ident == nameIdent);
 
       context.pushVariable(alloca);
@@ -80,14 +81,8 @@ class LetStmt extends Stmt {
       return;
     }
 
-    // LLVMValueRef rValue;
-    // if (variable.isRef) {
-    //   rValue = variable.getBaseValue(context);
-    // } else {
-    //   rValue = variable.load(context);
-    // }
     newVal.storeVariable(context, variable);
-    // newVal.store(context, rValue);
+    ImplStackTy.addStack(context, newVal);
 
     context.pushVariable(newVal);
   }

@@ -36,13 +36,11 @@ abstract class LLVMType {
 
   LLVMMetadataRef createDIType(StoreLoadMixin c);
 
-  LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident) {
+  LLVMAllocaVariable createAlloca(StoreLoadMixin c, Identifier ident) {
     final type = typeOf(c);
 
-    return LLVMAllocaDelayVariable((proxy) {
-      if (proxy != null) return proxy.getBaseValue(c);
-
-      final value = c.alloctor(type, ty: ty, name: ident.src);
+    return LLVMAllocaVariable.delay(() {
+      final value = c.alloctor(type, ty: ty, name: ident);
       c.diBuilderDeclare(ident, value, ty);
       return value;
     }, ty, type, ident);
@@ -398,7 +396,7 @@ class LLVMStructType extends LLVMType {
   }
 
   LLVMAllocaDelayVariable buildTupeOrStruct(
-      StoreLoadMixin context, Identifier ident, List<FieldExpr> params,
+      StoreLoadMixin context, List<FieldExpr> params,
       {List<FieldExpr>? sFields}) {
     final structType = ty.typeOf(context);
     final fields = ty.fields;
@@ -409,7 +407,7 @@ class LLVMStructType extends LLVMType {
       StoreVariable? value = proxy;
       final resetEnumIndex = value != null && ty is EnumItem;
 
-      value ??= createAlloca(context, ident);
+      value ??= createAlloca(context, Identifier.none);
 
       context.diSetCurrentLoc(value.ident.offset);
 
@@ -435,7 +433,7 @@ class LLVMStructType extends LLVMType {
       return value.alloca;
     }
 
-    return LLVMAllocaDelayVariable(create, ty, structType, ident);
+    return LLVMAllocaDelayVariable(create, ty, structType, Identifier.none);
   }
 
   LLVMAllocaVariable? getField(
@@ -820,11 +818,10 @@ class LLVMEnumItemType extends LLVMStructType {
   }
 
   @override
-  LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident) {
+  LLVMAllocaVariable createAlloca(StoreLoadMixin c, Identifier ident) {
     final type = pTy.typeOf(c);
-    return LLVMAllocaDelayVariable((proxy) {
-      assert(proxy == null);
-      final alloca = c.alloctor(type, ty: ty, name: ident.src);
+    return LLVMAllocaVariable.delay(() {
+      final alloca = c.alloctor(type, ty: ty, name: ident);
 
       c.diBuilderDeclare(ident, alloca, ty);
       setIndex(c, alloca);

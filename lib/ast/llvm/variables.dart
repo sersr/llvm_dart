@@ -148,6 +148,8 @@ class LLVMAllocaVariable extends StoreVariable {
 
   LLVMValueRef? _alloca;
 
+  void init() => alloca;
+
   @override
   LLVMValueRef get alloca => _alloca ??= _delayFn!();
 
@@ -188,7 +190,7 @@ class LLVMLitVariable extends Variable {
     return LLVMLitVariable(_load, ty, value, id).._cache = _cache;
   }
 
-  LLVMAllocaDelayVariable createAlloca(StoreLoadMixin c, Identifier ident,
+  LLVMAllocaVariable createAlloca(StoreLoadMixin c, Identifier ident,
       [Ty? tty]) {
     if (tty is! BuiltInTy) {
       tty = ty;

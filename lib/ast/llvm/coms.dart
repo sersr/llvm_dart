@@ -25,7 +25,7 @@ abstract class ImplStackTy {
       addFn,
       Identifier.none,
       [],
-      LLVMConstVariable(variable.load(context), ty, Identifier.none),
+      LLVMConstVariable(variable.getBaseValue(context), ty, Identifier.none),
       null,
       null,
     );
@@ -59,7 +59,7 @@ abstract class ImplStackTy {
       removeFn,
       Identifier.none,
       [],
-      LLVMConstVariable(variable.load(context), ty, Identifier.none),
+      LLVMConstVariable(variable.getBaseValue(context), ty, Identifier.none),
       null,
       null,
     );
@@ -100,5 +100,60 @@ abstract class RefDerefCom {
       if (variable == v) break;
       variable = v;
     }
+  }
+}
+
+abstract class DropImpl {
+  static final _dropIdent = Identifier.builtIn('drop');
+  static void drop(FnBuildMixin context, Variable variable) {
+    var ty = variable.ty;
+    if (ty is RefTy) {
+      ty = ty.baseTy;
+    }
+
+    final dropImpl = context.getImplWithIdent(ty, Identifier.builtIn('Drop'));
+    if (dropImpl == null) return;
+    final dropFn = dropImpl.getFnCopy(ty, _dropIdent);
+
+    if (dropFn == null) {
+      return;
+    }
+    AbiFn.fnCallInternal(
+      context,
+      dropFn,
+      Identifier.none,
+      [],
+      LLVMConstVariable(variable.getBaseValue(context), ty, Identifier.none),
+      null,
+      null,
+    );
+  }
+}
+
+abstract class Clone {
+  static final _onCloneIdent = Identifier.builtIn('onClone');
+  static final _cloneCom = Identifier.builtIn('Clone');
+  static void onClone(FnBuildMixin context, Variable variable) {
+    var ty = variable.ty;
+    if (ty is RefTy) {
+      ty = ty.baseTy;
+    }
+    final impl = context.getImplWithIdent(ty, _cloneCom);
+    if (impl == null) return;
+    final onCloneFn = impl.getFnCopy(ty, _onCloneIdent);
+
+    if (onCloneFn == null) {
+      return;
+    }
+
+    AbiFn.fnCallInternal(
+      context,
+      onCloneFn,
+      Identifier.none,
+      [],
+      LLVMConstVariable(variable.getBaseValue(context), ty, Identifier.none),
+      null,
+      null,
+    );
   }
 }

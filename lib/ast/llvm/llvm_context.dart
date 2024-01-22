@@ -200,4 +200,12 @@ class BuildContextImpl extends BuildContext
       child.dispose();
     }
   }
+
+  @override
+  void freeHeap() {
+    super.freeHeap();
+    for (var child in _children) {
+      child.freeHeap();
+    }
+  }
 }
