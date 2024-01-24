@@ -65,7 +65,8 @@ abstract interface class AbiFn {
       List<FieldExpr> params,
       Variable? struct,
       Set<AnalysisVariable>? extra,
-      Map<Identifier, Set<AnalysisVariable>>? map) {
+      Map<Identifier, Set<AnalysisVariable>>? map,
+      {bool isDropFn = false}) {
     if (fn.extern) {
       return AbiFn.get(context.abi).fnCall(context, fn, ident, params);
     }
@@ -161,7 +162,11 @@ abstract interface class AbiFn {
 
     final fnType = fn.llty.createFnType(context, extra);
 
-    final fnAlloca = fn.genFn(extra, map);
+    final fnAlloca = fn.genFn(
+      extra,
+      map,
+      isDropFn,
+    );
     if (fnAlloca == null) return null;
     final fnValue = fnAlloca.load(context);
 

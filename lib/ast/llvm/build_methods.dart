@@ -287,7 +287,7 @@ mixin BuildMethods on LLVMTypeMixin {
     }
   }
 
-  void addFree(LLVMAllocaVariable val) {}
+  void addFree(Variable val) {}
 
   LLVMMetadataRef get unit;
   LLVMMetadataRef get scope;

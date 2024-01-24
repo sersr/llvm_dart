@@ -5,15 +5,17 @@ import "std:heap_pointer.d.kc";
 
 fn main() i32 {
 
-  let foo = Foo { bar: Bar { y: 1000 }};
+  let foo = Foo { bar: Bar { y: 1 }};
 
-  printf("...y: %d\n", foo.y);
-
-  let share_ptr = SharedPtr.new(Foo{ bar: Bar {y: 1234 }});
-
-  printf("y: %d\n", share_ptr.y);
-
-
+  let y = 100;
+  
+  autoDrop(foo);
+  if y > 40 {
+    let bba = Foo {bar: Bar {y: 2 }};
+    let bbc = Bar {y: 3 };
+  }
+  
+  printf("...y: %d\n", foo.bar.y);
   0;
 }
 
@@ -31,8 +33,14 @@ struct Foo {
   bar: Bar,
 }
 
-impl Deref<Bar> for Foo {
-  fn deref() &Bar {
-    return &self.bar;
+impl Drop for Bar {
+  fn drop() {
+    printf("drop bar y: %d\n", self.y);
+  }
+}
+
+impl Drop for Foo {
+  fn drop() {
+    printf("drop foo y: %d\n", self.bar.y);
   }
 }

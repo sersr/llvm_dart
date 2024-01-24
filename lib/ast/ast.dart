@@ -875,16 +875,18 @@ class Fn extends Ty with NewInst<Fn> {
     currentContext = from.currentContext;
   }
 
-  LLVMConstVariable? genFn(
-      [Set<AnalysisVariable>? variables,
-      Map<Identifier, Set<AnalysisVariable>>? map]) {
+  LLVMConstVariable? genFn([
+    Set<AnalysisVariable>? variables,
+    Map<Identifier, Set<AnalysisVariable>>? map,
+    bool isDropFn = false,
+  ]) {
     final context = currentContext;
     assert(context != null);
     if (context == null) return null;
-    return _customBuild(context, variables, map);
+    return _customBuild(context, isDropFn, variables, map);
   }
 
-  LLVMConstVariable? _customBuild(FnBuildMixin context,
+  LLVMConstVariable? _customBuild(FnBuildMixin context, bool isDropFn,
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
     final vk = [];
@@ -908,7 +910,7 @@ class Fn extends Ty with NewInst<Fn> {
 
     return parentOrCurrent._cache.putIfAbsent(key, () {
       return context.buildFnBB(
-          this, variables, map ?? const {}, pushTyGenerics);
+          this, isDropFn, variables, map ?? const {}, pushTyGenerics);
     });
   }
 

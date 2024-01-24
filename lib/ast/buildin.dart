@@ -136,7 +136,9 @@ final memCopyFn = BuiltinFn(Identifier.builtIn('memCopy'), memCopy);
 
 ExprTempValue? autoDrop(FnBuildMixin context, List<FieldExpr> params) {
   final variable = params[0].build(context)!.variable!;
-  DropImpl.drop(context, variable);
+  if (context.removeVal(variable)) {
+    DropImpl.drop(context, variable);
+  }
 
   return null;
 }

@@ -6,16 +6,16 @@ mixin FreeMixin on BuildContext {
   void freeHeapParent(FnBuildMixin to, {FnBuildMixin? from});
   void freeHeapCurrent(FnBuildMixin to);
 
-  void removeVal(Variable? val) {
-    if (val == null || val is! StoreVariable) return;
-    _ptrMap.remove(val.getBaseValue(this));
+  bool removeVal(Variable? val) {
+    if (val == null || val is! StoreVariable) return false;
+    return _ptrMap.remove(val.getBaseValue(this)) != null;
   }
 
   /// 以`alloca`作为`key`
-  final _ptrMap = <LLVMValueRef, LLVMAllocaVariable>{};
+  final _ptrMap = <LLVMValueRef, Variable>{};
 
   @override
-  void addFree(LLVMAllocaVariable val) {
-    _ptrMap[val.alloca] = val;
+  void addFree(Variable val) {
+    _ptrMap[val.getBaseValue(this)] = val;
   }
 }

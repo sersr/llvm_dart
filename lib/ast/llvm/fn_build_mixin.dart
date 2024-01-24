@@ -2,7 +2,9 @@ part of 'build_context_mixin.dart';
 
 mixin FnBuildMixin
     on BuildContext, SretMixin, FreeMixin, FlowMixin, FnContextMixin {
-  LLVMConstVariable buildFnBB(Fn fn,
+  bool _isDropFn = false;
+
+  LLVMConstVariable buildFnBB(Fn fn, bool isDropFn,
       [Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>> map = const {},
       void Function(FnBuildMixin context)? onCreated]) {
@@ -16,6 +18,7 @@ mixin FnBuildMixin
       fnContext.isFnBBContext = true;
       fnContext.instertFnEntryBB();
       onCreated?.call(fnContext);
+      fnContext._isDropFn = true;
       fnContext.initFnParamsStart(fv.value, fn.fnSign.fnDecl, fn, extra,
           map: map);
       block.build(fnContext, isFnBlock: true);
@@ -48,6 +51,13 @@ mixin FnBuildMixin
         BuiltInTy() => LLVMConstVariable(selfValue, p, ident),
         _ => LLVMAllocaVariable(selfValue, p, p.typeOf(this), ident),
       };
+
+      if (_isDropFn && p is StructTy) {
+        for (final field in p.fields) {
+          final val = p.llty.getField(value, this, field.ident);
+          if (val != null) addFree(val);
+        }
+      }
 
       setName(selfValue, ident.src);
       pushVariable(value);
@@ -144,18 +154,29 @@ mixin FnBuildMixin
 
   bool _freeDone = false;
 
+  final List<LLVMValueRef> _caches = [];
+
+  bool _freeAddCache(LLVMValueRef v) {
+    if (_caches.contains(v)) {
+      Log.w('contains.');
+      return true;
+    }
+    _caches.add(v);
+    return false;
+  }
+
   @override
   void freeHeapCurrent(FnBuildMixin to) {
     assert(loopBBs.isEmpty || !_freeDone, "error: freedone.");
     for (var val in _ptrMap.values) {
-      DropImpl.drop(to, val);
+      DropImpl.drop(to, val, test: to._freeAddCache);
     }
   }
 
   @override
   void freeBr(FnBuildMixin? from) {
     freeHeapCurrent(this);
-    freeHeapParent(this, from: from);
+    if (from != null) freeHeapParent(this, from: from);
   }
 
   @override
@@ -164,5 +185,6 @@ mixin FnBuildMixin
     freeHeapCurrent(this);
     freeHeapParent(this);
     _freeDone = true;
+    _caches.clear();
   }
 }

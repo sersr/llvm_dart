@@ -1,6 +1,7 @@
 import 'package:nop/nop.dart';
 
 import '../../abi/abi_fn.dart';
+import '../../llvm_core.dart';
 import '../ast.dart';
 import '../tys.dart';
 import 'llvm_context.dart';
@@ -101,7 +102,8 @@ abstract class RefDerefCom {
 
 abstract class DropImpl {
   static final _dropIdent = Identifier.builtIn('drop');
-  static void drop(FnBuildMixin context, Variable variable) {
+  static void drop(FnBuildMixin context, Variable variable,
+      {bool Function(LLVMValueRef v)? test}) {
     variable = variable.defaultDeref(context, Identifier.none);
     var ty = variable.ty;
 
@@ -112,12 +114,17 @@ abstract class DropImpl {
     if (dropFn == null) {
       return;
     }
+
+    final value = variable.getBaseValue(context);
+    if (test != null && test(value)) return;
+
     AbiFn.fnCallInternal(
+      isDropFn: true,
       context,
       dropFn,
       Identifier.none,
       [],
-      LLVMConstVariable(variable.getBaseValue(context), ty, Identifier.none),
+      LLVMConstVariable(value, ty, Identifier.none),
       null,
       null,
     );

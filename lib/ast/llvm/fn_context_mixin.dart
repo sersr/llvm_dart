@@ -50,7 +50,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
 
   FnContextMixin? _proxy;
   @override
-  void addFree(LLVMAllocaVariable val) {
+  void addFree(Variable val) {
     if (_proxy != null) {
       _proxy!.addFree(val);
       return;
@@ -59,12 +59,11 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
   }
 
   @override
-  void removeVal(Variable? val) {
+  bool removeVal(Variable? val) {
     if (_proxy != null) {
-      _proxy!.removeVal(val);
-      return;
+      return _proxy!.removeVal(val);
     }
-    super.removeVal(val);
+    return super.removeVal(val);
   }
 
   bool _inRunMode = false;
@@ -85,7 +84,6 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
         retV.store(this, val.load(this));
       }
     } else {
-      removeVal(val);
       _retValue = val;
     }
 
