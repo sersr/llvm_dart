@@ -8,10 +8,8 @@ import 'variables.dart';
 
 abstract class ImplStackTy {
   static void addStack(FnBuildMixin context, Variable variable) {
+    variable = variable.defaultDeref(context, Identifier.none);
     var ty = variable.ty;
-    if (ty is RefTy) {
-      ty = ty.baseTy;
-    }
     final stackImpl = context.getImplWithIdent(ty, Identifier.builtIn('Stack'));
     if (stackImpl == null) return;
     final addFn = stackImpl.getFnCopy(ty, Identifier.builtIn('addStack'));
@@ -31,20 +29,18 @@ abstract class ImplStackTy {
     );
   }
 
-  static bool isStackCom(FreeMixin context, Variable variable) {
+  static bool isStackCom(FlowMixin context, Variable variable) {
+    variable = variable.defaultDeref(context, Identifier.none);
+
     var ty = variable.ty;
-    if (ty is RefTy) {
-      ty = ty.baseTy;
-    }
     return context.getImplWithIdent(ty, Identifier.builtIn('Stack')) != null;
   }
 
   static void removeStack(FnBuildMixin context, Variable variable) {
     final ident = Identifier.builtIn('removeStack');
+    variable = variable.defaultDeref(context, Identifier.none);
+
     var ty = variable.ty;
-    if (ty is RefTy) {
-      ty = ty.baseTy;
-    }
 
     final stackImpl = context.getImplWithIdent(ty, Identifier.builtIn('Stack'));
     if (stackImpl == null) return;
@@ -106,10 +102,8 @@ abstract class RefDerefCom {
 abstract class DropImpl {
   static final _dropIdent = Identifier.builtIn('drop');
   static void drop(FnBuildMixin context, Variable variable) {
+    variable = variable.defaultDeref(context, Identifier.none);
     var ty = variable.ty;
-    if (ty is RefTy) {
-      ty = ty.baseTy;
-    }
 
     final dropImpl = context.getImplWithIdent(ty, Identifier.builtIn('Drop'));
     if (dropImpl == null) return;
@@ -134,10 +128,9 @@ abstract class Clone {
   static final _onCloneIdent = Identifier.builtIn('onClone');
   static final _cloneCom = Identifier.builtIn('Clone');
   static void onClone(FnBuildMixin context, Variable variable) {
+    variable = variable.defaultDeref(context, Identifier.none);
     var ty = variable.ty;
-    if (ty is RefTy) {
-      ty = ty.baseTy;
-    }
+
     final impl = context.getImplWithIdent(ty, _cloneCom);
     if (impl == null) return;
     final onCloneFn = impl.getFnCopy(ty, _onCloneIdent);

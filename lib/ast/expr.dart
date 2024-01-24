@@ -8,6 +8,7 @@ import '../llvm_dart.dart';
 import '../parsers/lexers/token_kind.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
+import 'builders/builders.dart';
 import 'buildin.dart';
 import 'context.dart';
 import 'llvm/build_methods.dart';
@@ -79,7 +80,14 @@ class IfExprBlock {
 
   AnalysisVariable? analysis(AnalysisContext context) {
     expr.analysis(context);
+    return analysisBlock(block, context);
+  }
+
+  static AnalysisVariable? analysisBlock(
+      Block? block, AnalysisContext context) {
+    if (block == null) return null;
     block.analysis(context);
+
     return retFromBlock(block, context);
   }
 
@@ -97,7 +105,7 @@ class IfExprBlock {
   }
 }
 
-class IfExpr extends Expr {
+class IfExpr extends Expr with RetExprMixin {
   IfExpr(this.ifExpr, this.elseIfExpr, this.elseBlock) {
     IfExprBlock last = ifExpr;
     if (elseIfExpr != null) {
@@ -140,124 +148,40 @@ class IfExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    final v = createIfBlock(ifExpr, context, baseTy ?? _variable?.ty);
+  ExprTempValue? buildRetExpr(FnBuildMixin context, Ty? baseTy, bool isRet) {
+    final v = IfExprBuilder.createIfBlock(
+        ifExpr, context, baseTy ?? _variable?.ty, isRet);
     if (v == null) return null;
     return ExprTempValue(v);
   }
 
-  StoreVariable? createIfBlock(IfExprBlock ifb, FnBuildMixin context, Ty? ty) {
-    StoreVariable? variable;
-    if (ty != null) {
-      variable = ty.llty.createAlloca(context, Identifier.none);
-    }
-    buildIfExprBlock(ifb, context, variable);
-
-    return variable;
-  }
-
-  static void _blockRetValue(
-      Block block, FnBuildMixin context, StoreVariable? variable) {
-    if (variable == null) return;
-    if (block.isNotEmpty) {
-      final lastStmt = block.lastOrNull;
-      if (lastStmt is ExprStmt) {
-        final expr = lastStmt.expr;
-        if (expr is! RetExpr) {
-          // 获取缓存的value
-          final temp = expr.build(context);
-          final val = temp?.variable;
-          if (val == null) {
-            // error
-          } else {
-            if (val is LLVMAllocaDelayVariable && !val.created) {
-              val.initProxy(proxy: variable);
-            } else {
-              variable.storeVariable(context, val);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  void buildIfExprBlock(
-      IfExprBlock ifEB, FnBuildMixin c, StoreVariable? variable) {
-    final elseifBlock = ifEB.child;
-    final elseBlock = ifEB.elseBlock;
-    final onlyIf = elseifBlock == null && elseBlock == null;
-    assert(onlyIf || (elseBlock != null) != (elseifBlock != null));
-    final then = c.buildSubBB(name: 'then');
-    late final afterBB = c.buildSubBB(name: 'after');
-    LLVMBasicBlock? elseBB;
-
-    bool hasAfterBb = false;
-
-    final conTemp = ifEB.expr.build(c);
-    final con = conTemp?.variable;
-    if (con == null) return;
-
-    LLVMValueRef conv;
-    if (con.ty == BuiltInTy.kBool) {
-      conv = con.load(c);
-    } else {
-      conv = c.math(con, null, OpKind.Ne, Identifier.none).load(c);
-    }
-
-    c.appendBB(then);
-    ifEB.block.build(then.context, free: false);
-
-    if (onlyIf) {
-      hasAfterBb = true;
-      llvm.LLVMBuildCondBr(c.builder, conv, then.bb, afterBB.bb);
-      c.setBr();
-    } else {
-      elseBB = c.buildSubBB(name: elseifBlock == null ? 'else' : 'elseIf');
-      llvm.LLVMBuildCondBr(c.builder, conv, then.bb, elseBB.bb);
-      c.appendBB(elseBB);
-      c.setBr();
-      if (elseifBlock != null) {
-        buildIfExprBlock(elseifBlock, elseBB.context, variable);
-      } else if (elseBlock != null) {
-        elseBlock.build(elseBB.context, free: false);
-      }
-    }
-    var canBr = then.context.canBr;
-    if (canBr) {
-      hasAfterBb = true;
-      _blockRetValue(ifEB.block, then.context, variable);
-      then.context.freeHeap();
-      then.context.br(afterBB.context);
-    }
-
-    if (elseBB != null) {
-      final elseCanBr = elseBB.context.canBr;
-      if (elseCanBr) {
-        hasAfterBb = true;
-        if (elseBlock != null) {
-          _blockRetValue(elseBlock, elseBB.context, variable);
-          elseBB.context.freeHeap();
-        } else if (elseifBlock != null) {
-          _blockRetValue(elseifBlock.block, elseBB.context, variable);
-          elseBB.context.freeHeap();
-        }
-        elseBB.context.br(afterBB.context);
-      }
-    }
-    if (hasAfterBb) c.insertPointBB(afterBB);
-  }
-
   AnalysisVariable? _variable;
   @override
-  AnalysisVariable? analysis(AnalysisContext context) {
-    _variable = ifExpr.analysis(context.childContext());
-    if (elseIfExpr != null) {
-      for (var e in elseIfExpr!) {
-        e.analysis(context.childContext());
+  AnalysisListVariable? analysis(AnalysisContext context) {
+    final vals = <AnalysisVariable>[];
+    final val = ifExpr.analysis(context.childContext());
+
+    void add(AnalysisVariable? val) {
+      if (val is AnalysisListVariable) {
+        vals.addAll(val.vals);
+      } else if (val != null) {
+        vals.add(val);
       }
     }
-    elseBlock?.analysis(context.childContext());
-    return _variable;
+
+    add(val);
+    if (elseIfExpr != null) {
+      for (var e in elseIfExpr!) {
+        final val = e.analysis(context.childContext());
+        add(val);
+      }
+    }
+
+    final elseVal =
+        IfExprBlock.analysisBlock(elseBlock, context.childContext());
+    add(elseVal);
+
+    return _variable = AnalysisListVariable(vals);
   }
 }
 
@@ -389,7 +313,7 @@ class WhileExpr extends Expr {
   }
 }
 
-class RetExpr extends Expr {
+class RetExpr extends Expr with RetExprMixin {
   RetExpr(this.expr, this.ident);
   final Identifier ident;
   final Expr? expr;
@@ -399,10 +323,10 @@ class RetExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
+  ExprTempValue? buildRetExpr(FnBuildMixin context, Ty? baseTy, bool isRet) {
     final e = expr?.build(context);
 
-    context.ret(e?.variable);
+    context.ret(e?.variable, isLastStmt: isRet);
     return e;
   }
 
@@ -416,42 +340,54 @@ class RetExpr extends Expr {
       [Identifier? currentIdent]) {
     final val = expr.analysis(context);
     final current = context.getLastFnContext();
-    if (val != null && current != null) {
-      final valLife = val.lifecycle.fnContext;
-      if (valLife != null) {
-        if (val.kind.isRef) {
-          if (val.lifecycle.isInner && current.isChildOrCurrent(valLife)) {
-            final ident = currentIdent ?? val.lifeIdent ?? val.ident;
-            Log.e('lifecycle Error: (${context.currentPath}'
-                ':${ident.offset.pathStyle})\n${ident.light}');
+
+    void check(AnalysisVariable? val) {
+      if (val != null && current != null) {
+        final valLife = val.lifecycle.fnContext;
+        if (valLife != null) {
+          if (val.kind.isRef) {
+            if (val.lifecycle.isInner && current.isChildOrCurrent(valLife)) {
+              final ident = currentIdent ?? val.lifeIdent ?? val.ident;
+              Log.e('lifecycle Error: (${context.currentPath}'
+                  ':${ident.offset.pathStyle})\n${ident.light}');
+            }
+          }
+        }
+      }
+
+      if (val != null) {
+        final vals = current?.currentFn?.returnVariables;
+        if (vals != null) {
+          final all = val.allParent;
+          all.insert(0, val);
+
+          // 判断是否同源， 用于`sret`, struct ret
+          //
+          // let y = Foo { 1, 2}
+          // if condition {
+          //  return y;
+          // } else {
+          //  let x = y;
+          //  return x; // 与 `y` 同源
+          // }
+          for (var val in all) {
+            final ident = val.ident.toRawIdent;
+            // Log.w(val.ident.light, onlyDebug: false);
+            vals.add(ident);
           }
         }
       }
     }
 
-    if (val != null) {
-      final vals = current?.currentFn?.returnVariables;
-      if (vals != null) {
-        final all = val.allParent;
-        all.insert(0, val);
-
-        // 判断是否同源， 用于`sret`, struct ret
-        //
-        // let y = Foo { 1, 2}
-        // if condition {
-        //  return y;
-        // } else {
-        //  let x = y;
-        //  return x; // 与 `y` 同源
-        // }
-        for (var val in all) {
-          final ident = val.ident.toRawIdent;
-          // Log.w(val.ident.light, onlyDebug: false);
-          vals.add(ident);
-        }
+    if (val is AnalysisListVariable) {
+      for (var v in val.vals) {
+        check(v);
       }
+      return val.vals.first;
     }
-    return null;
+
+    check(val);
+    return val;
   }
 
   @override
@@ -681,16 +617,9 @@ class AssignExpr extends Expr {
     if (lv is StoreVariable && rv != null) {
       var cav = rv;
       if (lv.ty != rv.ty) {
-        cav = AsExpr.asType(context, rv, Identifier.none, lv.ty);
+        cav = AsBuilder.asType(context, rv, Identifier.none, lv.ty);
       }
-      if (cav is LLVMAllocaDelayVariable && !cav.created) {
-        cav.initProxy(proxy: lv);
-      } else {
-        lv.storeVariable(context, cav);
-
-        ImplStackTy.addStack(context, lv);
-        ImplStackTy.removeStack(context, cav);
-      }
+      lv.storeVariable(context, cav);
     }
 
     return null;
@@ -740,7 +669,7 @@ class AssignOpExpr extends AssignExpr {
       final val = OpExpr.math(context, op, lVariable, expr, opIdent);
       final rValue = val?.variable;
       if (rValue != null) {
-        lVariable.store(context, rValue.load(context));
+        lVariable.storeVariable(context, rValue);
       }
     }
 
@@ -787,45 +716,6 @@ class FieldExpr extends Expr {
 
   @override
   bool get hasUnknownExpr => expr.hasUnknownExpr;
-}
-
-List<F> alignParam<F>(List<F> src, int Function(F) test) {
-  final sortFields = <F>[];
-  final fieldMap = <int, F>{};
-
-  for (var i = 0; i < src.length; i++) {
-    final p = src[i];
-    final index = test(p);
-    if (index != -1) {
-      fieldMap[index] = p;
-    } else {
-      sortFields.add(p);
-    }
-  }
-
-  var index = 0;
-  for (var i = 0; i < sortFields.length; i++) {
-    final p = sortFields[i];
-    while (true) {
-      if (fieldMap.containsKey(index)) {
-        index++;
-        continue;
-      }
-      fieldMap[index] = p;
-      break;
-    }
-  }
-
-  sortFields.clear();
-  final keys = fieldMap.keys.toList()..sort();
-  for (var k in keys) {
-    final v = fieldMap[k];
-    if (v != null) {
-      sortFields.add(v);
-    }
-  }
-
-  return sortFields;
 }
 
 class FnExpr extends Expr {
@@ -1770,10 +1660,6 @@ class MatchItemExpr extends BuildMixin {
     return IfExprBlock.retFromBlock(block, context);
   }
 
-  bool get isValIdent {
-    return op == null && expr is VariableIdentExpr;
-  }
-
   bool get isOther {
     final e = expr;
     if (e is VariableIdentExpr) {
@@ -1859,93 +1745,10 @@ class MatchExpr extends Expr {
     return null;
   }
 
-  ExprTempValue? commonExpr(
-      FnBuildMixin context, ExprTempValue variable, Ty? baseTy) {
-    // match 表达式
-    MatchItemExpr? last;
-    final valIdentItem =
-        items.firstWhereOrNull((element) => element.isValIdent);
-    for (var item in items) {
-      if (item == valIdentItem) continue;
-      if (last == null) {
-        last = item;
-        continue;
-      }
-      last.child = item;
-      last = item;
-    }
-    last?.child = valIdentItem;
-    last = valIdentItem;
-
-    StoreVariable? retVariable;
-
-    if (baseTy != null) {
-      retVariable = baseTy.llty.createAlloca(context, Identifier.none);
-    }
-    void buildItem(MatchItemExpr item, FnBuildMixin context) {
-      final then = context.buildSubBB(name: 'm_then');
-      final after = context.buildSubBB(name: 'm_after');
-      LLVMBasicBlock elseBB;
-      final child = item.child;
-      if (child != null) {
-        elseBB = context.buildSubBB(name: 'm_else');
-      } else {
-        elseBB = after;
-      }
-
-      context.appendBB(then);
-      final exprTempValue = item.build3(context, variable);
-      final val = exprTempValue?.variable;
-      item.block.build(then.context);
-      IfExpr._blockRetValue(item.block, then.context, retVariable);
-      if (then.context.canBr) {
-        then.context.br(after.context);
-      }
-
-      if (val != null) {
-        llvm.LLVMBuildCondBr(
-            context.builder, val.load(context), then.bb, elseBB.bb);
-      }
-
-      if (child != null) {
-        context.appendBB(elseBB);
-        if (child.isValIdent) {
-          child.build4(elseBB.context, variable);
-          IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
-        } else if (child.isOther) {
-          child.build2(elseBB.context, variable);
-          IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
-        } else {
-          buildItem(child, elseBB.context);
-        }
-
-        if (elseBB.context.canBr) {
-          elseBB.context.br(after.context);
-        }
-      }
-
-      context.insertPointBB(after);
-    }
-
-    buildItem(items.first, context);
-
-    if (retVariable == null) {
-      return null;
-    }
-    return ExprTempValue(retVariable);
-  }
-
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    final variable = expr.build(context);
-    if (variable == null) return null;
-    final ty = variable.ty;
-    if (ty is! EnumItem) {
-      return commonExpr(context, variable, baseTy);
-    }
-
-    final parent = variable.variable;
-    if (parent == null) return null;
+    final temp = expr.build(context);
+    if (temp == null) return null;
 
     StoreVariable? retVariable;
     final retTy = baseTy ?? _variable?.ty;
@@ -1953,91 +1756,10 @@ class MatchExpr extends Expr {
       retVariable = retTy.llty.createAlloca(context, Identifier.none);
     }
 
-    var indexValue = ty.llty.loadIndex(context, parent);
+    MatchBuilder.matchBuilder(context, items, temp, retVariable);
 
-    final hasOther = items.any((e) => e.isOther);
-    var length = items.length;
+    if (retVariable == null) return null;
 
-    if (length <= 2) {
-      final first = items.first;
-      final child = items.lastOrNull;
-
-      final then = context.buildSubBB(name: 'm_then');
-      final after = context.buildSubBB(name: 'm_after');
-      LLVMBasicBlock elseBB;
-
-      if (child != null) {
-        elseBB = context.buildSubBB(name: 'm_else');
-      } else {
-        elseBB = after;
-      }
-
-      context.appendBB(then);
-      final itemIndex = first.build2(then.context, variable);
-      IfExpr._blockRetValue(first.block, then.context, retVariable);
-      if (then.context.canBr) {
-        then.context.br(after.context);
-      }
-      assert(itemIndex != null, "$first error.");
-
-      final con = llvm.LLVMBuildICmp(
-          context.builder,
-          LLVMIntPredicate.LLVMIntEQ,
-          indexValue,
-          ty.parent.llty.getIndexValue(context, itemIndex!),
-          unname);
-      llvm.LLVMBuildCondBr(context.builder, con, then.bb, elseBB.bb);
-
-      if (child != null) {
-        context.appendBB(elseBB);
-
-        child.build2(elseBB.context, variable);
-        IfExpr._blockRetValue(child.block, elseBB.context, retVariable);
-
-        if (elseBB.context.canBr) {
-          elseBB.context.br(after.context);
-        }
-      }
-
-      context.insertPointBB(after);
-    } else {
-      final elseBb = context.buildSubBB(name: 'match_else');
-      LLVMBasicBlock after = elseBb;
-
-      if (hasOther) {
-        length -= 1;
-        context.appendBB(elseBb);
-        after = context.buildSubBB(name: 'match_after');
-      }
-
-      final ss =
-          llvm.LLVMBuildSwitch(context.builder, indexValue, elseBb.bb, length);
-      var index = 0;
-      final llPty = ty.parent.llty;
-      for (var item in items) {
-        LLVMBasicBlock childBb;
-        if (item.isOther) {
-          childBb = elseBb;
-        } else {
-          childBb = context.buildSubBB(name: 'match_bb_$index');
-          context.appendBB(childBb);
-        }
-        final v = item.build2(childBb.context, variable);
-        if (v != null) {
-          llvm.LLVMAddCase(ss, llPty.getIndexValue(context, v), childBb.bb);
-        }
-        IfExpr._blockRetValue(item.block, childBb.context, retVariable);
-        childBb.context.br(after.context);
-        index += 1;
-      }
-      if (after != elseBb) {
-        context.insertPointBB(after);
-      }
-    }
-
-    if (retVariable == null) {
-      return null;
-    }
     return ExprTempValue(retVariable);
   }
 
@@ -2079,40 +1801,8 @@ class AsExpr extends Expr {
     final lv = l?.variable;
     if (l == null || lv == null) return null;
 
-    final value = asType(context, lv, rhs.ident, r);
+    final value = AsBuilder.asType(context, lv, rhs.ident, r);
     return ExprTempValue(value);
-  }
-
-  static Variable asType(
-      FnBuildMixin context, Variable lv, Identifier asId, Ty asTy) {
-    final lty = lv.ty;
-    if (lty is EnumItem && asTy is EnumItem) {
-      if (lty.parent == asTy.parent) {
-        return lv;
-      }
-    }
-
-    if (asTy is BuiltInTy && lty is BuiltInTy) {
-      final val = context.castLit(lty.ty, lv.load(context), asTy.ty);
-      return LLVMConstVariable(val, asTy, asId);
-    }
-    Variable? asValue;
-
-    final lValue = lv.load(context);
-
-    if (lty is RefTy && asTy is BuiltInTy && asTy.ty.isInt) {
-      final type = asTy.typeOf(context);
-      final v = llvm.LLVMBuildPtrToInt(context.builder, lValue, type, unname);
-      asValue = LLVMConstVariable(v, asTy, asId);
-    } else if (lty is BuiltInTy && lty.ty.isInt && asTy is RefTy) {
-      final type = asTy.typeOf(context);
-      final v = llvm.LLVMBuildIntToPtr(context.builder, lValue, type, unname);
-      asValue = LLVMConstVariable(v, asTy, asId);
-    } else {
-      asValue = LLVMConstVariable(lValue, asTy, asId);
-    }
-
-    return asValue;
   }
 
   @override

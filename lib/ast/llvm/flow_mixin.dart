@@ -5,17 +5,18 @@ mixin FlowMixin on BuildContext, FreeMixin {
   bool _returned = false;
   bool get canBr => !_returned && !_breaked;
 
-  void ret(Variable? val) {
+  void ret(Variable? val, {bool isLastStmt = false}) {
     if (!canBr) {
       // error
       return;
     }
     _returned = true;
-
-    final fn = getLastFnContext()!;
-    if (fn._updateRunAfter(val, this)) return;
-
     removeVal(val);
+
+    final fn = getLastFnContext();
+    if (fn == null) return; // outer
+    if (fn._updateRunAfter(val, this, isLastStmt)) return;
+
     freeHeap();
 
     final retOffset = val?.offset ?? Offset.zero;
@@ -33,22 +34,24 @@ mixin FlowMixin on BuildContext, FreeMixin {
     /// return variable
     if (sret == null) {
       final fnty = fn._fn!.ty as Fn;
-      final v = AbiFn.fnRet(this, fnty, val);
-      // diSetCurrentLoc(retOffset);
-      llvm.LLVMBuildRet(builder, v);
+      if (fnty.getRetTy(this) == BuiltInTy.kVoid) {
+        llvm.LLVMBuildRetVoid(builder);
+      } else {
+        final v = AbiFn.fnRet(this, fnty, val);
+        diSetCurrentLoc(retOffset);
+        llvm.LLVMBuildRet(builder, v);
+      }
       return;
     }
 
     /// struct ret
-    if (val is LLVMAllocaDelayVariable && !val.created) {
-      val.initProxy(proxy: sret);
-    } else {
-      sret.storeVariable(this, val);
-    }
+    sretRet(sret, val);
 
     diSetCurrentLoc(retOffset);
     llvm.LLVMBuildRetVoid(builder);
   }
+
+  void sretRet(StoreVariable sret, Variable val);
 
   void instertFnEntryBB({String name = 'entry'}) {
     final bb = llvm.LLVMAppendBasicBlockInContext(
@@ -139,6 +142,7 @@ mixin FlowMixin on BuildContext, FreeMixin {
 
   void br(FlowMixin to) {
     if (!canBr) return;
+    freeBr(null);
     _br(to);
   }
 
@@ -153,19 +157,23 @@ mixin FlowMixin on BuildContext, FreeMixin {
 
   void brLoop() {
     if (!canBr) return;
+    final from = getLoopBB(null);
+    freeBr(from.context);
 
     _breaked = true;
-
-    llvm.LLVMBuildBr(builder, getLoopBB(null).bb);
+    llvm.LLVMBuildBr(builder, from.bb);
   }
 
   void brContinue() {
     if (!canBr) return;
+    final from = getLoopBB(null).parent!;
+    freeBr(from.context);
 
     _breaked = true;
-
-    llvm.LLVMBuildBr(builder, getLoopBB(null).parent!.bb);
+    llvm.LLVMBuildBr(builder, from.bb);
   }
+
+  void freeBr(FnBuildMixin? from);
 
   /// math
   Variable math(Variable lhs, Variable? rhs, OpKind op, Identifier opId) {

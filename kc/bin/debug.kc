@@ -35,4 +35,5 @@ fn main() i32 {
 
 extern
 fn hh(gen: Gen) {
+  printf("x: %d, y: %f, z: %d\n", gen.x as usize, gen.y, gen.z);
 }

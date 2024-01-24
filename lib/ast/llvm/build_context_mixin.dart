@@ -48,23 +48,11 @@ abstract class BuildContext
 }
 
 mixin SretMixin on BuildContext {
-  //
-  RawIdent? _sertOwner;
-
   /// todo:
   StoreVariable? sretFromVariable(Identifier? nameIdent, Variable variable) {
-    return _sretFromVariable(this, nameIdent, variable);
-  }
-
-  static StoreVariable? _sretFromVariable(
-      BuildContext context, Identifier? nameIdent, Variable variable) {
-    final fnContext = context.getLastFnContext()!;
-    final fnty = fnContext._fn?.ty as Fn?;
+    final fnContext = getLastFnContext()!;
+    final fnty = fnContext._fn?.ty as Fn? ?? fnContext._fnty;
     if (fnty == null) return null;
-
-    StoreVariable? fnSret;
-    fnSret = fnContext.sret;
-    if (fnSret == null) return null;
 
     nameIdent ??= variable.ident;
     final owner = nameIdent.toRawIdent;
@@ -72,15 +60,18 @@ mixin SretMixin on BuildContext {
       return null;
     }
 
-    if (fnContext._sertOwner == null &&
-        variable is LLVMAllocaDelayVariable &&
-        !variable.created) {
+    StoreVariable? fnSret;
+    fnSret = fnContext.sret ?? fnContext.compileRetValue;
+    if (fnSret == null) return null;
+
+    final ty = fnSret.ty;
+
+    if (variable is LLVMAllocaDelayVariable && !variable.created) {
       variable.initProxy(proxy: fnSret);
-      fnContext._sertOwner = owner;
-      return variable;
     } else {
-      fnSret.storeVariable(context, variable);
-      return fnSret;
+      fnSret.store(this, variable.load(this));
     }
+
+    return LLVMAllocaVariable(fnSret.alloca, ty, ty.typeOf(this), nameIdent);
   }
 }

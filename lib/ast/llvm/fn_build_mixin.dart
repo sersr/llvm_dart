@@ -18,14 +18,10 @@ mixin FnBuildMixin
       onCreated?.call(fnContext);
       fnContext.initFnParamsStart(fv.value, fn.fnSign.fnDecl, fn, extra,
           map: map);
-      block.build(fnContext, free: false);
+      block.build(fnContext, isFnBlock: true);
 
-      final retTy = fn.getRetTy(fnContext);
-      if (retTy == BuiltInTy.kVoid) {
-        fnContext.ret(null);
-      } else {
-        block.ret(fnContext);
-      }
+      assert(fnContext._returned || !block.isNotEmpty, 'error: return.');
+      fnContext.ret(null);
     });
     return fv;
   }
@@ -122,6 +118,8 @@ mixin FnBuildMixin
       return null;
     }
     _updateDebugFn(context, this);
+
+    _fnty = fn;
     _inRunMode = true;
 
     for (var p in params) {
@@ -130,28 +128,41 @@ mixin FnBuildMixin
 
     fn.pushTyGenerics(this);
 
-    block.build(this, free: false);
+    block.build(this, isFnBlock: true);
 
-    final retTy = fn.getRetTy(this);
-    if (retTy == BuiltInTy.kVoid) {
-      ret(null);
-    } else {
-      block.ret(this);
-    }
     if (_runBbAfter != null) {
       insertPointBB(_runBbAfter!);
     }
-    return _compileRetValue;
+
+    return compileDyValue;
+  }
+
+  @override
+  void sretRet(StoreVariable sret, Variable val) {
+    sret.storeVariable(this, val);
   }
 
   bool _freeDone = false;
+
+  @override
+  void freeHeapCurrent(FnBuildMixin to) {
+    assert(loopBBs.isEmpty || !_freeDone, "error: freedone.");
+    for (var val in _ptrMap.values) {
+      DropImpl.drop(to, val);
+    }
+  }
+
+  @override
+  void freeBr(FnBuildMixin? from) {
+    freeHeapCurrent(this);
+    freeHeapParent(this, from: from);
+  }
+
   @override
   void freeHeap() {
     if (_freeDone) return;
+    freeHeapCurrent(this);
+    freeHeapParent(this);
     _freeDone = true;
-
-    for (var val in _ptrMap.values) {
-      DropImpl.drop(this, val);
-    }
   }
 }

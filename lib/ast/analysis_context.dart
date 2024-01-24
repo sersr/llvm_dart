@@ -270,6 +270,48 @@ class AnalysisStructVariable extends AnalysisVariable {
   }
 }
 
+class AnalysisListVariable extends AnalysisVariable {
+  AnalysisListVariable(this.vals)
+      : super._(BuiltInTy.kVoid, Identifier.none, const []);
+
+  final List<AnalysisVariable> vals;
+  @override
+  Ty get ty => vals.firstOrNull?.ty ?? BuiltInTy.kVoid;
+
+  @override
+  bool get isGlobal => vals.firstOrNull?.isGlobal ?? false;
+
+  @override
+  set isGlobal(bool v) {
+    vals.firstOrNull?.isGlobal = v;
+  }
+
+  @override
+  List<PointerKind> get kind => vals.firstOrNull?.kind ?? const [];
+  @override
+  AnalysisVariable? get parent => vals.firstOrNull?.parent;
+
+  @override
+  Identifier get ident => vals.firstOrNull?.ident ?? super.ident;
+
+  @override
+  LifeCycle get lifecycle => vals.firstOrNull?.lifecycle ?? super.lifecycle;
+
+  @override
+  set parent(AnalysisVariable? v) {
+    vals.firstOrNull?.parent == v;
+  }
+
+  @override
+  AnalysisVariable copy(
+      {Ty? ty,
+      Identifier? ident,
+      List<PointerKind>? kind,
+      bool isGlobal = false}) {
+    return vals.first.copy(ty: ty, ident: ident, isGlobal: isGlobal);
+  }
+}
+
 class LifeCycle {
   LifeCycle();
   AnalysisContext? fnContext;

@@ -21,7 +21,6 @@ impl Array<u8> {
   }
 }
 
-type Ptr<T>;
 struct CArray<T> {
   size: usize,
   ptr: **T,
@@ -35,10 +34,6 @@ impl CArray<T> {
   fn getSize() usize {
     self.size
   }
-}
-
-com OperatorArray<T> {
-  fn elementAt(index: usize) &T;
 }
 
 com Drop {

@@ -15,18 +15,18 @@ fn main(argc: i32, ptr: **u8) i32 {
       print("none");
     }
   }
-  op = Some(x: 10001);
+  // op = Some(x: 10001);
 
-  match op {
-    None => {
-      print("none");
-    },
-    Some(x) => {
-      printf("some x: %d\n",x);
-    }
-  }
+  // match op {
+  //   None => {
+  //     print("none");
+  //   },
+  //   Some(x) => {
+  //     printf("some x: %d\n",x);
+  //   }
+  // }
 
-  test();
+  // test();
   0;
 }
 

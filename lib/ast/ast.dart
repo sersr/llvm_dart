@@ -238,6 +238,22 @@ abstract class Expr extends BuildMixin {
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy);
 }
 
+mixin RetExprMixin on Expr {
+  @override
+  ExprTempValue? build(FnBuildMixin context, {Ty? baseTy, bool isRet = false}) {
+    if (!_first) return _temp;
+    _first = false;
+    return _temp ??= buildRetExpr(context, baseTy, isRet);
+  }
+
+  @override
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
+    throw 'use buildRetExpr';
+  }
+
+  ExprTempValue? buildRetExpr(FnBuildMixin context, Ty? baseTy, bool isRet);
+}
+
 class UnknownExpr extends Expr {
   UnknownExpr(this.ident, this.message);
   final Identifier ident;
@@ -289,7 +305,7 @@ abstract class BuildMixin {
 }
 
 abstract class Stmt extends BuildMixin with EquatableMixin {
-  void build(FnBuildMixin context);
+  void build(FnBuildMixin context, bool isRet);
   Stmt clone();
 }
 
@@ -437,37 +453,30 @@ class Block extends BuildMixin with EquatableMixin {
     return '${ident ?? ''} {\n$s$p}';
   }
 
-  void ret(FnBuildMixin context) {
-    final stmt = lastOrNull;
-    if (stmt is ExprStmt) {
-      final expr = stmt.expr;
-      if (expr is! RetExpr) {
-        // 获取缓存的value
-        final valTemp = expr.build(context);
-        final val = valTemp?.variable;
-        context.ret(val);
-      }
-    } else {
-      context.ret(null);
-    }
-  }
-
-  void build(FnBuildMixin context, {bool free = true}) {
+  void build(FnBuildMixin context, {bool isFnBlock = false}) {
     for (var fn in _fnExprs) {
       fn.currentContext = context;
       fn.build();
     }
 
     for (var ty in _tyStmts) {
-      ty.build(context);
+      ty.build(context, false);
     }
 
-    // 先处理普通语句，在内部函数中可能会引用到变量等
-    for (var stmt in _stmts) {
-      stmt.build(context);
-    }
+    if (!isFnBlock) {
+      for (var stmt in _stmts) {
+        stmt.build(context, false);
+      }
+    } else {
+      final length = _stmts.length;
+      final max = length - 1;
 
-    if (free) context.freeHeap();
+      // 先处理普通语句，在内部函数中可能会引用到变量等
+      for (var i = 0; i < length; i++) {
+        final stmt = _stmts[i];
+        stmt.build(context, i == max);
+      }
+    }
   }
 
   @override
@@ -483,10 +492,10 @@ class Block extends BuildMixin with EquatableMixin {
       ty.analysis(context);
     }
 
-    for (var i = 0; i < _stmts.length; i += 1) {
-      final stmt = _innerStmts[i];
+    for (var stmt in _stmts) {
       stmt.analysis(context);
     }
+
     for (var fn in _fnExprs) {
       fn.analysis(context);
     }

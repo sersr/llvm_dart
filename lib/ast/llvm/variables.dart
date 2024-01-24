@@ -1,7 +1,9 @@
 import '../../llvm_core.dart';
 import '../ast.dart';
+import '../context.dart';
 import '../tys.dart';
 import 'build_methods.dart';
+import 'coms.dart';
 import 'llvm_types.dart';
 
 abstract class Variable extends LifeCycleVariable {
@@ -14,6 +16,8 @@ abstract class Variable extends LifeCycleVariable {
   }
 
   LLVMValueRef getBaseValue(StoreLoadMixin c) => load(c);
+
+  Variable asType(StoreLoadMixin c, Ty ty);
   Ty get ty;
 
   @override
@@ -32,9 +36,9 @@ abstract class Variable extends LifeCycleVariable {
     final cTy = ty;
     if (cTy is! RefTy) return this;
 
-    final v = load(c);
     final parent = cTy.parent;
-    return LLVMAllocaVariable(v, parent, parent.typeOf(c), ident);
+    return LLVMAllocaVariable.delay(
+        () => load(c), parent, parent.typeOf(c), ident);
   }
 }
 
@@ -63,9 +67,21 @@ abstract class StoreVariable extends Variable {
     return c.store(alloca, val, offset);
   }
 
-  LLVMValueRef storeVariable(StoreLoadMixin c, Variable val) {
+  void storeVariable(FnBuildMixin c, Variable val) {
     assert(!_dirty);
-    return c.store(alloca, val.load(c), offset);
+
+    if (val is LLVMAllocaDelayVariable && !val.created) {
+      val.initProxy(proxy: this);
+      return;
+    }
+
+    // ????
+    if (alloca != val.getBaseValue(c)) {
+      ImplStackTy.addStack(c, val);
+      ImplStackTy.removeStack(c, this);
+    }
+
+    c.store(alloca, val.load(c), offset);
   }
 }
 
@@ -92,6 +108,11 @@ class LLVMConstVariable extends Variable {
   @override
   LLVMConstVariable newIdentInternal(Identifier id) {
     return LLVMConstVariable(value, ty, id);
+  }
+
+  @override
+  Variable asType(StoreLoadMixin c, Ty ty) {
+    return LLVMConstVariable(value, ty, ident);
   }
 }
 
@@ -129,6 +150,13 @@ class LLVMAllocaDelayVariable extends StoreVariable {
     _dirty = true;
     return LLVMAllocaDelayVariable(_delayLoad, ty, type, id).._alloca = _alloca;
   }
+
+  @override
+  Variable asType(StoreLoadMixin c, Ty ty) {
+    _dirty = true;
+    return LLVMAllocaDelayVariable(_delayLoad, ty, ty.typeOf(c), ident)
+      .._alloca = _alloca;
+  }
 }
 
 typedef DelayFn = LLVMValueRef Function();
@@ -164,6 +192,12 @@ class LLVMAllocaVariable extends StoreVariable {
     _dirty = true;
     assert(_delayFn != null || _alloca != null);
     return LLVMAllocaVariable._(_delayFn, _alloca, ty, type, ident);
+  }
+
+  @override
+  LLVMAllocaVariable asType(StoreLoadMixin c, Ty ty) {
+    _dirty = true;
+    return LLVMAllocaVariable._(_delayFn, _alloca, ty, ty.typeOf(c), ident);
   }
 }
 
@@ -201,5 +235,10 @@ class LLVMLitVariable extends Variable {
     alloca.store(c, rValue);
 
     return alloca;
+  }
+
+  @override
+  Variable asType(StoreLoadMixin c, Ty ty) {
+    return this;
   }
 }

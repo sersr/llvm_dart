@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 
 import '../ast/analysis_context.dart';
 import '../ast/ast.dart';
+import '../ast/builders/builders.dart';
 import '../ast/expr.dart';
 import '../ast/llvm/build_methods.dart';
 import '../ast/llvm/llvm_context.dart';
@@ -94,8 +95,9 @@ abstract interface class AbiFn {
         }
       }
 
-      final variable = context.compileRun(fn, newParams);
+      var variable = context.compileRun(fn, newParams);
       if (variable == null) return null;
+
       return ExprTempValue(variable);
     }
 

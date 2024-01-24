@@ -1,6 +1,7 @@
 import 'dart:ffi';
 
 import '../ast/ast.dart';
+import '../ast/builders/builders.dart';
 import '../ast/expr.dart';
 import '../ast/llvm/build_methods.dart';
 import '../ast/llvm/llvm_context.dart';
@@ -177,6 +178,7 @@ class AbiFnArm64 implements AbiFn {
       return struct.llty.createAlloca(context, ident)..store(context, src);
     }
 
+    context.setName(src, ident.src);
     // ptr
     return LLVMAllocaVariable(src, struct, llType, ident);
   }
@@ -335,7 +337,6 @@ class AbiFnArm64 implements AbiFn {
     } else {
       final a = ty.llty.createAlloca(context, ident);
       a.store(context, fnParam);
-      context.setName(a.alloca, ident.src);
       alloca = a;
     }
 

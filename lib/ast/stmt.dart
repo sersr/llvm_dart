@@ -38,15 +38,27 @@ class LetStmt extends Stmt {
   }
 
   @override
-  void build(FnBuildMixin context) {
+  void build(FnBuildMixin context, bool isRet) {
     final realTy = ty?.grt(context);
-    ExprTempValue? val = rExpr?.build(context, baseTy: realTy);
+
+    final val = switch (rExpr) {
+      RetExprMixin expr => expr.build(context, baseTy: realTy, isRet: isRet),
+      var expr => expr?.build(context, baseTy: realTy),
+    };
 
     context.diSetCurrentLoc(nameIdent.offset);
 
     final tty = val?.ty;
     final variable = val?.variable;
     if (tty == null || variable == null) return;
+
+    /// 先判断是否是 struct ret
+    var letVariable = context.sretFromVariable(nameIdent, variable) ?? variable;
+
+    if (isRet) {
+      context.ret(null, isLastStmt: true);
+      return;
+    }
 
     if (variable is LLVMLitVariable) {
       assert(tty is BuiltInTy);
@@ -64,16 +76,13 @@ class LetStmt extends Stmt {
       return;
     }
 
-    /// 先判断是否是 struct ret
-    var letVariable = context.sretFromVariable(nameIdent, variable) ?? variable;
-
     if (isFinal && !context.root.isDebug) {
       context.pushVariable(letVariable.newIdent(nameIdent));
       return;
     }
 
     final newVal = letVariable.ty.llty.createAlloca(context, nameIdent);
-    context.setName(newVal.alloca, nameIdent.src);
+
     if (letVariable is LLVMAllocaDelayVariable && !letVariable.created) {
       letVariable.initProxy(proxy: newVal);
 
@@ -81,8 +90,8 @@ class LetStmt extends Stmt {
       return;
     }
 
-    newVal.storeVariable(context, variable);
-    ImplStackTy.addStack(context, newVal);
+    newVal.store(context, variable.load(context));
+    ImplStackTy.addStack(context, variable);
 
     context.pushVariable(newVal);
   }
@@ -122,8 +131,13 @@ class ExprStmt extends Stmt {
   }
 
   @override
-  void build(FnBuildMixin context) {
-    expr.build(context);
+  void build(FnBuildMixin context, bool isRet) {
+    final temp = switch (expr) {
+      RetExprMixin e => e.build(context, isRet: isRet),
+      var e => e.build(context),
+    };
+
+    if (isRet) context.ret(temp?.variable, isLastStmt: true);
   }
 
   @override
@@ -157,7 +171,7 @@ class StaticStmt extends Stmt {
 
   bool _run = false;
   @override
-  void build(FnBuildMixin context) {
+  void build(FnBuildMixin context, bool isRet) {
     if (_run) return;
     final realTy = ty?.grtOrT(context);
     if (ty != null && realTy == null) return;
@@ -240,7 +254,7 @@ class TyStmt extends Stmt {
   }
 
   @override
-  void build(FnBuildMixin context) {
+  void build(FnBuildMixin context, bool isRet) {
     ty.currentContext ??= context;
     ty.build();
   }
@@ -275,7 +289,7 @@ class StructStmt extends Stmt {
   final StructTy ty;
 
   @override
-  void build(FnBuildMixin context) {
+  void build(FnBuildMixin context, bool isRet) {
     ty.currentContext ??= context;
     ty.build();
   }
@@ -310,7 +324,7 @@ class EnumStmt extends Stmt {
   final EnumTy ty;
 
   @override
-  void build(FnBuildMixin context) {
+  void build(FnBuildMixin context, bool isRet) {
     ty.currentContext ??= context;
     ty.build();
   }

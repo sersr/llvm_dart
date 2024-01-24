@@ -4,16 +4,17 @@ import "std:allocator.kc";
 fn main() i32 {
   let base_ptr = ret(false);
   printf("base_ptr: data: %d\n", base_ptr.data);
-  test();
 
-  // 自动调用 deref(),实际为 Base.data: i32
-  // let data: &i32;
-  let data = *base_ptr; 
-  printf("alias Base.data: %d\n", *hh);
+  // let data = base_ptr;
+  // printf("alias Base.data: %d\n", data.data);
 
 
-  let base64 = Base.new( 6666i64);
-  printf("base64: data: %d\n", base64.data);
+  // let base64 = Base.new(6666i64);
+  // printf("base64: data: %d\n", base64.data);
+  // printf("base64: data: %d\n", Base.new(555i64).data);
+
+  // test();
+
   0;
 }
 
@@ -61,5 +62,11 @@ impl Stack for Base<T> {
     if self.count == 0 {
       free(&self);
     }
+  }
+}
+
+impl Drop for Base<T> {
+  fn drop() {
+    self.removeStack();
   }
 }

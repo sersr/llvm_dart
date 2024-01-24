@@ -7,6 +7,8 @@ import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../analysis_context.dart';
 import '../ast.dart';
+import '../builders/builders.dart';
+import '../context.dart';
 import '../expr.dart';
 import '../memory.dart';
 import 'build_methods.dart';
@@ -396,7 +398,7 @@ class LLVMStructType extends LLVMType {
   }
 
   LLVMAllocaDelayVariable buildTupeOrStruct(
-      StoreLoadMixin context, List<FieldExpr> params,
+      FnBuildMixin context, List<FieldExpr> params,
       {List<FieldExpr>? sFields}) {
     final structType = ty.typeOf(context);
     final fields = ty.fields;

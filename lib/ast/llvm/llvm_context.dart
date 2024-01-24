@@ -202,10 +202,17 @@ class BuildContextImpl extends BuildContext
   }
 
   @override
-  void freeHeap() {
-    super.freeHeap();
-    for (var child in _children) {
-      child.freeHeap();
+  void freeHeapParent(FnBuildMixin to, {FnBuildMixin? from}) {
+    final fn = from ?? getLastFnContext();
+    assert(fn != null, "error: fn == null.");
+    if (fn == null || fn == this) return;
+
+    var current = parent;
+
+    while (current != null) {
+      current.freeHeapCurrent(to);
+      if (current == fn) return;
+      current = current.parent;
     }
   }
 }
