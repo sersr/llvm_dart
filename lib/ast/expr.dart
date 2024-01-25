@@ -483,6 +483,7 @@ class StructExpr extends Expr {
       void visitor(Ty exactTy, PathTy fieldTy) {
         void checkTy(Ty exactTy, PathTy fieldTy) {
           if (exactTy case NewInst(tys: var tys, generics: var gBase)) {
+            if (tys.isEmpty) return;
             assert(gBase.length == exactTy.generics.length, "generic error.");
 
             for (var i = 0; i < fieldTy.generics.length; i += 1) {
@@ -737,7 +738,7 @@ class FnExpr extends Expr {
     assert(fn.currentContext == null);
     fn.currentContext ??= context;
     fn.build();
-    return ExprTempValue.ty(fn);
+    return ExprTempValue.ty(fn, fn.ident);
   }
 
   @override
@@ -841,13 +842,14 @@ class FnCallExpr extends Expr with FnCallMixin {
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    final fnV = expr.build(context);
-    final variable = fnV?.variable;
-    final fn = variable?.ty ?? fnV?.ty;
+    final temp = expr.build(context);
+    final variable = temp?.variable;
+    final fn = variable?.ty ?? temp?.ty;
     if (fn is StructTy) {
       return StructExpr.buildTupeOrStruct(fn, context, params, const []);
     }
-    final builtinFn = doBuiltFns(context, fn, params);
+    final builtinFn =
+        doBuiltFns(context, fn, temp?.ident ?? Identifier.none, params);
     if (builtinFn != null) {
       return builtinFn;
     }
@@ -1431,7 +1433,7 @@ class VariableIdentExpr extends Expr {
       final ty = baseTy?.typeOf(context);
 
       if (ty == null) {
-        return ExprTempValue.ty(BuiltInTy.kVoid);
+        return ExprTempValue.ty(BuiltInTy.kVoid, ident);
       }
       final v = LLVMConstVariable(llvm.LLVMConstNull(ty), baseTy!, ident);
       return ExprTempValue(v);
@@ -1439,7 +1441,7 @@ class VariableIdentExpr extends Expr {
 
     final val = context.getVariable(ident);
     if (val != null) {
-      return ExprTempValue(val.newIdent(ident));
+      return ExprTempValue(val.newIdent(ident, dirty: false));
     }
 
     final typeAlias = context.getAliasTy(ident);
@@ -1457,7 +1459,7 @@ class VariableIdentExpr extends Expr {
         struct =
             struct.newInstWithGenerics(context, localGenerics, struct.generics);
       }
-      return ExprTempValue.ty(struct);
+      return ExprTempValue.ty(struct, ident);
     }
 
     var fn = context.getFn(ident);
@@ -1481,14 +1483,14 @@ class VariableIdentExpr extends Expr {
       if (enableBuild) {
         final value = fn.genFn();
         if (value != null) {
-          return ExprTempValue(value.newIdent(ident));
+          return ExprTempValue(value.newIdent(ident, dirty: false));
         }
       }
-      return ExprTempValue.ty(fn);
+      return ExprTempValue.ty(fn, ident);
     }
 
     final builtinFn = context.getBuiltinFn(ident);
-    if (builtinFn != null) return ExprTempValue.ty(builtinFn);
+    if (builtinFn != null) return ExprTempValue.ty(builtinFn, ident);
 
     return null;
   }

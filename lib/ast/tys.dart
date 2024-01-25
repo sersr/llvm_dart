@@ -73,13 +73,11 @@ abstract class GlobalContext {
               if (valTy.tys.isNotEmpty) {
                 final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
 
-                final value = LLVMAllocaDelayVariable((proxy) {
-                  final alloca = proxy ?? arr.llty.createAlloca(context, ident);
-                  alloca.store(
+                final value = LLVMAllocaDelayVariable(context, (value, _) {
+                  value.store(
                     context,
                     llvm.LLVMConstNull(arr.typeOf(context)),
                   );
-                  return alloca.alloca;
                 }, arr, arr.llty.typeOf(context), ident);
 
                 return ExprTempValue(value);

@@ -1,10 +1,60 @@
 part of 'build_context_mixin.dart';
 
+// class FnOptions {
+//   const FnOptions({
+//     this.isDrop = false,
+//     this.isAddStack = false,
+//     this.isRemoveStack = false,
+//     this.isUpdateStack = false,
+//   });
+
+//   final bool isDrop;
+//   final bool isAddStack;
+//   final bool isRemoveStack;
+
+//   final bool isUpdateStack;
+
+//   bool get isValid => isDrop || isAddStack || isRemoveStack || isUpdateStack;
+
+//   bool get isStack => isAddStack || isRemoveStack;
+//   bool get isStart => isDrop || isAddStack || isUpdateStack;
+//   bool get isEnd => isRemoveStack;
+
+//   void startOption(FnBuildMixin context, Variable value, Ty ty) {
+//     if (!isStart) return;
+//     if (ty is! StructTy) return;
+
+//     for (final field in ty.fields) {
+//       final val = ty.llty.getField(value, context, field.ident);
+//       if (val != null) {
+//         if (isDrop) {
+//           context.addFree(val);
+//         } else if (isAddStack) {
+//           ImplStackTy.addStack(context, val);
+//         } else if (isUpdateStack) {
+//           ImplStackTy.updateStack(context, val);
+//         }
+//       }
+//     }
+//   }
+
+//   void endOption(FnBuildMixin context, Variable value) {
+//     if (!isEnd) return;
+
+//     for (final field in ty.fields) {
+//       final val = ty.llty.getField(value, context, field.ident);
+//       if (val != null) {
+//         if (isRemoveStack) {
+//           ImplStackTy.removeStack(context, val);
+//         }
+//       }
+//     }
+//   }
+// }
+
 mixin FnBuildMixin
     on BuildContext, SretMixin, FreeMixin, FlowMixin, FnContextMixin {
-  bool _isDropFn = false;
-
-  LLVMConstVariable buildFnBB(Fn fn, bool isDropFn,
+  LLVMConstVariable buildFnBB(Fn fn,
       [Set<AnalysisVariable>? extra,
       Map<Identifier, Set<AnalysisVariable>> map = const {},
       void Function(FnBuildMixin context)? onCreated]) {
@@ -18,7 +68,7 @@ mixin FnBuildMixin
       fnContext.isFnBBContext = true;
       fnContext.instertFnEntryBB();
       onCreated?.call(fnContext);
-      fnContext._isDropFn = true;
+
       fnContext.initFnParamsStart(fv.value, fn.fnSign.fnDecl, fn, extra,
           map: map);
       block.build(fnContext, isFnBlock: true);
@@ -51,13 +101,6 @@ mixin FnBuildMixin
         BuiltInTy() => LLVMConstVariable(selfValue, p, ident),
         _ => LLVMAllocaVariable(selfValue, p, p.typeOf(this), ident),
       };
-
-      if (_isDropFn && p is StructTy) {
-        for (final field in p.fields) {
-          final val = p.llty.getField(value, this, field.ident);
-          if (val != null) addFree(val);
-        }
-      }
 
       setName(selfValue, ident.src);
       pushVariable(value);

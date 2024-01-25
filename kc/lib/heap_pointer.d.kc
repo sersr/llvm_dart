@@ -71,4 +71,5 @@ com Clone {
 com Stack {
   fn addStack();
   fn removeStack();
+  fn updateStack();
 }

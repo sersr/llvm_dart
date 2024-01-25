@@ -24,14 +24,10 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
     if (fn == null) return null;
     final ty = fn.getRetTy(this);
 
-    return _compileRetValue = LLVMAllocaDelayVariable((proxy) {
-      if (proxy != null) return proxy.alloca;
-
-      final alloca =
-          ty.llty.createAlloca(this, Identifier.builtIn('comple_ret'));
-      removeVal(alloca);
-      return alloca.alloca;
-    }, ty, ty.typeOf(this), Identifier.none);
+    return _compileRetValue = LLVMAllocaDelayVariable(this, (value, isProxy) {
+      if (isProxy) return;
+      removeVal(value);
+    }, ty, ty.typeOf(this), Identifier.builtIn('compile_ret'));
   }
 
   void _updateDebugFn(FnContextMixin parent, FnContextMixin debug) {

@@ -1,0 +1,75 @@
+import "std:d.kc";
+import "std:allocator.kc";
+
+import "std:heap_pointer.d.kc";
+
+fn main() i32 {
+
+  let foo = Foo { bar: Bar { y: 1 }};
+
+  let y = 100;
+  
+  if y > 40 {
+    let bbc = Bar {y: 3 };
+    let bba = Foo {bar: bbc };
+    bba.bar = Bar {y: 4 };
+    bba.bar = bbc;
+  }
+  
+  printf("...y: %d\n", foo.bar.y);
+  0;
+}
+
+
+struct Box<T> {
+  ptr: *T,
+  size: usize,
+}
+
+struct Bar {
+  y: i32,
+}
+
+struct Foo {
+  bar: Bar,
+}
+
+impl Stack for Bar {
+  fn addStack() {
+    printf("bar: add %d | %p\n", self.y, &self);
+  }
+
+  fn removeStack() {
+    printf("bar: remove %d | %p\n", self.y, &self);
+  }
+
+  fn updateStack() {
+    printf("bar: update %d | %p\n", self.y, &self);
+  }
+}
+
+impl Stack for Foo {
+  fn addStack() {
+    printf("foo: add %d | $p\n", self.bar.y, &self);
+  }
+
+  fn removeStack() {
+    printf("foo: remove %d | %p\n", self.bar.y, &self);
+  }
+
+  fn updateStack() {
+    printf("foo: update %d | $p\n", self.bar.y, &self);
+  }
+}
+
+impl Drop for Bar {
+  fn drop() {
+    printf("drop bar y: %d\n", self.y);
+  }
+}
+
+impl Drop for Foo {
+  fn drop() {
+    printf("drop foo y: %d\n", self.bar.y);
+  }
+}

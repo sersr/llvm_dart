@@ -405,11 +405,8 @@ class LLVMStructType extends LLVMType {
     final sortFields = sFields ??
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
-    LLVMValueRef create(StoreVariable? proxy) {
-      StoreVariable? value = proxy;
-      final resetEnumIndex = value != null && ty is EnumItem;
-
-      value ??= createAlloca(context, Identifier.none);
+    LLVMValueRef create(LLVMAllocaDelayVariable value, bool isProxy) {
+      final resetEnumIndex = ty is EnumItem;
 
       context.diSetCurrentLoc(value.ident.offset);
 
@@ -426,16 +423,17 @@ class LLVMStructType extends LLVMType {
         final temp = f.temp;
         final v = temp?.variable;
         if (v == null) {
-          Log.e('$fd return null.');
+          Log.e('${(f.ident ?? fd.ident).light} return null.', showTag: false);
           continue;
         }
         final vv = getField(value, context, f.ident ?? fd.ident)!;
-        vv.storeVariable(context, v);
+        vv.storeVariable(context, v, isNew: true);
       }
       return value.alloca;
     }
 
-    return LLVMAllocaDelayVariable(create, ty, structType, Identifier.none);
+    return LLVMAllocaDelayVariable(
+        context, create, ty, structType, Identifier.none);
   }
 
   LLVMAllocaVariable? getField(

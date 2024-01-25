@@ -6,7 +6,6 @@ import 'analysis_context.dart';
 import 'ast.dart';
 import 'context.dart';
 import 'expr.dart';
-import 'llvm/coms.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
 
@@ -60,15 +59,15 @@ class LetStmt extends Stmt {
       return;
     }
 
-    if (variable is LLVMLitVariable) {
+    if (letVariable is LLVMLitVariable) {
       assert(tty is BuiltInTy);
 
       if (isFinal && !context.root.isDebug) {
-        context.pushVariable(variable.newIdent(nameIdent));
+        context.pushVariable(letVariable.newIdent(nameIdent));
         return;
       }
 
-      final alloca = variable.createAlloca(context, nameIdent, tty);
+      final alloca = letVariable.createAlloca(context, nameIdent, tty);
       alloca.init();
       assert(alloca.ident == nameIdent);
 
@@ -83,15 +82,7 @@ class LetStmt extends Stmt {
 
     final newVal = letVariable.ty.llty.createAlloca(context, nameIdent);
 
-    if (letVariable is LLVMAllocaDelayVariable && !letVariable.created) {
-      letVariable.initProxy(proxy: newVal);
-
-      context.pushVariable(newVal);
-      return;
-    }
-
-    newVal.store(context, variable.load(context));
-    ImplStackTy.addStack(context, variable);
+    newVal.storeVariable(context, variable, isNew: true);
 
     context.pushVariable(newVal);
   }

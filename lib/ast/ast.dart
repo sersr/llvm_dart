@@ -201,10 +201,15 @@ class Identifier with EquatableMixin {
 }
 
 class ExprTempValue {
-  ExprTempValue(Variable this.variable) : _ty = null;
-  ExprTempValue.ty(Ty this._ty) : variable = null;
+  ExprTempValue(Variable this.variable)
+      : _ty = null,
+        _ident = null;
+
+  ExprTempValue.ty(Ty this._ty, this._ident) : variable = null;
   final Ty? _ty;
   final Variable? variable;
+  final Identifier? _ident;
+  Identifier? get ident => _ident ?? variable?.ident;
   Ty get ty => variable?.ty ?? _ty!;
 }
 
@@ -878,15 +883,14 @@ class Fn extends Ty with NewInst<Fn> {
   LLVMConstVariable? genFn([
     Set<AnalysisVariable>? variables,
     Map<Identifier, Set<AnalysisVariable>>? map,
-    bool isDropFn = false,
   ]) {
     final context = currentContext;
     assert(context != null);
     if (context == null) return null;
-    return _customBuild(context, isDropFn, variables, map);
+    return _customBuild(context, variables, map);
   }
 
-  LLVMConstVariable? _customBuild(FnBuildMixin context, bool isDropFn,
+  LLVMConstVariable? _customBuild(FnBuildMixin context,
       [Set<AnalysisVariable>? variables,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
     final vk = [];
@@ -910,7 +914,7 @@ class Fn extends Ty with NewInst<Fn> {
 
     return parentOrCurrent._cache.putIfAbsent(key, () {
       return context.buildFnBB(
-          this, isDropFn, variables, map ?? const {}, pushTyGenerics);
+          this, variables, map ?? const {}, pushTyGenerics);
     });
   }
 

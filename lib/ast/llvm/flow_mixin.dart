@@ -11,7 +11,6 @@ mixin FlowMixin on BuildContext, FreeMixin {
       return;
     }
     _returned = true;
-    removeVal(val);
 
     final fn = getLastFnContext();
     if (fn == null) return; // outer
@@ -23,24 +22,22 @@ mixin FlowMixin on BuildContext, FreeMixin {
 
     diSetCurrentLoc(retOffset);
 
-    /// return void
-    if (val == null) {
+    final fnty = fn._fn!.ty as Fn;
+    if (fnty.getRetTy(this) == BuiltInTy.kVoid || val == null) {
       llvm.LLVMBuildRetVoid(builder);
       return;
     }
+
+    removeVal(val);
 
     final sret = fn._sret;
 
     /// return variable
     if (sret == null) {
-      final fnty = fn._fn!.ty as Fn;
-      if (fnty.getRetTy(this) == BuiltInTy.kVoid) {
-        llvm.LLVMBuildRetVoid(builder);
-      } else {
-        final v = AbiFn.fnRet(this, fnty, val);
-        diSetCurrentLoc(retOffset);
-        llvm.LLVMBuildRet(builder, v);
-      }
+      final v = AbiFn.fnRet(this, fnty, val);
+      diSetCurrentLoc(retOffset);
+      llvm.LLVMBuildRet(builder, v);
+
       return;
     }
 

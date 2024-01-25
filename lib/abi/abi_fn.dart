@@ -65,8 +65,7 @@ abstract interface class AbiFn {
       List<FieldExpr> params,
       Variable? struct,
       Set<AnalysisVariable>? extra,
-      Map<Identifier, Set<AnalysisVariable>>? map,
-      {bool isDropFn = false}) {
+      Map<Identifier, Set<AnalysisVariable>>? map) {
     if (fn.extern) {
       return AbiFn.get(context.abi).fnCall(context, fn, ident, params);
     }
@@ -162,11 +161,7 @@ abstract interface class AbiFn {
 
     final fnType = fn.llty.createFnType(context, extra);
 
-    final fnAlloca = fn.genFn(
-      extra,
-      map,
-      isDropFn,
-    );
+    final fnAlloca = fn.genFn(extra, map);
     if (fnAlloca == null) return null;
     final fnValue = fnAlloca.load(context);
 
@@ -178,11 +173,9 @@ abstract interface class AbiFn {
       return null;
     }
 
-    final v = LLVMAllocaDelayVariable((proxy) {
-      final alloca = proxy ?? retTy.llty.createAlloca(context, Identifier.none);
-      alloca.store(context, ret);
-      return alloca.alloca;
-    }, retTy, retTy.typeOf(context), Identifier.none);
+    final v = LLVMAllocaDelayVariable(context, (value, _) {
+      value.store(context, ret);
+    }, retTy, retTy.typeOf(context), Identifier.builtIn('_ret'));
 
     return ExprTempValue(v);
   }

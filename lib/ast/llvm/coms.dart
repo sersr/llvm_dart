@@ -1,5 +1,3 @@
-import 'package:nop/nop.dart';
-
 import '../../abi/abi_fn.dart';
 import '../../llvm_core.dart';
 import '../ast.dart';
@@ -8,58 +6,58 @@ import 'llvm_context.dart';
 import 'variables.dart';
 
 abstract class ImplStackTy {
-  static void addStack(FnBuildMixin context, Variable variable) {
+  static final _stackCom = Identifier.builtIn('Stack');
+  static final _addStack = Identifier.builtIn('addStack');
+  static final _removeStack = Identifier.builtIn('removeStack');
+  static final _updateStack = Identifier.builtIn('updateStack');
+  static void _runStackFn(
+      FnBuildMixin context, Variable variable, Identifier fnName) {
     variable = variable.defaultDeref(context, Identifier.none);
-    var ty = variable.ty;
-    final stackImpl = context.getImplWithIdent(ty, Identifier.builtIn('Stack'));
-    if (stackImpl == null) return;
-    final addFn = stackImpl.getFnCopy(ty, Identifier.builtIn('addStack'));
 
-    if (addFn == null) {
-      Log.e('error addFn == null.', onlyDebug: false);
+    var ty = variable.ty;
+
+    final stackImpl = context.getImplWithIdent(ty, _stackCom);
+
+    final fn = stackImpl?.getFnCopy(ty, fnName);
+
+    if (fn == null) {
+      _rec(context, variable, (context, val) {
+        _runStackFn(context, val, fnName);
+      });
       return;
     }
     AbiFn.fnCallInternal(
       context,
-      addFn,
+      fn,
       Identifier.none,
       [],
       LLVMConstVariable(variable.getBaseValue(context), ty, Identifier.none),
       null,
       null,
     );
+
+    _rec(context, variable, (context, val) {
+      _runStackFn(context, val, fnName);
+    });
   }
 
   static bool isStackCom(FlowMixin context, Variable variable) {
     variable = variable.defaultDeref(context, Identifier.none);
 
     var ty = variable.ty;
-    return context.getImplWithIdent(ty, Identifier.builtIn('Stack')) != null;
+    return context.getImplWithIdent(ty, _stackCom) != null;
+  }
+
+  static void addStack(FnBuildMixin context, Variable variable) {
+    _runStackFn(context, variable, _addStack);
+  }
+
+  static void updateStack(FnBuildMixin context, Variable variable) {
+    _runStackFn(context, variable, _updateStack);
   }
 
   static void removeStack(FnBuildMixin context, Variable variable) {
-    final ident = Identifier.builtIn('removeStack');
-    variable = variable.defaultDeref(context, Identifier.none);
-
-    var ty = variable.ty;
-
-    final stackImpl = context.getImplWithIdent(ty, Identifier.builtIn('Stack'));
-    if (stackImpl == null) return;
-    final removeFn = stackImpl.getFnCopy(ty, ident);
-
-    if (removeFn == null) {
-      Log.e('error removeFn == null.', onlyDebug: false);
-      return;
-    }
-    AbiFn.fnCallInternal(
-      context,
-      removeFn,
-      Identifier.none,
-      [],
-      LLVMConstVariable(variable.getBaseValue(context), ty, Identifier.none),
-      null,
-      null,
-    );
+    _runStackFn(context, variable, _removeStack);
   }
 }
 
@@ -100,6 +98,19 @@ abstract class RefDerefCom {
   }
 }
 
+void _rec(FnBuildMixin context, Variable value,
+    void Function(FnBuildMixin context, Variable val) action) {
+  final ty = value.ty;
+  if (ty is! StructTy) return;
+
+  for (final field in ty.fields) {
+    final val = ty.llty.getField(value, context, field.ident);
+    if (val != null) {
+      action(context, val);
+    }
+  }
+}
+
 abstract class DropImpl {
   static final _dropIdent = Identifier.builtIn('drop');
   static void drop(FnBuildMixin context, Variable variable,
@@ -108,10 +119,11 @@ abstract class DropImpl {
     var ty = variable.ty;
 
     final dropImpl = context.getImplWithIdent(ty, Identifier.builtIn('Drop'));
-    if (dropImpl == null) return;
-    final dropFn = dropImpl.getFnCopy(ty, _dropIdent);
+    final dropFn = dropImpl?.getFnCopy(ty, _dropIdent);
 
     if (dropFn == null) {
+      _rec(context, variable, (c, v) => drop(c, v, test: test));
+
       return;
     }
 
@@ -119,7 +131,6 @@ abstract class DropImpl {
     if (test != null && test(value)) return;
 
     AbiFn.fnCallInternal(
-      isDropFn: true,
       context,
       dropFn,
       Identifier.none,
@@ -128,6 +139,8 @@ abstract class DropImpl {
       null,
       null,
     );
+
+    _rec(context, variable, (c, v) => drop(c, v, test: test));
   }
 }
 
@@ -139,10 +152,10 @@ abstract class Clone {
     var ty = variable.ty;
 
     final impl = context.getImplWithIdent(ty, _cloneCom);
-    if (impl == null) return;
-    final onCloneFn = impl.getFnCopy(ty, _onCloneIdent);
+    final onCloneFn = impl?.getFnCopy(ty, _onCloneIdent);
 
     if (onCloneFn == null) {
+      _rec(context, variable, onClone);
       return;
     }
 
@@ -155,5 +168,7 @@ abstract class Clone {
       null,
       null,
     );
+
+    _rec(context, variable, onClone);
   }
 }

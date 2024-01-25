@@ -106,12 +106,9 @@ class AbiFnArm64 implements AbiFn {
     if (retTy is StructTy) {
       v = fromFnParamsOrRet(context, retTy, ret, Identifier.none);
     } else {
-      v = LLVMAllocaDelayVariable((proxy) {
-        final alloca =
-            proxy ?? retTy.llty.createAlloca(context, Identifier.none);
-        alloca.store(context, ret);
-        return alloca.alloca;
-      }, retTy, retTy.typeOf(context), Identifier.none);
+      v = LLVMAllocaDelayVariable(context, (value, isProxy) {
+        value.store(context, ret);
+      }, retTy, retTy.typeOf(context), Identifier.builtIn('_ret'));
     }
 
     return ExprTempValue(v);

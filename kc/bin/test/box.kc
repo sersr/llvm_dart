@@ -1,46 +1,83 @@
 import "std:d.kc";
 import "std:allocator.kc";
 
-import "std:heap_pointer.d.kc";
-
 fn main() i32 {
 
-  let foo = Foo { bar: Bar { y: 1 }};
+  // let foo = Box.new( Foo { bar: Bar { y: 1 }});
+  let foo = Box.new( 10001 );
 
+  let bar = foo;
   let y = 100;
+
+  let bbs = BBs{b: 1002, s: foo };
+  let bbc = BBs{b: 2002, s: bar };
+
+  let fbar = Box.new( 222 );
+  bbs.s = fbar;
+
+  fbar = foo;
+  foo = fbar;
   
-  autoDrop(foo);
-  if y > 40 {
-    let bba = Foo {bar: Bar {y: 2 }};
-    let bbc = Bar {y: 3 };
-  }
   
-  printf("...y: %d\n", foo.bar.y);
+  bbc = bbs;
+  bbs = bbc;
+  printf("...y: %d\n", foo.getSize());
   0;
+}
+
+struct BBs<T> {
+  b: i64,
+  s: Box<T>,
 }
 
 
 struct Box<T> {
-  ptr: *T,
+  ptr: *BoxData<T>,
+}
+
+struct BoxData<T> {
   size: usize,
+  data: T,
 }
 
-struct Bar {
-  y: i32,
-}
+impl Box<T> {
+  static fn new(data: T) Self {
+    final ptr = malloc(sizeOf(BoxData<T>)) as *BoxData<T>;
+    ptr.data = data;
+    ptr.size = 1;
+    return Box { ptr };
+  }
 
-struct Foo {
-  bar: Bar,
-}
+  fn getValue() &T {
+    &self.ptr.data;
+  }
 
-impl Drop for Bar {
-  fn drop() {
-    printf("drop bar y: %d\n", self.y);
+  fn getSize() usize {
+    self.ptr.size;
+  }
+
+  fn removeOrDrop() {
+    self.ptr.size -= 1;
+    printf("rmv box: %d, %d\n",  self.ptr.data, self.ptr.size);
+    if self.ptr.size <= 0 {
+      free(self.ptr);
+    }
   }
 }
 
-impl Drop for Foo {
+impl Drop for Box<T> {
   fn drop() {
-    printf("drop foo y: %d\n", self.bar.y);
+    self.removeOrDrop();
+  }
+}
+
+impl Stack for Box<T> {
+  fn addStack() {
+    self.ptr.size += 1;
+    printf("add box: %d, %d\n", *self.getValue(), self.getSize());
+  }
+
+  fn removeStack() {
+    self.removeOrDrop();
   }
 }
