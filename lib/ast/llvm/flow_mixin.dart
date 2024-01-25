@@ -16,19 +16,21 @@ mixin FlowMixin on BuildContext, FreeMixin {
     if (fn == null) return; // outer
     if (fn._updateRunAfter(val, this, isLastStmt)) return;
 
-    freeHeap();
-
     final retOffset = val?.offset ?? Offset.zero;
-
-    diSetCurrentLoc(retOffset);
 
     final fnty = fn._fn!.ty as Fn;
     if (fnty.getRetTy(this) == BuiltInTy.kVoid || val == null) {
+      freeHeap();
+      diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRetVoid(builder);
       return;
     }
 
-    removeVal(val);
+    if (!removeVal(val)) {
+      freeAddStack(val);
+    }
+
+    freeHeap();
 
     final sret = fn._sret;
 
@@ -49,6 +51,7 @@ mixin FlowMixin on BuildContext, FreeMixin {
   }
 
   void sretRet(StoreVariable sret, Variable val);
+  void freeAddStack(Variable val);
 
   void instertFnEntryBB({String name = 'entry'}) {
     final bb = llvm.LLVMAppendBasicBlockInContext(

@@ -448,9 +448,8 @@ class LLVMStructType extends LLVMType {
 
     final ind = _size!.map[field]!.index;
 
-    final ptr = alloca.getBaseValue(context);
-
     final val = LLVMAllocaVariable.delay(() {
+      final ptr = alloca.getBaseValue(context);
       context.diSetCurrentLoc(ident.offset);
       return llvm.LLVMBuildStructGEP2(context.builder, type, ptr, ind, unname);
     }, pty, pty.typeOf(context), ident);

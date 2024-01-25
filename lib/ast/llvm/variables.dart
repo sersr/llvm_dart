@@ -129,7 +129,10 @@ typedef LoadFn = void Function(LLVMAllocaDelayVariable variable, bool isProxy);
 /// 一般用在复杂结构体中，如结构体内包含其他结构体，在作为字面量初始化时会使用外面
 class LLVMAllocaDelayVariable extends StoreVariable {
   LLVMAllocaDelayVariable(
-      this._createContext, this._delayLoad, this.ty, this.type, super.ident);
+      this._createContext, this._delayLoad, this.ty, this.type, super.ident)
+      : _root = null;
+  LLVMAllocaDelayVariable._(this._root, this._createContext, this._delayLoad,
+      this.ty, this.type, super.ident);
 
   final LoadFn _delayLoad;
   @override
@@ -138,12 +141,15 @@ class LLVMAllocaDelayVariable extends StoreVariable {
   @override
   final LLVMTypeRef type;
 
-  bool get created => _alloca != null;
+  bool get created => _root?._alloca != null || _alloca != null;
 
   final StoreLoadMixin _createContext;
   LLVMValueRef? _alloca;
+
   @override
   LLVMValueRef get alloca {
+    if (_root != null) return _root.alloca;
+
     if (_alloca != null) return _alloca!;
 
     final alloca = _alloca = ty.llty.createAlloca(_createContext, ident).alloca;
@@ -154,6 +160,8 @@ class LLVMAllocaDelayVariable extends StoreVariable {
 
   /// 从 [proxy] 中获取地址空间
   bool initProxy({StoreVariable? proxy}) {
+    if (_root != null) return _root.initProxy(proxy: proxy);
+
     final result = _alloca == null;
     if (result) {
       _alloca =
@@ -164,17 +172,19 @@ class LLVMAllocaDelayVariable extends StoreVariable {
     return result;
   }
 
+  final LLVMAllocaDelayVariable? _root;
   @override
   LLVMAllocaDelayVariable newIdentInternal(Identifier id, bool dirty) {
     _dirty = dirty;
-    return LLVMAllocaDelayVariable(_createContext, _delayLoad, ty, type, id)
+    return LLVMAllocaDelayVariable._(
+        _root ?? this, _createContext, _delayLoad, ty, type, id)
       .._alloca = _alloca;
   }
 
   @override
   Variable asType(StoreLoadMixin c, Ty ty) {
-    return LLVMAllocaDelayVariable(
-        _createContext, _delayLoad, ty, ty.typeOf(c), ident)
+    return LLVMAllocaDelayVariable._(
+        _root ?? this, _createContext, _delayLoad, ty, ty.typeOf(c), ident)
       .._alloca = _alloca;
   }
 }
@@ -185,12 +195,15 @@ typedef DelayFn = LLVMValueRef Function();
 /// 有[store],[load]功能
 class LLVMAllocaVariable extends StoreVariable {
   LLVMAllocaVariable(LLVMValueRef this._alloca, this.ty, this.type, super.ident)
-      : _delayFn = null;
+      : _delayFn = null,
+        _root = null;
   LLVMAllocaVariable.delay(
-      DelayFn this._delayFn, this.ty, this.type, super.ident);
+      DelayFn this._delayFn, this.ty, this.type, super.ident)
+      : _root = null;
 
-  LLVMAllocaVariable._(
-      this._delayFn, this._alloca, this.ty, this.type, super.ident);
+  LLVMAllocaVariable._(this._root, this.ty, this.type, super.ident)
+      : _delayFn = null,
+        _alloca = null;
 
   final DelayFn? _delayFn;
 
@@ -199,7 +212,7 @@ class LLVMAllocaVariable extends StoreVariable {
   void init() => alloca;
 
   @override
-  LLVMValueRef get alloca => _alloca ??= _delayFn!();
+  LLVMValueRef get alloca => _root?.alloca ?? (_alloca ??= _delayFn!());
 
   @override
   final LLVMTypeRef type;
@@ -207,16 +220,17 @@ class LLVMAllocaVariable extends StoreVariable {
   @override
   final Ty ty;
 
+  final LLVMAllocaVariable? _root;
+
   @override
   LLVMAllocaVariable newIdentInternal(Identifier id, bool dirty) {
     _dirty = dirty;
-    assert(_delayFn != null || _alloca != null);
-    return LLVMAllocaVariable._(_delayFn, _alloca, ty, type, ident);
+    return LLVMAllocaVariable._(_root ?? this, ty, type, ident);
   }
 
   @override
   LLVMAllocaVariable asType(StoreLoadMixin c, Ty ty) {
-    return LLVMAllocaVariable._(_delayFn, _alloca, ty, ty.typeOf(c), ident);
+    return LLVMAllocaVariable._(_root ?? this, ty, ty.typeOf(c), ident);
   }
 }
 

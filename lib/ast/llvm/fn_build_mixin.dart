@@ -230,4 +230,9 @@ mixin FnBuildMixin
     _freeDone = true;
     _caches.clear();
   }
+
+  @override
+  void freeAddStack(Variable val) {
+    ImplStackTy.addStack(this, val);
+  }
 }

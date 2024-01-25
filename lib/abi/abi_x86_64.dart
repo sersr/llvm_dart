@@ -102,14 +102,10 @@ class AbiFnx86_64 implements AbiFn {
       return null;
     }
 
-    Variable v;
-    if (retTy is StructTy) {
-      v = fromFnParamsOrRet(context, retTy, ret, Identifier.none);
-    } else {
-      v = LLVMAllocaDelayVariable(context, (value, _) {
-        value.store(context, ret);
-      }, retTy, retTy.typeOf(context), Identifier.builtIn('_ret'));
-    }
+    final v = switch (retTy) {
+      StructTy() => fromFnParamsOrRet(context, retTy, ret, Identifier.none),
+      _ => LLVMConstVariable(ret, retTy, Identifier.builtIn('_ret'))
+    };
 
     return ExprTempValue(v);
   }

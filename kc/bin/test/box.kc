@@ -19,9 +19,12 @@ fn main() i32 {
   foo = fbar;
   
   
-  bbc = bbs;
+  // bbc = bbs;
   bbs = bbc;
   printf("...y: %d\n", foo.getSize());
+
+  let size = foo.getSize();
+  printf("size: %d\n", size);
   0;
 }
 

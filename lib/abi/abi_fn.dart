@@ -173,9 +173,12 @@ abstract interface class AbiFn {
       return null;
     }
 
-    final v = LLVMAllocaDelayVariable(context, (value, _) {
-      value.store(context, ret);
-    }, retTy, retTy.typeOf(context), Identifier.builtIn('_ret'));
+    final v = switch (retTy) {
+      StructTy() => LLVMAllocaDelayVariable(context, (value, _) {
+          value.store(context, ret);
+        }, retTy, retTy.typeOf(context), Identifier.builtIn('_ret')),
+      _ => LLVMConstVariable(ret, retTy, Identifier.builtIn('_ret'))
+    };
 
     return ExprTempValue(v);
   }
