@@ -258,62 +258,91 @@ mixin Tys<V extends LifeCycleVariable> {
   }
 
   final implForStructs = <Ty, List<ImplTy>>{};
-  ImplFnMixin? getImplFnForStruct(Ty structTy, Identifier ident) {
-    return getImplForStruct(structTy, ident)?.getFnCopy(structTy, ident);
-  }
+  ImplFnMixin? getImplFnForStruct(Ty structTy, Identifier fnIdent) {
+    final raw = structTy;
+    if (structTy is StructTy) {
+      structTy = structTy.parentOrCurrent;
+    }
 
-  ImplTy? getImplForStruct(Ty structTy, Identifier ident) {
     ImplTy? cache;
-    if (structTy is StructTy) {
-      structTy = structTy.parentOrCurrent;
-    }
-    final v = getKV(structTy, (c) => c.implForStructs,
-        handler: (c) => c.getImplForStruct(structTy, ident),
-        test: (v) {
-          Ty? ty = v.struct.grtOrT(this, getTy: getStruct);
+    int currentScore = -1;
 
-          bool? isRealTy;
-          if (ty is StructTy && structTy is StructTy) {
-            if (ty.tys.isNotEmpty && structTy.tys.isNotEmpty) {
-              for (var index = 0; index < ty.generics.length; index += 1) {
-                final g = structTy.generics[index].ident;
-                final gTy = structTy.tys[g];
-                final gg = ty.generics[index].ident;
-                final ggTy = ty.tys[gg];
-                if (gTy == ggTy) {
-                  isRealTy = true;
-                } else {
-                  isRealTy = false;
-                  break;
-                }
-              }
-            }
-          }
-          if (isRealTy == false) {
-            return false;
-          }
+    var impl = _getImplForStruct(structTy, (impl) {
+      final selfTy = impl.ty!;
 
-          final contains = v.contains(ident);
+      if (!impl.contains(fnIdent)) return false;
 
-          if (isRealTy == true && contains) {
-            cache = v;
-          }
+      if (raw == selfTy) return true;
 
-          return contains;
-        });
-    return cache ?? v;
+      if (raw is! NewInst || selfTy is! NewInst) return false;
+
+      final score = raw.getScore(selfTy);
+
+      if (score == 0) return true;
+
+      if (score != -1 && (currentScore == -1 || score < currentScore)) {
+        currentScore = score;
+        cache = impl;
+      }
+      return false;
+    });
+
+    impl ??= cache;
+
+    return impl?.getFnCopy(raw, fnIdent);
   }
 
-  ImplTy? getImplWithIdent(Ty structTy, Identifier implIdent) {
+  ImplTy? _getImplForStruct(Ty structTy, bool Function(ImplTy v)? test) {
+    return getKV(structTy, (c) => c.implForStructs,
+        handler: (c) => c._getImplForStruct(structTy, test), test: test);
+  }
+
+  /// 为泛型实现`Com`时
+  ///
+  /// impl Update for Box<T,S> {
+  ///  ...
+  /// }
+  ///
+  /// 如果Box<T,S> 中泛型`T`,`S`参数不是具体的类型则根据`score`规则
+  ///
+  /// `score` >= 0, 返回最接近于 0 的对象
+  ImplTy? getImplWithIdent(Ty structTy, Identifier comIdent) {
+    final raw = structTy;
+
     if (structTy is StructTy) {
       structTy = structTy.parentOrCurrent;
     }
-    return getKV(structTy, (c) => c.implForStructs, handler: (c) {
-      return c.getImplWithIdent(structTy, implIdent);
-    }, test: (impl) {
-      // todo: 判断 struct 泛型 是否匹配
-      return impl.com?.ident == implIdent;
+
+    ImplTy? cache;
+    int currentScore = -1;
+    final result = _getImplWithIdent(structTy, (impl) {
+      final selfTy = impl.ty!;
+      final sameCom = impl.com?.ident == comIdent;
+
+      if (sameCom && raw == selfTy) return true;
+      if (!sameCom) return false;
+
+      if (raw is! NewInst || selfTy is! NewInst) return false;
+
+      final score = raw.getScore(selfTy);
+
+      if (score == 0) return true;
+
+      if (score != -1 && (currentScore == -1 || score < currentScore)) {
+        currentScore = score;
+        cache = impl;
+      }
+
+      return false;
     });
+
+    return result ?? cache;
+  }
+
+  ImplTy? _getImplWithIdent(Ty structTy, bool Function(ImplTy v) test) {
+    return getKV(structTy, (c) => c.implForStructs, handler: (c) {
+      return c._getImplWithIdent(structTy, test);
+    }, test: test);
   }
 
   void pushImplForStruct(Ty structTy, ImplTy ty) {

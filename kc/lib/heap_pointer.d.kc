@@ -21,18 +21,15 @@ impl HeapPointer<T> {
   }
 }
 
+
 impl Stack for HeapPointer<T> {
   fn addStack() {
-    self.onClone();
+    final ptr = self.ptr;
+    ptr.count += 1;
+    printf("add  %d\n", ptr.count);
   }
 
   fn removeStack() {
-    self.drop();
-  }
-}
-
-impl Drop for HeapPointer<T> {
-  fn drop() {
     final ptr = self.ptr;
     ptr.count -= 1;
     printf("remove %d\n", ptr.count);
@@ -47,14 +44,6 @@ impl Drop for HeapPointer<T> {
 impl Deref<T> for HeapPointer<T> {
   fn deref() &T {
     return &self.ptr.data; 
-  }
-}
-
-impl Clone for HeapPointer<T> {
-  fn onClone() {
-    final ptr = self.ptr;
-    ptr.count += 1;
-    printf("add %d\n", ptr.count);
   }
 }
 

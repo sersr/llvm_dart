@@ -11,13 +11,13 @@ abstract class ImplStackTy {
   static final _removeStack = Identifier.builtIn('removeStack');
   static final _updateStack = Identifier.builtIn('updateStack');
   static void _runStackFn(
-      FnBuildMixin context, Variable variable, Identifier fnName) {
+      FnBuildMixin context, Variable variable, Identifier fnName,
+      {bool Function(LLVMValueRef v)? test}) {
     variable = variable.defaultDeref(context, Identifier.none);
 
     var ty = variable.ty;
 
     final stackImpl = context.getImplWithIdent(ty, _stackCom);
-
     final fn = stackImpl?.getFnCopy(ty, fnName);
 
     if (fn == null) {
@@ -26,12 +26,16 @@ abstract class ImplStackTy {
       });
       return;
     }
+
+    final value = variable.getBaseValue(context);
+    if (test != null && test(value)) return;
+
     AbiFn.fnCallInternal(
       context,
       fn,
       Identifier.none,
       [],
-      LLVMConstVariable(variable.getBaseValue(context), ty, Identifier.none),
+      LLVMConstVariable(value, ty, Identifier.none),
       null,
       null,
     );
@@ -58,6 +62,25 @@ abstract class ImplStackTy {
 
   static void removeStack(FnBuildMixin context, Variable variable) {
     _runStackFn(context, variable, _removeStack);
+  }
+
+  static void drop(FnBuildMixin context, Variable variable,
+      {bool Function(LLVMValueRef v)? test}) {
+    ImplStackTy._runStackFn(context, variable, ImplStackTy._removeStack,
+        test: test);
+  }
+}
+
+void _rec(FnBuildMixin context, Variable value,
+    void Function(FnBuildMixin context, Variable val) action) {
+  final ty = value.ty;
+  if (ty is! StructTy) return;
+
+  for (final field in ty.fields) {
+    final val = ty.llty.getField(value, context, field.ident);
+    if (val != null) {
+      action(context, val);
+    }
   }
 }
 
@@ -95,52 +118,6 @@ abstract class RefDerefCom {
       if (variable == v) break;
       variable = v;
     }
-  }
-}
-
-void _rec(FnBuildMixin context, Variable value,
-    void Function(FnBuildMixin context, Variable val) action) {
-  final ty = value.ty;
-  if (ty is! StructTy) return;
-
-  for (final field in ty.fields) {
-    final val = ty.llty.getField(value, context, field.ident);
-    if (val != null) {
-      action(context, val);
-    }
-  }
-}
-
-abstract class DropImpl {
-  static final _dropIdent = Identifier.builtIn('drop');
-  static void drop(FnBuildMixin context, Variable variable,
-      {bool Function(LLVMValueRef v)? test}) {
-    variable = variable.defaultDeref(context, Identifier.none);
-    var ty = variable.ty;
-
-    final dropImpl = context.getImplWithIdent(ty, Identifier.builtIn('Drop'));
-    final dropFn = dropImpl?.getFnCopy(ty, _dropIdent);
-
-    if (dropFn == null) {
-      _rec(context, variable, (c, v) => drop(c, v, test: test));
-
-      return;
-    }
-
-    final value = variable.getBaseValue(context);
-    if (test != null && test(value)) return;
-
-    AbiFn.fnCallInternal(
-      context,
-      dropFn,
-      Identifier.none,
-      [],
-      LLVMConstVariable(value, ty, Identifier.none),
-      null,
-      null,
-    );
-
-    _rec(context, variable, (c, v) => drop(c, v, test: test));
   }
 }
 

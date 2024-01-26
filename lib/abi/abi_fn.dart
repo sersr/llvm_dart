@@ -206,7 +206,7 @@ abstract interface class AbiFn {
       return AbiFn.get(context.abi).initFnParamsImpl(context, fn, fnty);
     }
     context.initFnParams(fn, decl, fnty, extra, map: map);
-    return context.sret;
+    return null;
   }
 
   static LLVMValueRef fnRet(BuildContext context, Fn fn, Variable src) {

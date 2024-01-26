@@ -6,21 +6,31 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
   @override
   LLVMMetadataRef get scope => _fnScope ?? parent?.scope ?? unit;
 
-  LLVMConstVariable? _fn;
+  bool _isFnBBContext = false;
+  @override
+  bool get isFnBBContext => _isFnBBContext;
+
+  LLVMConstVariable? _fnVariable;
+
   LLVMValueRef? _fnValue;
   @override
-  LLVMValueRef get fnValue => _fnValue ?? _fn!.value;
+  LLVMValueRef get fnValue => _fnValue ?? _fnVariable!.value;
+
+  Fn? _currentFn;
+  Fn? get currentFn => _fnVariable?.ty as Fn? ?? _currentFn!;
 
   StoreVariable? _sret;
   StoreVariable? get sret => _sret;
 
-  Fn? _fnty;
-  StoreVariable? _compileRetValue;
+  /// ----------- compileRun -------------
   Variable? _retValue;
-  Variable? get compileDyValue => _retValue ?? _compileRetValue;
+  StoreVariable? _compileRetValue;
+  Variable? get _compileDyValue => _retValue ?? _compileRetValue;
+
   StoreVariable? get compileRetValue {
+    assert(_retValue == null);
     if (_compileRetValue != null) return _compileRetValue;
-    final fn = _fnty;
+    final fn = _currentFn;
     if (fn == null) return null;
     final ty = fn.getRetTy(this);
 
@@ -41,7 +51,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
       _fnScope = parent.scope;
     }
     _proxy = parent;
-    isFnBBContext = true;
+    _isFnBBContext = true;
   }
 
   FnContextMixin? _proxy;
@@ -68,16 +78,16 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
   /// 同一个文件支持跳转
   bool compileRunMode(Fn fn) => currentPath == fn.currentContext!.currentPath;
 
-  bool _updateRunAfter(Variable? val, FlowMixin current, islastStmt) {
+  bool _updateRunAfter(Variable? val, FlowMixin current, bool islastStmt) {
     if (!_inRunMode) return false;
 
-    var retV = islastStmt ? _compileRetValue : compileRetValue;
+    final retValue = islastStmt ? _compileRetValue : compileRetValue;
 
-    if (val != null && retV != null) {
+    if (val != null && retValue != null) {
       if (val is LLVMAllocaDelayVariable && !val.created) {
-        val.initProxy(proxy: retV);
+        val.initProxy(proxy: retValue);
       } else {
-        retV.store(this, val.load(this));
+        retValue.store(this, val.load(this));
       }
     } else {
       _retValue = val;

@@ -6,19 +6,17 @@ mixin FlowMixin on BuildContext, FreeMixin {
   bool get canBr => !_returned && !_breaked;
 
   void ret(Variable? val, {bool isLastStmt = false}) {
-    if (!canBr) {
-      // error
-      return;
-    }
+    if (!canBr) return;
+
     _returned = true;
 
     final fn = getLastFnContext();
-    if (fn == null) return; // outer
+    if (fn == null) return;
     if (fn._updateRunAfter(val, this, isLastStmt)) return;
 
     final retOffset = val?.offset ?? Offset.zero;
 
-    final fnty = fn._fn!.ty as Fn;
+    final fnty = fn.currentFn!;
     if (fnty.getRetTy(this) == BuiltInTy.kVoid || val == null) {
       freeHeap();
       diSetCurrentLoc(retOffset);
@@ -32,7 +30,7 @@ mixin FlowMixin on BuildContext, FreeMixin {
 
     freeHeap();
 
-    final sret = fn._sret;
+    final sret = fn.sret;
 
     /// return variable
     if (sret == null) {

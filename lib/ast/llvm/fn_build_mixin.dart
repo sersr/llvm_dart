@@ -63,17 +63,21 @@ mixin FnBuildMixin
       if (block == null) return;
 
       final fnContext = fn.currentContext!.createChildContext();
-      fnContext._fn = fv;
+
+      fnContext._fnVariable = fv;
       fnContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
-      fnContext.isFnBBContext = true;
+      fnContext._isFnBBContext = true;
       fnContext.instertFnEntryBB();
       onCreated?.call(fnContext);
 
+      final hasRet = fn.getRetTy(fnContext) != BuiltInTy.kVoid;
       fnContext.initFnParamsStart(fv.value, fn.fnSign.fnDecl, fn, extra,
           map: map);
-      block.build(fnContext, isFnBlock: true);
 
-      assert(fnContext._returned || !block.isNotEmpty, 'error: return.');
+      block.build(fnContext, hasRet: hasRet);
+
+      assert(!hasRet || fnContext._returned || !block.isNotEmpty,
+          'error: return.');
       fnContext.ret(null);
     });
     return fv;
@@ -82,8 +86,7 @@ mixin FnBuildMixin
   void initFnParamsStart(
       LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
       {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
-    final sret = AbiFn.initFnParams(this, fn, decl, fnty, extra, map: map);
-    _sret = sret;
+    _sret = AbiFn.initFnParams(this, fn, decl, fnty, extra, map: map);
   }
 
   void initFnParams(
@@ -172,7 +175,7 @@ mixin FnBuildMixin
     }
     _updateDebugFn(context, this);
 
-    _fnty = fn;
+    _currentFn = fn;
     _inRunMode = true;
 
     for (var p in params) {
@@ -181,13 +184,13 @@ mixin FnBuildMixin
 
     fn.pushTyGenerics(this);
 
-    block.build(this, isFnBlock: true);
+    block.build(this, hasRet: true);
 
     if (_runBbAfter != null) {
       insertPointBB(_runBbAfter!);
     }
 
-    return compileDyValue;
+    return _compileDyValue;
   }
 
   @override
@@ -212,7 +215,7 @@ mixin FnBuildMixin
   void freeHeapCurrent(FnBuildMixin to) {
     assert(loopBBs.isEmpty || !_freeDone, "error: freedone.");
     for (var val in _ptrMap.values) {
-      DropImpl.drop(to, val, test: to._freeAddCache);
+      ImplStackTy.drop(to, val, test: to._freeAddCache);
     }
   }
 

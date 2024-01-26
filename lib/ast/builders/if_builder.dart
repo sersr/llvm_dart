@@ -8,7 +8,6 @@ abstract class IfExprBuilder {
       if (isRetValue) {
         final fnContext = context.getLastFnContext()!;
         variable = fnContext.sret ?? fnContext.compileRetValue;
-        Log.w('$isRetValue $variable ${fnContext.currentPath}');
       }
 
       if (variable == null) {

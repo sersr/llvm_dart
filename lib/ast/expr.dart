@@ -442,7 +442,7 @@ class StructExpr extends Expr {
 
   static T resolveGeneric<T extends Ty>(NewInst<T> t, Tys context,
       List<FieldExpr> params, List<PathTy> genericsInst,
-      {List<FieldDef> others = const []}) {
+      {List<GenericDef> others = const []}) {
     final generics = [...t.generics, ...others];
     var nt = t as T;
 
@@ -486,9 +486,8 @@ class StructExpr extends Expr {
             if (tys.isEmpty) return;
             assert(gBase.length == exactTy.generics.length, "generic error.");
 
-            for (var i = 0; i < fieldTy.generics.length; i += 1) {
-              final fdIdent = fieldTy.generics[i];
-              // 内部与外部名称不一致，从内部获取具体内省
+            for (var i = 0; i < fieldTy.genericInsts.length; i += 1) {
+              final fdIdent = fieldTy.genericInsts[i];
               final tyg = tys[gBase[i].ident];
               visitor(tyg!, fdIdent);
             }
@@ -504,7 +503,9 @@ class StructExpr extends Expr {
           // 处理泛型内部依赖，X已知晓，处理T
 
           genMapTy.putIfAbsent(fieldTy.ident, () {
-            checkTy(exactTy, currentGenField.rawTy);
+            for (var g in currentGenField.constraints) {
+              checkTy(exactTy, g);
+            }
             return exactTy;
           });
         }

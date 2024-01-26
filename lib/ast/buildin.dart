@@ -145,7 +145,7 @@ ExprTempValue? autoDrop(
   Log.e('autoDrop is deprecated.\n${ident.light}', showTag: false);
   final variable = params[0].build(context)!.variable!;
   if (context.removeVal(variable)) {
-    DropImpl.drop(context, variable);
+    ImplStackTy.removeStack(context, variable);
   }
 
   return null;

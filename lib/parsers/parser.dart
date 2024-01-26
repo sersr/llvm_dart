@@ -276,7 +276,7 @@ class Parser {
   }
 
   FnDecl parseFnDecl(TokenIterator it, Identifier ident) {
-    List<FieldDef> generics = const [];
+    List<GenericDef> generics = const [];
     if (getToken(it).kind == TokenKind.lt) {
       it.moveBack();
       generics = parseGenerics(it);
@@ -344,9 +344,11 @@ class Parser {
 
     final pointerKind = getAllKind(it);
     PathTy? ty;
+    eatLfIfNeed(it);
 
     final state = it.cursor;
     if (it.moveNext()) {
+      eatLfIfNeed(it, back: false);
       if (getKey(it) == Key.fn) {
         it.moveNext();
         final decl = parseFnDecl(it, Identifier.none);
@@ -1388,8 +1390,8 @@ class Parser {
     return op;
   }
 
-  List<FieldDef> parseGenerics(TokenIterator it) {
-    final generics = <FieldDef>[];
+  List<GenericDef> parseGenerics(TokenIterator it) {
+    final generics = <GenericDef>[];
     if (it.moveNext()) {
       final t = getToken(it);
       if (t.kind != TokenKind.lt) {
@@ -1405,13 +1407,10 @@ class Parser {
         eatLfIfNeed(it);
         if (it.moveNext()) {
           if (getToken(it).kind == TokenKind.colon) {
-            final ty = parsePathTy(it);
-            if (ty != null) {
-              it.moveNext(); // `>`
-              generics.add(FieldDef(ident, ty));
-            }
+            final list = parsePathTyList(it);
+            generics.add(GenericDef(ident, list));
           } else {
-            generics.add(FieldDef(ident, PathTy(ident, [])));
+            generics.add(GenericDef(ident, const []));
           }
         }
       }
@@ -1422,6 +1421,25 @@ class Parser {
     });
 
     return generics;
+  }
+
+  List<PathTy> parsePathTyList(TokenIterator it) {
+    final list = <PathTy>[];
+
+    for (;;) {
+      final ty = parsePathTy(it);
+      if (ty == null) break;
+      list.add(ty);
+
+      if (!it.moveNext()) break;
+      eatLfIfNeed(it, back: false);
+
+      final k = getToken(it).kind;
+      if (k == TokenKind.comma || k == TokenKind.gt) break;
+      assert(k == TokenKind.plus);
+    }
+
+    return list;
   }
 
   StructTy? parseStruct(TokenIterator it) {

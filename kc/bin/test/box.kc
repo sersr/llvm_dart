@@ -3,28 +3,28 @@ import "std:allocator.kc";
 
 fn main() i32 {
 
-  // let foo = Box.new( Foo { bar: Bar { y: 1 }});
-  let foo = Box.new( 10001 );
+  let foo = Box.new( 101 );
 
   let bar = foo;
   let y = 100;
 
-  let bbs = BBs{b: 1002, s: foo };
-  let bbc = BBs{b: 2002, s: bar };
+  let bbs = BBs{b: 1001, s: foo };
+  let bbc = BBs{b: 1001, s: bar };
 
-  let fbar = Box.new( 222 );
+  let fbar = Box.new( 202 );
   bbs.s = fbar;
 
-  fbar = foo;
-  foo = fbar;
+  fbar = foo; // drop fbar
+  foo = fbar; // ??? foo == fbar
   
   
   // bbc = bbs;
-  bbs = bbc;
-  printf("...y: %d\n", foo.getSize());
+  bbs = bbc; // drop bbs.s -> fbar 
 
   let size = foo.getSize();
   printf("size: %d\n", size);
+
+  // bbs = bbc; drop bbs.s -> fbar
   0;
 }
 
@@ -34,7 +34,7 @@ struct BBs<T> {
 }
 
 
-struct Box<T> {
+struct Box<T: i32,S: Stack + Copy> {
   ptr: *BoxData<T>,
 }
 
@@ -58,29 +58,19 @@ impl Box<T> {
   fn getSize() usize {
     self.ptr.size;
   }
+}
 
-  fn removeOrDrop() {
+impl Stack for Box<i32> {
+  fn addStack() {
+    self.ptr.size += 1;
+    printf("add    box: %d, %d\n", *self.getValue(), self.getSize());
+  }
+  
+  fn removeStack() {
     self.ptr.size -= 1;
-    printf("rmv box: %d, %d\n",  self.ptr.data, self.ptr.size);
+    printf("remove box: %d, %d\n",  self.ptr.data, self.ptr.size);
     if self.ptr.size <= 0 {
       free(self.ptr);
     }
-  }
-}
-
-impl Drop for Box<T> {
-  fn drop() {
-    self.removeOrDrop();
-  }
-}
-
-impl Stack for Box<T> {
-  fn addStack() {
-    self.ptr.size += 1;
-    printf("add box: %d, %d\n", *self.getValue(), self.getSize());
-  }
-
-  fn removeStack() {
-    self.removeOrDrop();
   }
 }

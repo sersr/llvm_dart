@@ -242,7 +242,7 @@ mixin Consts on LLVMTypeMixin {
 mixin BuildMethods on LLVMTypeMixin {
   LLVMBuilderRef get builder;
 
-  bool isFnBBContext = false;
+  bool get isFnBBContext;
   LLVMValueRef? _allocaInst;
 
   LLVMValueRef get fnValue;

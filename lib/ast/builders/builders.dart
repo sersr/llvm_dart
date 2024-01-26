@@ -1,5 +1,4 @@
 import 'package:collection/collection.dart';
-import 'package:nop/nop.dart';
 
 import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
