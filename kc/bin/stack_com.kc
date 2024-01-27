@@ -64,9 +64,3 @@ impl Stack for Base<T> {
     }
   }
 }
-
-impl Drop for Base<T> {
-  fn drop() {
-    self.removeStack();
-  }
-}

@@ -71,7 +71,30 @@ abstract class MatchBuilder {
     commonBuilder(first!, context, temp, variable);
   }
 
-  static void matchBuilder(FnBuildMixin context, List<MatchItemExpr> items,
+  static StoreVariable? matchBuilder(FnBuildMixin context,
+      List<MatchItemExpr> items, ExprTempValue temp, Ty? retTy, bool isRet) {
+    StoreVariable? variable;
+
+    if (retTy != null) {
+      if (isRet) {
+        final fnContext = context.getLastFnContext()!;
+        variable = fnContext.sret ?? fnContext.compileRetValue;
+      }
+
+      if (variable == null) {
+        variable = retTy.llty.createAlloca(context, Identifier.none);
+        if (isRet) {
+          context.removeVal(variable);
+        }
+      }
+    }
+
+    _matchBuilder(context, items, temp, variable);
+
+    return variable;
+  }
+
+  static void _matchBuilder(FnBuildMixin context, List<MatchItemExpr> items,
       ExprTempValue temp, StoreVariable? retVariable) {
     final parent = temp.variable;
     if (parent == null) return;
@@ -85,6 +108,12 @@ abstract class MatchBuilder {
     var indexValue = ty.llty.loadIndex(context, parent);
 
     final hasOther = items.any((e) => e.isOther);
+
+    /// 变量是否可用
+    final varUseable = hasOther || items.length == ty.parent.variants.length;
+
+    if (!varUseable) retVariable = null;
+
     var length = items.length;
 
     if (length <= 2) {

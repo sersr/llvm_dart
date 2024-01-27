@@ -86,7 +86,8 @@ mixin FnBuildMixin
   void initFnParamsStart(
       LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
       {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
-    _sret = AbiFn.initFnParams(this, fn, decl, fnty, extra, map: map);
+    final sret = AbiFn.initFnParams(this, fn, decl, fnty, extra, map: map);
+    if (sret != null) _sret = sret;
   }
 
   void initFnParams(
@@ -113,7 +114,7 @@ mixin FnBuildMixin
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
       final fnParam = llvm.LLVMGetParam(fn, index);
-      var realTy = fnty.getRty(this, p);
+      var realTy = fnty.getFieldTy(this, p);
       if (realTy is FnTy) {
         final extra = map[p.ident];
         if (extra != null) {

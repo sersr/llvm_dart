@@ -53,7 +53,7 @@ class AbiFnWinx86_64 implements AbiFn {
       final p = sortFields[i];
       Ty? c;
       if (i < fnParams.length) {
-        c = fn.getRty(context, fnParams[i]);
+        c = fn.getFieldTy(context, fnParams[i]);
       }
       final temp = p.build(context, baseTy: c);
       final v = temp?.variable;
@@ -193,7 +193,7 @@ class AbiFnWinx86_64 implements AbiFn {
     }
 
     for (var p in params) {
-      final realTy = fn.getRty(c, p);
+      final realTy = fn.getFieldTy(c, p);
       LLVMTypeRef ty = cType(realTy);
       list.add(ty);
     }
@@ -230,7 +230,7 @@ class AbiFnWinx86_64 implements AbiFn {
 
     for (var p in fn.fnSign.fnDecl.params) {
       index += 1;
-      final realTy = fn.getRty(c, p);
+      final realTy = fn.getFieldTy(c, p);
       if (realTy is StructTy) {
         final size = realTy.llty.getBytes(c);
         if (size > 16) {
@@ -250,7 +250,7 @@ class AbiFnWinx86_64 implements AbiFn {
 
       for (var p in fn.fnSign.fnDecl.params) {
         index += 1;
-        final realTy = fn.getRty(c, p);
+        final realTy = fn.getFieldTy(c, p);
         final ty = realTy.llty.createDIType(c);
         params.add(ty);
       }
@@ -311,7 +311,7 @@ class AbiFnWinx86_64 implements AbiFn {
       final p = params[i];
 
       final fnParam = llvm.LLVMGetParam(fn, i + index);
-      var realTy = fnty.getRty(context, p);
+      var realTy = fnty.getFieldTy(context, p);
       resolveParam(context, realTy, fnParam, p.ident);
     }
 

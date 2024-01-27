@@ -123,9 +123,18 @@ class ExprStmt extends Stmt {
 
   @override
   void build(FnBuildMixin context, bool isRet) {
+    Ty? baseTy;
+
+    if (isRet) {
+      baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
+      if (baseTy == BuiltInTy.kVoid) {
+        baseTy = null;
+      }
+    }
+
     final temp = switch (expr) {
-      RetExprMixin e => e.build(context, isRet: isRet),
-      var e => e.build(context),
+      RetExprMixin e => e.build(context, baseTy: baseTy, isRet: isRet),
+      var e => e.build(context, baseTy: baseTy),
     };
 
     if (isRet) context.ret(temp?.variable, isLastStmt: true);

@@ -149,8 +149,7 @@ class IfExpr extends Expr with RetExprMixin {
 
   @override
   ExprTempValue? buildRetExpr(FnBuildMixin context, Ty? baseTy, bool isRet) {
-    final v = IfExprBuilder.createIfBlock(
-        ifExpr, context, baseTy ?? _variable?.ty, isRet);
+    final v = IfExprBuilder.createIfBlock(ifExpr, context, baseTy, isRet);
     if (v == null) return null;
     return ExprTempValue(v);
   }
@@ -398,21 +397,20 @@ class RetExpr extends Expr with RetExprMixin {
 
 // struct: CS{ name: "struct" }
 class StructExpr extends Expr {
-  StructExpr(this.ident, this.fields, this.generics);
+  StructExpr(this.ident, this.fields, this.genericInsts);
   final Identifier ident;
   final List<FieldExpr> fields;
-  final List<PathTy> generics;
+  final List<PathTy> genericInsts;
 
   @override
-  StructTy? getTy(StoreLoadMixin context, {void Function()? gen}) {
+  StructTy? getTy(Tys context) {
     var struct = context.getStruct(ident);
 
     if (struct == null) {
       final cty = context.getAliasTy(ident);
-      final t = cty?.getTy(context, generics);
+      final t = cty?.getTy(context, genericInsts);
       if (t is! StructTy) return null;
 
-      gen?.call();
       struct = t;
     }
     return struct;
@@ -420,135 +418,38 @@ class StructExpr extends Expr {
 
   @override
   Expr clone() {
-    return StructExpr(ident, fields.map((e) => e.clone()).toList(), generics);
+    return StructExpr(
+        ident, fields.map((e) => e.clone()).toList(), genericInsts);
   }
 
   @override
   String toString() {
-    return '$ident${generics.str}{${fields.join(',')}}';
+    return '$ident${genericInsts.str}{${fields.join(',')}}';
   }
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    var genericsInst = generics;
-    final struct = getTy(context, gen: () {
-      genericsInst = const [];
-    });
+    var structTy = getTy(context);
 
-    if (struct == null) return null;
-
-    return buildTupeOrStruct(struct, context, fields, genericsInst);
-  }
-
-  static T resolveGeneric<T extends Ty>(NewInst<T> t, Tys context,
-      List<FieldExpr> params, List<PathTy> genericsInst,
-      {List<GenericDef> others = const []}) {
-    final generics = [...t.generics, ...others];
-    var nt = t as T;
-
-    if (genericsInst.isNotEmpty) {
-      return t.newInstWithGenerics(context, genericsInst, generics,
-          extra: t.tys);
+    if (structTy is StructTy && structTy.tys.isEmpty) {
+      if (baseTy is StructTy && structTy.ident == baseTy.ident) {
+        structTy = baseTy;
+      }
     }
 
-    final fields = t.fields;
-    if (t.tys.length < generics.length) {
-      final genMapTy = <Identifier, Ty>{}..addAll(t.tys);
+    if (structTy == null) return null;
 
-      final genList = generics;
-
-      // 从上下文中获取具体类型
-      for (var g in genList) {
-        final tyVal = context.getTy(g.ident);
-        if (tyVal != null) {
-          genMapTy.putIfAbsent(g.ident, () => tyVal);
-        }
-      }
-      final sortFields = alignParam(
-          params, (p) => fields.indexWhere((e) => e.ident == p.ident));
-
-      // x: Arc<Gen<T>> => first fdTy => Arc<Gen<T>>
-      // child fdTy:  Gen<T> => T => real type
-      //
-      // fn hello<T>(y: T);
-      //
-      // hello(y: 1000);
-      // ==> exactTy: i32; fieldTy: T
-      //
-      // fn foo<T>(x: Gen<T>);
-      //
-      // foo(x: Gen<i32> { foo: 1000 } );
-      // ==> exactTy: Gen<i32>; fieldTy: Gen<T>
-      //
-      void visitor(Ty exactTy, PathTy fieldTy) {
-        void checkTy(Ty exactTy, PathTy fieldTy) {
-          if (exactTy case NewInst(tys: var tys, generics: var gBase)) {
-            if (tys.isEmpty) return;
-            assert(gBase.length == exactTy.generics.length, "generic error.");
-
-            for (var i = 0; i < fieldTy.genericInsts.length; i += 1) {
-              final fdIdent = fieldTy.genericInsts[i];
-              final tyg = tys[gBase[i].ident];
-              visitor(tyg!, fdIdent);
-            }
-          }
-        }
-
-        exactTy = fieldTy.kind.unWrapRefTy(exactTy);
-
-        final currentGenField =
-            genList.firstWhereOrNull((e) => e.ident == fieldTy.ident);
-        if (currentGenField != null) {
-          // fn bar<T, X: Bar<T>>(x: X);
-          // 处理泛型内部依赖，X已知晓，处理T
-
-          genMapTy.putIfAbsent(fieldTy.ident, () {
-            for (var g in currentGenField.constraints) {
-              checkTy(exactTy, g);
-            }
-            return exactTy;
-          });
-        }
-
-        if (genMapTy.length == genList.length) {
-          return;
-        }
-
-        // Gen<i32> : Gen<T>
-        // 泛型在下一级中
-        checkTy(exactTy, fieldTy);
-      }
-
-      bool isBuild = context is FnBuildMixin;
-      Ty? gen(Identifier ident) {
-        return genMapTy[ident];
-      }
-
-      for (var i = 0; i < sortFields.length; i += 1) {
-        final f = sortFields[i];
-        final fd = fields[i];
-
-        Ty? ty;
-        if (isBuild) {
-          ty = f.build(context, baseTy: fd.grtOrT(context, gen: gen))?.ty;
-        } else {
-          // fd.grtOrT(context, gen: gen)
-          ty = f.analysis(context as AnalysisContext)?.ty;
-        }
-        if (ty != null) {
-          visitor(ty, fd.rawTy);
-        }
-      }
-
-      nt = t.newInst(genMapTy, context);
+    if (genericInsts.isNotEmpty) {
+      structTy = structTy.newInstWithGenerics(
+          context, genericInsts, structTy.generics);
     }
 
-    return nt;
+    return buildTupeOrStruct(structTy, context, fields);
   }
 
-  static ExprTempValue? buildTupeOrStruct(StructTy struct, FnBuildMixin context,
-      List<FieldExpr> params, List<PathTy> genericsInst) {
-    struct = resolveGeneric(struct, context, params, genericsInst);
+  static ExprTempValue? buildTupeOrStruct(
+      StructTy struct, FnBuildMixin context, List<FieldExpr> params) {
+    struct = struct.resolveGeneric(context, params);
     var fields = struct.fields;
     final sortFields =
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
@@ -558,7 +459,7 @@ class StructExpr extends Expr {
       final sfIndex = sortFields.indexOf(param);
       assert(sfIndex >= 0);
       final fd = fields[sfIndex];
-      param.build(context, baseTy: struct.getRty(context, fd));
+      param.build(context, baseTy: struct.getFieldTy(context, fd));
     }
 
     final value = struct.llty.buildTupeOrStruct(
@@ -574,7 +475,13 @@ class StructExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     var struct = context.getStruct(ident);
     if (struct == null) return null;
-    struct = resolveGeneric(struct, context, fields, generics);
+
+    if (genericInsts.isNotEmpty) {
+      struct =
+          struct.newInstWithGenerics(context, genericInsts, struct.generics);
+    }
+
+    struct = struct.resolveGeneric(context, fields);
 
     final sortFields = alignParam(
         fields, (p) => struct!.fields.indexWhere((e) => e.ident == p.ident));
@@ -847,7 +754,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     final variable = temp?.variable;
     final fn = variable?.ty ?? temp?.ty;
     if (fn is StructTy) {
-      return StructExpr.buildTupeOrStruct(fn, context, params, const []);
+      return StructExpr.buildTupeOrStruct(fn, context, params);
     }
     final builtinFn =
         doBuiltFns(context, fn, temp?.ident ?? Identifier.none, params);
@@ -866,7 +773,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     if (fn == null) return null;
     final fnty = fn.ty;
     if (fnty is StructTy) {
-      final struct = StructExpr.resolveGeneric(fnty, context, params, []);
+      final struct = fnty.resolveGeneric(context, params);
       final sortFields = alignParam(
           params, (p) => struct.fields.indexWhere((e) => e.ident == p.ident));
 
@@ -884,7 +791,7 @@ class FnCallExpr extends Expr with FnCallMixin {
       return context.createVal(BuiltInTy.usize, Identifier.none);
     }
     if (fnty is! Fn) return null;
-    final fnnn = StructExpr.resolveGeneric(fnty, context, params, []);
+    final fnnn = fnty.resolveGeneric(context, params);
     fnnn.analysis(context);
     autoAddChild(fnnn, params, context);
 
@@ -944,14 +851,14 @@ class MethodCallExpr extends Expr with FnCallMixin {
       if (builiin != null) return builiin;
     }
 
-    var implFn = context.getImplFnForStruct(structTy, ident);
+    var implFn = context.getImplFnForTy(structTy, ident);
 
     if (structTy is StructTy) {
       /// 对于类方法(静态方法)，struct 中存在泛型，并且没有指定时，从静态方法中的参数列表
       /// 自动获取
 
       if (implFn is ImplStaticFn) {
-        implFn = StructExpr.resolveGeneric(implFn, context, params, [],
+        implFn = implFn.resolveGeneric(context, params,
             others: structTy.generics) as ImplFnMixin;
         if (structTy.tys.length != structTy.generics.length) {
           final newTys = <Identifier, Ty>{}..addAll(structTy.tys);
@@ -1006,12 +913,12 @@ class MethodCallExpr extends Expr with FnCallMixin {
       if (p != null) return p;
     }
 
-    structTy = StructExpr.resolveGeneric(structTy, context, params, []);
-    var implFn = context.getImplFnForStruct(structTy, ident);
+    structTy = structTy.resolveGeneric(context, params);
+    var implFn = context.getImplFnForTy(structTy, ident);
 
     if (implFn != null) {
-      implFn = StructExpr.resolveGeneric(implFn, context, params, [],
-          others: structTy.generics) as ImplFnMixin;
+      implFn = implFn.resolveGeneric(context, params, others: structTy.generics)
+          as ImplFnMixin;
       if (structTy.tys.length != structTy.generics.length) {
         final newTys = <Identifier, Ty>{};
         for (var g in structTy.generics) {
@@ -1035,12 +942,10 @@ class MethodCallExpr extends Expr with FnCallMixin {
       }
     }
     if (fn == null) return null;
-    fn = StructExpr.resolveGeneric(fn, context, params, []);
+    fn = fn.resolveGeneric(context, params);
 
     fn.analysis(context.getLastFnContext() ?? context);
 
-    // final fnContext = context.getLastFnContext();
-    // fnContext?.addChild(fn.fnSign.fnDecl.ident, fn.variables);
     return context.createVal(fn.getRetTy(context), Identifier.none);
   }
 }
@@ -1439,6 +1344,10 @@ class VariableIdentExpr extends Expr {
       final v = LLVMConstVariable(llvm.LLVMConstNull(ty), baseTy!, ident);
       return ExprTempValue(v);
     }
+    final builtinTy = BuiltInTy.from(ident.src);
+    if (builtinTy != null) {
+      return ExprTempValue.ty(builtinTy, ident);
+    }
 
     final val = context.getVariable(ident);
     if (val != null) {
@@ -1447,18 +1356,18 @@ class VariableIdentExpr extends Expr {
 
     final typeAlias = context.getAliasTy(ident);
     var struct = context.getStruct(ident);
-    var localGenerics = generics;
+    var genericsInsts = generics;
     if (struct == null) {
       struct = typeAlias?.getTy(context, generics);
       if (struct != null) {
-        localGenerics = const [];
+        genericsInsts = const [];
       }
     }
 
     if (struct != null) {
-      if (localGenerics.isNotEmpty) {
+      if (genericsInsts.isNotEmpty) {
         struct =
-            struct.newInstWithGenerics(context, localGenerics, struct.generics);
+            struct.newInstWithGenerics(context, genericsInsts, struct.generics);
       }
       return ExprTempValue.ty(struct, ident);
     }
@@ -1467,13 +1376,13 @@ class VariableIdentExpr extends Expr {
     if (fn == null) {
       fn = typeAlias?.getTy(context, generics);
       if (fn != null) {
-        localGenerics = const [];
+        genericsInsts = const [];
       }
     }
     if (fn != null) {
       var enableBuild = false;
-      if (localGenerics.isNotEmpty) {
-        fn = fn.newInstWithGenerics(context, localGenerics, fn.generics);
+      if (genericsInsts.isNotEmpty) {
+        fn = fn.newInstWithGenerics(context, genericsInsts, fn.generics);
         enableBuild = true;
       }
 
@@ -1651,7 +1560,11 @@ class MatchItemExpr extends BuildMixin {
           final f = enumTy.fields[i];
           final ident = p.pattern;
           if (ident != null) {
-            child.pushVariable(child.createVal(f.grt(child), ident));
+            final ty =
+                enumTy.getFiledTyOrT(child, f) ?? p.analysis(context)?.ty;
+            if (ty != null) {
+              child.pushVariable(child.createVal(ty, ident));
+            }
           }
         }
       }
@@ -1697,11 +1610,13 @@ class MatchItemExpr extends BuildMixin {
     }
 
     final enumVariable = e.build(child);
-    final enumTy = enumVariable?.ty;
+    var item = enumVariable?.ty;
     final val = pattern.variable;
     if (val != null) {
-      if (enumTy is EnumItem) {
-        value = enumTy.llty.load(child, val, params);
+      final valTy = val.ty;
+      if (item is EnumItem && valTy is NewInst) {
+        item = item.newInst(valTy.tys, context);
+        value = item.llty.load(child, val, params);
       }
     }
 
@@ -1720,7 +1635,7 @@ class MatchItemExpr extends BuildMixin {
   }
 }
 
-class MatchExpr extends Expr {
+class MatchExpr extends Expr with RetExprMixin {
   MatchExpr(this.expr, this.items) {
     for (var item in items) {
       item.incLevel();
@@ -1738,38 +1653,57 @@ class MatchExpr extends Expr {
     }
   }
 
-  AnalysisVariable? _variable;
+  List<AnalysisVariable>? _variables;
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     expr.analysis(context);
+    final variables = _variables = [];
     for (var item in items) {
-      _variable ??= item.analysis(context);
+      final val = item.analysis(context);
+      if (val != null) {
+        variables.add(val);
+      }
     }
-    return null;
+    return AnalysisListVariable(variables);
+  }
+
+  Ty? _getTy() {
+    if (_variables == null) return null;
+    Ty? ty;
+
+    for (var val in _variables!) {
+      if (ty == null) {
+        ty = val.ty;
+        continue;
+      }
+      if (ty != val.ty) {
+        return null;
+      }
+    }
+
+    return ty;
   }
 
   @override
-  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
+  ExprTempValue? buildRetExpr(FnBuildMixin context, Ty? baseTy, bool isRet) {
     final temp = expr.build(context);
     if (temp == null) return null;
 
-    StoreVariable? retVariable;
-    final retTy = baseTy ?? _variable?.ty;
-    if (retTy != null && retTy != BuiltInTy.kVoid) {
-      retVariable = retTy.llty.createAlloca(context, Identifier.none);
-    }
+    var ty = baseTy ?? _getTy();
 
-    MatchBuilder.matchBuilder(context, items, temp, retVariable);
+    if (ty == BuiltInTy.kVoid) ty = null;
 
-    if (retVariable == null) return null;
+    final variable = MatchBuilder.matchBuilder(context, items, temp, ty, isRet);
 
-    return ExprTempValue(retVariable);
+    if (variable == null) return null;
+
+    return ExprTempValue(variable);
   }
 
   @override
   Expr clone() {
     return MatchExpr(expr.clone(), items.map((e) => e.clone()).toList())
-      .._variable = _variable;
+      .._variables = _variables;
   }
 
   @override
@@ -2016,7 +1950,7 @@ class ArrayOpExpr extends Expr {
 
     if (ty is StructTy) {
       final elIdent = Identifier.builtIn('elementAt');
-      final implFn = context.getImplFnForStruct(ty, elIdent);
+      final implFn = context.getImplFnForTy(ty, elIdent);
 
       if (implFn != null) {
         return AbiFn.fnCallInternal(context, implFn, ident,

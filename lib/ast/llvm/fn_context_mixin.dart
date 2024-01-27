@@ -34,7 +34,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
     if (fn == null) return null;
     final ty = fn.getRetTy(this);
 
-    return _compileRetValue = LLVMAllocaDelayVariable(this, (value, isProxy) {
+    return _compileRetValue = LLVMAllocaProxyVariable(this, (value, isProxy) {
       if (isProxy) return;
       removeVal(value);
     }, ty, ty.typeOf(this), Identifier.builtIn('compile_ret'));
@@ -84,7 +84,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
     final retValue = islastStmt ? _compileRetValue : compileRetValue;
 
     if (val != null && retValue != null) {
-      if (val is LLVMAllocaDelayVariable && !val.created) {
+      if (val is LLVMAllocaProxyVariable && !val.created) {
         val.initProxy(proxy: retValue);
       } else {
         retValue.store(this, val.load(this));

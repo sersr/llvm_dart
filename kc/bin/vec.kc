@@ -1,19 +1,17 @@
 import "std:allocator.kc"
+import "std:d.kc"
 
 struct Vec<T> {
   data: *T,
-  size: usize,
+  size: *usize,
 }
 
 
 impl Vec<T> {
   static fn new(size: usize) Vec<T> {
     final data = malloc(sizeOf(T) * size);
-    Vec { data, size }
-  }
-
-  fn drop() {
-    free(self.data);
-    self.size = 0;
+    final sizePtr = malloc(sizeOf(usize)) as *usize;
+    *sizePtr = size;
+    Vec { data, sizePtr }
   }
 }

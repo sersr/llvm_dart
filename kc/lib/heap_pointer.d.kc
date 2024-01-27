@@ -55,10 +55,3 @@ com Deref<T> {
 com Clone {
   fn onClone();
 }
-
-
-com Stack {
-  fn addStack();
-  fn removeStack();
-  fn updateStack();
-}

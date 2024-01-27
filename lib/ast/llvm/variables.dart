@@ -70,7 +70,7 @@ abstract class StoreVariable extends Variable {
   void storeVariable(FnBuildMixin c, Variable val, {bool isNew = false}) {
     assert(!_dirty);
 
-    if (val is LLVMAllocaDelayVariable && !val.created) {
+    if (val is LLVMAllocaProxyVariable && !val.created) {
       if (!isNew) ImplStackTy.removeStack(c, this);
       val.initProxy(proxy: this);
       if (!isNew) ImplStackTy.updateStack(c, this);
@@ -122,19 +122,16 @@ class LLVMConstVariable extends Variable {
   }
 }
 
-typedef LoadFn = void Function(LLVMAllocaDelayVariable variable, bool isProxy);
+typedef ProxyFn = void Function(LLVMAllocaProxyVariable variable, bool isProxy);
 
-/// 不会立即分配内存，如立即使用[context.allocator()]
-/// 可以重定向到[_create]返回的[_alloca],[_alloca]作为分配地址
-/// 一般用在复杂结构体中，如结构体内包含其他结构体，在作为字面量初始化时会使用外面
-class LLVMAllocaDelayVariable extends StoreVariable {
-  LLVMAllocaDelayVariable(
-      this._createContext, this._delayLoad, this.ty, this.type, super.ident)
+class LLVMAllocaProxyVariable extends StoreVariable {
+  LLVMAllocaProxyVariable(
+      this._createContext, this._proxyFn, this.ty, this.type, super.ident)
       : _root = null;
-  LLVMAllocaDelayVariable._(this._root, this._createContext, this._delayLoad,
+  LLVMAllocaProxyVariable._(this._root, this._createContext, this._proxyFn,
       this.ty, this.type, super.ident);
 
-  final LoadFn _delayLoad;
+  final ProxyFn _proxyFn;
   @override
   final Ty ty;
 
@@ -153,7 +150,7 @@ class LLVMAllocaDelayVariable extends StoreVariable {
     if (_alloca != null) return _alloca!;
 
     final alloca = _alloca = ty.llty.createAlloca(_createContext, ident).alloca;
-    _delayLoad(this, false);
+    _proxyFn(this, false);
 
     return alloca;
   }
@@ -166,25 +163,25 @@ class LLVMAllocaDelayVariable extends StoreVariable {
     if (result) {
       _alloca =
           proxy?.alloca ?? ty.llty.createAlloca(_createContext, ident).alloca;
-      _delayLoad(this, proxy != null);
+      _proxyFn(this, proxy != null);
     }
 
     return result;
   }
 
-  final LLVMAllocaDelayVariable? _root;
+  final LLVMAllocaProxyVariable? _root;
   @override
-  LLVMAllocaDelayVariable newIdentInternal(Identifier id, bool dirty) {
+  LLVMAllocaProxyVariable newIdentInternal(Identifier id, bool dirty) {
     _dirty = dirty;
-    return LLVMAllocaDelayVariable._(
-        _root ?? this, _createContext, _delayLoad, ty, type, id)
+    return LLVMAllocaProxyVariable._(
+        _root ?? this, _createContext, _proxyFn, ty, type, id)
       .._alloca = _alloca;
   }
 
   @override
   Variable asType(StoreLoadMixin c, Ty ty) {
-    return LLVMAllocaDelayVariable._(
-        _root ?? this, _createContext, _delayLoad, ty, ty.typeOf(c), ident)
+    return LLVMAllocaProxyVariable._(
+        _root ?? this, _createContext, _proxyFn, ty, ty.typeOf(c), ident)
       .._alloca = _alloca;
   }
 }

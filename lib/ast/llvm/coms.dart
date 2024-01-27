@@ -10,14 +10,24 @@ abstract class ImplStackTy {
   static final _addStack = Identifier.builtIn('addStack');
   static final _removeStack = Identifier.builtIn('removeStack');
   static final _updateStack = Identifier.builtIn('updateStack');
+
+  static Variable _getDeref(FnBuildMixin context, Variable variable) {
+    for (;;) {
+      final v = variable.defaultDeref(context, Identifier.none);
+      if (variable == v) break;
+      variable = v;
+    }
+    return variable;
+  }
+
   static void _runStackFn(
       FnBuildMixin context, Variable variable, Identifier fnName,
       {bool Function(LLVMValueRef v)? test}) {
-    variable = variable.defaultDeref(context, Identifier.none);
+    variable = _getDeref(context, variable);
 
     var ty = variable.ty;
 
-    final stackImpl = context.getImplWithIdent(ty, _stackCom);
+    final stackImpl = context.getImplWithCom(ty, _stackCom);
     final fn = stackImpl?.getFnCopy(ty, fnName);
 
     if (fn == null) {
@@ -43,13 +53,6 @@ abstract class ImplStackTy {
     _rec(context, variable, (context, val) {
       _runStackFn(context, val, fnName);
     });
-  }
-
-  static bool isStackCom(FlowMixin context, Variable variable) {
-    variable = variable.defaultDeref(context, Identifier.none);
-
-    var ty = variable.ty;
-    return context.getImplWithIdent(ty, _stackCom) != null;
   }
 
   static void addStack(FnBuildMixin context, Variable variable) {
@@ -91,7 +94,7 @@ abstract class RefDerefCom {
       ty = ty.baseTy;
     }
 
-    final impl = context.getImplWithIdent(ty, com);
+    final impl = context.getImplWithCom(ty, com);
     if (impl == null) return null;
 
     return impl.getFnCopy(ty, fnIdent);
@@ -128,7 +131,7 @@ abstract class Clone {
     variable = variable.defaultDeref(context, Identifier.none);
     var ty = variable.ty;
 
-    final impl = context.getImplWithIdent(ty, _cloneCom);
+    final impl = context.getImplWithCom(ty, _cloneCom);
     final onCloneFn = impl?.getFnCopy(ty, _onCloneIdent);
 
     if (onCloneFn == null) {

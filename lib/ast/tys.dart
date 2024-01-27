@@ -73,7 +73,7 @@ abstract class GlobalContext {
               if (valTy.tys.isNotEmpty) {
                 final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
 
-                final value = LLVMAllocaDelayVariable(context, (value, _) {
+                final value = LLVMAllocaProxyVariable(context, (value, _) {
                   value.store(
                     context,
                     llvm.LLVMConstNull(arr.typeOf(context)),
@@ -257,44 +257,13 @@ mixin Tys<V extends LifeCycleVariable> {
     pushKV(ident, ty, impls);
   }
 
-  final implForStructs = <Ty, List<ImplTy>>{};
-  ImplFnMixin? getImplFnForStruct(Ty structTy, Identifier fnIdent) {
-    final raw = structTy;
-    if (structTy is StructTy) {
-      structTy = structTy.parentOrCurrent;
-    }
-
-    ImplTy? cache;
-    int currentScore = -1;
-
-    var impl = _getImplForStruct(structTy, (impl) {
-      final selfTy = impl.ty!;
-
-      if (!impl.contains(fnIdent)) return false;
-
-      if (raw == selfTy) return true;
-
-      if (raw is! NewInst || selfTy is! NewInst) return false;
-
-      final score = raw.getScore(selfTy);
-
-      if (score == 0) return true;
-
-      if (score != -1 && (currentScore == -1 || score < currentScore)) {
-        currentScore = score;
-        cache = impl;
-      }
-      return false;
-    });
-
-    impl ??= cache;
-
-    return impl?.getFnCopy(raw, fnIdent);
+  final implForTy = <Ty, List<ImplTy>>{};
+  ImplFnMixin? getImplFnForTy(Ty ty, Identifier fnIdent) {
+    return getImplWith(ty, fnIdent: fnIdent)?.getFnCopy(ty, fnIdent);
   }
 
-  ImplTy? _getImplForStruct(Ty structTy, bool Function(ImplTy v)? test) {
-    return getKV(structTy, (c) => c.implForStructs,
-        handler: (c) => c._getImplForStruct(structTy, test), test: test);
+  ImplTy? getImplWithCom(Ty ty, Identifier comIdent) {
+    return getImplWith(ty, comIdent: comIdent);
   }
 
   /// 为泛型实现`Com`时
@@ -306,21 +275,35 @@ mixin Tys<V extends LifeCycleVariable> {
   /// 如果Box<T,S> 中泛型`T`,`S`参数不是具体的类型则根据`score`规则
   ///
   /// `score` >= 0, 返回最接近于 0 的对象
-  ImplTy? getImplWithIdent(Ty structTy, Identifier comIdent) {
-    final raw = structTy;
+  ImplTy? getImplWith(
+    Ty ty, {
+    Identifier? comIdent,
+    List<ComponentTy>? constraintComs, // 约束条件
+    Identifier? fnIdent,
+  }) {
+    assert(comIdent == null || constraintComs == null);
 
-    if (structTy is StructTy) {
-      structTy = structTy.parentOrCurrent;
+    final raw = ty;
+
+    if (ty is StructTy) {
+      ty = ty.parentOrCurrent;
     }
 
     ImplTy? cache;
-    int currentScore = -1;
-    final result = _getImplWithIdent(structTy, (impl) {
+    int cacheScore = -1;
+    final result = _getImplForStruct(ty, (impl) {
       final selfTy = impl.ty!;
-      final sameCom = impl.com?.ident == comIdent;
 
-      if (sameCom && raw == selfTy) return true;
-      if (!sameCom) return false;
+      if (fnIdent != null && !impl.contains(fnIdent)) return false;
+
+      // 检查 `com`
+      final sameComOrNull = impl.comTy?.ident == comIdent ||
+          constraintComs == null ||
+          constraintComs.contains(impl.comTy);
+
+      if (!sameComOrNull) return false;
+
+      if (sameComOrNull && raw == selfTy) return true;
 
       if (raw is! NewInst || selfTy is! NewInst) return false;
 
@@ -328,8 +311,8 @@ mixin Tys<V extends LifeCycleVariable> {
 
       if (score == 0) return true;
 
-      if (score != -1 && (currentScore == -1 || score < currentScore)) {
-        currentScore = score;
+      if (score != -1 && (cacheScore == -1 || score < cacheScore)) {
+        cacheScore = score;
         cache = impl;
       }
 
@@ -339,17 +322,16 @@ mixin Tys<V extends LifeCycleVariable> {
     return result ?? cache;
   }
 
-  ImplTy? _getImplWithIdent(Ty structTy, bool Function(ImplTy v) test) {
-    return getKV(structTy, (c) => c.implForStructs, handler: (c) {
-      return c._getImplWithIdent(structTy, test);
-    }, test: test);
+  ImplTy? _getImplForStruct(Ty structTy, bool Function(ImplTy v)? test) {
+    return getKV(structTy, (c) => c.implForTy,
+        handler: (c) => c._getImplForStruct(structTy, test), test: test);
   }
 
   void pushImplForStruct(Ty structTy, ImplTy ty) {
     if (structTy is StructTy) {
       structTy = structTy.parentOrCurrent;
     }
-    pushKV(structTy, ty, implForStructs);
+    pushKV(structTy, ty, implForTy);
   }
 
   final cTys = <Identifier, List<TypeAliasTy>>{};
@@ -423,10 +405,6 @@ mixin Tys<V extends LifeCycleVariable> {
         getEnum(i) ??
         getAliasTy(i) ??
         getDyTy(i);
-  }
-
-  Ty? getTyIgnoreImpl(Identifier i) {
-    return getStruct(i) ?? getFn(i) ?? getEnum(i) ?? getAliasTy(i);
   }
 
   void errorExpr(UnknownExpr unknownExpr) {}

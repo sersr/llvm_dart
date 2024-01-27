@@ -242,7 +242,7 @@ class LLVMFnType extends LLVMType {
     }
 
     for (var p in params) {
-      final realTy = fn.getRty(c, p);
+      final realTy = fn.getFieldTy(c, p);
       LLVMTypeRef ty;
       if (p.isRef) {
         ty = realTy.typeOf(c);
@@ -330,7 +330,7 @@ class LLVMFnType extends LLVMType {
       params.add(retTy.llty.createDIType(c));
 
       for (var p in fn.fnSign.fnDecl.params) {
-        final realTy = fn.getRty(c, p);
+        final realTy = fn.getFieldTy(c, p);
         final ty = realTy.llty.createDIType(c);
         params.add(ty);
       }
@@ -397,7 +397,7 @@ class LLVMStructType extends LLVMType {
     assert(false, "used by enum.");
   }
 
-  LLVMAllocaDelayVariable buildTupeOrStruct(
+  LLVMAllocaProxyVariable buildTupeOrStruct(
       FnBuildMixin context, List<FieldExpr> params,
       {List<FieldExpr>? sFields}) {
     final structType = ty.typeOf(context);
@@ -405,7 +405,7 @@ class LLVMStructType extends LLVMType {
     final sortFields = sFields ??
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
-    LLVMValueRef create(LLVMAllocaDelayVariable value, bool isProxy) {
+    LLVMValueRef create(LLVMAllocaProxyVariable value, bool isProxy) {
       final resetEnumIndex = ty is EnumItem;
 
       context.diSetCurrentLoc(value.ident.offset);
@@ -432,7 +432,7 @@ class LLVMStructType extends LLVMType {
       return value.alloca;
     }
 
-    return LLVMAllocaDelayVariable(
+    return LLVMAllocaProxyVariable(
         context, create, ty, structType, Identifier.none);
   }
 
@@ -846,16 +846,24 @@ class LLVMEnumItemType extends LLVMStructType {
 
     final value = parent.getBaseValue(c);
     final keyList = _size!.idents;
+    final keys = map.keys.toList();
 
-    for (var p in params) {
-      final ident = p.pattern;
+    final enumIsNamed = ty.fields.every((e) => e.ident.isValid);
+
+    for (var i = 0; i < params.length; i++) {
+      final ident = params[i].pattern;
+
       if (ident == null) {
-        Log.e('$p error.');
+        Log.e('${params[i]} error.');
         continue;
       }
 
-      final fIndex = keyList.indexOf(ident);
-      if (fIndex == -1) continue;
+      int fIndex;
+      if (enumIsNamed) {
+        fIndex = keyList.indexOf(ident);
+      } else {
+        fIndex = keys.indexOf(ty.fields[i]);
+      }
 
       final fd = map.keys.elementAt(fIndex);
       final index = map[fd]!.index;

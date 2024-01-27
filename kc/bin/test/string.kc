@@ -6,6 +6,7 @@ type char = u8;
 struct StringData {
   data: *char,
   size: usize,
+  count: usize,
 }
 
 impl StringData {
@@ -38,7 +39,7 @@ impl String {
 
     ptr.data = m_ptr;
     ptr.size = size;
-
+    ptr.count = 1;
     return String{ ptr: ptr };
   }
 
@@ -59,11 +60,22 @@ impl String {
     printf("size: %d\n", self.ptr.size);
     printf("hx: %d\n", (hx).ptr.size);
   }
+}
 
-  fn drop() {
-    free(self.ptr.data);
-    free(self.ptr);
-    self.ptr = 0;
+impl Stack for String {
+  fn addStack() {
+    self.ptr.count += 1;
+    printf("add    count: %d\n", self.ptr.count);
+  }
+
+  fn removeStack() {
+    self.ptr.count -= 1;
+    printf("remove count: %d\n", self.ptr.count);
+    if self.ptr.count <= 0 {
+      free(self.ptr.data);
+      free(self.ptr);
+      self.ptr = 0;
+    }
   }
 }
 

@@ -37,7 +37,7 @@ abstract class IfExprBuilder {
         if (val == null) {
           // error
         } else {
-          if (val is LLVMAllocaDelayVariable && !val.created) {
+          if (val is LLVMAllocaProxyVariable && !val.created) {
             val.initProxy(proxy: variable);
           } else {
             variable.store(context, val.load(context));

@@ -1454,24 +1454,13 @@ class Parser {
 
     eatLfIfNeed(it);
 
-    final fields = <FieldDef>[];
+    var fields = <FieldDef>[];
     it.moveNext(); // {
     if (getToken(it).kind == TokenKind.openBrace) {
       it = it.current.child.tokenIt;
-      loop(it, () {
-        final k = getToken(it).kind;
-        if (k == TokenKind.ident) {
-          final name = getIdent(it);
-
-          eatLfIfNeed(it);
-          it.moveNext(); // :
-
-          final ty = parsePathTy(it) ?? UnknownTy(ident);
-          fields.add(FieldDef(name, ty));
-        }
-        return false;
-      });
+      fields = parseFieldDefList(it);
     }
+
     return StructTy(ident, fields, types);
   }
 
@@ -1480,11 +1469,11 @@ class Parser {
 
     if (!it.moveNext()) return null;
     if (getToken(it).kind != TokenKind.ident) return null;
-
     final ident = getIdent(it);
 
+    final types = parseGenerics(it);
+
     it.moveNext();
-    eatLfIfNeed(it);
 
     it = it.current.child.tokenIt;
 
@@ -1495,18 +1484,17 @@ class Parser {
       // e.g. Some
       if (t.kind == TokenKind.ident) {
         final item = parseEnumItem(it);
-
         variants.add(item);
       }
       return false;
     });
 
-    return EnumTy(ident, variants);
+    return EnumTy(ident, variants, types);
   }
 
   EnumItem parseEnumItem(TokenIterator it) {
     final ident = getIdent(it);
-    eatLfIfNeed(it);
+
     final types = parseGenerics(it);
     eatLfIfNeed(it);
     it.moveNext(); // (
@@ -1518,35 +1506,43 @@ class Parser {
 
     it = it.current.child.tokenIt;
 
+    return EnumItem(ident, parseFieldDefList(it), types);
+  }
+
+  List<FieldDef> parseFieldDefList(TokenIterator it) {
     final fields = <FieldDef>[];
 
     loop(it, () {
-      final t = getToken(it);
-      if (t.kind == TokenKind.lf) return false;
-      final state = it.cursor;
-      var ident = Identifier.none;
-      if (t.kind == TokenKind.ident) {
-        ident = getIdent(it);
-        eatLfIfNeed(it);
-        if (it.moveNext()) {
-          if (getToken(it).kind == TokenKind.colon) {
-            it.moveNext();
+      final k = getToken(it).kind;
+      if (k == TokenKind.ident) {
+        final name = getIdent(it);
+
+        final state = it.cursor;
+        it.moveBack();
+        final nameOrTy = parsePathTy(it);
+
+        if (nameOrTy != null) {
+          final hasNext = it.moveNext();
+          eatLfIfNeed(it, back: false);
+          if (!hasNext || getToken(it).kind != TokenKind.colon) {
+            fields.add(FieldDef(Identifier.none, nameOrTy));
+            return false;
           }
+
+          state.restore();
         }
-      }
-      it.moveBack();
-      final ty = parsePathTy(it);
-      if (ty != null) {
-        final f = FieldDef(ident, ty);
-        fields.add(f);
-      } else {
-        state.restore();
+
+        it.moveNext();
+
+        final ty = parsePathTy(it) ?? UnknownTy(getIdent(it));
+        fields.add(FieldDef(name, ty));
+        return false;
       }
 
       return false;
     });
 
-    return EnumItem(ident, fields, types);
+    return fields;
   }
 
   /// 跳过中间的换行符

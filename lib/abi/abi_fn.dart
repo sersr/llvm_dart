@@ -70,7 +70,7 @@ abstract interface class AbiFn {
       return AbiFn.get(context.abi).fnCall(context, fn, ident, params);
     }
 
-    fn = StructExpr.resolveGeneric(fn, context, params, []);
+    fn = fn.resolveGeneric(context, params);
 
     final fnParams = fn.fnSign.fnDecl.params;
     final sortFields = alignParam(
@@ -84,7 +84,7 @@ abstract interface class AbiFn {
         final p = sortFields[i];
         Ty? baseTy;
         if (i < fnParams.length) {
-          baseTy = fn.getRty(context, fnParams[i]);
+          baseTy = fn.getFieldTy(context, fnParams[i]);
         }
         baseTy ??= p.getTy(context);
         final temp = p.build(context, baseTy: baseTy);
@@ -116,7 +116,7 @@ abstract interface class AbiFn {
       final p = sortFields[i];
       Ty? c;
       if (i < fnParams.length) {
-        c = fn.getRty(context, fnParams[i]);
+        c = fn.getFieldTy(context, fnParams[i]);
       }
       final temp = p.build(context, baseTy: c);
       final v = temp?.variable;
@@ -174,7 +174,7 @@ abstract interface class AbiFn {
     }
 
     final v = switch (retTy) {
-      StructTy() => LLVMAllocaDelayVariable(context, (value, _) {
+      StructTy() => LLVMAllocaProxyVariable(context, (value, _) {
           value.store(context, ret);
         }, retTy, retTy.typeOf(context), Identifier.builtIn('_ret')),
       _ => LLVMConstVariable(ret, retTy, Identifier.builtIn('_ret'))

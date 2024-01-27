@@ -65,7 +65,7 @@ mixin SretMixin on BuildContext {
 
     final ty = fnSret.ty;
 
-    if (variable is LLVMAllocaDelayVariable && !variable.created) {
+    if (variable is LLVMAllocaProxyVariable && !variable.created) {
       variable.initProxy(proxy: fnSret);
     } else {
       fnSret.store(this, variable.load(this));
