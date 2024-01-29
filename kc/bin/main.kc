@@ -100,11 +100,3 @@ impl i32 {
     let x = self;
   }
 }
-
-type String;
-
-impl String {
-  static fn new() String {
-
-  }
-}

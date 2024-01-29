@@ -720,13 +720,6 @@ mixin FnCallMixin {
   }
 }
 
-extension GenericsPathTy on List<PathTy> {
-  String get str {
-    if (isEmpty) return '';
-    return '<${join(',')}>';
-  }
-}
-
 class FnCallExpr extends Expr with FnCallMixin {
   FnCallExpr(this.expr, this.params);
   final Expr expr;

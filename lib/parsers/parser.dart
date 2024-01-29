@@ -109,6 +109,8 @@ class Parser {
       }
     }
 
+    if (base == null) return null;
+
     return TypeAliasTy(ident, generics, base);
   }
 
@@ -142,6 +144,8 @@ class Parser {
 
   ImplTy? parseImpl(TokenIterator it) {
     eatLfIfNeed(it);
+    final types = parseGenerics(it);
+
     PathTy? com = parsePathTy(it);
     PathTy? label;
     PathTy? ty;
@@ -201,7 +205,7 @@ class Parser {
 
       if (ty == null) return null;
 
-      return ImplTy(com, ty, label, fns, staticFns);
+      return ImplTy(types, com, ty, label, fns, staticFns);
     }
 
     return null;
@@ -211,6 +215,8 @@ class Parser {
     eatLfIfNeed(it);
     if (!it.moveNext()) return null;
     final ident = getIdent(it);
+
+    final types = parseGenerics(it);
 
     eatLfIfNeed(it);
 
@@ -233,7 +239,7 @@ class Parser {
         return false;
       });
 
-      return ComponentTy(ident, fns);
+      return ComponentTy(ident, fns, types);
     }
 
     return null;

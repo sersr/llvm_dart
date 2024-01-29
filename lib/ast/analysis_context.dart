@@ -155,11 +155,10 @@ class AnalysisContext with Tys<AnalysisVariable> {
 
   /// override: Tys
   @override
-  VA? getKVImpl<K, VA>(
-      K k, Map<K, List<VA>> Function(Tys<LifeCycleVariable> c) map,
-      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
-    return super.getKVImpl(k, map, handler: handler, test: test) ??
-        parent?.getKVImpl(k, map, handler: handler, test: test);
+  VA? getKVImpl<VA>(List<VA>? Function(Tys<LifeCycleVariable> c) map,
+      {bool Function(VA v)? test}) {
+    return super.getKVImpl(map, test: test) ??
+        parent?.getKVImpl(map, test: test);
   }
 
   String tree() {

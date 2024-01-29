@@ -57,9 +57,8 @@ abstract class ManagerBase extends GlobalContext {
   }
 
   @override
-  VA? getKVImpl<K, VA, T>(
-      K k, Map<K, List<VA>> Function(Tys<LifeCycleVariable> c) map,
-      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
+  VA? getKVImpl<VA, T>(List<VA>? Function(Tys<LifeCycleVariable> c) map,
+      {bool Function(VA v)? test}) {
     throw UnimplementedError();
   }
 
@@ -138,13 +137,11 @@ mixin BuildContextMixin on ManagerBase {
   }
 
   @override
-  VA? getKVImpl<K, VA, T>(
-      K k, Map<K, List<VA>> Function(Tys<LifeCycleVariable> c) map,
-      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
+  VA? getKVImpl<VA, T>(List<VA>? Function(Tys<LifeCycleVariable> c) map,
+      {bool Function(VA v)? test}) {
     return switch (T) {
-      Variable =>
-        rootBuildContext.getKVImpl<K, VA>(k, map, handler: handler, test: test),
-      _ => super.getKVImpl<K, VA, T>(k, map, handler: handler, test: test),
+      Variable => rootBuildContext.getKVImpl<VA>(map, test: test),
+      _ => super.getKVImpl<VA, T>(map, test: test),
     };
   }
 
@@ -226,13 +223,11 @@ mixin AnalysisContextMixin on ManagerBase {
   }
 
   @override
-  VA? getKVImpl<K, VA, T>(
-      K k, Map<K, List<VA>> Function(Tys<LifeCycleVariable> c) map,
-      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
+  VA? getKVImpl<VA, T>(List<VA>? Function(Tys<LifeCycleVariable> c) map,
+      {bool Function(VA v)? test}) {
     return switch (T) {
-      AnalysisVariable =>
-        rootAnalysis.getKVImpl<K, VA>(k, map, handler: handler, test: test),
-      _ => super.getKVImpl<K, VA, T>(k, map, handler: handler, test: test),
+      AnalysisVariable => rootAnalysis.getKVImpl<VA>(map, test: test),
+      _ => super.getKVImpl<VA, T>(map, test: test),
     };
   }
 

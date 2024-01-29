@@ -168,22 +168,11 @@ class BuildContextImpl extends BuildContext
     }
   }
 
-  /// override: Tys
   @override
-  void pushAllTy(Iterable<Ty> all) {
-    for (var item in all) {
-      assert(item.currentContext == null);
-      item.currentContext = this;
-      item.build();
-    }
-  }
-
-  @override
-  VA? getKVImpl<K, VA>(
-      K k, Map<K, List<VA>> Function(Tys<LifeCycleVariable> c) map,
-      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
-    return super.getKVImpl(k, map, handler: handler, test: test) ??
-        parent?.getKVImpl(k, map, handler: handler, test: test);
+  VA? getKVImpl<VA>(List<VA>? Function(Tys<LifeCycleVariable> c) map,
+      {bool Function(VA v)? test}) {
+    return super.getKVImpl(map, test: test) ??
+        parent?.getKVImpl(map, test: test);
   }
 
   @override

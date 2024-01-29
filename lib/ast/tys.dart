@@ -46,8 +46,8 @@ typedef RunImport<T> = T Function(T Function());
 abstract class GlobalContext {
   Tys import(Tys current, ImportPath path);
   V? getVariable<V>(Identifier ident);
-  VA? getKVImpl<K, VA, T>(K k, Map<K, List<VA>> Function(Tys c) map,
-      {ImportKV<VA>? handler, bool Function(VA v)? test});
+  VA? getKVImpl<VA, T>(List<VA>? Function(Tys c) map,
+      {bool Function(VA v)? test});
 
   ExprTempValue? arrayBuiltin(FnBuildMixin context, Identifier ident,
       String fnName, Variable? val, Ty valTy, List<FieldExpr> params) {
@@ -97,7 +97,7 @@ mixin Tys<V extends LifeCycleVariable> {
   String get currentPath;
   GlobalContext get global;
 
-  final imports = <ImportPath, Tys>{};
+  final _imports = <ImportPath, Tys>{};
 
   R? runImport<R>(R Function() body) {
     if (_runImport) return null;
@@ -105,9 +105,9 @@ mixin Tys<V extends LifeCycleVariable> {
   }
 
   void pushImport(ImportPath path, {Identifier? name}) {
-    if (!imports.containsKey(path)) {
+    if (!_imports.containsKey(path)) {
       final im = global.import(this, path);
-      imports[path] = im;
+      _imports[path] = im;
       initImportContext(im);
     }
   }
@@ -146,7 +146,7 @@ mixin Tys<V extends LifeCycleVariable> {
     }
 
     final v = runImport(() {
-      for (var imp in imports.values) {
+      for (var imp in _imports.values) {
         final v = imp.getVariable(ident);
         if (v != null) {
           v.updateLifeCycle(ident);
@@ -176,88 +176,53 @@ mixin Tys<V extends LifeCycleVariable> {
     }
   }
 
-  bool _contain(Iterable<List<Ty>> i, Ty ty) {
-    return i.any((element) => element.contains(ty));
-  }
-
-  bool contains(Ty ty) {
-    var result = _contain(structs.values, ty);
-    if (!result) {
-      result = _contain(enums.values, ty);
-    }
-    if (!result) {
-      result = _contain(impls.values, ty);
-    }
-    if (!result) {
-      result = _contain(components.values, ty);
-    }
-
-    return result;
-  }
-
   // 当前范围内可获取的 struct
-  final structs = <Identifier, List<StructTy>>{};
+  final _structs = <Identifier, List<StructTy>>{};
   StructTy? getStruct(Identifier ident) {
-    return getKV(ident, (c) => c.structs, handler: (c) => c.getStruct(ident));
+    return getKV((c) => c._structs[ident]);
   }
 
   void pushStruct(Identifier ident, StructTy ty) {
-    pushKV(ident, ty, structs);
+    pushKV(ident, ty, _structs);
   }
 
-  final enums = <Identifier, List<EnumTy>>{};
+  final _enums = <Identifier, List<EnumTy>>{};
   EnumTy? getEnum(Identifier ident) {
-    return getKV(ident, (c) => c.enums, handler: (c) => c.getEnum(ident));
+    return getKV((c) => c._enums[ident]);
   }
 
   void pushEnum(Identifier ident, EnumTy ty) {
-    pushKV(ident, ty, enums);
+    pushKV(ident, ty, _enums);
   }
 
   final fns = <Identifier, List<Fn>>{};
   Fn? getFn(Identifier ident) {
-    return getKV(ident, (c) => c.fns, handler: (c) {
-      return c.getFn(ident);
-    });
+    return getKV((c) => c.fns[ident]);
   }
 
   void pushFn(Identifier ident, Fn fn) {
     pushKV(ident, fn, fns);
   }
 
-  final builtinFns = <Identifier, List<BuiltinFn>>{};
+  final _builtinFns = <Identifier, List<BuiltinFn>>{};
   BuiltinFn? getBuiltinFn(Identifier ident) {
-    return getKV(ident, (c) => c.builtinFns, handler: (c) {
-      return c.getBuiltinFn(ident);
-    });
+    return getKV((c) => c._builtinFns[ident]);
   }
 
   void pushBuiltinFn(Identifier ident, BuiltinFn fn) {
-    pushKV(ident, fn, builtinFns);
+    pushKV(ident, fn, _builtinFns);
   }
 
-  final components = <Identifier, List<ComponentTy>>{};
+  final _components = <Identifier, List<ComponentTy>>{};
   ComponentTy? getComponent(Identifier ident) {
-    return getKV(ident, (c) => c.components,
-        handler: (c) => c.getComponent(ident));
+    return getKV((c) => c._components[ident]);
   }
 
   void pushComponent(Identifier ident, ComponentTy com) {
-    pushKV(ident, com, components);
+    pushKV(ident, com, _components);
   }
 
-  final impls = <Identifier, List<ImplTy>>{};
-  ImplTy? getImpl(Identifier ident) {
-    return getKV(ident, (c) => c.impls, handler: (c) {
-      return c.getImpl(ident);
-    });
-  }
-
-  void pushImpl(Identifier ident, ImplTy ty) {
-    pushKV(ident, ty, impls);
-  }
-
-  final implForTy = <Ty, List<ImplTy>>{};
+  final _implForTy = <Ty, List<ImplTy>>{};
   ImplFnMixin? getImplFnForTy(Ty ty, Identifier fnIdent) {
     return getImplWith(ty, fnIdent: fnIdent)?.getFnCopy(ty, fnIdent);
   }
@@ -274,76 +239,89 @@ mixin Tys<V extends LifeCycleVariable> {
   ///
   /// 如果Box<T,S> 中泛型`T`,`S`参数不是具体的类型则根据`score`规则
   ///
-  /// `score` >= 0, 返回最接近于 0 的对象
-  ImplTy? getImplWith(
-    Ty ty, {
-    Identifier? comIdent,
-    List<ComponentTy>? constraintComs, // 约束条件
-    Identifier? fnIdent,
-  }) {
-    assert(comIdent == null || constraintComs == null);
-
+  /// `score` >= 0, 返回最大值
+  ImplTy? getImplWith(Ty ty,
+      {Identifier? comIdent, Ty? comTy, Identifier? fnIdent}) {
+    assert(comIdent == null || comTy == null || fnIdent != null);
     final raw = ty;
 
-    if (ty is StructTy) {
+    if (ty is NewInst) {
       ty = ty.parentOrCurrent;
     }
 
     ImplTy? cache;
     int cacheScore = -1;
-    final result = _getImplForStruct(ty, (impl) {
-      final selfTy = impl.ty!;
 
+    bool test(ImplTy impl) {
       if (fnIdent != null && !impl.contains(fnIdent)) return false;
 
       // 检查 `com`
-      final sameComOrNull = impl.comTy?.ident == comIdent ||
-          constraintComs == null ||
-          constraintComs.contains(impl.comTy);
+      if (comIdent != null && impl.comTy?.ident != comIdent) return false;
 
-      if (!sameComOrNull) return false;
+      final tyImpl = impl.compareStruct(this, raw, comTy);
 
-      if (sameComOrNull && raw == selfTy) return true;
+      if (tyImpl != null) {
+        final baseTy = impl.parentOrCurrent.ty;
+        if (baseTy != null && baseTy is! NewInst) {
+          cache = tyImpl;
+          return true;
+        }
 
-      if (raw is! NewInst || selfTy is! NewInst) return false;
+        var score = 0;
 
-      final score = raw.getScore(selfTy);
+        if (baseTy is NewInst) {
+          assert(raw is NewInst);
+          score = baseTy.tys.length;
 
-      if (score == 0) return true;
+          final maxScore = (raw as NewInst).tys.length;
+          if (score == maxScore) {
+            cache = tyImpl;
+            return true;
+          }
+        }
 
-      if (score != -1 && (cacheScore == -1 || score < cacheScore)) {
-        cacheScore = score;
-        cache = impl;
+        if (score > cacheScore) {
+          cacheScore = score;
+          cache = tyImpl;
+        }
       }
 
       return false;
-    });
+    }
 
-    return result ?? cache;
-  }
+    /// for ty 可识别
+    getKV((c) => c._implForTy[ty], test: test);
+    if (cache != null) return cache;
 
-  ImplTy? _getImplForStruct(Ty structTy, bool Function(ImplTy v)? test) {
-    return getKV(structTy, (c) => c.implForTy,
-        handler: (c) => c._getImplForStruct(structTy, test), test: test);
+    // for ty 无法识别的情况
+    getKV((c) => c._implTys, test: test);
+
+    return cache;
   }
 
   void pushImplForStruct(Ty structTy, ImplTy ty) {
-    if (structTy is StructTy) {
+    if (structTy is NewInst) {
       structTy = structTy.parentOrCurrent;
     }
-    pushKV(structTy, ty, implForTy);
+    pushKV(structTy, ty, _implForTy);
   }
 
-  final cTys = <Identifier, List<TypeAliasTy>>{};
+  final _implTys = <ImplTy>[];
+  void pushImplTy(ImplTy ty) {
+    ty = ty.parentOrCurrent;
+    if (!_implTys.contains(ty)) {
+      _implTys.add(ty);
+    }
+  }
+
+  final _aliasTys = <Identifier, List<TypeAliasTy>>{};
 
   TypeAliasTy? getAliasTy(Identifier ident) {
-    return getKV(ident, (c) => c.cTys, handler: (c) {
-      return c.getAliasTy(ident);
-    });
+    return getKV((c) => c._aliasTys[ident]);
   }
 
   void pushAliasTy(Identifier ident, TypeAliasTy ty) {
-    pushKV(ident, ty, cTys);
+    pushKV(ident, ty, _aliasTys);
   }
 
   final _dyTys = <Identifier, List<Ty>>{};
@@ -354,9 +332,7 @@ mixin Tys<V extends LifeCycleVariable> {
   ///
   /// 一般是函数，结构体泛型的具体类型
   Ty? getDyTy(Identifier ident) {
-    return getKV(ident, (c) => c._dyTys, handler: (c) {
-      return c.getAliasTy(ident);
-    });
+    return getKV((c) => c._dyTys[ident]);
   }
 
   void pushDyTy(Identifier ident, Ty ty) {
@@ -369,83 +345,65 @@ mixin Tys<V extends LifeCycleVariable> {
     }
   }
 
-  void pushAllTy(Iterable<Ty> all) {
-    final impls = all.whereType<ImplTy>();
-    for (var ty in all) {
-      if (ty is StructTy) {
-        pushStruct(ty.ident, ty);
-      } else if (ty is Fn) {
-        pushFn(ty.fnSign.fnDecl.ident, ty);
-      } else if (ty is EnumTy) {
-        pushEnum(ty.ident, ty);
-      } else if (ty is ComponentTy) {
-        pushComponent(ty.ident, ty);
-      } else if (ty is ImplTy) {
-        pushImpl(ty.struct.ident, ty);
-      } else if (ty is TypeAliasTy) {
-        pushAliasTy(ty.ident, ty);
-      } else {
-        print('unknown ty {${ty.runtimeType}}');
-      }
-    }
-    for (var impl in impls) {
-      final struct = impl.struct.grtOrT(this);
-      if (struct != null) {
-        pushImplForStruct(struct, impl);
-        impl.initStructFns(this);
-      }
-    }
-  }
-
   Ty? getTy(Identifier i) {
     return getStruct(i) ??
-        getComponent(i) ??
-        getImpl(i) ??
+        getAliasTy(i) ??
         getFn(i) ??
         getEnum(i) ??
+        getDyTy(i) ??
+        getComponent(i);
+  }
+
+  Ty? getTyIgnoreImpl(Identifier i) {
+    return getStruct(i) ??
         getAliasTy(i) ??
-        getDyTy(i);
+        getFn(i) ??
+        getEnum(i) ??
+        getDyTy(i) ??
+        getComponent(i);
   }
 
   void errorExpr(UnknownExpr unknownExpr) {}
 
-  VA? getKV<K, VA>(K k, Map<K, List<VA>> Function(Tys c) map,
-      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
-    return getKVImpl(k, map, handler: handler, test: test) ??
-        global.getKVImpl<K, VA, V>(k, map, handler: handler, test: test);
+  VA? getKV<VA>(List<VA>? Function(Tys c) map, {bool Function(VA v)? test}) {
+    return getKVImpl(map, test: test) ??
+        global.getKVImpl<VA, V>(map, test: test);
   }
 
-  VA? getKVImpl<K, VA>(K k, Map<K, List<VA>> Function(Tys c) map,
-      {ImportKV<VA>? handler, bool Function(VA v)? test}) {
-    final list = map(this)[k];
+  VA? getKVImpl<VA>(List<VA>? Function(Tys c) map,
+      {bool Function(VA v)? test}) {
+    final list = map(this);
     final hasTest = test != null;
 
-    if (list != null) {
-      if (!hasTest) return list.last;
+    VA? cache;
+    void getItem(List<VA> list) {
+      if (!hasTest) {
+        cache = list.last;
+        return;
+      }
+
       for (var i = list.length - 1; i >= 0; i--) {
         var item = list[i];
         if (!test(item)) continue;
 
-        return item;
+        cache = item;
+        return;
       }
     }
-    if (handler != null) {
-      final v = runImport(() {
-        for (var imp in imports.values) {
-          final v = handler(imp);
-          if (v != null) {
-            if (hasTest && !test(v)) continue;
 
-            return v;
-          }
+    if (list != null) getItem(list);
+
+    if (cache == null) {
+      runImport(() {
+        for (var imp in _imports.values) {
+          final list = map(imp);
+          if (list == null) continue;
+          getItem(list);
         }
-        return null;
       });
-      if (v != null) {
-        return v;
-      }
     }
-    return null;
+
+    return cache;
   }
 
   bool pushKV<K, VA>(K k, VA v, Map<K, List<VA>> map) {

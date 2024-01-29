@@ -2,14 +2,18 @@
 import "std:d.kc";
 
 fn main() i32 {
-  let option = Some(10, 11);
+  // let option = Some(10, 11);
 
-  match option {
-    Some(x: i32, y: i32) => {
-      printf("x: %d, y: %d\n", x, y);
-    }
-  }
+  // match option {
+  //   Some(x: i32, y: i32) => {
+  //     printf("x: %d, y: %d\n", x, y);
+  //   }
+  // }
 
+  let hex = Hxe {x: 200, y: 010 };
+
+  hex.hello();
+  hex.x.hxe();
   0;
 }
 
@@ -20,4 +24,38 @@ struct Box {
 enum Option<T,S> {
   Some(T,S),
   None(),
+}
+
+com Dd<T> {
+
+}
+
+com Sec<T> {
+  fn hxe();
+}
+
+
+struct Hxe<T,S> {
+  y: T,
+  x: S,
+}
+type OptionAlias<W> = Hxe<W,W>;
+
+impl<T> Sec<T> for T {
+  fn hxe() {
+    printf("xxxx %d\n", self);
+  }
+}
+
+impl<T, S:Sec<T>> Hxe<S,i32> {
+  fn hello() {
+    printf("hello\n");
+    self.y.hxe();
+  }
+}
+
+impl<T> Hxe<T,T> {
+  fn hello() {
+    printf("T,T\n");
+  }
 }
