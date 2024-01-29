@@ -354,15 +354,6 @@ mixin Tys<V extends LifeCycleVariable> {
         getComponent(i);
   }
 
-  Ty? getTyIgnoreImpl(Identifier i) {
-    return getStruct(i) ??
-        getAliasTy(i) ??
-        getFn(i) ??
-        getEnum(i) ??
-        getDyTy(i) ??
-        getComponent(i);
-  }
-
   void errorExpr(UnknownExpr unknownExpr) {}
 
   VA? getKV<VA>(List<VA>? Function(Tys c) map, {bool Function(VA v)? test}) {
