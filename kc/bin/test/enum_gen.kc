@@ -13,6 +13,7 @@ fn main() i32 {
   let hex = Hxe {x: 200, y: 010 };
 
   hex.hello();
+  hex.y.hxe();
   hex.x.hxe();
   0;
 }
@@ -41,16 +42,25 @@ struct Hxe<T,S> {
 }
 type OptionAlias<W> = Hxe<W,W>;
 
+// 类型明确比泛型有更高的优先级
+impl i32 {
+  fn hxe() {
+    printf("impl i32: %d\n", self);
+  }
+}
+
 impl<T> Sec<T> for T {
   fn hxe() {
     printf("xxxx %d\n", self);
   }
 }
 
+
 impl<T, S:Sec<T>> Hxe<S,i32> {
   fn hello() {
     printf("hello\n");
-    self.y.hxe();
+    self.y.hxe(); // call impl<T> Sec<T> for T
+    self.x.hxe(); //call impl i32 
   }
 }
 

@@ -64,7 +64,7 @@ abstract class IfExprBuilder {
     if (con == null) return;
 
     LLVMValueRef conv;
-    if (con.ty == BuiltInTy.kBool) {
+    if (con.ty.isTy(BuiltInTy.kBool)) {
       conv = con.load(c);
     } else {
       conv = c.math(con, null, OpKind.Ne, Identifier.none).load(c);

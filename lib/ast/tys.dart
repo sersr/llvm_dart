@@ -104,6 +104,10 @@ mixin Tys<V extends LifeCycleVariable> {
     return runZoned(body, zoneValues: {#_runImport: true});
   }
 
+  R? runIgnoreImport<R>(R Function() body) {
+    return runZoned(body, zoneValues: {#_runImport: false});
+  }
+
   void pushImport(ImportPath path, {Identifier? name}) {
     if (!_imports.containsKey(path)) {
       final im = global.import(this, path);
@@ -224,7 +228,7 @@ mixin Tys<V extends LifeCycleVariable> {
 
   final _implForTy = <Ty, List<ImplTy>>{};
   ImplFnMixin? getImplFnForTy(Ty ty, Identifier fnIdent) {
-    return getImplWith(ty, fnIdent: fnIdent)?.getFnCopy(ty, fnIdent);
+    return getImplWith(ty, fnIdent: fnIdent)?.getFn(fnIdent);
   }
 
   ImplTy? getImplWithCom(Ty ty, Identifier comIdent) {
@@ -244,6 +248,12 @@ mixin Tys<V extends LifeCycleVariable> {
       {Identifier? comIdent, Ty? comTy, Identifier? fnIdent}) {
     assert(comIdent == null || comTy == null || fnIdent != null);
     final raw = ty;
+    assert(
+      fnIdent == null ||
+          raw.constraints.isEmpty ||
+          raw.constraints.any((e) => e.fns.any((fn) => fn.ident == fnIdent)),
+      'currentFn: $fnIdent\ncom constraints:\n${raw.constraints}',
+    );
 
     if (ty is NewInst) {
       ty = ty.parentOrCurrent;
@@ -257,10 +267,21 @@ mixin Tys<V extends LifeCycleVariable> {
 
       // 检查 `com`
       if (comIdent != null && impl.comTy?.ident != comIdent) return false;
-
-      final tyImpl = impl.compareStruct(this, raw, comTy);
+      if (raw is NewInst) {
+        if (!raw.done) {
+          cache = impl;
+          return true;
+        }
+      }
+      final tyImpl =
+          runIgnoreImport(() => impl.compareStruct(this, raw, comTy));
 
       if (tyImpl != null) {
+        if (raw.constraints.isNotEmpty) {
+          final valid = raw.constraints.any((e) => tyImpl.comTy == e);
+          if (!valid) return false;
+        }
+
         final baseTy = impl.parentOrCurrent.ty;
         if (baseTy != null && baseTy is! NewInst) {
           cache = tyImpl;
@@ -284,13 +305,16 @@ mixin Tys<V extends LifeCycleVariable> {
           cacheScore = score;
           cache = tyImpl;
         }
+        return false;
       }
 
       return false;
     }
 
     /// for ty 可识别
-    getKV((c) => c._implForTy[ty], test: test);
+    getKV((c) {
+      return c._implForTy[ty];
+    }, test: test);
     if (cache != null) return cache;
 
     // for ty 无法识别的情况

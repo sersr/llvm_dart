@@ -28,7 +28,7 @@ abstract class ImplStackTy {
     var ty = variable.ty;
 
     final stackImpl = context.getImplWithCom(ty, _stackCom);
-    final fn = stackImpl?.getFnCopy(ty, fnName);
+    final fn = stackImpl?.getFn(fnName);
 
     if (fn == null) {
       _rec(context, variable, (context, val) {
@@ -97,7 +97,7 @@ abstract class RefDerefCom {
     final impl = context.getImplWithCom(ty, com);
     if (impl == null) return null;
 
-    return impl.getFnCopy(ty, fnIdent);
+    return impl.getFn(fnIdent);
   }
 
   static Variable getDeref(FnBuildMixin context, Variable variable) {
@@ -121,34 +121,5 @@ abstract class RefDerefCom {
       if (variable == v) break;
       variable = v;
     }
-  }
-}
-
-abstract class Clone {
-  static final _onCloneIdent = Identifier.builtIn('onClone');
-  static final _cloneCom = Identifier.builtIn('Clone');
-  static void onClone(FnBuildMixin context, Variable variable) {
-    variable = variable.defaultDeref(context, Identifier.none);
-    var ty = variable.ty;
-
-    final impl = context.getImplWithCom(ty, _cloneCom);
-    final onCloneFn = impl?.getFnCopy(ty, _onCloneIdent);
-
-    if (onCloneFn == null) {
-      _rec(context, variable, onClone);
-      return;
-    }
-
-    AbiFn.fnCallInternal(
-      context,
-      onCloneFn,
-      Identifier.none,
-      [],
-      LLVMConstVariable(variable.getBaseValue(context), ty, Identifier.none),
-      null,
-      null,
-    );
-
-    _rec(context, variable, onClone);
   }
 }

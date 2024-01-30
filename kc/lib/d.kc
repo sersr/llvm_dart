@@ -8,7 +8,7 @@ struct Array<T> {
   ptr: *T,
 }
 
-impl Array<T> {
+impl<T> Array<T> {
 
     static fn new(size: usize) Self;
     
@@ -26,7 +26,7 @@ struct CArray<T> {
   ptr: **T,
 }
 
-impl CArray<T> {
+impl<T> CArray<T> {
   fn elementAt(index: usize) &T {
     return self.ptr[index] as &T;
   }

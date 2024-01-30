@@ -362,7 +362,7 @@ class Parser {
       } else if (getToken(it).kind == TokenKind.ident) {
         ty = PathTy(getIdent(it), parseGenericsInstance(it), pointerKind);
       } else if (getToken(it).kind == TokenKind.openBracket) {
-        ty = parseArrayPathTy(it);
+        ty = parseArrayPathTy(it, pointerKind);
       }
     }
     if (ty == null) {
@@ -371,14 +371,18 @@ class Parser {
     return ty;
   }
 
-  ArrayPathTy? parseArrayPathTy(TokenIterator it) {
+  ArrayPathTy? parseArrayPathTy(TokenIterator it, List<PointerKind> kind) {
     it = it.current.child.tokenIt;
     final aty = parsePathTy(it);
 
     if (aty == null) return null;
     it.moveNext();
-    final expr = parseExpr(it);
-    return ArrayPathTy(aty, expr);
+    eatLfIfNeed(it);
+    if (it.moveNext()) {
+      final size = getIdent(it);
+      return ArrayPathTy(aty, size, kind);
+    }
+    return null;
   }
 
   bool isBlockStart(TokenIterator it) {

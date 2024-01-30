@@ -127,7 +127,7 @@ class ExprStmt extends Stmt {
 
     if (isRet) {
       baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
-      if (baseTy == BuiltInTy.kVoid) {
+      if (baseTy.isTy(BuiltInTy.kVoid)) {
         baseTy = null;
       }
     }

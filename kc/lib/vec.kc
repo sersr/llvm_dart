@@ -1,5 +1,5 @@
-import 'heap_pointer.d.kc';
-import 'allocator.kc';
+import "heap_pointer.d.kc";
+import "allocator.kc";
 
 com VecCom<T> {
   fn elementAt(index: usize) &T;
@@ -12,7 +12,7 @@ struct Vec<T> {
 }
 
 
-impl Vec<T> {
+impl<T> Vec<T> {
   static fn new() Self {
     let size = sizeOf(T) * 8;
     let data = malloc(size);

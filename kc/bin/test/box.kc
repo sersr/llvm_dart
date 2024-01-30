@@ -34,7 +34,7 @@ struct BBs<T> {
 }
 
 
-struct Box<T: i32,S: Stack + Copy> {
+struct Box<T: i32> {
   ptr: *BoxData<T>,
 }
 
@@ -43,7 +43,7 @@ struct BoxData<T> {
   data: T,
 }
 
-impl Box<T> {
+impl<T> Box<T> {
   static fn new(data: T) Self {
     final ptr = malloc(sizeOf(BoxData<T>)) as *BoxData<T>;
     ptr.data = data;

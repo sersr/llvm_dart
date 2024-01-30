@@ -98,7 +98,7 @@ class AbiFnx86_64 implements AbiFn {
     if (sret != null) {
       return ExprTempValue(sret);
     }
-    if (retTy == BuiltInTy.kVoid) {
+    if (retTy.isTy(BuiltInTy.kVoid)) {
       return null;
     }
 

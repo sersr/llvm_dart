@@ -12,7 +12,7 @@ struct HeapCount<T> {
   data: T,
 }
 
-impl HeapPointer<T> {
+impl<T> HeapPointer<T> {
   static fn new(data: T) Self {
     final ptr = malloc(sizeOf(HeapCount<T>)) as *HeapCount<T>;
     ptr.data = data;
@@ -22,7 +22,7 @@ impl HeapPointer<T> {
 }
 
 
-impl Stack for HeapPointer<T> {
+impl<T> Stack for HeapPointer<T> {
   fn addStack() {
     final ptr = self.ptr;
     ptr.count += 1;
@@ -41,7 +41,7 @@ impl Stack for HeapPointer<T> {
 
 }
 
-impl Deref<T> for HeapPointer<T> {
+impl<T> Deref<T> for HeapPointer<T> {
   fn deref() &T {
     return &self.ptr.data; 
   }

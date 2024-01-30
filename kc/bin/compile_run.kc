@@ -22,7 +22,7 @@ struct Base<T> {
   y: T,
 }
 
-impl Base<T> {
+impl<T> Base<T> {
   static fn new(y: T) Self {
    Base {y};
   }

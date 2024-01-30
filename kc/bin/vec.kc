@@ -7,7 +7,7 @@ struct Vec<T> {
 }
 
 
-impl Vec<T> {
+impl<T> Vec<T> {
   static fn new(size: usize) Vec<T> {
     final data = malloc(sizeOf(T) * size);
     final sizePtr = malloc(sizeOf(usize)) as *usize;

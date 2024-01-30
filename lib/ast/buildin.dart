@@ -1,10 +1,7 @@
-import 'package:nop/nop.dart';
-
 import '../llvm_dart.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
 import 'expr.dart';
-import 'llvm/coms.dart';
 import 'llvm/llvm_context.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';
@@ -23,8 +20,6 @@ void _init() {
   sizeOfFn;
   memSetFn;
   memCopyFn;
-  autoDropFn;
-  onCloneFn;
 }
 
 ExprTempValue? doBuiltFns(
@@ -32,6 +27,18 @@ ExprTempValue? doBuiltFns(
   if (fn is BuiltinFn) {
     return fn.runFn(context, ident, params);
   }
+  return null;
+}
+
+AnalysisVariable? doAnalysisFns(AnalysisContext context, Ty? fn) {
+  if (fn is BuiltinFn) {
+    final ty = fn.retType;
+
+    if (ty != null) {
+      return context.createVal(ty, Identifier.none);
+    }
+  }
+
   return null;
 }
 
@@ -48,7 +55,7 @@ typedef BuiltinFnRun = ExprTempValue? Function(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params);
 
 final class BuiltinFn extends Ty {
-  BuiltinFn(this.name, this.runFn) {
+  BuiltinFn(this.name, this.runFn, this.retType) {
     _fns.add(this);
   }
 
@@ -61,6 +68,7 @@ final class BuiltinFn extends Ty {
 
   @override
   void analysis(AnalysisContext context) {}
+  final Ty? retType;
 
   final BuiltinFnRun runFn;
   @override
@@ -68,6 +76,11 @@ final class BuiltinFn extends Ty {
 
   @override
   List<Object?> get props => [name];
+
+  @override
+  BuiltinFn clone() {
+    return this;
+  }
 }
 
 ExprTempValue? sizeOf(
@@ -97,7 +110,8 @@ ExprTempValue? sizeOf(
   return ExprTempValue(vv);
 }
 
-final sizeOfFn = BuiltinFn(Identifier.builtIn('sizeOf'), sizeOf);
+final sizeOfFn =
+    BuiltinFn(Identifier.builtIn('sizeOf'), sizeOf, BuiltInTy.usize);
 
 ExprTempValue memSet(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
@@ -116,7 +130,8 @@ ExprTempValue memSet(
   return ExprTempValue(v);
 }
 
-final memSetFn = BuiltinFn(Identifier.builtIn('memSet'), memSet);
+final memSetFn =
+    BuiltinFn(Identifier.builtIn('memSet'), memSet, BuiltInTy.usize);
 ExprTempValue memCopy(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
   Variable lhs = params[0].build(context)!.variable!;
@@ -137,28 +152,5 @@ ExprTempValue memCopy(
   return ExprTempValue(v);
 }
 
-final memCopyFn = BuiltinFn(Identifier.builtIn('memCopy'), memCopy);
-
-/// FIXME: deprecated
-ExprTempValue? autoDrop(
-    FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
-  Log.e('autoDrop is deprecated.\n${ident.light}', showTag: false);
-  final variable = params[0].build(context)!.variable!;
-  if (context.removeVal(variable)) {
-    ImplStackTy.removeStack(context, variable);
-  }
-
-  return null;
-}
-
-final autoDropFn = BuiltinFn(Identifier.builtIn('autoDrop'), autoDrop);
-
-ExprTempValue? onClone(
-    FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
-  final variable = params[0].build(context)!.variable!;
-  Clone.onClone(context, variable);
-
-  return null;
-}
-
-final onCloneFn = BuiltinFn(Identifier.builtIn('onClone'), onClone);
+final memCopyFn = BuiltinFn(
+    Identifier.builtIn('memCopy'), memCopy, RefTy.pointer(BuiltInTy.kVoid));

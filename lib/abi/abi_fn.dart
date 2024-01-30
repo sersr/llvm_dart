@@ -169,7 +169,7 @@ abstract interface class AbiFn {
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 
-    if (retTy == BuiltInTy.kVoid) {
+    if (retTy.isTy(BuiltInTy.kVoid)) {
       return null;
     }
 

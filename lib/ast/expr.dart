@@ -371,7 +371,6 @@ class RetExpr extends Expr with RetExprMixin {
           // }
           for (var val in all) {
             final ident = val.ident.toRawIdent;
-            // Log.w(val.ident.light, onlyDebug: false);
             vals.add(ident);
           }
         }
@@ -632,7 +631,7 @@ class FnExpr extends Expr {
   final Fn fn;
   @override
   FnExpr clone() {
-    return FnExpr(fn.cloneDefault());
+    return FnExpr(fn.clone());
   }
 
   @override
@@ -780,9 +779,12 @@ class FnCallExpr extends Expr with FnCallMixin {
       }
       return context.createStructVal(struct, struct.ident, all);
     }
-    if (fn.ty == sizeOfFn) {
-      return context.createVal(BuiltInTy.usize, Identifier.none);
+
+    final builtVal = doAnalysisFns(context, fn.ty);
+    if (builtVal != null) {
+      return builtVal;
     }
+
     if (fnty is! Fn) return null;
     final fnnn = fnty.resolveGeneric(context, params);
     fnnn.analysis(context);
@@ -839,9 +841,9 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
 
     if (temp != null) {
-      final builiin = context.global
+      final builtin = context.global
           .arrayBuiltin(context, ident, fnName, val, structTy, params);
-      if (builiin != null) return builiin;
+      if (builtin != null) return builtin;
     }
 
     var implFn = context.getImplFnForTy(structTy, ident);
@@ -849,8 +851,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (structTy is StructTy) {
       /// 对于类方法(静态方法)，struct 中存在泛型，并且没有指定时，从静态方法中的参数列表
       /// 自动获取
-
-      if (implFn is ImplStaticFn) {
+      if (!structTy.done && implFn is ImplStaticFn) {
         implFn = implFn.resolveGeneric(context, params,
             others: structTy.generics) as ImplFnMixin;
         if (structTy.tys.length != structTy.generics.length) {
@@ -866,8 +867,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
       }
     }
 
-    // 上面已经确定了structTy的具体类型了
-    Fn? fn = implFn?.copyFrom(structTy);
+    Fn? fn = implFn;
 
     // 字段有可能是一个函数指针
     if (fn == null) {
@@ -923,7 +923,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
         structTy = structTy.newInst(newTys, context);
       }
     }
-    Fn? fn = implFn?.copyFrom(structTy);
+    Fn? fn = implFn;
 
     if (fn == null) {
       final field =
@@ -1015,9 +1015,14 @@ class StructDotFieldExpr extends Expr {
       return null;
     }
 
-    final vv = context.createVal(v.grt(context), ident);
-    vv.lifecycle.fnContext = variable.lifecycle.fnContext;
-    return vv;
+    final ty = v.grtOrT(context);
+    if (ty != null) {
+      final vv = context.createVal(ty, ident);
+      vv.lifecycle.fnContext = variable.lifecycle.fnContext;
+      return vv;
+    }
+
+    return null;
   }
 }
 
@@ -1684,7 +1689,7 @@ class MatchExpr extends Expr with RetExprMixin {
 
     var ty = baseTy ?? _getTy();
 
-    if (ty == BuiltInTy.kVoid) ty = null;
+    if (ty?.isTy(BuiltInTy.kVoid) == true) ty = null;
 
     final variable = MatchBuilder.matchBuilder(context, items, temp, ty, isRet);
 

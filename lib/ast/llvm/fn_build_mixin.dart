@@ -70,7 +70,7 @@ mixin FnBuildMixin
       fnContext.instertFnEntryBB();
       onCreated?.call(fnContext);
 
-      final hasRet = fn.getRetTy(fnContext) != BuiltInTy.kVoid;
+      final hasRet = !fn.getRetTy(fnContext).isTy(BuiltInTy.kVoid);
       fnContext.initFnParamsStart(fv.value, fn.fnSign.fnDecl, fn, extra,
           map: map);
 
@@ -118,7 +118,7 @@ mixin FnBuildMixin
       if (realTy is FnTy) {
         final extra = map[p.ident];
         if (extra != null) {
-          realTy = realTy.clone(extra);
+          realTy = realTy.copyWith(extra);
         }
       }
 

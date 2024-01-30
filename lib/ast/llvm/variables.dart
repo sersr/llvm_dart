@@ -77,7 +77,7 @@ abstract class StoreVariable extends Variable {
       return;
     }
 
-    final update = alloca != val.getBaseValue(c);
+    final update = alloca != val.getBaseValue(c) && val is! LLVMLitVariable;
     if (update) {
       ImplStackTy.addStack(c, val);
       if (!isNew) ImplStackTy.removeStack(c, this);

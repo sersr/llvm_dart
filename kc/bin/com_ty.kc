@@ -19,9 +19,9 @@ fn bar<T, X: Bar<T>>(x: &X) {
 
 fn main() i32 {
   let x = Bar { y: 333.0 };
-  let f = Foo{ x: x};
+  // let f = Foo{ x: x};
   bar(&x);
-  foo(&f);
+  // foo(&f);
   0;
 }
  

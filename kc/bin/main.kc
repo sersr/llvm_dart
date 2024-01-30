@@ -10,7 +10,7 @@ struct Bcx<T> {
   b: T,
 }
 
-impl Bcx<T> {
+impl<T> Bcx<T> {
   fn getb(n: &T) &T {
     let y = &self.b;
     let hh = self;

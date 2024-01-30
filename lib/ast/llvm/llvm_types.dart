@@ -55,7 +55,7 @@ class LLVMTypeLit extends LLVMType {
   final BuiltInTy ty;
 
   @override
-  LLVMTypeRef typeOf(LLVMTypeMixin c) {
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
     return litType(c);
   }
 
@@ -148,7 +148,7 @@ class LLVMTypeLit extends LLVMType {
   }
 
   @override
-  int getBytes(LLVMTypeMixin c) {
+  int getBytes(StoreLoadMixin c) {
     final kind = ty.ty.convert;
     switch (kind) {
       case LitKind.kDouble:
@@ -357,7 +357,7 @@ class LLVMFnType extends LLVMType {
   }
 
   @override
-  int getBytes(LLVMTypeMixin c) {
+  int getBytes(StoreLoadMixin c) {
     return c.pointerSize();
   }
 
