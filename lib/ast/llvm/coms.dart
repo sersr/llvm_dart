@@ -27,7 +27,8 @@ abstract class ImplStackTy {
 
     var ty = variable.ty;
 
-    final stackImpl = context.getImplWithCom(ty, _stackCom);
+    final stackImpl =
+        context.getImplWith(ty, comIdent: _stackCom, fnIdent: fnName);
     final fn = stackImpl?.getFn(fnName);
 
     if (fn == null) {
@@ -94,7 +95,7 @@ abstract class RefDerefCom {
       ty = ty.baseTy;
     }
 
-    final impl = context.getImplWithCom(ty, com);
+    final impl = context.getImplWith(ty, comIdent: com, fnIdent: fnIdent);
     if (impl == null) return null;
 
     return impl.getFn(fnIdent);

@@ -231,10 +231,6 @@ mixin Tys<V extends LifeCycleVariable> {
     return getImplWith(ty, fnIdent: fnIdent)?.getFn(fnIdent);
   }
 
-  ImplTy? getImplWithCom(Ty ty, Identifier comIdent) {
-    return getImplWith(ty, comIdent: comIdent);
-  }
-
   /// 为泛型实现`Com`时
   ///
   /// impl Update for Box<T,S> {

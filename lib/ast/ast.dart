@@ -401,7 +401,7 @@ class Block extends BuildMixin with EquatableMixin {
     final tyStmts = <Stmt>[];
     final implStmts = <Stmt>[];
     final aliasStmts = <Stmt>[];
-
+    final importStmts = <Stmt>[];
     // 函数声明前置
     for (var stmt in _innerStmts) {
       if (stmt is TyStmt) {
@@ -409,14 +409,17 @@ class Block extends BuildMixin with EquatableMixin {
         switch (ty) {
           case Fn ty:
             fnStmt.add(ty);
-          case ImplTy():
+          case ImplTy _:
             implStmts.add(stmt);
-          case TypeAliasTy():
+          case TypeAliasTy _:
             aliasStmts.add(stmt);
           case _:
             tyStmts.add(stmt);
         }
 
+        continue;
+      } else if (stmt case ExprStmt(expr: ImportExpr())) {
+        importStmts.add(stmt);
         continue;
       }
       others.add(stmt);
@@ -426,6 +429,7 @@ class Block extends BuildMixin with EquatableMixin {
     _tyStmts = tyStmts;
     _implTyStmts = implStmts;
     _aliasStmts = aliasStmts;
+    _importStmts = importStmts;
   }
 
   Block._(this._innerStmts, this.ident, this.blockStart, this.blockEnd);
@@ -447,6 +451,7 @@ class Block extends BuildMixin with EquatableMixin {
   late List<Stmt> _tyStmts;
   late List<Stmt> _implTyStmts;
   late List<Stmt> _aliasStmts;
+  late List<Stmt> _importStmts;
   final Identifier blockStart;
   final Identifier blockEnd;
 
@@ -469,6 +474,7 @@ class Block extends BuildMixin with EquatableMixin {
       .._stmts = _stmts.map((e) => e.clone()).toList()
       .._implTyStmts = _implTyStmts.map((e) => e.clone()).toList()
       .._aliasStmts = _aliasStmts.map((e) => e.clone()).toList()
+      .._importStmts = _importStmts.map((e) => e.clone()).toList()
       .._tyStmts = _tyStmts.map((e) => e.clone()).toList();
   }
 
@@ -480,6 +486,10 @@ class Block extends BuildMixin with EquatableMixin {
   }
 
   void build(FnBuildMixin context, {bool hasRet = false}) {
+    for (var stmt in _importStmts) {
+      stmt.build(context, false);
+    }
+
     for (var fn in _fnExprs) {
       fn.currentContext = context;
       fn.build();
@@ -518,6 +528,10 @@ class Block extends BuildMixin with EquatableMixin {
 
   @override
   void analysis(AnalysisContext context) {
+    for (var stmt in _importStmts) {
+      stmt.analysis(context);
+    }
+
     for (var fn in _fnExprs) {
       context.pushFn(fn.fnName, fn);
     }
