@@ -148,7 +148,7 @@ class LetSwapStmt extends Stmt {
       final lhs = leftVals[i]?.variable;
       final (rhs, rValue) = rightVals[i];
 
-      if (lhs == null || rhs == null || rValue == null) {
+      if (lhs is! StoreVariable || rhs == null || rValue == null) {
         Log.e('let error.');
         return;
       }
@@ -159,9 +159,7 @@ class LetSwapStmt extends Stmt {
         ImplStackTy.replaceStack(context, lhs, rhs);
       }
 
-      if (lhs is StoreVariable) {
-        lhs.store(context, rValue);
-      }
+      lhs.store(context, rValue);
 
       if (!ignore) {
         ImplStackTy.updateStack(context, lhs);
