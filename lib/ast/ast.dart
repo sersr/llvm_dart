@@ -632,9 +632,9 @@ abstract class Ty extends BuildMixin with EquatableMixin implements Clone<Ty> {
   List<ComponentTy> get constraints => _constraints;
   bool _isLimited = false;
   bool get isLimited => _isLimited;
-  Ty newConstraints(Tys c, List<ComponentTy> newConstraints) {
+  Ty newConstraints(Tys c, List<ComponentTy> newConstraints, bool isLimited) {
     return clone()
-      .._isLimited = newConstraints.isNotEmpty
+      .._isLimited = isLimited
       .._constraints = newConstraints
       .._buildContext = _buildContext;
   }
@@ -1247,8 +1247,8 @@ mixin NewInst<T extends Ty> on Ty {
   }
 
   @override
-  Ty newConstraints(Tys c, List<ComponentTy> newConstraints) {
-    final ty = super.newConstraints(c, newConstraints) as NewInst;
+  Ty newConstraints(Tys c, List<ComponentTy> newConstraints, bool isLimited) {
+    final ty = super.newConstraints(c, newConstraints, isLimited) as NewInst;
     ty._initData(c, parentOrCurrent, tys);
     return ty;
   }
@@ -1340,7 +1340,7 @@ mixin NewInst<T extends Ty> on Ty {
   }
 
   static bool resolve(Tys c, Ty exactTy, PathTy pathTy,
-      List<GenericDef> generics, Map<Identifier, Ty> genMapTy) {
+      List<GenericDef> generics, Map<Identifier, Ty> genMapTy, bool isLimited) {
     bool result = true;
     // x: Arc<Gen<T>> => first fdTy => Arc<Gen<T>>
     // child fdTy:  Gen<T> => T => real type
@@ -1367,7 +1367,8 @@ mixin NewInst<T extends Ty> on Ty {
 
           // 从[TypeAlaisTy] 中获取基本类型
           final newMap = <Identifier, Ty>{};
-          result = resolve(c, exactTy, alias, tryTy.generics, newMap);
+          result =
+              resolve(c, exactTy, alias, tryTy.generics, newMap, isLimited);
           if (!result) return null;
           assert(newMap.length == pathTy.genericInsts.length);
           generics = tryTy.generics;
@@ -1429,7 +1430,7 @@ mixin NewInst<T extends Ty> on Ty {
             }
           }
 
-          return exactTy.newConstraints(c, list);
+          return exactTy.newConstraints(c, list, isLimited);
         });
       }
 
@@ -1476,7 +1477,7 @@ mixin NewInst<T extends Ty> on Ty {
         ty = f.analysis(context as AnalysisContext)?.ty;
       }
       if (ty != null) {
-        resolve(context, ty, fd.rawTy, generics, genMapTy);
+        resolve(context, ty, fd.rawTy, generics, genMapTy, false);
       }
     }
 
@@ -1838,7 +1839,8 @@ class ImplTy extends Ty with NewInst<ImplTy> {
     var cache = parentOrCurrent._implTyList[exactTy];
     if (cache == null) {
       final genMap = <Identifier, Ty>{};
-      final result = NewInst.resolve(c, exactTy, struct, generics, genMap);
+      final result =
+          NewInst.resolve(c, exactTy, struct, generics, genMap, true);
       if (!result) return null;
 
       final impl = newInst(genMap, c).._initTys(c);
