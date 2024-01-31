@@ -8,7 +8,15 @@ mixin FreeMixin on BuildContext {
 
   bool removeVal(Variable? val) {
     if (val == null || val is! StoreVariable) return false;
-    return _ptrMap.remove(val.getBaseValue(this)) != null;
+    final key = val.getBaseValue(this);
+    final value = getKV(
+      (c) => switch (c) {
+        FnBuildMixin c => [c._ptrMap[key]],
+        var _ => null,
+      },
+    );
+
+    return value != null;
   }
 
   /// 以`alloca`作为`key`
