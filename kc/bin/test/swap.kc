@@ -1,0 +1,12 @@
+fn main() i32 {
+  let y = 10;
+  let x = 11;
+  let z = 22;
+  printf("y: %d, x: %d, z: %d\n", y, x ,z);
+
+  let y, x, z = x, z, y;
+
+  printf("y: %d, x: %d, z: %d\n", y, x ,z);
+
+  0;
+}

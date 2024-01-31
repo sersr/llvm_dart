@@ -8,6 +8,7 @@ import 'analysis_context.dart';
 import 'ast.dart';
 import 'context.dart';
 import 'expr.dart';
+import 'llvm/coms.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
 
@@ -41,15 +42,11 @@ class LetStmt extends Stmt {
   @override
   void build(FnBuildMixin context, bool isRet) {
     final realTy = ty?.grt(context);
-    if (nameIdent.src == 'yx') {
-      Log.e('');
-    }
+
     final val = switch (rExpr) {
       RetExprMixin expr => expr.build(context, baseTy: realTy, isRet: isRet),
       var expr => expr?.build(context, baseTy: realTy),
     };
-
-    context.diSetCurrentLoc(nameIdent.offset);
 
     final tty = val?.ty;
     final variable = val?.variable;
@@ -72,7 +69,6 @@ class LetStmt extends Stmt {
       }
 
       final alloca = letVariable.createAlloca(context, nameIdent, tty);
-      alloca.init();
       assert(alloca.ident == nameIdent);
 
       context.pushVariable(alloca);
@@ -102,6 +98,94 @@ class LetStmt extends Stmt {
     if (v == null) return;
     final value = v.copy(ty: realTy, ident: nameIdent);
     context.pushVariable(value);
+  }
+}
+
+class LetSwapStmt extends Stmt {
+  LetSwapStmt(this.leftExprs, this.rightExprs);
+  final List<Expr> leftExprs;
+  final List<Expr> rightExprs;
+
+  @override
+  void analysis(AnalysisContext context) {
+    final rightVals = rightExprs.map((e) => e.analysis(context)).toList();
+    final leftVals = leftExprs.map((e) => e.analysis(context)).toList();
+    var length = leftVals.length;
+    if (length != rightVals.length) {
+      Log.e('mismatch in the number of variables');
+      return;
+    }
+
+    for (var i = 0; i < length; i++) {
+      final lhs = leftVals[i];
+      final rhs = rightVals[i];
+      if (lhs == null || rhs == null) {
+        Log.e('let error.');
+        return;
+      }
+      context.pushVariable(lhs.copy(ident: rhs.ident));
+      context.pushVariable(rhs.copy(ident: lhs.ident));
+    }
+  }
+
+  @override
+  void build(FnBuildMixin context, bool isRet) {
+    final rightVals = rightExprs.map((e) {
+      var e2 = e;
+      final val = e2.build(context)?.variable;
+      return (val, val?.load(context));
+    }).toList();
+
+    final leftVals = leftExprs.map((e) => e.build(context)).toList();
+
+    var length = leftVals.length;
+    if (length != rightVals.length) {
+      Log.e('mismatch in the number of variables');
+      return;
+    }
+
+    for (var i = 0; i < length; i++) {
+      final lhs = leftVals[i]?.variable;
+      final (rhs, rValue) = rightVals[i];
+
+      if (lhs == null || rhs == null || rValue == null) {
+        Log.e('let error.');
+        return;
+      }
+
+      final ignore = lhs.ty is RefTy || rhs.ty is RefTy;
+
+      if (!ignore) {
+        ImplStackTy.replaceStack(context, lhs, rhs);
+      }
+
+      if (lhs is StoreVariable) {
+        lhs.store(context, rValue);
+      }
+
+      if (!ignore) {
+        ImplStackTy.updateStack(context, lhs);
+      }
+    }
+  }
+
+  @override
+  LetSwapStmt clone() {
+    return LetSwapStmt(leftExprs.clone(), rightExprs.clone());
+  }
+
+  @override
+  late List<Object?> props = [leftExprs, rightExprs];
+  @override
+  String toString() {
+    return '${pad}let ${leftExprs.letSwap} = ${rightExprs.letSwap}';
+  }
+}
+
+extension on List {
+  String get letSwap {
+    if (isEmpty) return '';
+    return join(', ');
   }
 }
 
@@ -163,7 +247,7 @@ class StaticStmt extends Stmt {
   final bool isConst;
   @override
   Stmt clone() {
-    return StaticStmt(ident, expr.clone(), ty, isConst).._done = _done;
+    return StaticStmt(ident, expr.clone(), ty, isConst);
   }
 
   final Identifier ident;
@@ -175,8 +259,6 @@ class StaticStmt extends Stmt {
     final y = ty == null ? '' : ' : $ty';
     return '${pad}static $ident$y = $expr';
   }
-
-  bool _done = false;
 
   bool _run = false;
   @override

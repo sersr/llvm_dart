@@ -462,16 +462,78 @@ class Parser {
       }
       stmt = ExprStmt(RetExpr(expr, ident));
     }
-    stmt ??= parseLetStmt(it);
-    stmt ??= parseIfStmt(it);
-    stmt ??= parseLoopExpr(it);
-    stmt ??= parseWhileExpr(it);
-    stmt ??= parseMatchStmt(it);
-    stmt ??= parseImportStmt(it);
-    stmt ??= parseTypeStamt(it);
-    stmt ??= parseStmtBase(it);
+
+    stmt ??= parseLetSwapStmt(it) ??
+        parseLetStmt(it) ??
+        parseIfStmt(it) ??
+        parseLoopExpr(it) ??
+        parseWhileExpr(it) ??
+        parseMatchStmt(it) ??
+        parseImportStmt(it) ??
+        parseTypeStamt(it) ??
+        parseStmtBase(it);
 
     return stmt;
+  }
+
+  LetSwapStmt? parseLetSwapStmt(TokenIterator it) {
+    final isLet = getKey(it) == Key.let;
+    if (!isLet) return null;
+    final state = it.cursor;
+    final leftExprs = <Expr>[];
+    final rightExprs = <Expr>[];
+
+    for (;;) {
+      final expr = parseExpr(it);
+      if (expr is! UnknownExpr) {
+        leftExprs.add(expr);
+      }
+
+      if (!it.moveNext() || !isKind(it, TokenKind.comma)) {
+        break;
+      }
+    }
+
+    if (!isKind(it, TokenKind.eq)) {
+      state.restore();
+      return null;
+    }
+
+    for (;;) {
+      final expr = parseExpr(it);
+      if (expr is! UnknownExpr) {
+        rightExprs.add(expr);
+      }
+
+      if (!it.moveNext() || !isKind(it, TokenKind.comma)) {
+        break;
+      }
+    }
+
+    if (leftExprs.length <= 1 ||
+        rightExprs.length <= 1 ||
+        leftExprs.length != rightExprs.length) {
+      state.restore();
+      return null;
+    }
+
+    return LetSwapStmt(leftExprs, rightExprs);
+  }
+
+  bool isKind(TokenIterator it, TokenKind kind) {
+    eatLfIfNeed(it, back: false);
+
+    final result = getToken(it).kind == kind;
+
+    if (result && it.moveNext()) {
+      if (getToken(it).kind == TokenKind.lf) {
+        eatLfIfNeed(it);
+      } else {
+        it.moveBack();
+      }
+    }
+
+    return result;
   }
 
   ArrayExpr? parseArrayExpr(TokenIterator it) {

@@ -214,7 +214,7 @@ class ExprTempValue {
   Ty get ty => variable?.ty ?? _ty!;
 }
 
-abstract class Expr extends BuildMixin {
+abstract class Expr extends BuildMixin implements Clone<Expr> {
   bool _first = true;
 
   bool get hasUnknownExpr => false;
@@ -232,8 +232,6 @@ abstract class Expr extends BuildMixin {
   }
 
   ExprTempValue? get temp => _temp;
-
-  Expr clone();
 
   Ty? getTy(StoreLoadMixin context) => null;
 
@@ -314,9 +312,10 @@ abstract class BuildMixin {
   }
 }
 
-abstract class Stmt extends BuildMixin with EquatableMixin {
+abstract class Stmt extends BuildMixin
+    with EquatableMixin
+    implements Clone<Stmt> {
   void build(FnBuildMixin context, bool isRet);
-  Stmt clone();
 }
 
 enum LitKind {
@@ -470,12 +469,12 @@ class Block extends BuildMixin with EquatableMixin {
 
   Block clone() {
     return Block._(_innerStmts, ident, blockStart, blockEnd)
-      .._fnExprs = _fnExprs.map((e) => e.clone()).toList()
-      .._stmts = _stmts.map((e) => e.clone()).toList()
-      .._implTyStmts = _implTyStmts.map((e) => e.clone()).toList()
-      .._aliasStmts = _aliasStmts.map((e) => e.clone()).toList()
-      .._importStmts = _importStmts.map((e) => e.clone()).toList()
-      .._tyStmts = _tyStmts.map((e) => e.clone()).toList();
+      .._fnExprs = _fnExprs.clone()
+      .._stmts = _stmts.clone()
+      .._implTyStmts = _implTyStmts.clone()
+      .._aliasStmts = _aliasStmts.clone()
+      .._importStmts = _importStmts.clone()
+      .._tyStmts = _tyStmts.clone();
   }
 
   @override
@@ -1253,19 +1252,6 @@ mixin NewInst<T extends Ty> on Ty {
     return ty;
   }
 
-  int getScore(NewInst other) {
-    if (parentOrCurrent != other.parentOrCurrent) return -1;
-
-    for (var MapEntry(:key, :value) in tys.entries) {
-      final pv = other.tys[key];
-      if (pv != null && pv != value) {
-        return -1;
-      }
-    }
-
-    return tys.length - other.tys.length;
-  }
-
   _initData(Tys c, T? parent, Map<Identifier, Ty> tys) {
     _parent = parent;
     _tys = tys;
@@ -1283,10 +1269,9 @@ mixin NewInst<T extends Ty> on Ty {
     final key = ListKey(tys);
 
     final newInst = (parent as NewInst)._tyLists.putIfAbsent(key, () {
-      final newFields = fields.map((e) => e.clone()).toList();
+      final newFields = fields.clone();
 
       final ty = newTy(newFields);
-      ty._buildContext = currentContext;
       (ty as NewInst)._initData(c, parentOrCurrent, tys);
       return ty;
     });
@@ -1342,18 +1327,17 @@ mixin NewInst<T extends Ty> on Ty {
   static bool resolve(Tys c, Ty exactTy, PathTy pathTy,
       List<GenericDef> generics, Map<Identifier, Ty> genMapTy, bool isLimited) {
     bool result = true;
-    // x: Arc<Gen<T>> => first fdTy => Arc<Gen<T>>
-    // child fdTy:  Gen<T> => T => real type
+    // x: Arc<Gen<T>> => Gen<T> => T
     //
     // fn hello<T>(y: T);
     //
     // hello(y: 1000);
-    // ==> exactTy: i32; fieldTy: T
+    // ==> exactTy: i32; pathTy: T
     //
     // fn foo<T>(x: Gen<T>);
     //
     // foo(x: Gen<i32> { foo: 1000 } );
-    // ==> exactTy: Gen<i32>; fieldTy: Gen<T>
+    // ==> exactTy: Gen<i32>; pathTy: Gen<T>
     void visitor(Ty exactTy, PathTy pathTy) {
       ComponentTy? checkTy(Ty exactTy, PathTy pathTy) {
         ComponentTy? tyConstraint;
@@ -1642,7 +1626,7 @@ class EnumTy extends Ty with NewInst<EnumTy> {
   }
 }
 
-extension<S, T extends Clone<S>> on List<T> {
+extension ListClone<S, T extends Clone<S>> on List<T> {
   List<T> clone() {
     return List.from(map((e) {
       return e.clone();

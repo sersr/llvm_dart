@@ -57,7 +57,7 @@ class LiteralExpr extends Expr {
   }
 }
 
-class IfExprBlock {
+class IfExprBlock implements Clone<IfExprBlock> {
   IfExprBlock(this.expr, this.block);
 
   final Expr expr;
@@ -65,6 +65,7 @@ class IfExprBlock {
   IfExprBlock? child;
   Block? elseBlock;
 
+  @override
   IfExprBlock clone() {
     return IfExprBlock(expr.clone(), block.clone());
   }
@@ -119,8 +120,7 @@ class IfExpr extends Expr with RetExprMixin {
 
   @override
   Expr clone() {
-    return IfExpr(ifExpr.clone(), elseIfExpr?.map((e) => e.clone()).toList(),
-        elseBlock?.clone())
+    return IfExpr(ifExpr.clone(), elseIfExpr?.clone(), elseBlock?.clone())
       .._variable = _variable;
   }
 
@@ -417,8 +417,7 @@ class StructExpr extends Expr {
 
   @override
   Expr clone() {
-    return StructExpr(
-        ident, fields.map((e) => e.clone()).toList(), genericInsts);
+    return StructExpr(ident, fields.clone(), genericInsts);
   }
 
   @override
@@ -729,7 +728,7 @@ class FnCallExpr extends Expr with FnCallMixin {
 
   @override
   Expr clone() {
-    final f = FnCallExpr(expr.clone(), params.map((e) => e.clone()).toList());
+    final f = FnCallExpr(expr.clone(), params.clone());
     f._catchFns.addAll(_catchFns);
     f._catchMapFns.addAll(_catchMapFns);
     return f;
@@ -806,8 +805,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
   @override
   Expr clone() {
-    return MethodCallExpr(
-        ident, receiver.clone(), params.map((e) => e.clone()).toList())
+    return MethodCallExpr(ident, receiver.clone(), params.clone())
       .._catchFns.addAll(_catchFns)
       .._paramFn = _paramFn
       .._catchMapFns.addAll(_catchMapFns);
@@ -1527,7 +1525,7 @@ class BlockExpr extends Expr {
   }
 }
 
-class MatchItemExpr extends BuildMixin {
+class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
   MatchItemExpr(this.expr, this.block, this.op);
   final Expr expr;
   final Block block;
@@ -1622,6 +1620,7 @@ class MatchItemExpr extends BuildMixin {
     return value;
   }
 
+  @override
   MatchItemExpr clone() {
     return MatchItemExpr(expr.clone(), block.clone(), op);
   }
@@ -1700,8 +1699,7 @@ class MatchExpr extends Expr with RetExprMixin {
 
   @override
   Expr clone() {
-    return MatchExpr(expr.clone(), items.map((e) => e.clone()).toList())
-      .._variables = _variables;
+    return MatchExpr(expr.clone(), items.clone()).._variables = _variables;
   }
 
   @override
@@ -1841,8 +1839,7 @@ class ArrayExpr extends Expr {
 
   @override
   ArrayExpr clone() {
-    return ArrayExpr(
-        elements.map((e) => e.clone()).toList(), identStart, identEnd);
+    return ArrayExpr(elements.clone(), identStart, identEnd);
   }
 
   @override
