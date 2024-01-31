@@ -133,15 +133,21 @@ abstract interface class AbiFn {
       addArg(temp?.variable);
     }
 
+    void addCatchArg(Variable? v) {
+      if (v != null) {
+        args.add(v.getBaseValue(context));
+      }
+    }
+
     for (var variable in fn.variables) {
       var v = context.getVariable(variable.ident);
-      addArg(v);
+      addCatchArg(v);
     }
 
     if (extra != null) {
       for (var variable in extra) {
         var v = context.getVariable(variable.ident);
-        addArg(v);
+        addCatchArg(v);
       }
     }
 
@@ -149,14 +155,14 @@ abstract interface class AbiFn {
       final params = fn.fnSign.fnDecl.params;
       for (var p in params) {
         var v = context.getVariable(p.ident);
-        addArg(v);
+        addCatchArg(v);
       }
     }
 
     if (valArgs.isNotEmpty) {
       assert(params.isEmpty);
       for (var arg in valArgs) {
-        addArg(arg);
+        addCatchArg(arg);
       }
     }
 
