@@ -71,23 +71,20 @@ abstract class ImplStackTy {
     return true;
   }
 
-  static void addStack(FnBuildMixin context, Variable variable,
-      {bool ignoreRef = false}) {
-    _runStackFn(context, variable, _addStack, ignoreRef: ignoreRef);
+  static void addStack(FnBuildMixin context, Variable variable) {
+    _runStackFn(context, variable, _addStack, ignoreRef: true);
   }
 
-  static void updateStack(FnBuildMixin context, Variable variable,
-      {bool ignoreRef = false}) {
-    _runStackFn(context, variable, _updateStack, ignoreRef: ignoreRef);
+  static void updateStack(FnBuildMixin context, Variable variable) {
+    _runStackFn(context, variable, _updateStack, ignoreRef: true);
   }
 
-  static void removeStack(FnBuildMixin context, Variable variable,
-      {bool ignoreRef = false}) {
-    _runStackFn(context, variable, _removeStack, ignoreRef: ignoreRef);
+  static void removeStack(FnBuildMixin context, Variable variable) {
+    _runStackFn(context, variable, _removeStack, ignoreRef: true);
   }
 
-  static void replaceStack(FnBuildMixin context, Variable target, Variable src,
-      {bool ignoreRef = false}) {
+  static void replaceStack(
+      FnBuildMixin context, Variable target, Variable src) {
     final hasFn = target.ty.isTy(src.ty) &&
         _runStackFn(
           context,
@@ -95,7 +92,7 @@ abstract class ImplStackTy {
           _replaceStack,
           recursive: false,
           ignoreFree: true,
-          ignoreRef: ignoreRef,
+          ignoreRef: true,
           args: [
             LLVMConstVariable(
                 src.getBaseValue(context), src.ty, Identifier.builtIn('src')),
@@ -103,29 +100,27 @@ abstract class ImplStackTy {
         );
 
     if (!hasFn) {
-      addStack(context, src, ignoreRef: ignoreRef);
-      removeStack(context, target, ignoreRef: ignoreRef);
+      addStack(context, src);
+      removeStack(context, target);
     } else {
-      if (!ignoreRef) {
-        src = _getDeref(context, src);
-      }
       _rec(context, src, (context, val) {
-        addStack(context, val, ignoreRef: ignoreRef);
+        addStack(context, val);
       });
 
-      if (!ignoreRef) {
-        target = _getDeref(context, target);
-      }
       _rec(context, target, (context, val) {
-        removeStack(context, val, ignoreRef: ignoreRef);
+        removeStack(context, val);
       });
     }
   }
 
   static void drop(FnBuildMixin context, Variable variable,
       {bool Function(LLVMValueRef v)? test}) {
-    ImplStackTy._runStackFn(context, variable, ImplStackTy._removeStack,
-        test: test);
+    ImplStackTy._runStackFn(
+      context,
+      variable,
+      ImplStackTy._removeStack,
+      test: test,
+    );
   }
 }
 

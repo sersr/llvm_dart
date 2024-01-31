@@ -241,6 +241,7 @@ mixin FnBuildMixin
 
   @override
   void freeAddStack(Variable val) {
+    if (val.ty is RefTy) return;
     ImplStackTy.addStack(this, val);
   }
 }

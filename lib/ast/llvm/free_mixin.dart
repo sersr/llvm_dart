@@ -11,7 +11,7 @@ mixin FreeMixin on BuildContext {
     final key = val.getBaseValue(this);
     final value = getKV(
       (c) => switch (c) {
-        FnBuildMixin c => [c._ptrMap[key]],
+        FnBuildMixin c => [c._ptrMap.remove(key)],
         var _ => null,
       },
     );

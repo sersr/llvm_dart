@@ -1347,9 +1347,6 @@ class VariableIdentExpr extends Expr {
       return ExprTempValue.ty(builtinTy, ident);
     }
 
-    if (ident.src == 'yx') {
-      Log.e('');
-    }
     final val = context.getVariable(ident);
     if (val != null) {
       return ExprTempValue(val.newIdent(ident, dirty: false));

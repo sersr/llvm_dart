@@ -31,13 +31,14 @@ fn main() i32 {
   0;
 }
 
-fn test<T>(b: Box<T>) Box<T> {
+fn test<T>(b: Box<T>) &Box<T> {
   printf("enter test fn\n");
   let _ = TestPrint{};
 
   // ???
   let c = &b;
-  return *c;
+  let d = &b;
+  return c;
 }
 
 fn testRet() Box<i32> {

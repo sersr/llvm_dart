@@ -88,25 +88,25 @@ abstract class StoreVariable extends Variable {
     }
 
     if (val is LLVMAllocaProxyVariable && !val.created) {
-      if (!isNew) ImplStackTy.removeStack(c, this, ignoreRef: true);
+      if (!isNew) ImplStackTy.removeStack(c, this);
       val.initProxy(proxy: this);
-      if (!isNew) ImplStackTy.updateStack(c, this, ignoreRef: true);
+      if (!isNew) ImplStackTy.updateStack(c, this);
       return;
     }
 
     final update = alloca != val.getBaseValue(c) && val is! LLVMLitVariable;
     if (update) {
       if (!isNew) {
-        ImplStackTy.replaceStack(c, this, val, ignoreRef: true);
+        ImplStackTy.replaceStack(c, this, val);
       } else {
-        ImplStackTy.addStack(c, val, ignoreRef: true);
+        ImplStackTy.addStack(c, val);
       }
     }
 
     c.store(alloca, val.load(c), offset);
 
     if (!isNew && update) {
-      ImplStackTy.updateStack(c, this, ignoreRef: true);
+      ImplStackTy.updateStack(c, this);
     }
   }
 }
