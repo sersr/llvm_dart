@@ -10,8 +10,6 @@ struct Vec<T> {
   data: *void,
   len: usize,
 }
-
-
 impl<T> Vec<T> {
   static fn new() Self {
     let size = sizeOf(T) * 8;

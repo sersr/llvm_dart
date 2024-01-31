@@ -40,4 +40,5 @@ com Stack {
   fn addStack();
   fn removeStack();
   fn updateStack();
+  fn replaceStack(src: &Self);
 }

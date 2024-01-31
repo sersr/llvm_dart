@@ -1,8 +1,6 @@
 
 import '../lib/d.kc';
 import '../lib/stack_overflow.kc';;
-
-
 fn main() i32 {
   final y = 10;
   printf("hello: %d\n", y);

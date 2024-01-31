@@ -1,14 +1,10 @@
 
-import "std:d.kc"
-
 fn main() i32 {
   let y = 10;
 
   printf("y: %d\n", y);
 
   ref(&y);
-
-
   base_fn(Base { 122}, 5555);
   0;
 }

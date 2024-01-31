@@ -630,9 +630,11 @@ abstract class Ty extends BuildMixin with EquatableMixin implements Clone<Ty> {
 
   List<ComponentTy> _constraints = const [];
   List<ComponentTy> get constraints => _constraints;
-
+  bool _isLimited = false;
+  bool get isLimited => _isLimited;
   Ty newConstraints(Tys c, List<ComponentTy> newConstraints) {
     return clone()
+      .._isLimited = true
       .._constraints = newConstraints
       .._buildContext = _buildContext;
   }
@@ -666,6 +668,14 @@ class RefTy extends Ty {
 
   @override
   final Identifier ident;
+
+  @override
+  bool isTy(Ty? other) {
+    if (other is RefTy) {
+      return baseTy.isTy(other.baseTy);
+    }
+    return super.isTy(other);
+  }
 
   Ty get baseTy {
     return switch (parent) {
@@ -941,15 +951,17 @@ class Fn extends Ty with NewInst<Fn> {
   LLVMConstVariable? genFn([
     Set<AnalysisVariable>? variables,
     Map<Identifier, Set<AnalysisVariable>>? map,
+    bool ignoreFree = false,
   ]) {
     final context = currentContext;
     assert(context != null);
     if (context == null) return null;
-    return _customBuild(context, variables, map);
+    return _customBuild(context, variables, ignoreFree, map);
   }
 
   LLVMConstVariable? _customBuild(FnBuildMixin context,
       [Set<AnalysisVariable>? variables,
+      bool ignoreFree = false,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
     final vk = [];
 
@@ -972,7 +984,7 @@ class Fn extends Ty with NewInst<Fn> {
 
     return parentOrCurrent._cache.putIfAbsent(key, () {
       return context.buildFnBB(
-          this, variables, map ?? const {}, pushTyGenerics);
+          this, variables, ignoreFree, map ?? const {}, pushTyGenerics);
     });
   }
 
@@ -1236,9 +1248,7 @@ mixin NewInst<T extends Ty> on Ty {
 
   @override
   Ty newConstraints(Tys c, List<ComponentTy> newConstraints) {
-    final ty = (clone() as NewInst)
-      .._constraints = newConstraints
-      .._buildContext = _buildContext;
+    final ty = super.newConstraints(c, newConstraints) as NewInst;
     ty._initData(c, parentOrCurrent, tys);
     return ty;
   }

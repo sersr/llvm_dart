@@ -56,6 +56,7 @@ mixin FnBuildMixin
     on BuildContext, SretMixin, FreeMixin, FlowMixin, FnContextMixin {
   LLVMConstVariable buildFnBB(Fn fn,
       [Set<AnalysisVariable>? extra,
+      bool ignoreFree = false,
       Map<Identifier, Set<AnalysisVariable>> map = const {},
       void Function(FnBuildMixin context)? onCreated]) {
     final fv = AbiFn.createFunction(this, fn, extra, (fv) {
@@ -71,8 +72,8 @@ mixin FnBuildMixin
       onCreated?.call(fnContext);
 
       final hasRet = !fn.getRetTy(fnContext).isTy(BuiltInTy.kVoid);
-      fnContext.initFnParamsStart(fv.value, fn.fnSign.fnDecl, fn, extra,
-          map: map);
+      fnContext.initFnParamsStart(fv.value, fn, extra,
+          ignoreFree: ignoreFree, map: map);
 
       block.build(fnContext, hasRet: hasRet);
 
@@ -83,17 +84,18 @@ mixin FnBuildMixin
     return fv;
   }
 
-  void initFnParamsStart(
-      LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
-      {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
-    final sret = AbiFn.initFnParams(this, fn, decl, fnty, extra, map: map);
+  void initFnParamsStart(LLVMValueRef fn, Fn fnty, Set<AnalysisVariable>? extra,
+      {bool ignoreFree = false,
+      Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
+    final sret = AbiFn.initFnParams(this, fn, fnty, extra,
+        ignoreFree: ignoreFree, map: map);
     if (sret != null) _sret = sret;
   }
 
-  void initFnParams(
-      LLVMValueRef fn, FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
-      {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
-    final params = decl.params;
+  void initFnParams(LLVMValueRef fn, Fn fnty, Set<AnalysisVariable>? extra,
+      {bool ignoreFree = false,
+      Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
+    final params = fnty.fnSign.fnDecl.params;
     var index = 0;
 
     if (fnty is ImplFn) {
@@ -122,7 +124,7 @@ mixin FnBuildMixin
         }
       }
 
-      resolveParam(realTy, fnParam, p.ident);
+      resolveParam(realTy, fnParam, p.ident, ignoreFree);
       index += 1;
     }
 
@@ -138,7 +140,7 @@ mixin FnBuildMixin
       final ty = val.ty;
       final type = ty.typeOf(this);
       final alloca = LLVMAllocaVariable(value, ty, type, ident);
-
+      if (!ignoreFree) addFree(alloca);
       setName(value, ident.src);
       pushVariable(alloca);
     }
@@ -156,9 +158,11 @@ mixin FnBuildMixin
     }
   }
 
-  void resolveParam(Ty ty, LLVMValueRef fnParam, Identifier ident) {
+  void resolveParam(
+      Ty ty, LLVMValueRef fnParam, Identifier ident, bool ignoreFree) {
     final alloca = ty.llty.createAlloca(this, ident);
     alloca.store(this, fnParam);
+    if (ignoreFree) removeVal(alloca);
 
     pushVariable(alloca);
   }

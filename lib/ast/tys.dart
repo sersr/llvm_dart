@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 
 import '../llvm_dart.dart';
+import '../parsers/str.dart';
 import 'ast.dart';
 import 'buildin.dart';
 import 'expr.dart';
@@ -28,8 +29,17 @@ abstract class LifeCycleVariable {
 }
 
 class ImportPath with EquatableMixin {
-  ImportPath(this.name);
+  ImportPath(this.name) : rawPath = '';
+  ImportPath.path(this.rawPath) : name = Identifier.none;
   final Identifier name;
+  final String rawPath;
+
+  String get path {
+    if (rawPath.isNotEmpty) {
+      return rawPath;
+    }
+    return parseStr(name.src);
+  }
 
   @override
   List<Object?> get props => [name];
@@ -48,6 +58,8 @@ abstract class GlobalContext {
   V? getVariable<V>(Identifier ident);
   VA? getKVImpl<VA, T>(List<VA>? Function(Tys c) map,
       {bool Function(VA v)? test});
+
+  bool isStd(Tys c);
 
   ExprTempValue? arrayBuiltin(FnBuildMixin context, Identifier ident,
       String fnName, Variable? val, Ty valTy, List<FieldExpr> params) {
@@ -244,12 +256,6 @@ mixin Tys<V extends LifeCycleVariable> {
       {Identifier? comIdent, Ty? comTy, Identifier? fnIdent}) {
     assert(comIdent == null || comTy == null || fnIdent != null);
     final raw = ty;
-    assert(
-      fnIdent == null ||
-          raw.constraints.isEmpty ||
-          raw.constraints.any((e) => e.fns.any((fn) => fn.ident == fnIdent)),
-      'currentFn: $fnIdent\ncom constraints:\n${raw.constraints}',
-    );
 
     if (ty is NewInst) {
       ty = ty.parentOrCurrent;
@@ -273,7 +279,7 @@ mixin Tys<V extends LifeCycleVariable> {
           runIgnoreImport(() => impl.compareStruct(this, raw, comTy));
 
       if (tyImpl != null) {
-        if (raw.constraints.isNotEmpty) {
+        if (raw.isLimited) {
           final valid = raw.constraints.any((e) => tyImpl.comTy == e);
           if (!valid) return false;
         }

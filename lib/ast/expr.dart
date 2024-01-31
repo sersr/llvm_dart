@@ -524,7 +524,7 @@ class AssignExpr extends Expr {
 
     if (lv is StoreVariable && rv != null) {
       var cav = rv;
-      if (lv.ty != rv.ty) {
+      if (!lv.ty.isTy(rv.ty)) {
         cav = AsBuilder.asType(context, rv, Identifier.none, lv.ty);
       }
       lv.storeVariable(context, cav);
@@ -1347,6 +1347,9 @@ class VariableIdentExpr extends Expr {
       return ExprTempValue.ty(builtinTy, ident);
     }
 
+    if (ident.src == 'yx') {
+      Log.e('');
+    }
     final val = context.getVariable(ident);
     if (val != null) {
       return ExprTempValue(val.newIdent(ident, dirty: false));

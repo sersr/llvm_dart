@@ -47,8 +47,6 @@ struct Gen {
   x: i32,
 }
 
-
-
 impl Gen {
   fn printx() {
     printf("gen.x: %d\n", self.x);

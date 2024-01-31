@@ -20,8 +20,6 @@ impl<T> HeapPointer<T> {
     return HeapPointer { ptr: ptr };
   }
 }
-
-
 impl<T> Stack for HeapPointer<T> {
   fn addStack() {
     final ptr = self.ptr;
@@ -50,8 +48,6 @@ impl<T> Deref<T> for HeapPointer<T> {
 com Deref<T> {
   fn deref() &T;
 }
-
-
 com Clone {
   fn onClone();
 }

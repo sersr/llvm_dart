@@ -1,4 +1,4 @@
-import "std:d.kc"
+
 import "std:stack_overflow.kc";
 
 fn main(argc: i32, ptr: **u8) i32 {

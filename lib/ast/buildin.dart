@@ -20,6 +20,7 @@ void _init() {
   sizeOfFn;
   memSetFn;
   memCopyFn;
+  addFreeFn;
 }
 
 ExprTempValue? doBuiltFns(
@@ -154,3 +155,13 @@ ExprTempValue memCopy(
 
 final memCopyFn = BuiltinFn(
     Identifier.builtIn('memCopy'), memCopy, RefTy.pointer(BuiltInTy.kVoid));
+
+ExprTempValue? addFree(
+    FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
+  final val = params[0].build(context)!.variable!;
+  context.addFree(val);
+  return null;
+}
+
+final addFreeFn =
+    BuiltinFn(Identifier.builtIn('addFree'), addFree, BuiltInTy.kVoid);

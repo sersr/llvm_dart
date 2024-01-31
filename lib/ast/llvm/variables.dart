@@ -40,6 +40,11 @@ abstract class Variable extends LifeCycleVariable {
     return LLVMAllocaVariable.delay(
         () => load(c), parent, parent.typeOf(c), ident);
   }
+
+  @override
+  String toString() {
+    return 'variable:$ident';
+  }
 }
 
 abstract class StoreVariable extends Variable {
@@ -69,24 +74,39 @@ abstract class StoreVariable extends Variable {
 
   void storeVariable(FnBuildMixin c, Variable val, {bool isNew = false}) {
     assert(!_dirty);
+    // init
+    alloca;
+
+    if (ty is RefTy) {
+      if (val is LLVMAllocaProxyVariable && !val.created) {
+        val.initProxy(proxy: this);
+        return;
+      }
+
+      c.store(alloca, val.load(c), offset);
+      return;
+    }
 
     if (val is LLVMAllocaProxyVariable && !val.created) {
-      if (!isNew) ImplStackTy.removeStack(c, this);
+      if (!isNew) ImplStackTy.removeStack(c, this, ignoreRef: true);
       val.initProxy(proxy: this);
-      if (!isNew) ImplStackTy.updateStack(c, this);
+      if (!isNew) ImplStackTy.updateStack(c, this, ignoreRef: true);
       return;
     }
 
     final update = alloca != val.getBaseValue(c) && val is! LLVMLitVariable;
     if (update) {
-      ImplStackTy.addStack(c, val);
-      if (!isNew) ImplStackTy.removeStack(c, this);
+      if (!isNew) {
+        ImplStackTy.replaceStack(c, this, val, ignoreRef: true);
+      } else {
+        ImplStackTy.addStack(c, val, ignoreRef: true);
+      }
     }
 
     c.store(alloca, val.load(c), offset);
 
-    if (update && !isNew) {
-      ImplStackTy.updateStack(c, this);
+    if (!isNew && update) {
+      ImplStackTy.updateStack(c, this, ignoreRef: true);
     }
   }
 }
@@ -222,7 +242,7 @@ class LLVMAllocaVariable extends StoreVariable {
   @override
   LLVMAllocaVariable newIdentInternal(Identifier id, bool dirty) {
     _dirty = dirty;
-    return LLVMAllocaVariable._(_root ?? this, ty, type, ident);
+    return LLVMAllocaVariable._(_root ?? this, ty, type, id);
   }
 
   @override

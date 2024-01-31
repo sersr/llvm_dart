@@ -16,8 +16,6 @@ fn main() i32 {
   free(mBase);
   0;
 }
-
-
 struct Base<T> {
   y: T,
 }

@@ -1,6 +1,4 @@
 import "std:allocator.kc";
-import "std:d.kc";
-
 
 type char = u8;
 struct StringData {

@@ -1,4 +1,3 @@
-import "../lib/d.kc";
 
 fn main() i32 {
   let arr = Array<u8>.new(10);

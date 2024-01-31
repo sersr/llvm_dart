@@ -1,4 +1,3 @@
-import "../lib/d.kc";
 
 fn main() i32 {
     let g = Gen(3);
@@ -48,8 +47,6 @@ enum Option {
     Some(i32),
     None(),
 }
-
-
 impl Gen {
     fn pp() {
         let y = 444;

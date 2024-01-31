@@ -1,4 +1,4 @@
-import "std:d.kc";
+
 
 fn main() i32 {
 

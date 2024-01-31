@@ -1,5 +1,3 @@
-import "std:d.kc";
-
 
 static vv = 111;
 

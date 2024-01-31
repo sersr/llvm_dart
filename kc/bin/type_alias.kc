@@ -1,4 +1,4 @@
-import "std:d.kc"
+
 
 fn main() i32 {
   type BaseAlias<T> = Base<T>;
@@ -16,8 +16,6 @@ fn main() i32 {
 
   0;
 }
-
-
 struct Base<T> {
   y: i32,
   x: i32,

@@ -1,4 +1,3 @@
-import "std:d.kc";
 import "std:allocator.kc";
 
 fn main() i32 {
@@ -17,24 +16,47 @@ fn main() i32 {
   fbar = foo; // drop fbar
   foo = fbar; // ??? foo == fbar
   
-  
+  let yx = &foo;
+  yx = &fbar;
   // bbc = bbs;
-  bbs = bbc; // drop bbs.s -> fbar 
+  bbs = bbc; // drop bbs.s -> fbar
+  test(foo);
 
   let size = foo.getSize();
   printf("size: %d\n", size);
 
+  let fooRet = testRet();
+
   // bbs = bbc; drop bbs.s -> fbar
   0;
+}
+
+fn test<T>(b: Box<T>) Box<T> {
+  printf("enter test fn\n");
+  let _ = TestPrint{};
+
+  // ???
+  let c = &b;
+  return *c;
+}
+
+fn testRet() Box<i32> {
+  return Box.new( 444 );
+}
+
+struct TestPrint;
+
+impl Stack for TestPrint {
+  fn removeStack() {
+    printf("drop  test fn\n");
+  }
 }
 
 struct BBs<T> {
   b: i64,
   s: Box<T>,
 }
-
-
-struct Box<T: i32> {
+struct Box<T> {
   ptr: *BoxData<T>,
 }
 
@@ -63,12 +85,21 @@ impl<T> Box<T> {
 impl Stack for Box<i32> {
   fn addStack() {
     self.ptr.size += 1;
-    printf("add    box: %d, %d\n", *self.getValue(), self.getSize());
+    printf("add     box: %d, %d\n", *self.getValue(), self.getSize());
   }
   
   fn removeStack() {
     self.ptr.size -= 1;
-    printf("remove box: %d, %d\n",  self.ptr.data, self.ptr.size);
+    printf("remove  box: %d, %d\n",  self.ptr.data, self.ptr.size);
+    if self.ptr.size <= 0 {
+      free(self.ptr);
+    }
+  }
+
+  fn replaceStack(src: &Self) {
+    self.ptr.size -= 1;
+    src.ptr.size += 1;
+    printf("replace box: %d, %d | %d, %d\n", self.ptr.data, self.ptr.size, src.ptr.data, src.ptr.size);
     if self.ptr.size <= 0 {
       free(self.ptr);
     }

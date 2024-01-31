@@ -1,5 +1,3 @@
-import "std:d.kc";
-
 
 struct Bar<S>{
   y: S,

@@ -1,4 +1,4 @@
-import "std:d.kc";
+
 import "std:heap_pointer.d.kc";
 
 fn main() i32 {

@@ -1,5 +1,7 @@
 import 'dart:ffi';
 
+import 'package:nop/nop.dart';
+
 import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'analysis_context.dart';
@@ -39,7 +41,9 @@ class LetStmt extends Stmt {
   @override
   void build(FnBuildMixin context, bool isRet) {
     final realTy = ty?.grt(context);
-
+    if (nameIdent.src == 'yx') {
+      Log.e('');
+    }
     final val = switch (rExpr) {
       RetExprMixin expr => expr.build(context, baseTy: realTy, isRet: isRet),
       var expr => expr?.build(context, baseTy: realTy),
@@ -138,6 +142,11 @@ class ExprStmt extends Stmt {
     };
 
     if (isRet) context.ret(temp?.variable, isLastStmt: true);
+
+    if (expr is FnCallMixin) {
+      /// init
+      temp?.variable?.getBaseValue(context);
+    }
   }
 
   @override

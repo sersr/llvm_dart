@@ -1,7 +1,5 @@
 
 import '../lib/d.kc';
-
-
 extern
 struct stack_t {
   ss_sp : *void,
@@ -40,8 +38,6 @@ fn sigemptyset(mask: &u32);
 static sig_data: *void = null;
 extern
 fn sigaction(sig: i32, sa: &sigactionc, oss: *void) i32;
-
-
 // struct siginfo_t {
 //   si_signo: i32,
 //   si_errno: i32,

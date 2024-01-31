@@ -1,6 +1,4 @@
 
-import "std:d.kc";
-
 fn main() i32 {
   // let option = Some(10, 11);
 
@@ -34,8 +32,6 @@ com Dd<T> {
 com Sec<T> {
   fn hxe();
 }
-
-
 struct Hxe<T,S> {
   y: T,
   x: S,
@@ -54,8 +50,6 @@ impl<T> Sec<T> for T {
     printf("xxxx %d\n", self);
   }
 }
-
-
 impl<T, S:Sec<T>> Hxe<S,i32> {
   fn hello() {
     printf("hello\n");

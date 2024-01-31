@@ -14,6 +14,18 @@ mixin FreeMixin on BuildContext {
   /// 以`alloca`作为`key`
   final _ptrMap = <LLVMValueRef, Variable>{};
 
+  bool inFreePool(Variable val) {
+    return getKV((c) {
+          if (c is FnBuildMixin) {
+            final value = c._ptrMap[val.getBaseValue(c)];
+            if (value == null) return null;
+            return [value];
+          }
+          return null;
+        }) !=
+        null;
+  }
+
   @override
   void addFree(Variable val) {
     _ptrMap[val.getBaseValue(this)] = val;

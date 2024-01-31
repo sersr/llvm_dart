@@ -5,6 +5,7 @@ import '../ast/ast.dart';
 import '../ast/builders/builders.dart';
 import '../ast/expr.dart';
 import '../ast/llvm/build_methods.dart';
+import '../ast/llvm/coms.dart';
 import '../ast/llvm/llvm_context.dart';
 import '../ast/llvm/variables.dart';
 import '../ast/memory.dart';
@@ -59,13 +60,16 @@ abstract interface class AbiFn {
   LLVMValueRef classifyFnRet(StoreLoadMixin context, Variable src);
 
   static ExprTempValue? fnCallInternal(
-      FnBuildMixin context,
-      Fn fn,
-      Identifier ident,
-      List<FieldExpr> params,
-      Variable? struct,
-      Set<AnalysisVariable>? extra,
-      Map<Identifier, Set<AnalysisVariable>>? map) {
+    FnBuildMixin context,
+    Fn fn,
+    Identifier ident,
+    List<FieldExpr> params,
+    Variable? struct,
+    Set<AnalysisVariable>? extra,
+    Map<Identifier, Set<AnalysisVariable>>? map, {
+    List<Variable> valArgs = const [],
+    bool ignoreFree = false,
+  }) {
     if (fn.extern) {
       return AbiFn.get(context.abi).fnCall(context, fn, ident, params);
     }
@@ -105,13 +109,20 @@ abstract interface class AbiFn {
     final retTy = fn.getRetTy(context);
 
     if (struct != null && fn is ImplFn) {
-      // fixme: remove
       if (struct.ty is BuiltInTy) {
         args.add(struct.load(context));
       } else {
         args.add(struct.getBaseValue(context));
       }
     }
+
+    void addArg(Variable? v) {
+      if (v != null) {
+        if (!ignoreFree) ImplStackTy.addStack(context, v);
+        args.add(v.load(context));
+      }
+    }
+
     for (var i = 0; i < sortFields.length; i++) {
       final p = sortFields[i];
       Ty? c;
@@ -119,35 +130,18 @@ abstract interface class AbiFn {
         c = fn.getFieldTy(context, fnParams[i]);
       }
       final temp = p.build(context, baseTy: c);
-      final v = temp?.variable;
-      if (v != null) {
-        final value = v.load(context);
-
-        args.add(value);
-      }
-    }
-
-    void addArg(Variable? v, Identifier ident) {
-      if (v != null) {
-        LLVMValueRef value;
-        if (v is StoreVariable) {
-          value = v.alloca;
-        } else {
-          value = v.load(context);
-        }
-        args.add(value);
-      }
+      addArg(temp?.variable);
     }
 
     for (var variable in fn.variables) {
       var v = context.getVariable(variable.ident);
-      addArg(v, variable.ident);
+      addArg(v);
     }
 
     if (extra != null) {
       for (var variable in extra) {
         var v = context.getVariable(variable.ident);
-        addArg(v, variable.ident);
+        addArg(v);
       }
     }
 
@@ -155,13 +149,20 @@ abstract interface class AbiFn {
       final params = fn.fnSign.fnDecl.params;
       for (var p in params) {
         var v = context.getVariable(p.ident);
-        addArg(v, p.ident);
+        addArg(v);
+      }
+    }
+
+    if (valArgs.isNotEmpty) {
+      assert(params.isEmpty);
+      for (var arg in valArgs) {
+        addArg(arg);
       }
     }
 
     final fnType = fn.llty.createFnType(context, extra);
 
-    final fnAlloca = fn.genFn(extra, map);
+    final fnAlloca = fn.genFn(extra, map, ignoreFree);
     if (fnAlloca == null) return null;
     final fnValue = fnAlloca.load(context);
 
@@ -200,12 +201,13 @@ abstract interface class AbiFn {
       StoreLoadMixin context, LLVMValueRef fn, Fn fnty);
 
   static StoreVariable? initFnParams(FnBuildMixin context, LLVMValueRef fn,
-      FnDecl decl, Fn fnty, Set<AnalysisVariable>? extra,
-      {Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
+      Fn fnty, Set<AnalysisVariable>? extra,
+      {bool ignoreFree = false,
+      Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
     if (fnty.extern) {
       return AbiFn.get(context.abi).initFnParamsImpl(context, fn, fnty);
     }
-    context.initFnParams(fn, decl, fnty, extra, map: map);
+    context.initFnParams(fn, fnty, extra, ignoreFree: ignoreFree, map: map);
     return null;
   }
 

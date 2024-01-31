@@ -1,12 +1,8 @@
 import "std:allocator.kc"
-import "std:d.kc"
-
 struct Vec<T> {
   data: *T,
   size: *usize,
 }
-
-
 impl<T> Vec<T> {
   static fn new(size: usize) Vec<T> {
     final data = malloc(sizeOf(T) * size);

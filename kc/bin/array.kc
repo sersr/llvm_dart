@@ -1,5 +1,3 @@
-import "std:d.kc";
-
 
 fn main(argc: usize, argv:  **u8) i32 {
     let arr = CArray { argc, argv };

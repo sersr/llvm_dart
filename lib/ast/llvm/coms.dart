@@ -8,6 +8,7 @@ import 'variables.dart';
 abstract class ImplStackTy {
   static final _stackCom = Identifier.builtIn('Stack');
   static final _addStack = Identifier.builtIn('addStack');
+  static final _replaceStack = Identifier.builtIn('replaceStack');
   static final _removeStack = Identifier.builtIn('removeStack');
   static final _updateStack = Identifier.builtIn('updateStack');
 
@@ -20,10 +21,16 @@ abstract class ImplStackTy {
     return variable;
   }
 
-  static void _runStackFn(
+  static bool _runStackFn(
       FnBuildMixin context, Variable variable, Identifier fnName,
-      {bool Function(LLVMValueRef v)? test}) {
-    variable = _getDeref(context, variable);
+      {bool Function(LLVMValueRef v)? test,
+      List<Variable> args = const [],
+      bool ignoreFree = false,
+      bool ignoreRef = false,
+      bool recursive = true}) {
+    if (!ignoreRef) {
+      variable = _getDeref(context, variable);
+    }
 
     var ty = variable.ty;
 
@@ -32,40 +39,87 @@ abstract class ImplStackTy {
     final fn = stackImpl?.getFn(fnName);
 
     if (fn == null) {
-      _rec(context, variable, (context, val) {
-        _runStackFn(context, val, fnName);
-      });
-      return;
+      if (recursive) {
+        _rec(context, variable, (context, val) {
+          _runStackFn(context, val, fnName);
+        });
+      }
+      return false;
     }
 
     final value = variable.getBaseValue(context);
-    if (test != null && test(value)) return;
+    if (test != null && test(value)) return false;
 
     AbiFn.fnCallInternal(
       context,
       fn,
       Identifier.none,
       [],
+      valArgs: args,
+      ignoreFree: ignoreFree,
       LLVMConstVariable(value, ty, Identifier.none),
       null,
       null,
     );
 
-    _rec(context, variable, (context, val) {
-      _runStackFn(context, val, fnName);
-    });
+    if (recursive) {
+      _rec(context, variable, (context, val) {
+        _runStackFn(context, val, fnName);
+      });
+    }
+
+    return true;
   }
 
-  static void addStack(FnBuildMixin context, Variable variable) {
-    _runStackFn(context, variable, _addStack);
+  static void addStack(FnBuildMixin context, Variable variable,
+      {bool ignoreRef = false}) {
+    _runStackFn(context, variable, _addStack, ignoreRef: ignoreRef);
   }
 
-  static void updateStack(FnBuildMixin context, Variable variable) {
-    _runStackFn(context, variable, _updateStack);
+  static void updateStack(FnBuildMixin context, Variable variable,
+      {bool ignoreRef = false}) {
+    _runStackFn(context, variable, _updateStack, ignoreRef: ignoreRef);
   }
 
-  static void removeStack(FnBuildMixin context, Variable variable) {
-    _runStackFn(context, variable, _removeStack);
+  static void removeStack(FnBuildMixin context, Variable variable,
+      {bool ignoreRef = false}) {
+    _runStackFn(context, variable, _removeStack, ignoreRef: ignoreRef);
+  }
+
+  static void replaceStack(FnBuildMixin context, Variable target, Variable src,
+      {bool ignoreRef = false}) {
+    final hasFn = target.ty.isTy(src.ty) &&
+        _runStackFn(
+          context,
+          target,
+          _replaceStack,
+          recursive: false,
+          ignoreFree: true,
+          ignoreRef: ignoreRef,
+          args: [
+            LLVMConstVariable(
+                src.getBaseValue(context), src.ty, Identifier.builtIn('src')),
+          ],
+        );
+
+    if (!hasFn) {
+      addStack(context, src, ignoreRef: ignoreRef);
+      removeStack(context, target, ignoreRef: ignoreRef);
+    } else {
+      if (!ignoreRef) {
+        src = _getDeref(context, src);
+      }
+      _rec(context, src, (context, val) {
+        addStack(context, val, ignoreRef: ignoreRef);
+      });
+
+      if (!ignoreRef) {
+        target = _getDeref(context, target);
+      }
+      _rec(context, target, (context, val) {
+        removeStack(context, val, ignoreRef: ignoreRef);
+      });
+    }
   }
 
   static void drop(FnBuildMixin context, Variable variable,

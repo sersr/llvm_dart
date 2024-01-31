@@ -10,14 +10,42 @@ import '../ast/tys.dart';
 import '../fs/fs.dart';
 import '../llvm_dart.dart';
 import '../parsers/parser.dart';
-import '../parsers/str.dart';
 
 abstract class ManagerBase extends GlobalContext {
   ManagerBase() {
     init();
   }
 
-  void init() {}
+  static const stds = [
+    'd.kc',
+  ];
+
+  void init() {
+    for (var std in stds) {
+      final path = normalize(join(stdRoot, std));
+      addStd(path);
+    }
+  }
+
+  void addStd(String path) {}
+
+  @override
+  bool isStd(Tys c) {
+    for (var std in stds) {
+      final path = normalize(join(stdRoot, std));
+      if (path == c.currentPath) return true;
+    }
+    return false;
+  }
+
+  void importStdTys(Tys c) {
+    for (var std in stds) {
+      final path = normalize(join(stdRoot, std));
+      if (c.currentPath == path) return;
+      c.pushImport(ImportPath.path(path));
+    }
+  }
+
   void dispose() {}
 
   static Parser? parserToken(String path) {
@@ -40,7 +68,7 @@ abstract class ManagerBase extends GlobalContext {
   Tys<LifeCycleVariable> import(
       Tys<LifeCycleVariable> current, ImportPath path) {
     final currentPath = current.currentPath;
-    String rawPath = parseStr(path.name.src);
+    String rawPath = path.path;
     if (rawPath.startsWith('std:')) {
       rawPath = rawPath.replaceFirst(RegExp('^std:'), '');
       rawPath = join(stdRoot, rawPath);
@@ -69,18 +97,18 @@ abstract class ManagerBase extends GlobalContext {
 }
 
 mixin BuildContextMixin on ManagerBase {
-  final llvmCtxs = <String, BuildContext>{};
+  final llvmCtxs = <String, BuildContextImpl>{};
 
   RootBuildContext get rootBuildContext;
 
   BuildContextImpl build(String path) {
-    final root = BuildContextImpl.root(rootBuildContext, path);
-    llvmCtxs[path] = root;
-
-    root.debugInit();
-
-    initBuildContext(context: root, path: path);
-    return root;
+    return llvmCtxs.putIfAbsent(path, () {
+      final root = BuildContextImpl.root(rootBuildContext, path);
+      importStdTys(root);
+      root.debugInit();
+      initBuildContext(context: root, path: path);
+      return root;
+    });
   }
 
   @override
@@ -127,6 +155,12 @@ mixin BuildContextMixin on ManagerBase {
   }
 
   @override
+  void addStd(String path) {
+    super.addStd(path);
+    build(path);
+  }
+
+  @override
   void dispose() {
     rootBuildContext.dispose();
     for (var ctx in llvmCtxs.values) {
@@ -161,7 +195,7 @@ mixin AnalysisContextMixin on ManagerBase {
   AnalysisContext analysis(String path) {
     return alcs.putIfAbsent(path, () {
       final alc = AnalysisContext.root(rootAnalysis, path);
-      alcs[path] = alc;
+      importStdTys(alc);
       initAnalysisContext(context: alc, path: path);
       return alc;
     });
@@ -195,6 +229,12 @@ mixin AnalysisContextMixin on ManagerBase {
     rootAnalysis.global = this;
     initBuiltinFns(rootAnalysis);
     super.init();
+  }
+
+  @override
+  void addStd(String path) {
+    analysis(path);
+    super.addStd(path);
   }
 
   @override

@@ -1,4 +1,3 @@
-import '../lib/d.kc';
 
 fn main() i32 {
   let bchar = BaseChar { 40 };

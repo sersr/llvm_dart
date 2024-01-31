@@ -19,8 +19,6 @@ fn main() i32 {
   printf("...y: %d\n", foo.bar.y);
   0;
 }
-
-
 struct Box<T> {
   ptr: *T,
   size: usize,

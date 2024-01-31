@@ -1,4 +1,3 @@
-import "std:d.kc";
 import "std:heap_pointer.d.kc";
 import "std:allocator.kc";
 fn main() i32 {
@@ -7,8 +6,6 @@ fn main() i32 {
 
   // let data = base_ptr;
   // printf("alias Base.data: %d\n", data.data);
-
-
   // let base64 = Base.new(6666i64);
   // printf("base64: data: %d\n", base64.data);
   // printf("base64: data: %d\n", Base.new(555i64).data);
@@ -22,8 +19,6 @@ struct Base<T> {
   count: usize,
   data: T,
 }
-
-
 fn test() {
   let base = ret(true);
   printf("test: data: %d\n", base.data);
