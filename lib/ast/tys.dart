@@ -280,7 +280,7 @@ mixin Tys<V extends LifeCycleVariable> {
 
       if (tyImpl != null) {
         if (raw.isLimited) {
-          final valid = raw.constraints.any((e) => tyImpl.comTy == e);
+          final valid = raw.constraints.any((e) => e.isTy(tyImpl.comTy));
           if (!valid) return false;
         }
 
