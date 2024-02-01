@@ -202,8 +202,8 @@ class Identifier with EquatableMixin {
 }
 
 class ExprTempValue {
-  ExprTempValue(Variable this.variable)
-      : _ty = null,
+  ExprTempValue(Variable this.variable, {Ty? ty})
+      : _ty = ty,
         _ident = null;
 
   ExprTempValue.ty(Ty this._ty, this._ident) : variable = null;
@@ -211,7 +211,7 @@ class ExprTempValue {
   final Variable? variable;
   final Identifier? _ident;
   Identifier? get ident => _ident ?? variable?.ident;
-  Ty get ty => variable?.ty ?? _ty!;
+  Ty get ty => _ty ?? variable!.ty;
 }
 
 abstract class Expr extends BuildMixin implements Clone<Expr> {
@@ -1653,6 +1653,7 @@ class EnumItem extends StructTy {
   }
 
   @override
+  @protected
   EnumItem newTy(List<FieldDef> fields) {
     throw "use EnumTy.newTy";
   }

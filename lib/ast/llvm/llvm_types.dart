@@ -407,7 +407,8 @@ class LLVMStructType extends LLVMType {
     final sortFields = sFields ??
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
-    LLVMValueRef create(LLVMAllocaProxyVariable value, bool isProxy) {
+    void create(LLVMAllocaProxyVariable? value, bool isProxy) {
+      if (value == null) return;
       final resetEnumIndex = ty is EnumItem;
 
       context.diSetCurrentLoc(value.ident.offset);
@@ -431,7 +432,6 @@ class LLVMStructType extends LLVMType {
         final vv = getField(value, context, f.ident ?? fd.ident)!;
         vv.storeVariable(context, v, isNew: true);
       }
-      return value.alloca;
     }
 
     return LLVMAllocaProxyVariable(

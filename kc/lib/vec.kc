@@ -30,9 +30,17 @@ impl<T> Vec<T> {
   fn pop() Option<T> {
     if self.len > 0 {
       self.len -= 1;
-      return Some(self.data[self.len]) as Option<T>;
+      final ret = Some(self.data[self.len]);
+      addFree(&(self.data[self.len]));
+      return ret;
     }
 
     return None;
   }
+
+  fn getLength() usize {
+    self.len;
+  }
+
+
 }

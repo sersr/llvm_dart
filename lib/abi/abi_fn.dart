@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:nop/nop.dart';
 
 import '../ast/analysis_context.dart';
 import '../ast/ast.dart';
@@ -181,11 +182,25 @@ abstract interface class AbiFn {
       return null;
     }
 
+    final retIdent = Identifier.builtIn('_ret');
+
+    if (retTy is EnumItem) {
+      Log.e('return type error:\nuse enum type: ${retTy.parent.ident}.');
+      return null;
+    }
+
     final v = switch (retTy) {
-      StructTy() => LLVMAllocaProxyVariable(context, (value, _) {
-          value.store(context, ret);
-        }, retTy, retTy.typeOf(context), Identifier.builtIn('_ret')),
-      _ => LLVMConstVariable(ret, retTy, Identifier.builtIn('_ret'))
+      StructTy() ||
+      EnumTy() =>
+        LLVMAllocaProxyVariable(context, (StoreVariable? value, _) {
+          if (ImplStackTy.hasStack(context, retTy)) {
+            /// com Stack 需要一个地址空间
+            value ??= retTy.llty.createAlloca(context, retIdent);
+          }
+
+          value?.store(context, ret);
+        }, retTy, retTy.typeOf(context), retIdent),
+      _ => LLVMConstVariable(ret, retTy, retIdent),
     };
 
     return ExprTempValue(v);

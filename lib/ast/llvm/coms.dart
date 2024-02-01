@@ -47,15 +47,12 @@ abstract class ImplStackTy {
       }
       return false;
     }
-
-    final value = variable.getBaseValue(context);
-    if (test != null && test(value)) return false;
+    if (test != null && test(variable.getBaseValue(context))) return false;
 
     AbiFn.fnCallInternal(
       context: context,
       fn: fn,
-      struct: LLVMConstVariable(value, ty, Identifier.none),
-      ident: Identifier.none,
+      struct: variable,
       valArgs: args,
       ignoreFree: ignoreFree,
     );
@@ -67,6 +64,27 @@ abstract class ImplStackTy {
     }
 
     return true;
+  }
+
+  static bool hasStack(FnBuildMixin context, Ty ty) {
+    if (ty is RefTy) {
+      ty = ty.baseTy;
+    }
+
+    final stackImpl = context.getImplWith(ty, comIdent: _stackCom);
+    if (stackImpl != null) return true;
+
+    if (ty is! StructTy) return false;
+
+    for (var field in ty.fields) {
+      final ty = field.grt(context);
+      final exist = hasStack(context, ty);
+      if (exist) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   static void addStack(FnBuildMixin context, Variable variable) {
@@ -188,11 +206,7 @@ abstract class ArrayOpImpl {
       fn: fn,
       ident: ident,
       params: [FieldExpr(param, pIdent)],
-      struct: LLVMConstVariable(
-        variable.getBaseValue(context),
-        variable.ty,
-        Identifier.none,
-      ),
+      struct: variable,
     );
   }
 }

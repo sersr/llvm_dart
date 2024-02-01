@@ -4,6 +4,7 @@ fn main() i32 {
   v.add(10);
 
   printf("add 10\n");
+  printf("v.len %d\n", v.getLength());
   let x = v.pop();
 
   match x {
@@ -14,6 +15,8 @@ fn main() i32 {
       printf("......\n");
     }
   }
+
+  printf("v.len %d\n", v.getLength());
 
   0;
 }

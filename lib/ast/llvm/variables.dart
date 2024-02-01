@@ -1,6 +1,7 @@
 import '../../llvm_core.dart';
 import '../ast.dart';
 import '../context.dart';
+import '../stmt.dart';
 import '../tys.dart';
 import 'build_methods.dart';
 import 'coms.dart';
@@ -142,7 +143,8 @@ class LLVMConstVariable extends Variable {
   }
 }
 
-typedef ProxyFn = void Function(LLVMAllocaProxyVariable variable, bool isProxy);
+typedef ProxyFn = void Function(
+    LLVMAllocaProxyVariable? variable, bool isProxy);
 
 class LLVMAllocaProxyVariable extends StoreVariable {
   LLVMAllocaProxyVariable(
@@ -176,14 +178,20 @@ class LLVMAllocaProxyVariable extends StoreVariable {
   }
 
   /// 从 [proxy] 中获取地址空间
-  bool initProxy({StoreVariable? proxy}) {
+  ///
+  /// [cancel] : [ExprStmt]使用，取消创建操作
+  bool initProxy({StoreVariable? proxy, bool cancel = false}) {
     if (_root != null) return _root.initProxy(proxy: proxy);
 
     final result = _alloca == null;
     if (result) {
-      _alloca =
-          proxy?.alloca ?? ty.llty.createAlloca(_createContext, ident).alloca;
-      _proxyFn(this, proxy != null);
+      if (cancel) {
+        _proxyFn(null, true);
+      } else {
+        _alloca =
+            proxy?.alloca ?? ty.llty.createAlloca(_createContext, ident).alloca;
+        _proxyFn(this, proxy != null);
+      }
     }
 
     return result;

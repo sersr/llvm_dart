@@ -86,6 +86,7 @@ abstract class GlobalContext {
                 final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
 
                 final value = LLVMAllocaProxyVariable(context, (value, _) {
+                  if (value == null) return;
                   value.store(
                     context,
                     llvm.LLVMConstNull(arr.typeOf(context)),

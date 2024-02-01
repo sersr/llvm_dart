@@ -223,14 +223,16 @@ class ExprStmt extends Stmt {
       var e => e.build(context, baseTy: baseTy),
     };
 
-    if (isRet) {
-      final val = RetExpr.getRetVal(context, temp);
-      context.ret(val, isLastStmt: true);
-    }
+    final val = temp?.variable;
+    if (isRet) context.ret(val, isLastStmt: true);
+    if (val == null || isRet) return;
 
     if (expr is FnCallMixin) {
       /// init
-      temp?.variable?.getBaseValue(context);
+      val.getBaseValue(context);
+    } else if (val is LLVMAllocaProxyVariable) {
+      /// 无须分配空间
+      val.initProxy(cancel: true);
     }
   }
 

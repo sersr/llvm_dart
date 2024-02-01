@@ -82,10 +82,15 @@ abstract class MatchBuilder {
       }
 
       if (variable == null) {
-        variable = retTy.llty.createAlloca(context, Identifier.none);
-        if (isRet) {
-          context.removeVal(variable);
-        }
+        return LLVMAllocaProxyVariable(context, (proxy, isProxy) {
+          StoreVariable? variable = proxy;
+
+          if (isRet && !isProxy) {
+            context.removeVal(variable);
+          }
+
+          _matchBuilder(context, items, temp, variable);
+        }, retTy, retTy.typeOf(context), Identifier.none);
       }
     }
 

@@ -6,6 +6,6 @@ struct Base {
 }
 fn main() i32 {
 
-  let baseHeap = new Base { 10, 20, 30 };
+  let baseHeap = Base { 10, 20, 30 };
   0;
 }

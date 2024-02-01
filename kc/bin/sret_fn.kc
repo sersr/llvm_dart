@@ -7,7 +7,7 @@ fn main() i32 {
   let base = sret(false);
   printf("y: %d, x: %d\n", base.y, base.x);
 
- let newBase = new Base { 11, 22, 33 };
+ let newBase = Base { 11, 22, 33 };
 
   let ss = heap_fn();
 
