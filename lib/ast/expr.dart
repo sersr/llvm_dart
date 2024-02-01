@@ -325,22 +325,8 @@ class RetExpr extends Expr with RetExprMixin {
   ExprTempValue? buildRetExpr(FnBuildMixin context, Ty? baseTy, bool isRet) {
     final e = expr?.build(context, baseTy: baseTy);
 
-    context.ret(getRetVal(context, e), isLastStmt: isRet);
-    return e;
-  }
-
-  static Variable? getRetVal(FnBuildMixin context, ExprTempValue? temp) {
-    final struct = temp?.ty;
-    var val = temp?.variable;
-
-    if (val == null &&
-        struct is EnumItem &&
-        struct.fields.isEmpty &&
-        struct.done) {
-      val = struct.llty.buildTupeOrStruct(context, const []);
-    }
-
-    return val;
+    context.ret(e?.variable, isLastStmt: isRet);
+    return null;
   }
 
   @override
@@ -1396,6 +1382,11 @@ class VariableIdentExpr extends Expr {
       if (struct is EnumItem) {
         if (baseTy is EnumTy && struct.parent.isTy(baseTy)) {
           struct = struct.newInst(baseTy.tys, context);
+        }
+
+        if (struct.fields.isEmpty && struct.done) {
+          final val = struct.llty.buildTupeOrStruct(context, const []);
+          return ExprTempValue(val, ty: struct);
         }
       }
 

@@ -1614,15 +1614,15 @@ class EnumTy extends Ty with NewInst<EnumTy> {
   EnumTy newTy(List<FieldDef> fields) {
     var index = 0;
 
-    final newVarints = <EnumItem>[];
+    final newVariants = <EnumItem>[];
     for (var item in variants) {
       final end = index + item.fields.length;
       final itemFields = fields.sublist(index, end);
-      newVarints.add(EnumItem(item.ident, itemFields, item.generics));
+      newVariants.add(EnumItem(item.ident, itemFields, item.generics));
       index = end;
     }
 
-    return EnumTy(ident, newVarints, generics);
+    return EnumTy(ident, newVariants, generics);
   }
 }
 
