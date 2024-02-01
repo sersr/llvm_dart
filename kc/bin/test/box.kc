@@ -57,6 +57,7 @@ struct BBs<T> {
   b: i64,
   s: Box<T>,
 }
+
 struct Box<T> {
   ptr: *BoxData<T>,
 }

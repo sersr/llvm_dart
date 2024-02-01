@@ -223,7 +223,10 @@ class ExprStmt extends Stmt {
       var e => e.build(context, baseTy: baseTy),
     };
 
-    if (isRet) context.ret(temp?.variable, isLastStmt: true);
+    if (isRet) {
+      final val = RetExpr.getRetVal(context, temp);
+      context.ret(val, isLastStmt: true);
+    }
 
     if (expr is FnCallMixin) {
       /// init

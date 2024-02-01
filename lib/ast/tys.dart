@@ -42,7 +42,7 @@ class ImportPath with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [name];
+  List<Object?> get props => [name, rawPath];
 
   @override
   String toString() {

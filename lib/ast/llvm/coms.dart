@@ -1,6 +1,7 @@
 import '../../abi/abi_fn.dart';
 import '../../llvm_core.dart';
 import '../ast.dart';
+import '../expr.dart';
 import '../tys.dart';
 import 'llvm_context.dart';
 import 'variables.dart';
@@ -51,15 +52,12 @@ abstract class ImplStackTy {
     if (test != null && test(value)) return false;
 
     AbiFn.fnCallInternal(
-      context,
-      fn,
-      Identifier.none,
-      [],
+      context: context,
+      fn: fn,
+      struct: LLVMConstVariable(value, ty, Identifier.none),
+      ident: Identifier.none,
       valArgs: args,
       ignoreFree: ignoreFree,
-      LLVMConstVariable(value, ty, Identifier.none),
-      null,
-      null,
     );
 
     if (recursive) {
@@ -171,5 +169,30 @@ abstract class RefDerefCom {
       if (variable == v) break;
       variable = v;
     }
+  }
+}
+
+abstract class ArrayOpImpl {
+  static final _arrayOpCom = Identifier.builtIn('ArrayOp');
+  static final _arrayOpIdent = Identifier.builtIn('elementAt');
+
+  static ExprTempValue? elementAt(
+      FnBuildMixin context, Variable variable, Identifier ident, Expr param) {
+    final impl = context.getImplWith(variable.ty, comIdent: _arrayOpCom);
+    final fn = impl?.getFn(_arrayOpIdent);
+    if (fn == null) return null;
+    final pIdent = fn.fields.firstOrNull?.ident ?? Identifier.builtIn('index');
+
+    return AbiFn.fnCallInternal(
+      context: context,
+      fn: fn,
+      ident: ident,
+      params: [FieldExpr(param, pIdent)],
+      struct: LLVMConstVariable(
+        variable.getBaseValue(context),
+        variable.ty,
+        Identifier.none,
+      ),
+    );
   }
 }

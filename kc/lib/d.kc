@@ -15,6 +15,14 @@ impl<T> Array<T> {
     fn getSize() usize;
 }
 
+
+impl<T> ArrayOp<T> for Array<T> {
+  fn elementAt(index: usize) &T {
+    return self.ptr[index] as &T;
+  }
+}
+
+
 impl Array<u8> {
   fn toStr() *u8 {
     return self.ptr;
@@ -27,14 +35,23 @@ struct CArray<T> {
 }
 
 impl<T> CArray<T> {
-  fn elementAt(index: usize) &T {
-    return self.ptr[index] as &T;
-  }
-
+  
   fn getSize() usize {
     self.size
   }
 }
+
+impl<T> ArrayOp<T> for CArray<T> {
+  fn elementAt(index: usize) &T {
+    return self.ptr[index] as &T;
+  }
+}
+
+
+com ArrayOp<T> {
+  fn elementAt() &T;
+}
+
 
 com Stack {
   fn addStack();

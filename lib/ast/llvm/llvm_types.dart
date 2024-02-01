@@ -397,6 +397,8 @@ class LLVMStructType extends LLVMType {
     assert(false, "used by enum.");
   }
 
+  Ty get valTy => ty;
+
   LLVMAllocaProxyVariable buildTupeOrStruct(
       FnBuildMixin context, List<FieldExpr> params,
       {List<FieldExpr>? sFields}) {
@@ -433,7 +435,7 @@ class LLVMStructType extends LLVMType {
     }
 
     return LLVMAllocaProxyVariable(
-        context, create, ty, structType, Identifier.none);
+        context, create, valTy, valTy.typeOf(context), Identifier.none);
   }
 
   LLVMAllocaVariable? getField(
@@ -647,6 +649,23 @@ class LLVMEnumType extends LLVMType {
     return _minSize = m;
   }
 
+  LLVMValueRef loadIndex(StoreLoadMixin c, Variable parent) {
+    LLVMValueRef value;
+    if (parent is StoreVariable) {
+      value = parent.alloca;
+    } else {
+      value = parent.load(c);
+    }
+
+    final indices = [c.constI32(0), c.constI32(0)];
+    final t = getIndexType(c);
+    final pt = typeOf(c);
+    final v = llvm.LLVMBuildInBoundsGEP2(
+        c.builder, pt, value, indices.toNative(), indices.length, unname);
+
+    return llvm.LLVMBuildLoad2(c.builder, t, v, unname);
+  }
+
   int? _total;
   @override
   int getBytes(StoreLoadMixin c) {
@@ -717,6 +736,9 @@ class LLVMEnumItemType extends LLVMStructType {
       return p > size ? size : p;
     });
   }
+
+  @override
+  Ty get valTy => ty.parent;
 
   @override
   LLVMTypeRef typeOf(StoreLoadMixin c) {
@@ -879,23 +901,6 @@ class LLVMEnumItemType extends LLVMStructType {
       c.pushVariable(val);
     }
     return ty.parent.variants.indexOf(ty);
-  }
-
-  LLVMValueRef loadIndex(StoreLoadMixin c, Variable parent) {
-    LLVMValueRef value;
-    if (parent is StoreVariable) {
-      value = parent.alloca;
-    } else {
-      value = parent.load(c);
-    }
-
-    final indices = [c.constI32(0), c.constI32(0)];
-    final t = pTy.getIndexType(c);
-    final pt = pTy.typeOf(c);
-    final v = llvm.LLVMBuildInBoundsGEP2(
-        c.builder, pt, value, indices.toNative(), indices.length, unname);
-
-    return llvm.LLVMBuildLoad2(c.builder, t, v, unname);
   }
 
   int getSuperBytes(StoreLoadMixin c) {

@@ -98,19 +98,22 @@ abstract class MatchBuilder {
       ExprTempValue temp, StoreVariable? retVariable) {
     final parent = temp.variable;
     if (parent == null) return;
-    final ty = temp.ty;
+    var enumTy = temp.ty;
+    if (enumTy is EnumItem) {
+      enumTy = enumTy.parent;
+    }
 
-    if (ty is! EnumItem) {
+    if (enumTy is! EnumTy) {
       commonExpr(context, items, temp, retVariable);
       return;
     }
 
-    var indexValue = ty.llty.loadIndex(context, parent);
+    var indexValue = enumTy.llty.loadIndex(context, parent);
 
     final hasOther = items.any((e) => e.isOther);
 
     /// 变量是否可用
-    final varUseable = hasOther || items.length == ty.parent.variants.length;
+    final varUseable = hasOther || items.length == enumTy.variants.length;
 
     if (!varUseable) retVariable = null;
 
@@ -142,7 +145,7 @@ abstract class MatchBuilder {
           context.builder,
           LLVMIntPredicate.LLVMIntEQ,
           indexValue,
-          ty.parent.llty.getIndexValue(context, itemIndex!),
+          enumTy.llty.getIndexValue(context, itemIndex!),
           unname);
       llvm.LLVMBuildCondBr(context.builder, con, then.bb, elseBB.bb);
 
@@ -173,7 +176,7 @@ abstract class MatchBuilder {
     final ss =
         llvm.LLVMBuildSwitch(context.builder, indexValue, elseBb.bb, length);
     var index = 0;
-    final llPty = ty.parent.llty;
+    final llPty = enumTy.llty;
 
     for (var item in items) {
       LLVMBasicBlock childBb;

@@ -13,35 +13,30 @@ import '../parsers/parser.dart';
 
 abstract class ManagerBase extends GlobalContext {
   ManagerBase() {
+    _stdPaths = stds.map((e) => normalize(join(stdRoot, e))).toList();
     init();
   }
 
   static const stds = [
     'd.kc',
+    'vec.kc',
+    'option.kc',
   ];
 
-  void init() {
-    for (var std in stds) {
-      final path = normalize(join(stdRoot, std));
-      addStd(path);
-    }
-  }
+  late final List<String> _stdPaths;
 
-  void addStd(String path) {}
+  void init() {}
 
   @override
   bool isStd(Tys c) {
-    for (var std in stds) {
-      final path = normalize(join(stdRoot, std));
+    for (var path in _stdPaths) {
       if (path == c.currentPath) return true;
     }
     return false;
   }
 
   void importStdTys(Tys c) {
-    for (var std in stds) {
-      final path = normalize(join(stdRoot, std));
-      if (c.currentPath == path) return;
+    for (var path in _stdPaths) {
       c.pushImport(ImportPath.path(path));
     }
   }
@@ -102,13 +97,16 @@ mixin BuildContextMixin on ManagerBase {
   RootBuildContext get rootBuildContext;
 
   BuildContextImpl build(String path) {
-    return llvmCtxs.putIfAbsent(path, () {
-      final root = BuildContextImpl.root(rootBuildContext, path);
-      importStdTys(root);
-      root.debugInit();
-      initBuildContext(context: root, path: path);
-      return root;
-    });
+    final cache = llvmCtxs[path];
+    if (cache != null) return cache;
+
+    final root = BuildContextImpl.root(rootBuildContext, path);
+    llvmCtxs[path] = root;
+    importStdTys(root);
+
+    root.debugInit();
+    initBuildContext(context: root, path: path);
+    return root;
   }
 
   @override
@@ -128,14 +126,10 @@ mixin BuildContextMixin on ManagerBase {
   }
 
   Fn? getFn(String name) {
+    final ident = Identifier.builtIn(name);
     for (var ctx in llvmCtxs.values) {
-      for (var fns in ctx.fns.values) {
-        for (var fn in fns) {
-          if (fn.fnName.src == name) {
-            return fn;
-          }
-        }
-      }
+      final fn = ctx.getFn(ident);
+      if (fn != null) return fn;
     }
     return null;
   }
@@ -152,12 +146,6 @@ mixin BuildContextMixin on ManagerBase {
     initBuiltinFns(rootBuildContext);
     rootBuildContext.init();
     super.init();
-  }
-
-  @override
-  void addStd(String path) {
-    super.addStd(path);
-    build(path);
   }
 
   @override
@@ -193,12 +181,16 @@ mixin AnalysisContextMixin on ManagerBase {
   final rootAnalysis = RootAnalysis();
 
   AnalysisContext analysis(String path) {
-    return alcs.putIfAbsent(path, () {
-      final alc = AnalysisContext.root(rootAnalysis, path);
-      importStdTys(alc);
-      initAnalysisContext(context: alc, path: path);
-      return alc;
-    });
+    final cache = alcs[path];
+    if (cache != null) return cache;
+
+    final alc = AnalysisContext.root(rootAnalysis, path);
+    alcs[path] = alc;
+
+    importStdTys(alc);
+
+    initAnalysisContext(context: alc, path: path);
+    return alc;
   }
 
   @override
@@ -229,12 +221,6 @@ mixin AnalysisContextMixin on ManagerBase {
     rootAnalysis.global = this;
     initBuiltinFns(rootAnalysis);
     super.init();
-  }
-
-  @override
-  void addStd(String path) {
-    analysis(path);
-    super.addStd(path);
   }
 
   @override

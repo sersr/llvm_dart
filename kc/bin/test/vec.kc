@@ -1,0 +1,19 @@
+
+fn main() i32 {
+  final v = Vec<i32>.new();
+  v.add(10);
+
+  printf("add 10\n");
+  let x = v.pop();
+
+  match x {
+    Some(a) => {
+      printf("pop x: %d\n", a);
+    },
+    None => {
+      printf("......\n");
+    }
+  }
+
+  0;
+}

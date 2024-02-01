@@ -59,17 +59,18 @@ abstract interface class AbiFn {
 
   LLVMValueRef classifyFnRet(StoreLoadMixin context, Variable src);
 
-  static ExprTempValue? fnCallInternal(
-    FnBuildMixin context,
-    Fn fn,
-    Identifier ident,
-    List<FieldExpr> params,
+  static ExprTempValue? fnCallInternal({
+    required FnBuildMixin context,
+    required Fn fn,
     Variable? struct,
-    Set<AnalysisVariable>? extra,
-    Map<Identifier, Set<AnalysisVariable>>? map, {
+    Identifier? ident,
+    List<FieldExpr> params = const [],
     List<Variable> valArgs = const [],
+    Set<AnalysisVariable>? extra,
+    Map<Identifier, Set<AnalysisVariable>>? map,
     bool ignoreFree = false,
   }) {
+    ident ??= Identifier.none;
     if (fn.extern) {
       return AbiFn.get(context.abi).fnCall(context, fn, ident, params);
     }
@@ -162,7 +163,7 @@ abstract interface class AbiFn {
     if (valArgs.isNotEmpty) {
       assert(params.isEmpty);
       for (var arg in valArgs) {
-        addCatchArg(arg);
+        addArg(arg);
       }
     }
 

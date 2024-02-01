@@ -1,30 +1,38 @@
 import "heap_pointer.d.kc";
 import "allocator.kc";
-
-com VecCom<T> {
-  fn elementAt(index: usize) &T;
-}
+import "d.kc"
+import "option.kc"
 
 struct Vec<T> {
   cap: usize,
-  data: *void,
   len: usize,
+  data: *T,
 }
+
 impl<T> Vec<T> {
   static fn new() Self {
-    let size = sizeOf(T) * 8;
-    let data = malloc(size);
-    Vec { 8, data, 0 }
+    final cap = 8;
+    let size = sizeOf(T) * cap;
+    let data = malloc(size) as *T;
+    Vec { cap, 0, data }
   }
 
-  fn elementAt(index: usize) &T {
-    getElement(self.data, T, index)
-  }
-
-  fn add(value: T) &T {
+  fn add(value: T) {
     if self.len == self.cap {
-      let size = cap * 2;
+      let size = self.cap * 2;
       self.data = realloc(self.data, size);
     }
+    
+    self.data[self.len] = value;
+    self.len += 1;
+  }
+
+  fn pop() Option<T> {
+    if self.len > 0 {
+      self.len -= 1;
+      return Some(self.data[self.len]) as Option<T>;
+    }
+
+    return None;
   }
 }

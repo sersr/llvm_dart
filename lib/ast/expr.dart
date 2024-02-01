@@ -323,10 +323,24 @@ class RetExpr extends Expr with RetExprMixin {
 
   @override
   ExprTempValue? buildRetExpr(FnBuildMixin context, Ty? baseTy, bool isRet) {
-    final e = expr?.build(context);
+    final e = expr?.build(context, baseTy: baseTy);
 
-    context.ret(e?.variable, isLastStmt: isRet);
+    context.ret(getRetVal(context, e), isLastStmt: isRet);
     return e;
+  }
+
+  static Variable? getRetVal(FnBuildMixin context, ExprTempValue? temp) {
+    final struct = temp?.ty;
+    var val = temp?.variable;
+
+    if (val == null &&
+        struct is EnumItem &&
+        struct.fields.isEmpty &&
+        struct.done) {
+      val = struct.llty.buildTupeOrStruct(context, const []);
+    }
+
+    return val;
   }
 
   @override
@@ -714,7 +728,14 @@ mixin FnCallMixin {
     Variable? struct,
   }) {
     return AbiFn.fnCallInternal(
-        context, fn, ident, params, struct, catchVariables, childrenVariables);
+      context: context,
+      fn: fn,
+      ident: ident,
+      params: params,
+      struct: struct,
+      extra: catchVariables,
+      map: childrenVariables,
+    );
   }
 }
 
@@ -1365,6 +1386,19 @@ class VariableIdentExpr extends Expr {
         struct =
             struct.newInstWithGenerics(context, genericsInsts, struct.generics);
       }
+
+      if (struct.tys.isEmpty) {
+        if (baseTy is StructTy && struct.isTy(baseTy)) {
+          struct = baseTy;
+        }
+      }
+
+      if (struct is EnumItem) {
+        if (baseTy is EnumTy && struct.parent.isTy(baseTy)) {
+          struct = struct.newInst(baseTy.tys, context);
+        }
+      }
+
       return ExprTempValue.ty(struct, ident);
     }
 
@@ -1611,8 +1645,14 @@ class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
     if (val != null) {
       final valTy = val.ty;
       if (item is EnumItem && valTy is NewInst) {
+        assert(item.parent.parentOrCurrent == valTy.parentOrCurrent,
+            "error: ${item.parent} is not $valTy");
+
         item = item.newInst(valTy.tys, context);
         value = item.llty.load(child, val, params);
+      } else {
+        Log.e('${val.ident.light}\n$valTy enum match error\n$item',
+            showTag: false);
       }
     }
 
@@ -1720,10 +1760,10 @@ class AsExpr extends Expr {
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    final r = rhs.grt(context);
+    final r = rhs.grtOrT(context);
     final l = lhs.analysis(context);
 
-    if (l == null) return l;
+    if (l == null || r == null) return l;
     return context.createVal(r, l.ident);
   }
 
@@ -1939,44 +1979,38 @@ class ArrayOpExpr extends Expr {
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final array = arrayOrPtr.build(context);
-    if (array == null) return null;
-    final arrVal = array.variable;
+    final arrVal = array?.variable;
     final ty = arrVal?.ty;
 
-    if (ty is StructTy) {
-      final elIdent = Identifier.builtIn('elementAt');
-      final implFn = context.getImplFnForTy(ty, elIdent);
+    if (arrVal == null) return null;
 
-      if (implFn != null) {
-        return AbiFn.fnCallInternal(context, implFn, ident,
-            [FieldExpr(expr, ident)], arrVal, null, null);
-      }
-    }
+    final temp = ArrayOpImpl.elementAt(context, arrVal, ident, expr);
+    if (temp != null) return temp;
 
     final loc = expr.build(context);
     final locVal = loc?.variable;
-    if (arrVal == null || locVal == null || loc == null) return null;
+    if (locVal == null || loc == null) return null;
 
     if (ty is ArrayTy) {
       final element =
           ty.llty.getElement(context, arrVal, locVal.load(context), ident);
+
       return ExprTempValue(element);
     } else if (ty is RefTy) {
-      final offset = ident.offset;
-      final index = locVal.load(context);
-      final indics = <LLVMValueRef>[index];
-
-      final p = arrVal.load(context);
-
       final elementTy = ty.parent.typeOf(context);
+      final offset = ident.offset;
 
-      final vv = LLVMAllocaVariable.delay(() {
+      final element = LLVMAllocaVariable.delay(() {
+        final index = locVal.load(context);
+        final indics = <LLVMValueRef>[index];
+        final p = arrVal.load(context);
+
         context.diSetCurrentLoc(offset);
         return llvm.LLVMBuildInBoundsGEP2(context.builder, elementTy, p,
             indics.toNative(), indics.length, unname);
       }, ty.parent, elementTy, ident);
 
-      return ExprTempValue(vv);
+      return ExprTempValue(element);
     }
 
     return null;

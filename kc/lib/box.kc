@@ -1,0 +1,49 @@
+
+struct Box<T> {
+  ptr: *BoxData<T>,
+}
+
+struct BoxData<T> {
+  size: usize,
+  data: T,
+}
+
+impl<T> Box<T> {
+  static fn new(data: T) Self {
+    final ptr = malloc(sizeOf(BoxData<T>)) as *BoxData<T>;
+    ptr.data = data;
+    ptr.size = 1;
+    return Box { ptr };
+  }
+
+  fn getValue() &T {
+    &self.ptr.data;
+  }
+
+  fn getSize() usize {
+    self.ptr.size;
+  }
+}
+
+
+impl<T> Stack for Box<T> {
+  fn addStack() {
+    self.ptr.size += 1;
+  }
+  
+  fn removeStack() {
+    self.ptr.size -= 1;
+    if self.ptr.size <= 0 {
+      free(self.ptr);
+    }
+  }
+
+  fn replaceStack(src: &Self) {
+    self.ptr.size -= 1;
+    src.ptr.size += 1;
+    if self.ptr.size <= 0 {
+      free(self.ptr);
+    }
+  }
+
+}
