@@ -129,7 +129,8 @@ abstract interface class AbiFn {
       final p = sortFields[i];
       Ty? c;
       if (i < fnParams.length) {
-        c = fn.getFieldTy(context, fnParams[i]);
+        final p = fnParams[i];
+        c = fn.getFieldTy(context, p);
       }
       final temp = p.build(context, baseTy: c);
       addArg(temp?.variable);
@@ -182,7 +183,7 @@ abstract interface class AbiFn {
       return null;
     }
 
-    final retIdent = Identifier.builtIn('_ret');
+    final retIdent = '_ret'.ident;
 
     if (retTy is EnumItem) {
       Log.e('return type error:\nuse enum type: ${retTy.parent.ident}.');

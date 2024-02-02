@@ -1,5 +1,6 @@
 import '../../abi/abi_fn.dart';
 import '../../llvm_core.dart';
+import '../../llvm_dart.dart';
 import '../ast.dart';
 import '../expr.dart';
 import '../tys.dart';
@@ -7,16 +8,22 @@ import 'llvm_context.dart';
 import 'variables.dart';
 
 abstract class ImplStackTy {
-  static final _stackCom = Identifier.builtIn('Stack');
-  static final _addStack = Identifier.builtIn('addStack');
-  static final _replaceStack = Identifier.builtIn('replaceStack');
-  static final _removeStack = Identifier.builtIn('removeStack');
-  static final _updateStack = Identifier.builtIn('updateStack');
+  static final _stackCom = 'Stack'.ident;
+  static final _addStack = 'addStack'.ident;
+  static final _replaceStack = 'replaceStack'.ident;
+  static final _removeStack = 'removeStack'.ident;
+  static final _updateStack = 'updateStack'.ident;
+  static final _srcIdent = 'src'.ident;
 
   static Variable _getDeref(FnBuildMixin context, Variable variable) {
     for (;;) {
+      if (variable.ty case RefTy ty) {
+        if (ty.isPointer) break;
+      }
+
       final v = variable.defaultDeref(context, Identifier.none);
       if (variable == v) break;
+
       variable = v;
     }
     return variable;
@@ -35,15 +42,16 @@ abstract class ImplStackTy {
 
     var ty = variable.ty;
 
-    final stackImpl =
-        context.getImplWith(ty, comIdent: _stackCom, fnIdent: fnName);
-    final fn = stackImpl?.getFn(fnName);
+    final fn = getImplFn(context, ty, _stackCom, fnName);
 
     if (fn == null) {
       if (recursive) {
-        _rec(context, variable, (context, val) {
-          _runStackFn(context, val, fnName);
-        });
+        _rec(
+          context,
+          variable,
+          (context, val) => _runStackFn(context, val, fnName),
+          (context, ty) => _checkStack(context, ty, _stackCom, fnName),
+        );
       }
       return false;
     }
@@ -58,29 +66,37 @@ abstract class ImplStackTy {
     );
 
     if (recursive) {
-      _rec(context, variable, (context, val) {
-        _runStackFn(context, val, fnName);
-      });
+      _rec(
+        context,
+        variable,
+        (context, val) => _runStackFn(context, val, fnName),
+        (context, ty) => _checkStack(context, ty, _stackCom, fnName),
+      );
     }
 
     return true;
   }
 
   static bool hasStack(FnBuildMixin context, Ty ty) {
-    if (ty is RefTy) {
+    if (ty is RefTy && !ty.isPointer) {
       ty = ty.baseTy;
     }
 
-    final stackImpl = context.getImplWith(ty, comIdent: _stackCom);
+    final stackImpl = context.getImplWith(ty, comIdent: _stackCom) ??
+        ty.currentContext?.getImplWith(ty, comIdent: _stackCom);
     if (stackImpl != null) return true;
 
-    if (ty is! StructTy) return false;
-
-    for (var field in ty.fields) {
-      final ty = field.grt(context);
-      final exist = hasStack(context, ty);
-      if (exist) {
-        return true;
+    if (ty is StructTy) {
+      for (var field in ty.fields) {
+        final ty = field.grt(context);
+        final exist = hasStack(context, ty);
+        if (exist) {
+          return true;
+        }
+      }
+    } else if (ty is EnumTy) {
+      for (var item in ty.variants) {
+        if (hasStack(context, item)) return true;
       }
     }
 
@@ -101,79 +117,135 @@ abstract class ImplStackTy {
 
   static void replaceStack(
       FnBuildMixin context, Variable target, Variable src) {
-    final hasFn = target.ty.isTy(src.ty) &&
-        _runStackFn(
-          context,
-          target,
-          _replaceStack,
-          recursive: false,
-          ignoreFree: true,
-          ignoreRef: true,
-          args: [
-            LLVMConstVariable(
-                src.getBaseValue(context), src.ty, Identifier.builtIn('src')),
-          ],
-        );
+    final fn = getImplFn(context, target.ty, _stackCom, _replaceStack);
+
+    final srcIdent = fn?.fields.firstOrNull?.ident ?? _srcIdent;
+    var arg = LLVMConstVariable(src.getBaseValue(context), src.ty, srcIdent);
+
+    var hasFn = false;
+    if (target.ty.isTy(src.ty)) {
+      hasFn = _runStackFn(
+        context,
+        target,
+        _replaceStack,
+        recursive: false,
+        ignoreFree: true,
+        ignoreRef: true,
+        args: [arg],
+      );
+    }
 
     if (!hasFn) {
       addStack(context, src);
       removeStack(context, target);
     } else {
-      _rec(context, src, (context, val) {
-        addStack(context, val);
-      });
+      _rec(
+        context,
+        src,
+        (context, val) => addStack(context, val),
+        (context, ty) => _checkStack(context, ty, _stackCom, _addStack),
+      );
 
-      _rec(context, target, (context, val) {
-        removeStack(context, val);
-      });
+      _rec(
+        context,
+        target,
+        (context, val) => removeStack(context, val),
+        (context, ty) => _checkStack(context, ty, _stackCom, _removeStack),
+      );
     }
   }
 
   static void drop(FnBuildMixin context, Variable variable,
-      {bool Function(LLVMValueRef v)? test}) {
-    ImplStackTy._runStackFn(
-      context,
-      variable,
-      ImplStackTy._removeStack,
-      test: test,
-    );
+      bool Function(LLVMValueRef v) test) {
+    ImplStackTy._runStackFn(context, variable, _removeStack, test: test);
   }
 }
 
-void _rec(FnBuildMixin context, Variable value,
-    void Function(FnBuildMixin context, Variable val) action) {
+void _rec(
+    FnBuildMixin context,
+    Variable value,
+    void Function(FnBuildMixin context, Variable val) action,
+    bool Function(FnBuildMixin context, Ty ty) testTy) {
   final ty = value.ty;
-  if (ty is! StructTy) return;
+  if (ty is StructTy) {
+    for (final field in ty.fields) {
+      final val = ty.llty.getField(value, context, field.ident);
+      if (val != null) {
+        action(context, val);
+      }
+    }
+  } else if (ty is EnumTy) {
+    final newVariants = ty.variants.where((e) => testTy(context, e)).toList();
+    if (newVariants.isEmpty) return;
 
-  for (final field in ty.fields) {
-    final val = ty.llty.getField(value, context, field.ident);
-    if (val != null) {
-      action(context, val);
+    final after = context.buildSubBB(name: 'match_after');
+    var indexValue = ty.llty.loadIndex(context, value);
+
+    final ss = llvm.LLVMBuildSwitch(
+        context.builder, indexValue, after.bb, newVariants.length);
+
+    final llPty = ty.llty;
+
+    for (var i = 0; i < newVariants.length; i++) {
+      final item = newVariants[i];
+
+      LLVMBasicBlock childBb;
+      childBb = context.buildSubBB(name: 'match_bb_$i');
+      context.appendBB(childBb);
+
+      final v = item.llty.checkStack(
+          childBb.context, value, (v) => action(childBb.context, v));
+
+      llvm.LLVMAddCase(ss, llPty.getIndexValue(context, v), childBb.bb);
+      childBb.context.br(after.context);
+    }
+
+    context.insertPointBB(after);
+  }
+}
+
+bool _checkStack(
+    FnBuildMixin context, Ty ty, Identifier com, Identifier fnIdent) {
+  if (ty is StructTy) {
+    for (final field in ty.fields) {
+      final fieldTy = field.grtOrT(context);
+      if (fieldTy != null) {
+        if (_checkStack(context, fieldTy, com, fnIdent)) return true;
+      }
+    }
+  } else if (ty is EnumTy) {
+    final variants = ty.variants;
+    for (var item in variants) {
+      if (_checkStack(context, item, com, fnIdent)) return true;
     }
   }
+
+  return getImplFn(context, ty, com, fnIdent) != null;
+}
+
+ImplFnMixin? getImplFn(Tys context, Ty ty, Identifier com, Identifier fnIdent) {
+  return context
+      .getImplWith(ty, comIdent: com, fnIdent: fnIdent)
+      ?.getFn(fnIdent);
 }
 
 abstract class RefDerefCom {
-  static ImplFnMixin? getImplFn(
-      Tys context, Ty ty, Identifier com, Identifier fnIdent) {
-    if (ty is RefTy) {
-      ty = ty.baseTy;
-    }
-
-    final impl = context.getImplWith(ty, comIdent: com, fnIdent: fnIdent);
-    if (impl == null) return null;
-
-    return impl.getFn(fnIdent);
-  }
+  static final _derefComIdent = 'Deref'.ident;
+  static final _derefIdent = 'deref'.ident;
 
   static Variable getDeref(FnBuildMixin context, Variable variable) {
-    final fn = getImplFn(context, variable.ty, Identifier.builtIn('Deref'),
-        Identifier.builtIn('deref'));
+    var ty = variable.ty;
+    if (ty is RefTy) {
+      ty = ty.parent;
+    }
+
+    final fn = getImplFn(context, ty, _derefComIdent, _derefIdent);
 
     if (fn == null) return variable;
 
     final param = LLVMAllocaVariable(variable.getBaseValue(context),
         variable.ty, variable.ty.typeOf(context), Identifier.self);
+
     return context.compileRun(fn, [param]) ?? variable;
   }
 
@@ -191,15 +263,15 @@ abstract class RefDerefCom {
 }
 
 abstract class ArrayOpImpl {
-  static final _arrayOpCom = Identifier.builtIn('ArrayOp');
-  static final _arrayOpIdent = Identifier.builtIn('elementAt');
+  static final _arrayOpCom = 'ArrayOp'.ident;
+  static final _arrayOpIdent = 'elementAt'.ident;
+  static final _index = 'index'.ident;
 
   static ExprTempValue? elementAt(
       FnBuildMixin context, Variable variable, Identifier ident, Expr param) {
-    final impl = context.getImplWith(variable.ty, comIdent: _arrayOpCom);
-    final fn = impl?.getFn(_arrayOpIdent);
+    final fn = getImplFn(context, variable.ty, _arrayOpCom, _arrayOpIdent);
     if (fn == null) return null;
-    final pIdent = fn.fields.firstOrNull?.ident ?? Identifier.builtIn('index');
+    final pIdent = fn.fields.firstOrNull?.ident ?? _index;
 
     return AbiFn.fnCallInternal(
       context: context,

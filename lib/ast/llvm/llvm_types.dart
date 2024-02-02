@@ -281,7 +281,7 @@ class LLVMFnType extends LLVMType {
     final key = ListKey(variables?.toList() ?? []);
 
     return _cacheFns.putIfAbsent(key, () {
-      final ty = fn.llty.createFnType(c, variables);
+      final ty = createFnType(c, variables);
       var ident = fn.fnSign.fnDecl.ident.src;
       if (ident.isEmpty) {
         ident = '_fn';
@@ -385,7 +385,7 @@ class LLVMStructType extends LLVMType {
   FieldsSize? _size;
 
   FieldsSize getFieldsSize(StoreLoadMixin c) =>
-      _size ??= LLVMEnumItemType.alignType(c, ty.fields, sort: !ty.extern);
+      _size ??= LLVMEnumItemType.alignType(c, ty, sort: !ty.extern);
 
   @override
   LLVMTypeRef typeOf(StoreLoadMixin c) {
@@ -448,7 +448,7 @@ class LLVMStructType extends LLVMType {
     final field = fields[fi];
     final pty = field.grt(context);
 
-    final ind = _size!.map[field]!.index;
+    final ind = getFieldsSize(context).map[field]!.index;
 
     final val = LLVMAllocaVariable.delay(() {
       final ptr = alloca.getBaseValue(context);
@@ -745,17 +745,19 @@ class LLVMEnumItemType extends LLVMStructType {
     if (_type != null) return _type!;
 
     final m = pTy.getRealIndexType(c);
-    final size = _size ??=
-        alignType(c, ty.fields, initValue: m, sort: true, minToMax: true);
+    final size =
+        _size ??= alignType(c, ty, initValue: m, sort: true, minToMax: true);
 
     // 以数组的形式表示占位符
     final idnexType = c.arrayType(pTy.getIndexType(c), 1);
     return _type = size.getTypeStruct(c, ty.ident.src, idnexType);
   }
 
-  static FieldsSize alignType(StoreLoadMixin c, List<FieldDef> fields,
+  static FieldsSize alignType(StoreLoadMixin c, NewInst ty,
       {int initValue = 0, bool sort = false, bool minToMax = false}) {
     final targetSize = c.pointerSize();
+    final fields = ty.fields;
+
     var alignSize = fields.fold<int>(0, (previousValue, element) {
       final size = element.grt(c).llty.getBytes(c);
       if (previousValue > size) return previousValue;
@@ -887,7 +889,7 @@ class LLVMEnumItemType extends LLVMStructType {
         fIndex = keys.indexOf(ty.fields[i]);
       }
 
-      final fd = map.keys.elementAt(fIndex);
+      final fd = keys.elementAt(fIndex);
       final index = map[fd]!.index;
 
       final indices = [c.constI32(0), c.constI32(index)];
@@ -900,6 +902,32 @@ class LLVMEnumItemType extends LLVMStructType {
 
       c.pushVariable(val);
     }
+    return ty.parent.variants.indexOf(ty);
+  }
+
+  int checkStack(
+      StoreLoadMixin c, Variable parent, void Function(Variable v) test) {
+    final type = typeOf(c);
+
+    final map = _size!.map;
+
+    for (var entry in map.entries) {
+      final fd = entry.key;
+      final index = entry.value.index;
+      final ident = fd.ident;
+
+      final indices = [c.constI32(0), c.constI32(index)];
+      final t = fd.grt(c);
+
+      final val = LLVMAllocaVariable.delay(() {
+        final value = parent.getBaseValue(c);
+        return llvm.LLVMBuildInBoundsGEP2(
+            c.builder, type, value, indices.toNative(), indices.length, unname);
+      }, t, t.typeOf(c), ident);
+
+      test(val);
+    }
+
     return ty.parent.variants.indexOf(ty);
   }
 

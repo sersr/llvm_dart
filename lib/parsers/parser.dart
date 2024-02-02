@@ -264,10 +264,10 @@ class Parser {
           }
         }
       } else {
-        if (getToken(it).kind.char == '.') {
+        if (getToken(it).kind == TokenKind.dot) {
           isVar = true;
           loop(it, () {
-            if (getToken(it).kind.char == '.') {
+            if (getToken(it).kind == TokenKind.dot) {
               return false;
             }
             it.moveBack();
@@ -460,7 +460,7 @@ class Parser {
           it.moveBack();
         }
       }
-      stmt = ExprStmt(RetExpr(expr, ident));
+      stmt = RetStmt(expr, ident);
     }
 
     stmt ??= parseLetSwapStmt(it) ??
@@ -1316,25 +1316,16 @@ class Parser {
       if (t.kind == TokenKind.ident) {
         eatLfIfNeed(it);
         final name = getIdent(it);
-        final instances = parseGenericsInstance(it);
 
         final state = it.cursor;
-        if (it.moveNext()) {
-          if (getToken(it).kind == TokenKind.colon) {
-            final expr = parseExpr(it);
-            final f = FieldExpr(expr, name);
-            fields.add(f);
-            return false;
-          }
-        }
-
-        /// 类型可作为变量
-        if (instances.isNotEmpty) {
-          final expr = VariableIdentExpr(name, instances);
-          final f = FieldExpr(expr, null);
+        eatLfIfNeed(it, back: false);
+        if (getToken(it).kind == TokenKind.colon) {
+          final expr = parseExpr(it);
+          final f = FieldExpr(expr, name);
           fields.add(f);
           return false;
         }
+
         state.restore();
       }
 

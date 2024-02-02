@@ -97,9 +97,7 @@ class IfExprBlock implements Clone<IfExprBlock> {
       final last = block.lastOrNull;
       if (last is ExprStmt) {
         final expr = last.expr;
-        if (expr is! RetExpr) {
-          return expr.analysis(context);
-        }
+        return expr.analysis(context);
       }
     }
     return null;
@@ -309,88 +307,6 @@ class WhileExpr extends Expr {
     expr.analysis(child);
     block.analysis(child.childContext());
     return null;
-  }
-}
-
-class RetExpr extends Expr with RetExprMixin {
-  RetExpr(this.expr, this.ident);
-  final Identifier ident;
-  final Expr? expr;
-  @override
-  Expr clone() {
-    return RetExpr(expr?.clone(), ident);
-  }
-
-  @override
-  ExprTempValue? buildRetExpr(FnBuildMixin context, Ty? baseTy, bool isRet) {
-    final e = expr?.build(context, baseTy: baseTy);
-
-    context.ret(e?.variable, isLastStmt: isRet);
-    return null;
-  }
-
-  @override
-  AnalysisVariable? analysis(AnalysisContext context) {
-    if (expr == null) return null;
-    return analysisAll(context, expr!, ident);
-  }
-
-  static AnalysisVariable? analysisAll(AnalysisContext context, Expr expr,
-      [Identifier? currentIdent]) {
-    final val = expr.analysis(context);
-    final current = context.getLastFnContext();
-
-    void check(AnalysisVariable? val) {
-      if (val != null && current != null) {
-        final valLife = val.lifecycle.fnContext;
-        if (valLife != null) {
-          if (val.kind.isRef) {
-            if (val.lifecycle.isInner && current.isChildOrCurrent(valLife)) {
-              final ident = currentIdent ?? val.lifeIdent ?? val.ident;
-              Log.e('lifecycle Error: (${context.currentPath}'
-                  ':${ident.offset.pathStyle})\n${ident.light}');
-            }
-          }
-        }
-      }
-
-      if (val != null) {
-        final vals = current?.currentFn?.returnVariables;
-        if (vals != null) {
-          final all = val.allParent;
-          all.insert(0, val);
-
-          // 判断是否同源， 用于`sret`, struct ret
-          //
-          // let y = Foo { 1, 2}
-          // if condition {
-          //  return y;
-          // } else {
-          //  let x = y;
-          //  return x; // 与 `y` 同源
-          // }
-          for (var val in all) {
-            final ident = val.ident.toRawIdent;
-            vals.add(ident);
-          }
-        }
-      }
-    }
-
-    if (val is AnalysisListVariable) {
-      for (var v in val.vals) {
-        check(v);
-      }
-      return val.vals.first;
-    }
-
-    check(val);
-    return val;
-  }
-
-  @override
-  String toString() {
-    return 'return $expr [Ret]';
   }
 }
 
@@ -857,17 +773,18 @@ class MethodCallExpr extends Expr with FnCallMixin {
       /// 对于类方法(静态方法)，struct 中存在泛型，并且没有指定时，从静态方法中的参数列表
       /// 自动获取
       if (!structTy.done && implFn is ImplStaticFn) {
-        implFn = implFn.resolveGeneric(context, params,
-            others: structTy.generics) as ImplFnMixin;
+        final map =
+            implFn.getTysWith(context, params, others: structTy.generics);
         if (structTy.tys.length != structTy.generics.length) {
           final newTys = <Identifier, Ty>{}..addAll(structTy.tys);
           for (var g in structTy.generics) {
-            final ty = implFn.tys[g.ident];
+            final ty = map[g.ident];
             if (ty != null) {
               newTys[g.ident] = ty;
             }
           }
           structTy = structTy.newInst(newTys, context);
+          implFn = context.getImplFnForTy(structTy, ident);
         }
       }
     }
@@ -914,18 +831,18 @@ class MethodCallExpr extends Expr with FnCallMixin {
     structTy = structTy.resolveGeneric(context, params);
     var implFn = context.getImplFnForTy(structTy, ident);
 
-    if (implFn != null) {
-      implFn = implFn.resolveGeneric(context, params, others: structTy.generics)
-          as ImplFnMixin;
+    if (!structTy.done && implFn is ImplStaticFn) {
+      final map = implFn.getTysWith(context, params, others: structTy.generics);
       if (structTy.tys.length != structTy.generics.length) {
-        final newTys = <Identifier, Ty>{};
+        final newTys = <Identifier, Ty>{...structTy.tys};
         for (var g in structTy.generics) {
-          final ty = implFn.tys[g.ident];
+          final ty = map[g.ident];
           if (ty != null) {
             newTys[g.ident] = ty;
           }
         }
         structTy = structTy.newInst(newTys, context);
+        implFn = context.getImplFnForTy(structTy, ident);
       }
     }
     Fn? fn = implFn;
@@ -1582,7 +1499,7 @@ class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
           final ident = p.pattern;
           if (ident != null) {
             final ty =
-                enumTy.getFiledTyOrT(child, f) ?? p.analysis(context)?.ty;
+                enumTy.getFieldTyOrT(child, f) ?? p.analysis(context)?.ty;
             if (ty != null) {
               child.pushVariable(child.createVal(ty, ident));
             }
@@ -1607,11 +1524,11 @@ class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
     return false;
   }
 
-  void build4(FnBuildMixin context, ExprTempValue parrern) {
+  void build4(FnBuildMixin context, ExprTempValue parrern, bool isRet) {
     final child = context;
     final e = expr as VariableIdentExpr;
     child.pushVariable(parrern.variable!.newIdent(e.ident));
-    block.build(child);
+    block.build(child, hasRet: isRet);
   }
 
   ExprTempValue? build3(FnBuildMixin context, ExprTempValue pattern) {
@@ -1619,7 +1536,7 @@ class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
         context, op ?? OpKind.Eq, pattern.variable, expr, Identifier.none);
   }
 
-  int? build2(FnBuildMixin context, ExprTempValue pattern) {
+  int? build2(FnBuildMixin context, ExprTempValue pattern, bool isRet) {
     final child = context;
     var e = expr;
     int? value;
@@ -1647,7 +1564,7 @@ class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
       }
     }
 
-    block.build(child);
+    block.build(child, hasRet: isRet);
     return value;
   }
 

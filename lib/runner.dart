@@ -146,9 +146,9 @@ Future<bool> run(Options options) {
 
     if (options.logFile) {
       Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);
-      for (var ctx in project.alcs.keys) {
-        Log.w(ctx, onlyDebug: false);
-      }
+      // for (var ctx in project.alcs.keys) {
+      //   Log.w(ctx, onlyDebug: false);
+      // }
     }
 
     project.dispose();

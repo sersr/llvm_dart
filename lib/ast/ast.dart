@@ -55,6 +55,12 @@ class Offset {
   }
 }
 
+extension StringIdentExt on String {
+  Identifier get ident {
+    return Identifier.builtIn(this);
+  }
+}
+
 class Identifier with EquatableMixin {
   Identifier.fromToken(Token token, this.data)
       : start = token.start,
@@ -655,12 +661,12 @@ abstract class Ty extends BuildMixin with EquatableMixin implements Clone<Ty> {
 class RefTy extends Ty {
   RefTy(this.parent)
       : isPointer = false,
-        ident = Identifier.builtIn('&');
+        ident = '&'.ident;
   RefTy.pointer(this.parent)
       : isPointer = true,
-        ident = Identifier.builtIn('*');
+        ident = '*'.ident;
   RefTy.from(this.parent, this.isPointer)
-      : ident = Identifier.builtIn(isPointer ? '*' : '&');
+      : ident = isPointer ? '*'.ident : '&'.ident;
 
   final bool isPointer;
   final Ty parent;
@@ -734,7 +740,7 @@ class BuiltInTy extends Ty {
 
   Identifier? _ident;
   @override
-  Identifier get ident => _ident ??= Identifier.builtIn(_ty.name);
+  Identifier get ident => _ident ??= _ty.name.ident;
 
   @override
   bool isTy(Ty? other) {
@@ -975,9 +981,9 @@ class Fn extends Ty with NewInst<Fn> {
     for (var v in selfVariables) {
       final vt = v.ty;
       vk.add(vt);
-      if (vt is StructTy) {
-        vk.add(vt.tys);
-      }
+      // if (vt is StructTy) {
+      //   vk.add(vt.tys);
+      // }
     }
     final key = ListKey(vk);
 
@@ -1030,7 +1036,7 @@ class Fn extends Ty with NewInst<Fn> {
 
     final lastStmt = block?._stmts.lastOrNull;
 
-    if (lastStmt is ExprStmt) RetExpr.analysisAll(child, lastStmt.expr);
+    if (lastStmt is ExprStmt) RetStmt.analysisAll(child, lastStmt.expr);
   }
 
   @override
@@ -1065,21 +1071,19 @@ mixin ImplFnMixin on Fn {
     _pushSelf(context);
   }
 
+  static final _selfTyIdent = 'Self'.ident;
+
   void _pushSelf(Tys context) {
     final structTy = ty;
-    final ident = Identifier.builtIn('Self');
-    context.pushDyTy(ident, structTy);
+    context.pushDyTy(_selfTyIdent, structTy);
 
-    if (structTy is! StructTy) return;
-    context.pushDyTys(structTy.tys);
+    if (structTy is! NewInst) return;
+    context.pushDyTys(implty.tys);
   }
 
   @override
   Object? getKey() {
-    if (ty is StructTy) {
-      return (ty as StructTy).tys;
-    }
-    return null;
+    return implty;
   }
 
   @override
@@ -1094,13 +1098,11 @@ mixin ImplFnMixin on Fn {
       return ty;
     }
 
-    if (ty is! StructTy) return null;
-
-    return ty.tys[ident];
+    return implty.tys[ident];
   }
 
   @override
-  List<Object?> get props => [ty, implty, _constraints];
+  List<Object?> get props => [super.props, ty, implty, _constraints];
 }
 
 class ImplFn extends Fn with ImplFnMixin {
@@ -1117,7 +1119,8 @@ class ImplFn extends Fn with ImplFnMixin {
   }
 
   ImplFn cloneWith(Ty ty, ImplTy other) {
-    return ImplFn(fnSign, block, ty, other)..copy(this);
+    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields.clone()));
+    return ImplFn(s, block, ty, other)..copy(this);
   }
 
   @override
@@ -1143,7 +1146,8 @@ class ImplStaticFn extends Fn with ImplFnMixin {
   }
 
   ImplStaticFn cloneWith(Ty ty, ImplTy other) {
-    return ImplStaticFn(fnSign, block, ty, other)..copy(this);
+    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields.clone()));
+    return ImplStaticFn(s, block, ty, other)..copy(this);
   }
 }
 
@@ -1195,6 +1199,10 @@ class FieldDef with EquatableMixin implements Clone<FieldDef> {
     return _rty ?? (_cache ??= _ty.grtOrT(c, gen: gen));
   }
 
+  Ty? grtOrTUd(Tys c, {GenTy? gen}) {
+    return _rty ?? _ty.grtOrT(c, gen: gen);
+  }
+
   @override
   FieldDef clone() {
     return FieldDef._internal(ident, _ty, _rty);
@@ -1226,7 +1234,7 @@ mixin NewInst<T extends Ty> on Ty {
 
   Map<Identifier, Ty> get tys => _tys ?? const {};
 
-  bool get done => tys.length == generics.length;
+  bool get done => tys.length >= generics.length;
 
   final _tyLists = <ListKey, T>{};
 
@@ -1252,27 +1260,26 @@ mixin NewInst<T extends Ty> on Ty {
     return ty;
   }
 
-  _initData(Tys c, T? parent, Map<Identifier, Ty> tys) {
+  _initData(Tys c, T parent, Map<Identifier, Ty> tys) {
     _parent = parent;
-    _tys = tys;
-
+    if (tys.isNotEmpty) _tys = tys;
     // init ty
     for (var fd in fields) {
-      getFiledTyOrT(c, fd);
+      getFieldTyOrT(c, fd);
     }
   }
 
   /// todo: 使用 `context.pushDyty` 实现
   T newInst(Map<Identifier, Ty> tys, Tys c) {
     final parent = parentOrCurrent;
-    if (tys.isEmpty) return parent;
+    if (tys.isEmpty) return this as T;
     final key = ListKey(tys);
 
     final newInst = (parent as NewInst)._tyLists.putIfAbsent(key, () {
       final newFields = fields.clone();
 
       final ty = newTy(newFields);
-      (ty as NewInst)._initData(c, parentOrCurrent, tys);
+      (ty as NewInst)._initData(c, parent, tys);
       return ty;
     });
 
@@ -1432,14 +1439,14 @@ mixin NewInst<T extends Ty> on Ty {
     return result;
   }
 
-  T resolveGeneric(Tys context, List<FieldExpr> params,
+  Map<Identifier, Ty> getTysWith(Tys context, List<FieldExpr> params,
       {List<GenericDef> others = const []}) {
     final generics = [...this.generics, ...others];
 
-    if (tys.length >= generics.length) return this as T;
+    if (tys.length >= generics.length) return const {};
 
     final genMapTy = <Identifier, Ty>{};
-
+    final fields = this.fields.clone();
     final sortFields =
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
 
@@ -1451,11 +1458,12 @@ mixin NewInst<T extends Ty> on Ty {
 
     for (var i = 0; i < sortFields.length; i += 1) {
       final f = sortFields[i];
+      if (i >= fields.length) break;
       final fd = fields[i];
 
       Ty? ty;
       if (isBuild) {
-        ty = f.build(context, baseTy: fd.grtOrT(context, gen: gen))?.ty;
+        ty = f.build(context, baseTy: fd.grtOrTUd(context, gen: gen))?.ty;
       } else {
         // fd.grtOrT(context, gen: gen)
         ty = f.analysis(context as AnalysisContext)?.ty;
@@ -1464,6 +1472,14 @@ mixin NewInst<T extends Ty> on Ty {
         resolve(context, ty, fd.rawTy, generics, genMapTy, false);
       }
     }
+
+    return genMapTy;
+  }
+
+  T resolveGeneric(Tys context, List<FieldExpr> params,
+      {List<GenericDef> others = const []}) {
+    final genMapTy = getTysWith(context, params, others: others);
+    if (genMapTy.isEmpty) return this as T;
 
     return newInst(genMapTy, context);
   }
@@ -1485,10 +1501,10 @@ mixin NewInst<T extends Ty> on Ty {
   }
 
   Ty getFieldTy(Tys c, FieldDef fd) {
-    return getFiledTyOrT(c, fd)!;
+    return getFieldTyOrT(c, fd)!;
   }
 
-  Ty? getFiledTyOrT(Tys c, FieldDef fd) {
+  Ty? getFieldTyOrT(Tys c, FieldDef fd) {
     return fd.grtOrT(c, gen: (ident) {
       return getTy(c, ident);
     });
@@ -1512,7 +1528,7 @@ class StructTy extends Ty with EquatableMixin, NewInst<StructTy> {
 
   @override
   StructTy clone() {
-    return StructTy(ident, fields.clone(), generics);
+    return StructTy(ident, fields.clone(), generics)..llty = llty;
   }
 
   @override
@@ -1532,20 +1548,16 @@ class StructTy extends Ty with EquatableMixin, NewInst<StructTy> {
   void build() {
     final context = currentContext;
     if (context == null) return;
-    context.pushStruct(ident, this);
+    context.pushStruct(ident, parentOrCurrent);
   }
 
   @override
   void analysis(AnalysisContext context) {
-    context.pushStruct(ident, this);
+    context.pushStruct(ident, parentOrCurrent);
   }
 
   @override
-  late final LLVMStructType llty = LLVMStructType(this);
-}
-
-class UnionTy extends StructTy {
-  UnionTy(super.ident, super.fields, super.generics);
+  late LLVMStructType llty = LLVMStructType(this);
 }
 
 class EnumTy extends Ty with NewInst<EnumTy> {
@@ -1740,6 +1752,8 @@ class ImplTy extends Ty with NewInst<ImplTy> {
       fn.incLevel();
     }
   }
+  ImplTy._(this.generics, this.com, this.struct, this.label, this.fns,
+      this.staticFns);
   final PathTy struct;
   final PathTy? com;
   final PathTy? label;
@@ -1753,7 +1767,7 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   List<FieldDef> get fields => const [];
   @override
   ImplTy newTy(List<FieldDef> fields) {
-    return ImplTy(generics, com, struct, label, fns, staticFns);
+    return ImplTy._(generics, com, struct, label, fns, staticFns);
   }
 
   @override
@@ -1762,7 +1776,7 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   }
 
   @override
-  Identifier get ident => label?.ident ?? com?.ident ?? struct.ident;
+  Identifier get ident => label?.ident ?? Identifier.none;
 
   bool contains(Identifier ident) {
     return fns.any((e) => e.fnSign.fnDecl.ident == ident) ||
@@ -1795,21 +1809,6 @@ class ImplTy extends Ty with NewInst<ImplTy> {
 
   ComponentTy? _componentTy;
   ComponentTy? get comTy => _componentTy;
-
-  Map<Identifier, GenericDef>? _map;
-
-  GenericDef? getGeneric(Identifier ident) {
-    var map = _map;
-    if (map == null) {
-      map = {};
-      for (var generic in generics) {
-        map[generic.ident] = generic;
-      }
-      _map = map;
-    }
-
-    return map[ident];
-  }
 
   final _implTyList = <Ty, ImplTy>{};
 
@@ -1908,7 +1907,7 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   }
 
   @override
-  List<Object?> get props => [struct, staticFns, fns, label, _constraints];
+  List<Object?> get props => [tys, struct, staticFns, fns, label, _constraints];
 
   @override
   LLVMType get llty => throw UnimplementedError();
@@ -1926,7 +1925,7 @@ class ArrayTy extends Ty {
 
   Identifier? _ident;
   @override
-  Identifier get ident => _ident ??= Identifier.builtIn('[$size; $elementTy]');
+  Identifier get ident => _ident ??= '[$size; $elementTy]'.ident;
 
   @override
   void analysis(AnalysisContext context) {}

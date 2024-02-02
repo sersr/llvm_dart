@@ -189,7 +189,7 @@ mixin Consts on LLVMTypeMixin {
 
   LLVMValueRef usizeValue(int size) {
     return BuiltInTy.usize.llty
-        .createValue(ident: Identifier.builtIn('$size'))
+        .createValue(ident: '$size'.ident)
         .getValue(this);
   }
 

@@ -1,10 +1,13 @@
+import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
 import 'expr.dart';
+import 'llvm/coms.dart';
 import 'llvm/llvm_context.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';
+import 'memory.dart';
 import 'tys.dart';
 
 void initBuiltinFns(Tys context) {
@@ -21,6 +24,7 @@ void _init() {
   memSetFn;
   memCopyFn;
   addFreeFn;
+  ptrSetValueFn;
 }
 
 ExprTempValue? doBuiltFns(
@@ -56,7 +60,7 @@ typedef BuiltinFnRun = ExprTempValue? Function(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params);
 
 final class BuiltinFn extends Ty {
-  BuiltinFn(this.name, this.runFn, this.retType) {
+  BuiltinFn(String name, this.runFn, {this.retType}) : name = name.ident {
     _fns.add(this);
   }
 
@@ -111,8 +115,7 @@ ExprTempValue? sizeOf(
   return ExprTempValue(vv);
 }
 
-final sizeOfFn =
-    BuiltinFn(Identifier.builtIn('sizeOf'), sizeOf, BuiltInTy.usize);
+final sizeOfFn = BuiltinFn('sizeOf', sizeOf, retType: BuiltInTy.usize);
 
 ExprTempValue memSet(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
@@ -131,8 +134,7 @@ ExprTempValue memSet(
   return ExprTempValue(v);
 }
 
-final memSetFn =
-    BuiltinFn(Identifier.builtIn('memSet'), memSet, BuiltInTy.usize);
+final memSetFn = BuiltinFn('memSet', memSet, retType: BuiltInTy.usize);
 ExprTempValue memCopy(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
   Variable lhs = params[0].build(context)!.variable!;
@@ -153,8 +155,8 @@ ExprTempValue memCopy(
   return ExprTempValue(v);
 }
 
-final memCopyFn = BuiltinFn(
-    Identifier.builtIn('memCopy'), memCopy, RefTy.pointer(BuiltInTy.kVoid));
+final memCopyFn =
+    BuiltinFn('memCopy', memCopy, retType: RefTy.pointer(BuiltInTy.kVoid));
 
 ExprTempValue? addFree(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
@@ -163,5 +165,38 @@ ExprTempValue? addFree(
   return null;
 }
 
-final addFreeFn =
-    BuiltinFn(Identifier.builtIn('addFree'), addFree, BuiltInTy.kVoid);
+final addFreeFn = BuiltinFn('addFree', addFree);
+
+ExprTempValue? removeFn(
+    FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
+  final val = params[0].build(context)!.variable!;
+  context.removeVal(val);
+  return null;
+}
+
+final removeFreeFn = BuiltinFn('removeFreeFn', removeFn);
+
+ExprTempValue? ptrSetValue(
+    FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
+  final ptr = params[0].build(context)!.variable!;
+  final offset = params[1].build(context)!.variable!;
+  final value = params[2].build(context)!.variable!;
+
+  final elementTy = ptr.ty.typeOf(context);
+
+  final index = offset.load(context);
+  final indics = <LLVMValueRef>[index];
+  final p = ptr.load(context);
+
+  context.diSetCurrentLoc(ident.offset);
+  final addr = llvm.LLVMBuildInBoundsGEP2(
+      context.builder, elementTy, p, indics.toNative(), indics.length, unname);
+  final alloca = LLVMAllocaVariable(addr, ptr.ty, elementTy, ident);
+
+  ImplStackTy.addStack(context, value);
+
+  alloca.store(context, value.load(context));
+  return null;
+}
+
+final ptrSetValueFn = BuiltinFn('ptrSetValue', ptrSetValue);

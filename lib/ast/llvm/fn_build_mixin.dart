@@ -1,57 +1,5 @@
 part of 'build_context_mixin.dart';
 
-// class FnOptions {
-//   const FnOptions({
-//     this.isDrop = false,
-//     this.isAddStack = false,
-//     this.isRemoveStack = false,
-//     this.isUpdateStack = false,
-//   });
-
-//   final bool isDrop;
-//   final bool isAddStack;
-//   final bool isRemoveStack;
-
-//   final bool isUpdateStack;
-
-//   bool get isValid => isDrop || isAddStack || isRemoveStack || isUpdateStack;
-
-//   bool get isStack => isAddStack || isRemoveStack;
-//   bool get isStart => isDrop || isAddStack || isUpdateStack;
-//   bool get isEnd => isRemoveStack;
-
-//   void startOption(FnBuildMixin context, Variable value, Ty ty) {
-//     if (!isStart) return;
-//     if (ty is! StructTy) return;
-
-//     for (final field in ty.fields) {
-//       final val = ty.llty.getField(value, context, field.ident);
-//       if (val != null) {
-//         if (isDrop) {
-//           context.addFree(val);
-//         } else if (isAddStack) {
-//           ImplStackTy.addStack(context, val);
-//         } else if (isUpdateStack) {
-//           ImplStackTy.updateStack(context, val);
-//         }
-//       }
-//     }
-//   }
-
-//   void endOption(FnBuildMixin context, Variable value) {
-//     if (!isEnd) return;
-
-//     for (final field in ty.fields) {
-//       final val = ty.llty.getField(value, context, field.ident);
-//       if (val != null) {
-//         if (isRemoveStack) {
-//           ImplStackTy.removeStack(context, val);
-//         }
-//       }
-//     }
-//   }
-// }
-
 mixin FnBuildMixin
     on BuildContext, SretMixin, FreeMixin, FlowMixin, FnContextMixin {
   LLVMConstVariable buildFnBB(Fn fn,
@@ -77,8 +25,8 @@ mixin FnBuildMixin
 
       block.build(fnContext, hasRet: hasRet);
 
-      assert(!hasRet || fnContext._returned || !block.isNotEmpty,
-          'error: return.');
+      // assert(!hasRet || fnContext._returned || !block.isNotEmpty,
+      //     'error: return.');
       fnContext.ret(null);
     });
     return fv;
@@ -220,7 +168,7 @@ mixin FnBuildMixin
   void freeHeapCurrent(FnBuildMixin to) {
     assert(loopBBs.isEmpty || !_freeDone, "error: freedone.");
     for (var val in _ptrMap.values) {
-      ImplStackTy.drop(to, val, test: to._freeAddCache);
+      ImplStackTy.drop(to, val, to._freeAddCache);
     }
   }
 

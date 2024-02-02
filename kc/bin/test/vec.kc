@@ -18,5 +18,37 @@ fn main() i32 {
 
   printf("v.len %d\n", v.getLength());
 
+  let vc = Vec<Point>.new();
+
+  vc.add(Point{y: 10, x: 22});
+
+  printf("vc.len %d\n", vc.getLength());
+  vc.pop();
+
   0;
+}
+
+struct Hx<T> {
+  y: T,
+}
+
+impl<T> Hx<T> {
+  static fn new(data: T) Self {
+    Hx{ data }
+  }
+}
+
+struct Point {
+  y: i32,
+  x: i32,
+}
+
+impl Stack for Point {
+  fn addStack() {
+    printf("add    point\n");
+  }
+
+  fn removeStack() {
+    printf("remove point\n");
+  }
 }

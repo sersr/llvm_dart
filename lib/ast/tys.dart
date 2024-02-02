@@ -65,8 +65,8 @@ abstract class GlobalContext {
       String fnName, Variable? val, Ty valTy, List<FieldExpr> params) {
     if (valTy is ArrayTy && val != null) {
       if (fnName == 'getSize') {
-        final size = BuiltInTy.usize.llty
-            .createValue(ident: Identifier.builtIn('${valTy.size}'));
+        final size =
+            BuiltInTy.usize.llty.createValue(ident: '${valTy.size}'.ident);
         return ExprTempValue(size);
       } else if (fnName == 'toStr') {
         final element = valTy.llty.toStr(context, val);
@@ -271,8 +271,12 @@ mixin Tys<V extends LifeCycleVariable> {
       // 检查 `com`
       if (comIdent != null && impl.comTy?.ident != comIdent) return false;
       if (raw is NewInst) {
+        if (raw.generics.isEmpty) {
+          cache = impl.parentOrCurrent;
+          return true;
+        }
         if (!raw.done) {
-          cache = impl;
+          cache = impl.parentOrCurrent;
           return true;
         }
       }
@@ -322,6 +326,15 @@ mixin Tys<V extends LifeCycleVariable> {
 
     // for ty 无法识别的情况
     getKV((c) => c._implTys, test: test);
+    if (cache != null) return cache;
+
+    final tyCtx = ty.currentContext;
+    if (tyCtx != null) {
+      tyCtx.getKV((c) => c._implForTy[ty], test: test);
+      if (cache != null) return cache;
+
+      tyCtx.getKV((c) => c._implTys, test: test);
+    }
 
     return cache;
   }

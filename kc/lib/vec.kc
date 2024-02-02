@@ -1,7 +1,4 @@
 import "heap_pointer.d.kc";
-import "allocator.kc";
-import "d.kc"
-import "option.kc"
 
 struct Vec<T> {
   cap: usize,
@@ -10,6 +7,7 @@ struct Vec<T> {
 }
 
 impl<T> Vec<T> {
+
   static fn new() Self {
     final cap = 8;
     let size = sizeOf(T) * cap;
@@ -19,11 +17,12 @@ impl<T> Vec<T> {
 
   fn add(value: T) {
     if self.len == self.cap {
-      let size = self.cap * 2;
+      final size = self.cap * 2;
       self.data = realloc(self.data, size);
+      self.cap = size;
     }
     
-    self.data[self.len] = value;
+    ptrSetValue(self.data, self.len, value);
     self.len += 1;
   }
 
@@ -31,16 +30,14 @@ impl<T> Vec<T> {
     if self.len > 0 {
       self.len -= 1;
       final ret = Some(self.data[self.len]);
-      addFree(&(self.data[self.len]));
-      return ret;
+      addFree(self.data[self.len]);
+      ret
+    } else {
+      None
     }
-
-    return None;
   }
 
   fn getLength() usize {
     self.len;
   }
-
-
 }

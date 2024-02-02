@@ -20,7 +20,9 @@ abstract class ManagerBase extends GlobalContext {
   static const stds = [
     'd.kc',
     'vec.kc',
+    'box.kc',
     'option.kc',
+    'allocator.kc',
   ];
 
   late final List<String> _stdPaths;
@@ -126,7 +128,7 @@ mixin BuildContextMixin on ManagerBase {
   }
 
   Fn? getFn(String name) {
-    final ident = Identifier.builtIn(name);
+    final ident = name.ident;
     for (var ctx in llvmCtxs.values) {
       final fn = ctx.getFn(ident);
       if (fn != null) return fn;

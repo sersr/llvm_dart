@@ -2,7 +2,7 @@ part of 'builders.dart';
 
 abstract class MatchBuilder {
   static void commonBuilder(MatchItemExpr item, FnBuildMixin context,
-      ExprTempValue temp, StoreVariable? retVariable) {
+      ExprTempValue temp, BlockRetFn blockRetFn, bool isRet) {
     final then = context.buildSubBB(name: 'm_then');
     final after = context.buildSubBB(name: 'm_after');
     LLVMBasicBlock elseBB;
@@ -13,43 +13,44 @@ abstract class MatchBuilder {
       elseBB = after;
     }
 
-    context.appendBB(then);
     final exprTempValue = item.build3(context, temp);
     final val = exprTempValue?.variable;
-    item.block.build(then.context);
-    IfExprBuilder._blockRetValue(item.block, then.context, retVariable);
-    if (then.context.canBr) {
-      then.context.br(after.context);
-    }
 
     if (val != null) {
       llvm.LLVMBuildCondBr(
           context.builder, val.load(context), then.bb, elseBB.bb);
     }
 
+    context.appendBB(then);
+    item.block.build(then.context, hasRet: isRet);
+
+    var hasAfterBb = false;
+    if (then.context.canBr) {
+      hasAfterBb = true;
+      blockRetFn(item.block, then.context);
+      then.context.br(after.context);
+    }
+
     if (child != null) {
       context.appendBB(elseBB);
-      // if (child.isValIdent) {
-      //   child.build4(elseBB.context, temp);
-      //   IfExprBuilder._blockRetValue(child.block, elseBB.context, retVariable);
-      // } else
       if (child.isOther) {
-        child.build2(elseBB.context, temp);
-        IfExprBuilder._blockRetValue(child.block, elseBB.context, retVariable);
+        child.build2(elseBB.context, temp, isRet);
+        blockRetFn(child.block, elseBB.context);
       } else {
-        commonBuilder(child, elseBB.context, temp, retVariable);
+        commonBuilder(child, elseBB.context, temp, blockRetFn, isRet);
       }
 
       if (elseBB.context.canBr) {
+        hasAfterBb = true;
         elseBB.context.br(after.context);
       }
     }
 
-    context.insertPointBB(after);
+    if (hasAfterBb) context.insertPointBB(after);
   }
 
   static void commonExpr(FnBuildMixin context, List<MatchItemExpr> items,
-      ExprTempValue temp, StoreVariable? variable) {
+      ExprTempValue temp, BlockRetFn blockRetFn, bool isRet) {
     MatchItemExpr? last;
     MatchItemExpr? first;
 
@@ -68,39 +69,26 @@ abstract class MatchBuilder {
     last?.child = otherItem;
     last = otherItem;
 
-    commonBuilder(first!, context, temp, variable);
+    commonBuilder(first!, context, temp, blockRetFn, isRet);
   }
 
   static StoreVariable? matchBuilder(FnBuildMixin context,
       List<MatchItemExpr> items, ExprTempValue temp, Ty? retTy, bool isRet) {
-    StoreVariable? variable;
-
-    if (retTy != null) {
-      if (isRet) {
-        final fnContext = context.getLastFnContext()!;
-        variable = fnContext.sret ?? fnContext.compileRetValue;
-      }
-
-      if (variable == null) {
-        return LLVMAllocaProxyVariable(context, (proxy, isProxy) {
-          StoreVariable? variable = proxy;
-
-          if (isRet && !isProxy) {
-            context.removeVal(variable);
-          }
-
-          _matchBuilder(context, items, temp, variable);
-        }, retTy, retTy.typeOf(context), Identifier.none);
-      }
+    if (retTy != null && !isRet) {
+      return LLVMAllocaProxyVariable(context, (proxy, isProxy) {
+        _matchBuilder(context, items, temp, (block, context) {
+          IfExprBuilder._blockRetValue(block, context, proxy);
+        }, false);
+      }, retTy, retTy.typeOf(context), Identifier.none);
     }
 
-    _matchBuilder(context, items, temp, variable);
+    _matchBuilder(context, items, temp, (block, context) {}, isRet);
 
-    return variable;
+    return null;
   }
 
   static void _matchBuilder(FnBuildMixin context, List<MatchItemExpr> items,
-      ExprTempValue temp, StoreVariable? retVariable) {
+      ExprTempValue temp, BlockRetFn blockRetFn, bool isRet) {
     final parent = temp.variable;
     if (parent == null) return;
     var enumTy = temp.ty;
@@ -109,18 +97,13 @@ abstract class MatchBuilder {
     }
 
     if (enumTy is! EnumTy) {
-      commonExpr(context, items, temp, retVariable);
+      commonExpr(context, items, temp, blockRetFn, isRet);
       return;
     }
 
     var indexValue = enumTy.llty.loadIndex(context, parent);
 
     final hasOther = items.any((e) => e.isOther);
-
-    /// 变量是否可用
-    final varUseable = hasOther || items.length == enumTy.variants.length;
-
-    if (!varUseable) retVariable = null;
 
     var length = items.length;
 
@@ -139,8 +122,8 @@ abstract class MatchBuilder {
       }
 
       context.appendBB(then);
-      final itemIndex = first.build2(then.context, temp);
-      IfExprBuilder._blockRetValue(first.block, then.context, retVariable);
+      final itemIndex = first.build2(then.context, temp, isRet);
+      blockRetFn(first.block, then.context);
       if (then.context.canBr) {
         then.context.br(after.context);
       }
@@ -157,8 +140,8 @@ abstract class MatchBuilder {
       if (child != null) {
         context.appendBB(elseBB);
 
-        child.build2(elseBB.context, temp);
-        IfExprBuilder._blockRetValue(child.block, elseBB.context, retVariable);
+        child.build2(elseBB.context, temp, isRet);
+        blockRetFn(child.block, elseBB.context);
 
         if (elseBB.context.canBr) {
           elseBB.context.br(after.context);
@@ -191,11 +174,11 @@ abstract class MatchBuilder {
         childBb = context.buildSubBB(name: 'match_bb_$index');
         context.appendBB(childBb);
       }
-      final v = item.build2(childBb.context, temp);
+      final v = item.build2(childBb.context, temp, isRet);
       if (v != null) {
         llvm.LLVMAddCase(ss, llPty.getIndexValue(context, v), childBb.bb);
       }
-      IfExprBuilder._blockRetValue(item.block, childBb.context, retVariable);
+      blockRetFn(item.block, childBb.context);
       childBb.context.br(after.context);
       index += 1;
     }

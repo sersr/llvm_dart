@@ -37,7 +37,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
     return _compileRetValue = LLVMAllocaProxyVariable(this, (value, isProxy) {
       if (isProxy) return;
       removeVal(value);
-    }, ty, ty.typeOf(this), Identifier.builtIn('compile_ret'));
+    }, ty, ty.typeOf(this), 'compile_ret'.ident);
   }
 
   void _updateDebugFn(FnContextMixin parent, FnContextMixin debug) {

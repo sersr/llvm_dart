@@ -1,54 +1,44 @@
 part of 'builders.dart';
 
+typedef BlockRetFn = void Function(Block bloc, FnBuildMixin context);
+
 abstract class IfExprBuilder {
   static StoreVariable? createIfBlock(
       IfExprBlock ifb, FnBuildMixin context, Ty? ty, bool isRetValue) {
-    StoreVariable? variable;
-    if (ty != null) {
-      if (isRetValue) {
-        final fnContext = context.getLastFnContext()!;
-        variable = fnContext.sret ?? fnContext.compileRetValue;
-      }
-
-      if (variable == null) {
-        variable = ty.llty.createAlloca(context, Identifier.none);
-        if (isRetValue) {
-          context.removeVal(variable);
-        }
-      }
+    if (ty != null && !isRetValue) {
+      return LLVMAllocaProxyVariable(context, (variable, isProxy) {
+        _buildIfExprBlock(ifb, context, (block, context) {
+          _blockRetValue(block, context, variable);
+        }, false);
+      }, ty, ty.typeOf(context), Identifier.none);
     }
 
-    _buildIfExprBlock(ifb, context, variable);
+    _buildIfExprBlock(ifb, context, (block, context) {}, isRetValue);
 
-    return variable;
+    return null;
   }
 
   static void _blockRetValue(
       Block block, FnBuildMixin context, StoreVariable? variable) {
     if (variable == null) return;
-
     final lastStmt = block.lastOrNull;
-    if (lastStmt is ExprStmt) {
-      final expr = lastStmt.expr;
-      if (expr is! RetExpr) {
-        // 获取缓存的value
-        final temp = expr.build(context);
-        final val = temp?.variable;
-        if (val == null) {
-          // error
-        } else {
-          if (val is LLVMAllocaProxyVariable && !val.created) {
-            val.initProxy(proxy: variable);
-          } else {
-            variable.store(context, val.load(context));
-          }
-        }
+
+    if (lastStmt case ExprStmt(expr: var expr)) {
+      // 获取缓存的value
+      final temp = expr.build(context);
+      final val = temp?.variable;
+      if (val == null) return;
+
+      if (val is LLVMAllocaProxyVariable && !val.created) {
+        val.initProxy(proxy: variable);
+      } else {
+        variable.store(context, val.load(context));
       }
     }
   }
 
   static void _buildIfExprBlock(
-      IfExprBlock ifEB, FnBuildMixin c, StoreVariable? variable) {
+      IfExprBlock ifEB, FnBuildMixin c, BlockRetFn blockRetFn, bool isRet) {
     final elseifBlock = ifEB.child;
     final elseBlock = ifEB.elseBlock;
     final onlyIf = elseifBlock == null && elseBlock == null;
@@ -71,7 +61,7 @@ abstract class IfExprBuilder {
     }
 
     c.appendBB(then);
-    ifEB.block.build(then.context);
+    ifEB.block.build(then.context, hasRet: isRet);
 
     if (onlyIf) {
       hasAfterBb = true;
@@ -83,15 +73,16 @@ abstract class IfExprBuilder {
       c.appendBB(elseBB);
       c.setBr();
       if (elseifBlock != null) {
-        _buildIfExprBlock(elseifBlock, elseBB.context, variable);
+        _buildIfExprBlock(elseifBlock, elseBB.context, blockRetFn, isRet);
       } else if (elseBlock != null) {
-        elseBlock.build(elseBB.context);
+        elseBlock.build(elseBB.context, hasRet: isRet);
       }
     }
+
     var canBr = then.context.canBr;
     if (canBr) {
       hasAfterBb = true;
-      _blockRetValue(ifEB.block, then.context, variable);
+      blockRetFn(ifEB.block, then.context);
       then.context.br(afterBB.context);
     }
 
@@ -100,9 +91,9 @@ abstract class IfExprBuilder {
       if (elseCanBr) {
         hasAfterBb = true;
         if (elseBlock != null) {
-          _blockRetValue(elseBlock, elseBB.context, variable);
+          if (!isRet) blockRetFn(elseBlock, elseBB.context);
         } else if (elseifBlock != null) {
-          _blockRetValue(elseifBlock.block, elseBB.context, variable);
+          if (!isRet) blockRetFn(elseifBlock.block, elseBB.context);
         }
         elseBB.context.br(afterBB.context);
       }

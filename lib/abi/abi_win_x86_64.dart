@@ -40,7 +40,7 @@ class AbiFnWinx86_64 implements AbiFn {
 
     StoreVariable? sret;
     if (isSret(context, fn)) {
-      sret = retTy.llty.createAlloca(context, Identifier.builtIn('sret'));
+      sret = retTy.llty.createAlloca(context, 'sret'.ident);
 
       args.add(sret.alloca);
     }
@@ -104,7 +104,7 @@ class AbiFnWinx86_64 implements AbiFn {
 
     final v = switch (retTy) {
       StructTy() => fromFnParamsOrRet(context, retTy, ret, Identifier.none),
-      _ => LLVMConstVariable(ret, retTy, Identifier.builtIn('_ret'))
+      _ => LLVMConstVariable(ret, retTy, '_ret'.ident)
     };
 
     return ExprTempValue(v);
