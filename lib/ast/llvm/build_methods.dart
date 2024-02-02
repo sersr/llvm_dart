@@ -1,14 +1,13 @@
 import 'dart:ffi';
 
 import '../../fs/fs.dart';
-import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../../parsers/str.dart';
 import '../ast.dart';
-import '../context.dart';
 import '../memory.dart';
 import '../tys.dart';
 import 'intrinsics.dart';
+import 'llvm_context.dart';
 import 'variables.dart';
 
 mixin LLVMTypeMixin {
@@ -188,7 +187,7 @@ mixin Consts on LLVMTypeMixin {
   }
 
   LLVMValueRef usizeValue(int size) {
-    return BuiltInTy.usize.llty
+    return LiteralKind.usize.llty
         .createValue(ident: '$size'.ident)
         .getValue(this);
   }
@@ -209,7 +208,7 @@ mixin Consts on LLVMTypeMixin {
       final (strPtr, length) = src.toNativeUtf8WithLength();
       final strData = constStr('', strPtr: strPtr, length: length);
 
-      final type = arrayType(BuiltInTy.u8.llty.litType(this), length + 1);
+      final type = arrayType(LiteralKind.u8.llty.litType(this), length + 1);
       final value = llvm.LLVMAddGlobal(module, type, '.str'.toChar());
       llvm.LLVMSetLinkage(value, LLVMLinkage.LLVMPrivateLinkage);
       llvm.LLVMSetGlobalConstant(value, LLVMTrue);
@@ -339,8 +338,8 @@ mixin BuildMethods on LLVMTypeMixin {
 }
 
 mixin Cast on BuildMethods {
-  LLVMValueRef castLit(LitKind src, LLVMValueRef value, LitKind dest) {
-    final ty = BuiltInTy.from(dest.lit)!;
+  LLVMValueRef castLit(LiteralKind src, LLVMValueRef value, LiteralKind dest) {
+    final ty = dest.ty;
     final llty = ty.llty.litType(this);
     if (src.isInt != dest.isInt) {
       final op = getCastOp(src, dest)!;
@@ -354,7 +353,7 @@ mixin Cast on BuildMethods {
     return llvm.LLVMBuildFPCast(builder, value, llty, unname);
   }
 
-  static int? getCastOp(LitKind src, LitKind dest) {
+  static int? getCastOp(LiteralKind src, LiteralKind dest) {
     if (src.isInt && dest.isFp) {
       if (src.signed) {
         return LLVMOpcode.LLVMSIToFP;
@@ -449,12 +448,12 @@ mixin StoreLoadMixin
       final d = count / size;
       count = d.ceil();
       loadTy = llvm.LLVMDIBuilderCreateArrayType(dBuilder!, count, size,
-          BuiltInTy.i64.llty.createDIType(this), nullptr, 0);
+          LiteralKind.i64.llty.createDIType(this), nullptr, 0);
     } else {
       if (count > 4) {
-        loadTy = BuiltInTy.i64.llty.createDIType(this);
+        loadTy = LiteralKind.i64.llty.createDIType(this);
       } else {
-        loadTy = BuiltInTy.i32.llty.createDIType(this);
+        loadTy = LiteralKind.i32.llty.createDIType(this);
       }
     }
     return loadTy;

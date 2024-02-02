@@ -10,7 +10,6 @@ import '../ast/llvm/coms.dart';
 import '../ast/llvm/llvm_context.dart';
 import '../ast/llvm/variables.dart';
 import '../ast/memory.dart';
-import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'abi_arm64.dart';
 import 'abi_win_x86_64.dart';
@@ -179,7 +178,7 @@ abstract interface class AbiFn {
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
 
-    if (retTy.isTy(BuiltInTy.kVoid)) {
+    if (retTy.isTy(LiteralKind.kVoid.ty)) {
       return null;
     }
 

@@ -3,14 +3,13 @@ import 'package:collection/collection.dart';
 import 'package:nop/nop.dart';
 
 import '../abi/abi_fn.dart';
-import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import '../parsers/lexers/token_kind.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
 import 'builders/builders.dart';
 import 'buildin.dart';
-import 'context.dart';
+import 'llvm/build_context_mixin.dart';
 import 'llvm/build_methods.dart';
 import 'llvm/coms.dart';
 import 'llvm/variables.dart';
@@ -29,7 +28,7 @@ class LiteralExpr extends Expr {
 
   @override
   String toString() {
-    final isStr = ty.ty == LitKind.kStr;
+    final isStr = ty.literal == LiteralKind.kStr;
     var v = isStr
         ? ident.src.replaceAll('\\\\', '\\').replaceAll('\n', '\\n')
         : ident.src;
@@ -1144,10 +1143,11 @@ class OpExpr extends Expr {
     var val = value?.variable;
     final valTy = val?.ty;
     if (baseTy is BuiltInTy && baseTy != valTy && valTy is BuiltInTy) {
-      final v = context.castLit(valTy.ty, val!.load(context), baseTy.ty);
+      final v =
+          context.castLit(valTy.literal, val!.load(context), baseTy.literal);
       val = LLVMConstVariable(v, baseTy, Identifier.none);
       return ExprTempValue(val);
-    } else if (l.ty is RefTy && valTy is BuiltInTy && valTy.ty.isInt) {
+    } else if (l.ty is RefTy && valTy is BuiltInTy && valTy.literal.isInt) {
       return ExprTempValue(
           LLVMConstVariable(val!.getBaseValue(context), l.ty, Identifier.none));
     }
@@ -1172,7 +1172,7 @@ class OpExpr extends Expr {
     if (l == null) return null;
     if (op.index >= OpKind.Eq.index && op.index <= OpKind.Gt.index ||
         op.index >= OpKind.And.index && op.index <= OpKind.Or.index) {
-      return context.createVal(BuiltInTy.kBool, Identifier.none);
+      return context.createVal(LiteralKind.kBool.ty, Identifier.none);
     }
     return context.createVal(l.ty, Identifier.none);
   }
@@ -1213,9 +1213,7 @@ enum PointerKind {
 }
 
 extension ListPointerKind on List<PointerKind> {
-  bool get isRef {
-    return firstOrNull == PointerKind.ref;
-  }
+  bool get isRef => firstOrNull == PointerKind.ref;
 
   Ty wrapRefTy(Ty baseTy) {
     for (var kind in this) {
@@ -1235,22 +1233,25 @@ extension ListPointerKind on List<PointerKind> {
 }
 
 class VariableIdentExpr extends Expr {
-  VariableIdentExpr(this.ident, this.generics);
+  VariableIdentExpr(this.ident, this.genericInsts);
   final Identifier ident;
-  final List<PathTy> generics;
+  final List<PathTy> genericInsts;
+
+  PathTy? _pathTy;
+  PathTy get pathTy => _pathTy ??= PathTy(ident, genericInsts);
   @override
   String toString() {
-    return '$ident${generics.str}';
+    return '$ident${genericInsts.str}';
   }
 
   @override
   Ty? getTy(StoreLoadMixin context) {
-    return context.getVariable(ident)?.ty;
+    return context.getVariable(ident)?.ty ?? pathTy.grtOrT(context);
   }
 
   @override
   Expr clone() {
-    return VariableIdentExpr(ident, generics).._isCatch = _isCatch;
+    return VariableIdentExpr(ident, genericInsts).._isCatch = _isCatch;
   }
 
   @override
@@ -1258,15 +1259,10 @@ class VariableIdentExpr extends Expr {
     if (ident.src == 'null') {
       final ty = baseTy?.typeOf(context);
 
-      if (ty == null) {
-        return ExprTempValue.ty(BuiltInTy.kVoid, ident);
-      }
+      if (ty == null) return null;
+
       final v = LLVMConstVariable(llvm.LLVMConstNull(ty), baseTy!, ident);
       return ExprTempValue(v);
-    }
-    final builtinTy = BuiltInTy.from(ident.src);
-    if (builtinTy != null) {
-      return ExprTempValue.ty(builtinTy, ident);
     }
 
     final val = context.getVariable(ident);
@@ -1274,71 +1270,26 @@ class VariableIdentExpr extends Expr {
       return ExprTempValue(val.newIdent(ident, dirty: false));
     }
 
-    final typeAlias = context.getAliasTy(ident);
-    var struct = context.getStruct(ident);
-    var genericsInsts = generics;
-    if (struct == null) {
-      struct = typeAlias?.getTy(context, generics);
-      if (struct != null) {
-        genericsInsts = const [];
+    final ty = pathTy.grtOrT(context, gen: (ident) {
+      if (baseTy is NewInst) {
+        return baseTy.tys[ident];
       }
-    }
+      return null;
+    });
 
-    if (struct != null) {
-      if (genericsInsts.isNotEmpty) {
-        struct =
-            struct.newInstWithGenerics(context, genericsInsts, struct.generics);
-      }
-
-      if (struct.tys.isEmpty) {
-        if (baseTy is StructTy && struct.isTy(baseTy)) {
-          struct = baseTy;
-        }
-      }
-
-      if (struct is EnumItem) {
-        if (baseTy is EnumTy && struct.parent.isTy(baseTy)) {
-          struct = struct.newInst(baseTy.tys, context);
-        }
-
-        if (struct.fields.isEmpty && struct.done) {
-          final val = struct.llty.buildTupeOrStruct(context, const []);
-          return ExprTempValue(val, ty: struct);
-        }
-      }
-
-      return ExprTempValue.ty(struct, ident);
-    }
-
-    var fn = context.getFn(ident);
-    if (fn == null) {
-      fn = typeAlias?.getTy(context, generics);
-      if (fn != null) {
-        genericsInsts = const [];
-      }
-    }
-    if (fn != null) {
-      var enableBuild = false;
-      if (genericsInsts.isNotEmpty) {
-        fn = fn.newInstWithGenerics(context, genericsInsts, fn.generics);
-        enableBuild = true;
-      }
-
-      if (fn.generics.isEmpty) {
-        enableBuild = true;
-      }
-
-      if (enableBuild) {
-        final value = fn.genFn();
+    if (ty is NewInst && ty.done) {
+      if (ty is StructTy && ty.fields.isEmpty) {
+        final val = ty.llty.buildTupeOrStruct(context, const []);
+        return ExprTempValue(val, ty: ty);
+      } else if (ty is Fn) {
+        final value = ty.genFn();
         if (value != null) {
           return ExprTempValue(value.newIdent(ident, dirty: false));
         }
       }
-      return ExprTempValue.ty(fn, ident);
     }
 
-    final builtinFn = context.getBuiltinFn(ident);
-    if (builtinFn != null) return ExprTempValue.ty(builtinFn, ident);
+    if (ty != null) return ExprTempValue.ty(ty, ident);
 
     return null;
   }
@@ -1353,37 +1304,13 @@ class VariableIdentExpr extends Expr {
     }
 
     if (v != null) return v.copy(ident: ident);
+    final ty = pathTy.grtOrT(context);
 
-    var struct = context.getStruct(ident);
-    if (struct != null) {
-      if (generics.isNotEmpty) {
-        final gg = <Identifier, Ty>{};
-        for (var i = 0; i < generics.length; i += 1) {
-          final g = generics[i];
-          final gName = struct.generics[i];
-          gg[gName.ident] = g.grt(context);
-        }
-        struct = struct.newInst(gg, context);
-      }
-      return context.createVal(struct, ident);
+    if (ty is Fn) {
+      context.addChild(ty);
     }
-    var fn = context.getFn(ident);
-    if (fn != null) {
-      context.addChild(fn);
-      if (generics.isNotEmpty) {
-        final gg = <Identifier, Ty>{};
-        for (var i = 0; i < generics.length; i += 1) {
-          final g = generics[i];
-          final gName = fn.generics[i];
-          gg[gName.ident] = g.grt(context);
-        }
-        fn = fn.newInst(gg, context);
-      }
-      return context.createVal(fn, ident);
-    }
-    final builtinFn = context.getBuiltinFn(ident);
-    if (builtinFn != null) return context.createVal(builtinFn, ident);
 
+    if (ty != null) return context.createVal(ty, ident);
     return null;
   }
 }
@@ -1636,7 +1563,7 @@ class MatchExpr extends Expr with RetExprMixin {
 
     var ty = baseTy ?? _getTy();
 
-    if (ty?.isTy(BuiltInTy.kVoid) == true) ty = null;
+    if (LiteralKind.kVoid.ty.isTy(ty)) ty = null;
 
     final variable = MatchBuilder.matchBuilder(context, items, temp, ty, isRet);
 
@@ -1836,7 +1763,7 @@ class UnaryExpr extends Expr {
     var val = temp?.variable;
     if (val == null) return null;
     if (op == UnaryKind.Not) {
-      if (val.ty == BuiltInTy.kBool) {
+      if (val.ty.isTy(LiteralKind.kBool.ty)) {
         final value = val.load(context);
         final notValue = llvm.LLVMBuildNot(context.builder, value, unname);
         final variable = LLVMConstVariable(notValue, val.ty, opIdent);

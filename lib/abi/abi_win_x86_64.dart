@@ -7,7 +7,6 @@ import '../ast/llvm/build_methods.dart';
 import '../ast/llvm/llvm_context.dart';
 import '../ast/llvm/variables.dart';
 import '../ast/memory.dart';
-import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'abi_fn.dart';
 
@@ -98,7 +97,7 @@ class AbiFnWinx86_64 implements AbiFn {
     if (sret != null) {
       return ExprTempValue(sret);
     }
-    if (retTy.isTy(BuiltInTy.kVoid)) {
+    if (retTy.isTy(LiteralKind.kVoid.ty)) {
       return null;
     }
 

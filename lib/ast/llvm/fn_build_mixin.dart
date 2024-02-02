@@ -19,7 +19,7 @@ mixin FnBuildMixin
       fnContext.instertFnEntryBB();
       onCreated?.call(fnContext);
 
-      final hasRet = !fn.getRetTy(fnContext).isTy(BuiltInTy.kVoid);
+      final hasRet = !fn.getRetTy(fnContext).isTy(LiteralKind.kVoid.ty);
       fnContext.initFnParamsStart(fv.value, fn, extra,
           ignoreFree: ignoreFree, map: map);
 

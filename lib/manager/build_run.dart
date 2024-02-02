@@ -2,7 +2,6 @@ import 'dart:ffi';
 
 import '../ast/llvm/llvm_context.dart';
 import '../fs/fs.dart';
-import '../llvm_core.dart';
 import '../llvm_dart.dart';
 
 void writeOut(RootBuildContext root,

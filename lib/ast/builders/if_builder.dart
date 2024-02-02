@@ -21,9 +21,8 @@ abstract class IfExprBuilder {
   static void _blockRetValue(
       Block block, FnBuildMixin context, StoreVariable? variable) {
     if (variable == null) return;
-    final lastStmt = block.lastOrNull;
 
-    if (lastStmt case ExprStmt(expr: var expr)) {
+    if (block.lastOrNull case ExprStmt(expr: var expr)) {
       // 获取缓存的value
       final temp = expr.build(context);
       final val = temp?.variable;
@@ -54,7 +53,7 @@ abstract class IfExprBuilder {
     if (con == null) return;
 
     LLVMValueRef conv;
-    if (con.ty.isTy(BuiltInTy.kBool)) {
+    if (con.ty.isTy(LiteralKind.kBool.ty)) {
       conv = con.load(c);
     } else {
       conv = c.math(con, null, OpKind.Ne, Identifier.none).load(c);

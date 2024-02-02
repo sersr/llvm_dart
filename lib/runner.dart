@@ -77,82 +77,80 @@ class ClangCmd extends Cmd {
   }
 }
 
-Future<bool> run(Options options) {
-  return runPrint(() async {
-    final path = options.binFile.path;
-    final cmd = ClangCmd();
-    await cmd.obtainClang();
+Future<bool> run(Options options) async {
+  final path = options.binFile.path;
+  final cmd = ClangCmd();
+  await cmd.obtainClang();
 
-    if (!cmd.isActive) {
-      Log.e('clang not found');
-      return false;
-    }
+  if (!cmd.isActive) {
+    Log.e('clang not found');
+    return false;
+  }
 
-    final configs = cmd.getConfigs(options.isDebug);
+  final configs = cmd.getConfigs(options.isDebug);
 
-    final project = ProjectManager(
-      stdRoot: options.std,
-      name: options.binFile.basename,
-      configs: configs,
-    );
+  final project = ProjectManager(
+    stdRoot: options.std,
+    name: options.binFile.basename,
+    configs: configs,
+  );
 
-    if (!project.genFn(path, logAst: options.logAst)) {
-      project.dispose();
-      return false;
-    }
-
-    final name = options.binFile.basename.replaceFirst(RegExp('.kc\$'), '');
-    writeOut(project.rootBuildContext, name: name, optimize: options.opt);
-
-    final args = StringBuffer();
-
-    if (options.isVerbose) {
-      args.write(' -v');
-    }
-    if (options.isDebug) {
-      args.write(' -g');
-    }
-
-    args.write(' --target=${configs.targetTriple}');
-
-    if (!options.compileIR) {
-      args.write(' $name.o');
-    } else {
-      args.write(' $name.ll');
-      args.write(' -Wno-override-module');
-    }
-
-    for (var file in options.cFiles) {
-      var path = currentDir.childFile(file).path;
-      if (Platform.isWindows) path = path.replaceAll(r'\', '/');
-      args.write(' $path');
-    }
-
-    var main = 'main';
-    if (Platform.isWindows) {
-      args.write(' -o $main.exe');
-    } else {
-      args.write(' -o $main');
-    }
-
-    await runCmd(
-      [
-        '${cmd.command}$args',
-        '&&',
-        './$main "hello world"',
-      ],
-      dir: buildDir,
-    );
-
-    if (options.logFile) {
-      Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);
-      // for (var ctx in project.alcs.keys) {
-      //   Log.w(ctx, onlyDebug: false);
-      // }
-    }
-
+  if (!project.genFn(path, logAst: options.logAst)) {
     project.dispose();
+    return false;
+  }
 
-    return true;
-  });
+  final name = options.binFile.basename.replaceFirst(RegExp('.kc\$'), '');
+  writeOut(project.rootBuildContext, name: name, optimize: options.opt);
+
+  final args = StringBuffer();
+
+  if (options.isVerbose) {
+    args.write(' -v');
+  }
+  if (options.isDebug) {
+    args.write(' -g');
+  }
+
+  args.write(' --target=${configs.targetTriple}');
+
+  if (!options.compileIR) {
+    args.write(' $name.o');
+  } else {
+    args.write(' $name.ll');
+    args.write(' -Wno-override-module');
+  }
+
+  for (var file in options.cFiles) {
+    var path = currentDir.childFile(file).path;
+    if (Platform.isWindows) path = path.replaceAll(r'\', '/');
+    args.write(' $path');
+  }
+
+  var main = 'main';
+  if (Platform.isWindows) {
+    args.write(' -o $main.exe');
+  } else {
+    args.write(' -o $main');
+  }
+
+  await runCmd(
+    [
+      '${cmd.command}$args',
+      '&&',
+      './$main "hello world"',
+    ],
+    dir: buildDir,
+  );
+
+  if (options.logFile) {
+    Log.w(buildDir.childFile('$name.ll').path, onlyDebug: false);
+    for (var ctx in project.alcs.keys) {
+      Log.w(ctx, onlyDebug: false);
+    }
+  }
+
+  project.dispose();
+
+  return true;
 }

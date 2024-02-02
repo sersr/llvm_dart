@@ -11,17 +11,17 @@ abstract class AsBuilder {
     }
 
     if (asTy is BuiltInTy && lty is BuiltInTy) {
-      final val = context.castLit(lty.ty, lv.load(context), asTy.ty);
+      final val = context.castLit(lty.literal, lv.load(context), asTy.literal);
       return LLVMConstVariable(val, asTy, asId);
     }
     Variable? asValue;
 
-    if (lty is RefTy && asTy is BuiltInTy && asTy.ty.isInt) {
+    if (lty is RefTy && asTy is BuiltInTy && asTy.literal.isInt) {
       final type = asTy.typeOf(context);
       final v = llvm.LLVMBuildPtrToInt(
           context.builder, lv.load(context), type, unname);
       asValue = LLVMConstVariable(v, asTy, asId);
-    } else if (lty is BuiltInTy && lty.ty.isInt && asTy is RefTy) {
+    } else if (lty is BuiltInTy && lty.literal.isInt && asTy is RefTy) {
       final type = asTy.typeOf(context);
       final v = llvm.LLVMBuildIntToPtr(
           context.builder, lv.load(context), type, unname);

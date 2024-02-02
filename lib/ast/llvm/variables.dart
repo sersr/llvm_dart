@@ -1,8 +1,8 @@
 import '../../llvm_core.dart';
 import '../ast.dart';
-import '../context.dart';
 import '../stmt.dart';
 import '../tys.dart';
+import 'build_context_mixin.dart';
 import 'build_methods.dart';
 import 'coms.dart';
 import 'llvm_types.dart';

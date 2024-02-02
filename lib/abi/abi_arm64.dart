@@ -7,7 +7,6 @@ import '../ast/llvm/build_methods.dart';
 import '../ast/llvm/llvm_context.dart';
 import '../ast/llvm/variables.dart';
 import '../ast/memory.dart';
-import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'abi_fn.dart';
 
@@ -98,7 +97,7 @@ class AbiFnArm64 implements AbiFn {
     if (sret != null) {
       return ExprTempValue(sret);
     }
-    if (retTy.isTy(BuiltInTy.kVoid)) {
+    if (retTy.isTy(LiteralKind.kVoid.ty)) {
       return null;
     }
 
@@ -116,13 +115,16 @@ class AbiFnArm64 implements AbiFn {
       return context.pointer();
     }
 
-    final onlyFloat = ty.fields.every((e) => e.grt(context) == BuiltInTy.f32);
+    final onlyFloat =
+        ty.fields.every((e) => e.grt(context).isTy(LiteralKind.f32.ty));
     if (onlyFloat) {
       final size = (count / 4).ceil();
       return context.arrayType(context.f32, size);
     }
 
-    final onlyDouble = ty.fields.every((e) => e.grt(context) == BuiltInTy.f64);
+    final onlyDouble =
+        ty.fields.every((e) => e.grt(context).isTy(LiteralKind.f64.ty));
+
     if (onlyDouble) {
       final size = (count / 8).ceil();
       return context.arrayType(context.f64, size);

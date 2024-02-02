@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'fs/fs.dart';
 import 'llvm_core.dart';
+export 'llvm_core.dart';
 
 const LLVMTrue = 1;
 const LLVMFalse = 0;

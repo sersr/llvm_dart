@@ -66,7 +66,7 @@ abstract class GlobalContext {
     if (valTy is ArrayTy && val != null) {
       if (fnName == 'getSize') {
         final size =
-            BuiltInTy.usize.llty.createValue(ident: '${valTy.size}'.ident);
+            LiteralKind.usize.ty.llty.createValue(ident: '${valTy.size}'.ident);
         return ExprTempValue(size);
       } else if (fnName == 'toStr') {
         final element = valTy.llty.toStr(context, val);
@@ -78,8 +78,9 @@ abstract class GlobalContext {
       if (valTy.ident.src == 'Array') {
         if (fnName == 'new') {
           if (params.isNotEmpty) {
-            final first =
-                params.first.build(context, baseTy: BuiltInTy.usize)?.variable;
+            final first = params.first
+                .build(context, baseTy: LiteralKind.usize.ty)
+                ?.variable;
 
             if (first is LLVMLitVariable) {
               if (valTy.tys.isNotEmpty) {
@@ -391,7 +392,8 @@ mixin Tys<V extends LifeCycleVariable> {
         getFn(i) ??
         getEnum(i) ??
         getDyTy(i) ??
-        getComponent(i);
+        getComponent(i) ??
+        getBuiltinFn(i);
   }
 
   void errorExpr(UnknownExpr unknownExpr) {}

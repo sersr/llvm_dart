@@ -23,7 +23,13 @@ fn main() i32 {
   vc.add(Point{y: 10, x: 22});
 
   printf("vc.len %d\n", vc.getLength());
-  vc.pop();
+  let point = vc.pop();
+
+  match point {
+    Some(point) => {
+      printf("point x: %d, y: %d\n", point.x, point.y);
+    }
+  }
 
   0;
 }

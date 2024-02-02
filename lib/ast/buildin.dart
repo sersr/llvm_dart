@@ -1,4 +1,3 @@
-import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
@@ -99,7 +98,7 @@ ExprTempValue? sizeOf(
     var e = first.expr;
 
     if (e is VariableIdentExpr) {
-      final p = PathTy(e.ident, e.generics);
+      final p = e.pathTy;
       ty = p.grt(context);
     }
   }
@@ -111,11 +110,11 @@ ExprTempValue? sizeOf(
   final size = context.typeSize(tyy);
 
   final v = context.usizeValue(size);
-  final vv = LLVMConstVariable(v, BuiltInTy.usize, Identifier.none);
+  final vv = LLVMConstVariable(v, LiteralKind.usize.ty, Identifier.none);
   return ExprTempValue(vv);
 }
 
-final sizeOfFn = BuiltinFn('sizeOf', sizeOf, retType: BuiltInTy.usize);
+final sizeOfFn = BuiltinFn('sizeOf', sizeOf, retType: LiteralKind.usize.ty);
 
 ExprTempValue memSet(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
@@ -130,11 +129,11 @@ ExprTempValue memSet(
   final align = context.getBaseAlignSize(rhs.ty);
   final value = llvm.LLVMBuildMemSet(context.builder, lv, rv, lenv, align);
 
-  final v = LLVMConstVariable(value, BuiltInTy.usize, Identifier.none);
+  final v = LLVMConstVariable(value, LiteralKind.usize.ty, Identifier.none);
   return ExprTempValue(v);
 }
 
-final memSetFn = BuiltinFn('memSet', memSet, retType: BuiltInTy.usize);
+final memSetFn = BuiltinFn('memSet', memSet, retType: LiteralKind.usize.ty);
 ExprTempValue memCopy(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
   Variable lhs = params[0].build(context)!.variable!;
@@ -150,13 +149,13 @@ ExprTempValue memCopy(
   final value =
       llvm.LLVMBuildMemCpy(context.builder, lv, lalign, rv, align, lenv);
 
-  final v =
-      LLVMConstVariable(value, RefTy.pointer(BuiltInTy.kVoid), Identifier.none);
+  final v = LLVMConstVariable(
+      value, RefTy.pointer(LiteralKind.kVoid.ty), Identifier.none);
   return ExprTempValue(v);
 }
 
 final memCopyFn =
-    BuiltinFn('memCopy', memCopy, retType: RefTy.pointer(BuiltInTy.kVoid));
+    BuiltinFn('memCopy', memCopy, retType: RefTy.pointer(LiteralKind.kVoid.ty));
 
 ExprTempValue? addFree(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params) {

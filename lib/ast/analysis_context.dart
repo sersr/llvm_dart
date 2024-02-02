@@ -271,11 +271,11 @@ class AnalysisStructVariable extends AnalysisVariable {
 
 class AnalysisListVariable extends AnalysisVariable {
   AnalysisListVariable(this.vals)
-      : super._(BuiltInTy.kVoid, Identifier.none, const []);
+      : super._(LiteralKind.kVoid.ty, Identifier.none, const []);
 
   final List<AnalysisVariable> vals;
   @override
-  Ty get ty => vals.firstOrNull?.ty ?? BuiltInTy.kVoid;
+  Ty get ty => vals.firstOrNull?.ty ?? LiteralKind.kVoid.ty;
 
   @override
   bool get isGlobal => vals.firstOrNull?.isGlobal ?? false;

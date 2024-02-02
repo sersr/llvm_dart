@@ -1,6 +1,7 @@
 import 'package:characters/characters.dart';
 import 'package:collection/collection.dart';
 
+import '../../ast/ast.dart';
 import '../token_it.dart';
 
 enum TokenKind {
@@ -168,68 +169,6 @@ const whiteSpaceChars = [
   '\u{2028}', // LINE SEPARATOR
   '\u{2029}', // PARAGRAPH SEPARATOR
 ];
-
-enum LiteralKind {
-  kFloat('float'),
-  kDouble('double'),
-  f32('f32'),
-  f64('f64'),
-  kInt('int'),
-  kStr('str'),
-
-  i8('i8'),
-  i16('i16'),
-  i32('i32'),
-  i64('i64'),
-  i128('i128'),
-
-  u8('u8'),
-  u16('u16'),
-  u32('u32'),
-  u64('u64'),
-  u128('u128'),
-  usize('usize'),
-
-  kBool('bool'),
-  kVoid('void'),
-  ;
-
-  static int? _max;
-  static int get max {
-    if (_max != null) return _max!;
-    return _max = values.fold<int>(0, (previousValue, element) {
-      if (previousValue > element.lit.length) {
-        return previousValue;
-      }
-      return element.lit.length;
-    });
-  }
-
-  bool get isFp {
-    if (index <= f64.index) {
-      return true;
-    }
-    return false;
-  }
-
-  bool get isInt {
-    if (index > f64.index && index < kBool.index) {
-      return true;
-    }
-    return false;
-  }
-
-  bool get signed {
-    assert(isInt);
-    if (index >= i8.index && index <= i128.index) {
-      return true;
-    }
-    return false;
-  }
-
-  final String lit;
-  const LiteralKind(this.lit);
-}
 
 class Token {
   Token(

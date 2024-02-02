@@ -3,14 +3,13 @@ import 'dart:ffi';
 import 'package:meta/meta.dart';
 import 'package:nop/nop.dart';
 
-import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../analysis_context.dart';
 import '../ast.dart';
 import '../builders/builders.dart';
-import '../context.dart';
 import '../expr.dart';
 import '../memory.dart';
+import 'build_context_mixin.dart';
 import 'build_methods.dart';
 import 'variables.dart';
 
@@ -60,88 +59,43 @@ class LLVMTypeLit extends LLVMType {
   }
 
   LLVMTypeRef litType(LLVMTypeMixin c) {
-    final kind = ty.ty.convert;
-    LLVMTypeRef type;
-    switch (kind) {
-      case LitKind.isize:
-        final size = c.pointerSize();
-        if (size == 8) {
-          type = c.i64;
-        } else {
-          type = c.i32;
-        }
-        break;
-      case LitKind.kDouble:
-      case LitKind.f64:
-        type = c.f64;
-        break;
-      case LitKind.kFloat:
-      case LitKind.f32:
-        type = c.f32;
-        break;
-      case LitKind.kBool:
-        type = c.i1;
-        break;
-      case LitKind.i8:
-        type = c.i8;
-        break;
-      case LitKind.i16:
-        type = c.i16;
-        break;
-      case LitKind.i64:
-        type = c.i64;
-        break;
-      case LitKind.i128:
-        type = c.i128;
-        break;
-      case LitKind.kStr:
-        type = c.pointer();
-        break;
-      case LitKind.kVoid:
-        type = c.typeVoid;
-        break;
-      case LitKind.i32:
-      case LitKind.kInt:
-      default:
-        type = c.i32;
-    }
-    return type;
+    return switch (ty.literal.convert) {
+      LiteralKind.f32 => c.f32,
+      LiteralKind.f64 => c.f64,
+      LiteralKind.kBool => c.i1,
+      LiteralKind.i8 => c.i8,
+      LiteralKind.i16 => c.i16,
+      LiteralKind.i32 => c.i32,
+      LiteralKind.i64 => c.i64,
+      LiteralKind.i128 => c.i128,
+      LiteralKind.kStr => c.pointer(),
+      LiteralKind.isize => c.pointerSize() == 8 ? c.i64 : c.i32,
+      LiteralKind.kVoid => c.typeVoid,
+      _ => throw "unknown lit ${ty.literal}",
+    };
   }
 
   LLVMLitVariable createValue({required Identifier ident}) {
     final raw = LLVMRawValue(ident);
     LLVMValueRef v(Consts c, BuiltInTy? bty) {
       final rTy = bty ?? ty;
-      final kind = rTy.ty.convert;
+      final lit = rTy.literal;
 
-      switch (kind) {
-        case LitKind.f32:
-        case LitKind.kFloat:
-          return c.constF32(raw.rawNumber);
-        case LitKind.f64:
-        case LitKind.kDouble:
-          return c.constF64(raw.rawNumber);
-        case LitKind.kStr:
-          return c.getString(raw.ident);
-        case LitKind.kBool:
-          return c.constI1(raw.raw == 'true' ? 1 : 0);
-        case LitKind.i8:
-          return c.constI8(raw.iValue, kind.signed);
-        case LitKind.i16:
-          return c.constI16(raw.iValue, kind.signed);
-        case LitKind.i64:
-          return c.constI64(raw.iValue, kind.signed);
-        case LitKind.i128:
-          return c.constI128(raw.raw, kind.signed);
-        case LitKind.isize:
-          return c.pointerSize() == 8
-              ? c.constI64(raw.iValue)
-              : c.constI32(raw.iValue);
-        case LitKind.kInt:
-        case LitKind.i32:
-        default:
-          return c.constI32(raw.iValue, kind.signed);
-      }
+      return switch (lit.convert) {
+        LiteralKind.f32 => c.constF32(raw.rawNumber),
+        LiteralKind.f64 => c.constF64(raw.rawNumber),
+        LiteralKind.kStr => c.getString(raw.ident),
+        LiteralKind.kBool => c.constI1(raw.raw == 'true' ? 1 : 0),
+        LiteralKind.i8 => c.constI8(raw.iValue, lit.signed),
+        LiteralKind.i16 => c.constI16(raw.iValue, lit.signed),
+        LiteralKind.i32 => c.constI32(raw.iValue, lit.signed),
+        LiteralKind.i64 => c.constI64(raw.iValue, lit.signed),
+        LiteralKind.i128 => c.constI128(raw.raw, lit.signed),
+        LiteralKind.isize => c.pointerSize() == 8
+            ? c.constI64(raw.iValue, lit.signed)
+            : c.constI32(raw.iValue),
+        _ => throw "unknown lit $lit",
+      };
     }
 
     return LLVMLitVariable(v, ty, raw, ident);
@@ -149,51 +103,37 @@ class LLVMTypeLit extends LLVMType {
 
   @override
   int getBytes(StoreLoadMixin c) {
-    final kind = ty.ty.convert;
-    switch (kind) {
-      case LitKind.kDouble:
-      case LitKind.f64:
-      case LitKind.i64:
-        return 8;
-      case LitKind.kFloat:
-      case LitKind.f32:
-      case LitKind.i32:
-      case LitKind.kInt:
-        return 4;
-      case LitKind.kBool:
-      case LitKind.i8:
-        return 1;
-      case LitKind.i16:
-        return 2;
-      case LitKind.i128:
-        return 16;
-      case LitKind.kStr:
-      case LitKind.isize:
-        return c.pointerSize();
-      case LitKind.kVoid:
-      default:
-        return 0;
-    }
+    final kind = ty.literal.convert;
+    return switch (kind) {
+      LiteralKind.kBool || LiteralKind.i8 => 1,
+      LiteralKind.i16 => 2,
+      LiteralKind.i32 || LiteralKind.f32 => 4,
+      LiteralKind.f64 || LiteralKind.i64 => 8,
+      LiteralKind.i128 => 16,
+      LiteralKind.kStr || LiteralKind.isize => c.pointerSize(),
+      LiteralKind.kVoid => 0,
+      _ => throw "unknown lit ${ty.literal}"
+    };
   }
 
   @override
   LLVMMetadataRef createDIType(StoreLoadMixin c) {
-    final name = ty.ty.name;
+    final name = ty.literal.name;
 
-    if (ty.ty == LitKind.kVoid) {
+    if (ty.literal == LiteralKind.kVoid) {
       return nullptr;
     }
 
     var encoding = 5;
-    if (ty.ty == LitKind.kStr) {
-      final base = BuiltInTy.u8.llty.createDIType(c);
+    if (ty.literal == LiteralKind.kStr) {
+      final base = LiteralKind.u8.llty.createDIType(c);
       return llvm.LLVMDIBuilderCreatePointerType(
           c.dBuilder!, base, c.pointerSize() * 8, 0, 0, unname, 0);
     }
 
-    if (ty.ty.isFp) {
+    if (ty.literal.isFp) {
       encoding = 4;
-    } else if (!ty.ty.signed) {
+    } else if (!ty.literal.signed) {
       encoding = 7;
     }
     final (namePointer, nameLength) = name.toNativeUtf8WithLength();
@@ -237,18 +177,10 @@ class LLVMFnType extends LLVMType {
       list.add(ty);
     }
 
-    LLVMTypeRef cType(Ty tty) {
-      return tty.typeOf(c);
-    }
-
     for (var p in params) {
       final realTy = fn.getFieldTy(c, p);
-      LLVMTypeRef ty;
-      if (p.isRef) {
-        ty = realTy.typeOf(c);
-      } else {
-        ty = cType(realTy);
-      }
+      LLVMTypeRef ty = realTy.typeOf(c);
+
       list.add(ty);
     }
     final vv = [...fn.variables, ...?variables];
@@ -267,7 +199,7 @@ class LLVMFnType extends LLVMType {
 
     LLVMTypeRef ret;
 
-    ret = cType(retTy);
+    ret = retTy.typeOf(c);
 
     return c.typeFn(list, ret, fn.fnSign.fnDecl.isVar);
   }
@@ -587,22 +519,20 @@ class LLVMEnumType extends LLVMType {
 
   LLVMTypeRef getIndexType(StoreLoadMixin c) {
     final size = getRealIndexType(c);
-    if (size == 8) {
-      return c.i64;
-    } else if (size == 4) {
-      return c.i32;
-    }
-    return c.i8;
+    return switch (size) {
+      == 8 => c.i64,
+      == 4 => c.i32,
+      _ => c.i8,
+    };
   }
 
   LLVMMetadataRef getIndexDIType(StoreLoadMixin c) {
     final size = getRealIndexType(c);
-    if (size == 8) {
-      return BuiltInTy.i64.llty.createDIType(c);
-    } else if (size == 4) {
-      return BuiltInTy.i32.llty.createDIType(c);
-    }
-    return BuiltInTy.i8.llty.createDIType(c);
+    return switch (size) {
+      == 8 => LiteralKind.i64.llty.createDIType(c),
+      == 4 => LiteralKind.i32.llty.createDIType(c),
+      _ => LiteralKind.i8.llty.createDIType(c),
+    };
   }
 
   int getItemBytes(StoreLoadMixin c) {
@@ -688,11 +618,11 @@ class LLVMEnumType extends LLVMType {
     LLVMMetadataRef tyx;
     if (minSize == 1) {
       tyx = llvm.LLVMDIBuilderCreateArrayType(c.dBuilder!, size - 1, size,
-          BuiltInTy.i8.llty.createDIType(c), nullptr, 0);
+          LiteralKind.i8.llty.createDIType(c), nullptr, 0);
     } else if (minSize == 4) {
       final fc = (size / 4).ceil();
       tyx = llvm.LLVMDIBuilderCreateArrayType(c.dBuilder!, fc, size,
-          BuiltInTy.i32.llty.createDIType(c), nullptr, 0);
+          LiteralKind.i32.llty.createDIType(c), nullptr, 0);
     } else {
       final item = c.getStructExternDIType(size);
       tyx = item;
@@ -796,12 +726,9 @@ class LLVMEnumItemType extends LLVMStructType {
         currentSize = c.pointerSize();
       } else {
         final ty = rty.typeOf(c);
-        if (field.isRef) {
-          currentSize = c.pointerSize();
-        } else {
-          currentSize = c.typeSize(ty);
-        }
+        currentSize = c.typeSize(ty);
       }
+
       var newCount = count + currentSize;
       final lastIndex = count ~/ alignSize;
       final nextIndex = newCount ~/ alignSize;
@@ -983,16 +910,8 @@ class FieldsSize {
           vals.add(c.arrayType(c.i8, space));
         }
       }
-      if (rty is FnTy) {
-        vals.add(c.pointer());
-      } else {
-        final ty = rty.typeOf(c);
-        if (field.isRef) {
-          vals.add(c.typePointer(ty));
-        } else {
-          vals.add(ty);
-        }
-      }
+
+      vals.add(rty.typeOf(c));
     }
     if (map.isNotEmpty) {
       final last = map.entries.last;
@@ -1004,5 +923,90 @@ class FieldsSize {
       }
     }
     return c.typeStruct(vals, ident);
+  }
+}
+
+class ArrayLLVMType extends LLVMType {
+  ArrayLLVMType(this.ty);
+
+  @override
+  final ArrayTy ty;
+  @override
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
+    return c.arrayType(ty.elementTy.typeOf(c), ty.size);
+  }
+
+  @override
+  int getBytes(StoreLoadMixin c) {
+    return c.typeSize(typeOf(c));
+  }
+
+  @override
+  LLVMAllocaVariable createAlloca(StoreLoadMixin c, Identifier ident) {
+    final val = LLVMAllocaVariable.delay(() {
+      final count = c.constI64(ty.size);
+      return c.createArray(ty.elementTy.typeOf(c), count, name: ident.src);
+    }, ty, typeOf(c), ident);
+
+    return val;
+  }
+
+  LLVMConstVariable createArray(StoreLoadMixin c, List<LLVMValueRef> values) {
+    final value = c.constArray(ty.elementTy.typeOf(c), values);
+    return LLVMConstVariable(value, ty, Identifier.none);
+  }
+
+  Variable getElement(
+      StoreLoadMixin c, Variable value, LLVMValueRef index, Identifier id) {
+    final indics = <LLVMValueRef>[index];
+
+    final elementTy = ty.elementTy.typeOf(c);
+
+    final vv = LLVMAllocaVariable.delay(() {
+      c.diSetCurrentLoc(id.offset);
+      final p = value.getBaseValue(c);
+      return llvm.LLVMBuildInBoundsGEP2(
+          c.builder, elementTy, p, indics.toNative(), indics.length, unname);
+    }, ty.elementTy, elementTy, id);
+
+    return vv;
+  }
+
+  Variable toStr(StoreLoadMixin c, Variable value) {
+    return LLVMConstVariable(
+        value.getBaseValue(c), LiteralKind.kStr.ty, Identifier.none);
+  }
+
+  @override
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
+    return llvm.LLVMDIBuilderCreateArrayType(
+        c.dBuilder!,
+        ty.size,
+        ty.elementTy.llty.getBytes(c),
+        ty.elementTy.llty.createDIType(c),
+        nullptr,
+        0);
+  }
+}
+
+class LLVMAliasType extends LLVMType {
+  LLVMAliasType(this.ty);
+
+  @override
+  final TypeAliasTy ty;
+
+  @override
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
+    return ty.aliasTy.grt(c).typeOf(c);
+  }
+
+  @override
+  int getBytes(StoreLoadMixin c) {
+    return ty.aliasTy.grt(c).llty.getBytes(c);
+  }
+
+  @override
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
+    return ty.aliasTy.grt(c).llty.createDIType(c);
   }
 }

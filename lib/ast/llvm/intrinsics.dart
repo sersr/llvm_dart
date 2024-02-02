@@ -1,6 +1,5 @@
 import 'dart:ffi';
 
-import '../../llvm_core.dart';
 import '../../llvm_dart.dart';
 import '../ast.dart';
 import '../expr.dart';
@@ -85,22 +84,21 @@ enum LLVMIntrisics {
 
   static LLVMIntrisics? getTypeFrom(Ty ty, BuildMethods context) {
     if (ty is! BuiltInTy) return null;
-    switch (ty.ty.convert) {
-      case LitKind.i8:
+    switch (ty.literal.convert) {
+      case LiteralKind.i8:
         return saddOI8;
-      case LitKind.i16:
+      case LiteralKind.i16:
         return saddOI16;
-      case LitKind.i32:
-      case LitKind.kInt:
+      case LiteralKind.i32:
         return saddOI32;
-      case LitKind.i64:
+      case LiteralKind.i64:
         return saddOI64;
-      case LitKind.i128:
+      case LiteralKind.i128:
         return saddOI128;
       default:
     }
 
-    if (ty.ty.isSize) {
+    if (ty.literal.isSize) {
       final size = context.pointerSize();
       if (size > 8) {
         return saddOI128;
@@ -159,11 +157,11 @@ mixin OverflowMath on BuildMethods, Consts {
         assert(op == OpKind.Ne);
         value = llvm.LLVMBuildIsNotNull(builder, l, unname);
       }
-      return LLVMConstVariable(value, BuiltInTy.kBool, opId);
+      return LLVMConstVariable(value, LiteralKind.kBool.ty, opId);
     }
 
-    if (ty is BuiltInTy && ty.ty.isNum) {
-      final kind = ty.ty;
+    if (ty is BuiltInTy && ty.literal.isNum) {
+      final kind = ty.literal;
       final rty = rhs.ty;
       if (rty is BuiltInTy) {
         final rSize = rty.llty.getBytes(context);
@@ -197,8 +195,8 @@ mixin OverflowMath on BuildMethods, Consts {
       final after = context.buildSubBB(name: 'op_after');
       final opBB = context.buildSubBB(name: 'op_bb');
       final allocaValue = context.alloctor(context.i1);
-      final variable =
-          LLVMAllocaVariable(allocaValue, BuiltInTy.kBool, context.i1, opId);
+      final variable = LLVMAllocaVariable(
+          allocaValue, LiteralKind.kBool.ty, context.i1, opId);
 
       variable.store(context, l);
       context.appendBB(opBB);
@@ -225,7 +223,7 @@ mixin OverflowMath on BuildMethods, Consts {
       final id = op.getFCmpId(true);
       if (id != null) {
         final v = llvm.LLVMBuildFCmp(builder, id, l, r, unname);
-        return LLVMConstVariable(v, BuiltInTy.kBool, opId);
+        return LLVMConstVariable(v, LiteralKind.kBool.ty, opId);
       }
       LLVMValueRef? value;
       switch (op) {
@@ -256,7 +254,7 @@ mixin OverflowMath on BuildMethods, Consts {
     final cmpId = op.getICmpId(signed);
     if (cmpId != null) {
       final v = llvm.LLVMBuildICmp(builder, cmpId, l, r, unname);
-      return LLVMConstVariable(v, BuiltInTy.kBool, opId);
+      return LLVMConstVariable(v, LiteralKind.kBool.ty, opId);
     }
 
     LLVMValueRef? value;

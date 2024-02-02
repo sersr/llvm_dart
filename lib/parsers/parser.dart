@@ -307,7 +307,7 @@ class Parser {
       state.restore();
     }
 
-    retTy ??= PathTy.ty(BuiltInTy.kVoid);
+    retTy ??= PathTy.ty(LiteralKind.kVoid.ty);
 
     return FnDecl(ident, params, generics, retTy, isVar);
   }
@@ -1036,43 +1036,38 @@ class Parser {
       expr = parseExpr(it.current.child.tokenIt);
     } else if (t.kind == TokenKind.literal) {
       final lit = t.literalKind!;
-      final lkd = LitKind.from(lit);
 
-      if (lkd != null) {
-        Identifier? ident;
-        if (lkd == LitKind.kStr) {
-          final tokens = <Token>[];
-          loop(it, () {
-            final t = getToken(it);
-            if (t.kind == TokenKind.lf) return false;
-            if (t.kind == TokenKind.literal) {
-              final lit = t.literalKind!;
-              final lkd = LitKind.from(lit);
-              if (lkd == LitKind.kStr) {
-                tokens.add(t);
-                return false;
-              }
-            }
-            it.moveBack();
-            return true;
-          });
-
-          final buffer = StringBuffer();
-          buffer.write(parseStr(getStr(it, token: t)));
-          var tokenEnd = t;
-
-          if (tokens.isNotEmpty) {
-            tokenEnd = tokens.last;
-            for (var token in tokens) {
-              buffer.write(parseStr(getStr(it, token: token)));
+      Identifier? ident;
+      if (lit == LiteralKind.kStr) {
+        final tokens = <Token>[];
+        loop(it, () {
+          final t = getToken(it);
+          if (t.kind == TokenKind.lf) return false;
+          if (t.kind == TokenKind.literal) {
+            final lit = t.literalKind!;
+            if (lit == LiteralKind.kStr) {
+              tokens.add(t);
+              return false;
             }
           }
+          it.moveBack();
+          return true;
+        });
 
-          ident = Identifier.str(t, tokenEnd, buffer.toString());
+        final buffer = StringBuffer();
+        buffer.write(parseStr(getStr(it, token: t)));
+        var tokenEnd = t;
+
+        if (tokens.isNotEmpty) {
+          tokenEnd = tokens.last;
+          for (var token in tokens) {
+            buffer.write(parseStr(getStr(it, token: token)));
+          }
         }
-        final ty = BuiltInTy.get(lkd);
-        expr = LiteralExpr(ident ?? getIdent(it), ty);
+
+        ident = Identifier.str(t, tokenEnd, buffer.toString());
       }
+      expr = LiteralExpr(ident ?? getIdent(it), lit.ty);
     }
 
     expr ??= parseArrayExpr(it);
@@ -1134,7 +1129,7 @@ class Parser {
       final ident = getIdent(it);
       final key = getKey(it);
       if (key?.isBool == true) {
-        final ty = BuiltInTy.kBool;
+        final ty = LiteralKind.kBool.ty;
         expr = LiteralExpr(ident, ty);
       }
       eatLfIfNeed(it);

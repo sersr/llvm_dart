@@ -2,12 +2,11 @@ import 'dart:ffi';
 
 import 'package:nop/nop.dart';
 
-import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
-import 'context.dart';
 import 'expr.dart';
+import 'llvm/build_context_mixin.dart';
 import 'llvm/coms.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
@@ -213,7 +212,7 @@ class ExprStmt extends Stmt {
 
     if (isRet) {
       baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
-      if (baseTy.isTy(BuiltInTy.kVoid)) {
+      if (baseTy.isTy(LiteralKind.kVoid.ty)) {
         baseTy = null;
       }
     }
@@ -256,7 +255,7 @@ class RetStmt extends Stmt {
   @override
   void build(FnBuildMixin context, bool isRet) {
     Ty? baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
-    if (baseTy.isTy(BuiltInTy.kVoid)) {
+    if (baseTy.isTy(LiteralKind.kVoid.ty)) {
       baseTy = null;
     }
 

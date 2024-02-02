@@ -17,7 +17,7 @@ mixin FlowMixin on BuildContext, FreeMixin {
     final retOffset = val?.offset ?? Offset.zero;
 
     final fnty = fn.currentFn!;
-    if (fnty.getRetTy(this).isTy(BuiltInTy.kVoid) || val == null) {
+    if (fnty.getRetTy(this).isTy(LiteralKind.kVoid.ty) || val == null) {
       freeHeap();
       diSetCurrentLoc(retOffset);
       llvm.LLVMBuildRetVoid(builder);
