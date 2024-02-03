@@ -63,6 +63,7 @@ class Block extends BuildMixin with EquatableMixin {
   final Identifier blockEnd;
 
   bool get isNotEmpty => _stmts.isNotEmpty;
+  bool get isEmpty => _stmts.isEmpty;
 
   Stmt? get lastOrNull => _stmts.lastOrNull;
 
@@ -122,7 +123,6 @@ class Block extends BuildMixin with EquatableMixin {
       final length = _stmts.length;
       final max = length - 1;
 
-      // 先处理普通语句，在内部函数中可能会引用到变量等
       for (var i = 0; i < length; i++) {
         final stmt = _stmts[i];
         stmt.build(context, i == max);

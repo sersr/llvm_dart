@@ -55,10 +55,6 @@ extension StringToChar on String {
     return u.cast();
   }
 
-  int get nativeLength {
-    return utf8.encode(this).length;
-  }
-
   (Pointer<Char>, int length) toNativeUtf8WithLength({Allocator? malloc}) {
     final units = utf8.encode(this);
     malloc ??= llvmMalloc;

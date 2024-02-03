@@ -108,6 +108,23 @@ fn hhg(g: HH) {
       printf("vv: %d\n", o);
     }
   }
+
+   if y < 9  {
+      print(" < 9");
+  } else if y == 11 {
+      print(" == 11");
+  } else if y > 2 {
+      printf("vv: %d\n", y);
+  }
+
+  let xa = match y {
+    < 9 => {
+      Hax {100, 122 }
+    },
+    _ => {
+      Hax { 222, 444}
+    }
+  }
 }
 
 enum Option {

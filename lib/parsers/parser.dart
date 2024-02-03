@@ -775,7 +775,7 @@ class Parser {
     final ifBlock = parseIfBlock(it);
 
     List<IfExprBlock>? elseIfExprs = parseElseIfExpr(it);
-    Block? kElse;
+    IfExprBlock? kElse;
 
     eatLfIfNeed(it);
 
@@ -784,12 +784,12 @@ class Parser {
     final hasElse = getKey(it) == Key.kElse;
     if (hasElse) {
       checkBlock(it);
-      kElse = parseBlock(it);
+      kElse = IfExprBlock(null, parseBlock(it));
     } else {
       state.restore();
     }
 
-    return IfExpr(ifBlock, elseIfExprs, kElse);
+    return IfExpr([ifBlock, ...?elseIfExprs, if (kElse != null) kElse]);
   }
 
   IfExprBlock parseIfBlock(TokenIterator it) {

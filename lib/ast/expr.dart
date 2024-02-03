@@ -59,14 +59,14 @@ class LiteralExpr extends Expr {
 class IfExprBlock implements Clone<IfExprBlock> {
   IfExprBlock(this.expr, this.block);
 
-  final Expr expr;
+  final Expr? expr;
   final Block block;
+
   IfExprBlock? child;
-  Block? elseBlock;
 
   @override
   IfExprBlock clone() {
-    return IfExprBlock(expr.clone(), block.clone());
+    return IfExprBlock(expr?.clone(), block.clone());
   }
 
   void incLvel([int count = 1]) {
@@ -79,7 +79,7 @@ class IfExprBlock implements Clone<IfExprBlock> {
   }
 
   AnalysisVariable? analysis(AnalysisContext context) {
-    expr.analysis(context);
+    expr?.analysis(context);
     return analysisBlock(block, context);
   }
 
@@ -104,58 +104,78 @@ class IfExprBlock implements Clone<IfExprBlock> {
 }
 
 class IfExpr extends Expr with RetExprMixin {
-  IfExpr(this.ifExpr, this.elseIfExpr, this.elseBlock) {
-    IfExprBlock last = ifExpr;
-    if (elseIfExpr != null) {
-      for (var e in elseIfExpr!) {
-        last.child = e;
+  IfExpr(this.ifExprBlocks) {
+    if (ifExprBlocks.isEmpty) return;
+    IfExprBlock? last;
+    for (var e in ifExprBlocks) {
+      if (last == null) {
         last = e;
+        continue;
       }
+
+      last.child = e;
+      last = e;
     }
-    last.elseBlock = elseBlock;
   }
 
   @override
   Expr clone() {
-    return IfExpr(ifExpr.clone(), elseIfExpr?.clone(), elseBlock?.clone())
-      .._variable = _variable;
+    return IfExpr(ifExprBlocks.clone()).._variable = _variable;
   }
 
   @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
-    elseBlock?.incLevel(count);
-    ifExpr.incLvel(count);
-    elseIfExpr?.forEach((element) {
+    for (var element in ifExprBlocks) {
       element.incLvel(count);
-    });
+    }
   }
 
-  final IfExprBlock ifExpr;
-  final List<IfExprBlock>? elseIfExpr;
-  final Block? elseBlock;
+  final List<IfExprBlock> ifExprBlocks;
 
   @override
   String toString() {
-    final el = elseBlock == null ? '' : ' else$elseBlock';
-    final elIf =
-        elseIfExpr == null ? '' : ' else if ${elseIfExpr!.join(' else if ')}';
+    final elIf = ifExprBlocks.join(' else');
 
-    return 'if $ifExpr$elIf$el';
+    return elIf;
+  }
+
+  Ty? _getTy() {
+    if (_variable == null) return null;
+    Ty? ty;
+
+    for (var val in _variable!.vals) {
+      if (ty == null) {
+        ty = val.ty;
+        continue;
+      }
+      if (ty != val.ty) {
+        return null;
+      }
+    }
+
+    return ty;
   }
 
   @override
   ExprTempValue? buildRetExpr(FnBuildMixin context, Ty? baseTy, bool isRet) {
-    final v = IfExprBuilder.createIfBlock(ifExpr, context, baseTy, isRet);
+    if (ifExprBlocks.isEmpty) return null;
+
+    var ty = baseTy ?? _getTy();
+
+    if (LiteralKind.kVoid.ty.isTy(ty)) ty = null;
+
+    final v = IfExprBuilder.createIfBlock(ifExprBlocks.first, context, ty,
+        isRet, ifExprBlocks.lastOrNull?.expr == null);
     if (v == null) return null;
     return ExprTempValue(v);
   }
 
-  AnalysisVariable? _variable;
+  AnalysisListVariable? _variable;
   @override
   AnalysisListVariable? analysis(AnalysisContext context) {
     final vals = <AnalysisVariable>[];
-    final val = ifExpr.analysis(context.childContext());
+    // final val = ifExpr.analysis(context.childContext());
 
     void add(AnalysisVariable? val) {
       if (val is AnalysisListVariable) {
@@ -165,17 +185,16 @@ class IfExpr extends Expr with RetExprMixin {
       }
     }
 
-    add(val);
-    if (elseIfExpr != null) {
-      for (var e in elseIfExpr!) {
-        final val = e.analysis(context.childContext());
-        add(val);
-      }
+    // add(val);
+
+    for (var e in ifExprBlocks) {
+      final val = e.analysis(context.childContext());
+      add(val);
     }
 
-    final elseVal =
-        IfExprBlock.analysisBlock(elseBlock, context.childContext());
-    add(elseVal);
+    // final elseVal =
+    //     IfExprBlock.analysisBlock(elseBlock, context.childContext());
+    // add(elseVal);
 
     return _variable = AnalysisListVariable(vals);
   }
@@ -1439,6 +1458,10 @@ class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
     block.analysis(child);
 
     return IfExprBlock.retFromBlock(block, context);
+  }
+
+  bool get isValIdent {
+    return op == null && expr is VariableIdentExpr;
   }
 
   bool get isOther {

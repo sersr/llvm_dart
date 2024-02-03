@@ -41,9 +41,16 @@ class LetStmt extends Stmt {
   @override
   void build(FnBuildMixin context, bool isRet) {
     final realTy = ty?.grt(context);
+    Ty? baseTy = realTy;
 
+    if (isRet) {
+      baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
+      if (baseTy.isTy(LiteralKind.kVoid.ty)) {
+        baseTy = null;
+      }
+    }
     final val = switch (rExpr) {
-      RetExprMixin expr => expr.build(context, baseTy: realTy, isRet: isRet),
+      RetExprMixin expr => expr.build(context, baseTy: baseTy, isRet: false),
       var expr => expr?.build(context, baseTy: realTy),
     };
 
@@ -51,13 +58,18 @@ class LetStmt extends Stmt {
     final variable = val?.variable;
     if (tty == null || variable == null) return;
 
-    /// 先判断是否是 struct ret
-    var letVariable = context.sretFromVariable(nameIdent, variable) ?? variable;
-
     if (isRet) {
-      context.ret(null, isLastStmt: true);
+      if (rExpr is RetExprMixin) {
+        context.setName(variable.getBaseValue(context), nameIdent.src);
+      }
+
+      context.ret(variable, isLastStmt: true);
+
       return;
     }
+
+    /// 先判断是否是 struct ret
+    var letVariable = context.sretFromVariable(nameIdent, variable) ?? variable;
 
     if (letVariable is LLVMLitVariable) {
       assert(tty is BuiltInTy);
@@ -225,6 +237,7 @@ class ExprStmt extends Stmt {
     final val = temp?.variable;
 
     if (isRet) {
+      if (expr is RetExprMixin) val?.getBaseValue(context);
       context.ret(val, isLastStmt: true);
       return;
     }

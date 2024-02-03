@@ -84,7 +84,9 @@ abstract class StoreVariable extends Variable {
         return;
       }
 
-      c.store(alloca, val.load(c), offset);
+      if (alloca != val.getBaseValue(c)) {
+        c.store(alloca, val.load(c), offset);
+      }
       return;
     }
 
@@ -95,7 +97,12 @@ abstract class StoreVariable extends Variable {
       return;
     }
 
-    final update = alloca != val.getBaseValue(c) && val is! LLVMLitVariable;
+    if (alloca == val.getBaseValue(c)) {
+      return;
+    }
+
+    final update = val is! LLVMLitVariable;
+
     if (update) {
       if (!isNew) {
         ImplStackTy.replaceStack(c, this, val);
@@ -190,6 +197,7 @@ class LLVMAllocaProxyVariable extends StoreVariable {
       } else {
         _alloca =
             proxy?.alloca ?? ty.llty.createAlloca(_createContext, ident).alloca;
+
         _proxyFn(this, proxy != null);
       }
     }

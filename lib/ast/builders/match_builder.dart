@@ -1,52 +1,60 @@
 part of 'builders.dart';
 
 abstract class MatchBuilder {
-  static void commonBuilder(MatchItemExpr item, FnBuildMixin context,
-      ExprTempValue temp, BlockRetFn blockRetFn, bool isRet) {
-    final then = context.buildSubBB(name: 'm_then');
-    final after = context.buildSubBB(name: 'm_after');
-    LLVMBasicBlock elseBB;
+  static void commonBuilder(
+    MatchItemExpr item,
+    FnBuildMixin context,
+    ExprTempValue temp,
+    BlockRetFn blockRetFn,
+    bool isRet,
+    LLVMBasicBlock? afterBlock, [
+    LLVMBasicBlock? current,
+  ]) {
     final child = item.child;
-    if (child != null) {
-      elseBB = context.buildSubBB(name: 'm_else');
-    } else {
-      elseBB = after;
-    }
+
+    final then =
+        context.buildSubBB(name: current == null ? 'm_then' : 'm_else_if');
+
+    final elseBB = switch (child) {
+      != null => context.buildSubBB(name: 'm_condition'),
+      _ => afterBlock,
+    };
 
     final exprTempValue = item.build3(context, temp);
     final val = exprTempValue?.variable;
 
     if (val != null) {
       llvm.LLVMBuildCondBr(
-          context.builder, val.load(context), then.bb, elseBB.bb);
+          context.builder, val.load(context), then.bb, elseBB!.bb);
+      context.setBr();
     }
 
     context.appendBB(then);
+
     item.block.build(then.context, hasRet: isRet);
 
-    var hasAfterBb = false;
     if (then.context.canBr) {
-      hasAfterBb = true;
       blockRetFn(item.block, then.context);
-      then.context.br(after.context);
+      then.context.br(afterBlock!.context);
     }
 
     if (child != null) {
-      context.appendBB(elseBB);
-      if (child.isOther) {
+      context.appendBB(elseBB!);
+      if (child.isValIdent) {
+        child.build4(elseBB.context, temp, isRet);
+        if (elseBB.context.canBr) blockRetFn(child.block, elseBB.context);
+      } else if (child.isOther) {
         child.build2(elseBB.context, temp, isRet);
-        blockRetFn(child.block, elseBB.context);
+        if (elseBB.context.canBr) blockRetFn(child.block, elseBB.context);
       } else {
-        commonBuilder(child, elseBB.context, temp, blockRetFn, isRet);
+        commonBuilder(
+            child, elseBB.context, temp, blockRetFn, isRet, afterBlock, elseBB);
       }
 
       if (elseBB.context.canBr) {
-        hasAfterBb = true;
-        elseBB.context.br(after.context);
+        elseBB.context.br(afterBlock!.context);
       }
     }
-
-    if (hasAfterBb) context.insertPointBB(after);
   }
 
   static void commonExpr(FnBuildMixin context, List<MatchItemExpr> items,
@@ -54,7 +62,7 @@ abstract class MatchBuilder {
     MatchItemExpr? last;
     MatchItemExpr? first;
 
-    final otherItem = items.firstWhereOrNull((element) => element.isOther);
+    final otherItem = items.firstWhereOrNull((element) => element.isValIdent);
 
     for (var item in items) {
       if (item == otherItem) continue;
@@ -69,16 +77,22 @@ abstract class MatchBuilder {
     last?.child = otherItem;
     last = otherItem;
 
-    commonBuilder(first!, context, temp, blockRetFn, isRet);
+    final afterBlock =
+        isRet && otherItem != null ? null : context.buildSubBB(name: 'm_after');
+
+    commonBuilder(first!, context, temp, blockRetFn, isRet, afterBlock);
+    if (afterBlock != null) context.insertPointBB(afterBlock);
   }
 
   static StoreVariable? matchBuilder(FnBuildMixin context,
       List<MatchItemExpr> items, ExprTempValue temp, Ty? retTy, bool isRet) {
-    if (retTy != null && !isRet) {
+    if (items.isEmpty) return null;
+
+    if (retTy != null) {
       return LLVMAllocaProxyVariable(context, (proxy, isProxy) {
         _matchBuilder(context, items, temp, (block, context) {
           IfExprBuilder._blockRetValue(block, context, proxy);
-        }, false);
+        }, isRet);
       }, retTy, retTy.typeOf(context), Identifier.none);
     }
 

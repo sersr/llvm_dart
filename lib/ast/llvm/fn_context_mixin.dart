@@ -87,7 +87,9 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
       if (val is LLVMAllocaProxyVariable && !val.created) {
         val.initProxy(proxy: retValue);
       } else {
-        retValue.store(this, val.load(this));
+        if (retValue.getBaseValue(this) != val.getBaseValue(this)) {
+          retValue.store(this, val.load(this));
+        }
       }
     } else {
       _retValue = val;

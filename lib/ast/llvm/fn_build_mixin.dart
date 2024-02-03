@@ -19,15 +19,14 @@ mixin FnBuildMixin
       fnContext.instertFnEntryBB();
       onCreated?.call(fnContext);
 
-      final hasRet = !fn.getRetTy(fnContext).isTy(LiteralKind.kVoid.ty);
       fnContext.initFnParamsStart(fv.value, fn, extra,
           ignoreFree: ignoreFree, map: map);
 
-      block.build(fnContext, hasRet: hasRet);
+      block.build(fnContext, hasRet: true);
 
-      // assert(!hasRet || fnContext._returned || !block.isNotEmpty,
-      //     'error: return.');
-      fnContext.ret(null);
+      if (block.isEmpty) {
+        fnContext.ret(null);
+      }
     });
     return fv;
   }

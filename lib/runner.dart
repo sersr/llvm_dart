@@ -78,6 +78,8 @@ class ClangCmd extends Cmd {
 }
 
 Future<bool> run(Options options) async {
+  Log.logPathFn = (path) => path;
+
   final path = options.binFile.path;
   final cmd = ClangCmd();
   await cmd.obtainClang();
