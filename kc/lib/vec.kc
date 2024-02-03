@@ -1,4 +1,7 @@
+import "d.kc";
 import "heap_pointer.d.kc";
+import "allocator.kc";
+import "option.kc";
 
 struct Vec<T> {
   cap: usize,
@@ -39,5 +42,11 @@ impl<T> Vec<T> {
 
   fn getLength() usize {
     self.len;
+  }
+}
+
+impl<T> ArrayOp<T> for Vec<T> {
+  fn elementAt(index: usize) &T {
+    &self.data[index];
   }
 }

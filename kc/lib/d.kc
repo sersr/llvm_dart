@@ -59,3 +59,7 @@ com Stack {
   fn updateStack();
   fn replaceStack(src: &Self);
 }
+
+com Deref<T> {
+  fn deref() &T;
+}

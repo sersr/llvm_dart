@@ -1313,12 +1313,13 @@ class Parser {
         final name = getIdent(it);
 
         final state = it.cursor;
-        eatLfIfNeed(it, back: false);
-        if (getToken(it).kind == TokenKind.colon) {
-          final expr = parseExpr(it);
-          final f = FieldExpr(expr, name);
-          fields.add(f);
-          return false;
+        if (it.moveNext()) {
+          if (getToken(it).kind == TokenKind.colon) {
+            final expr = parseExpr(it);
+            final f = FieldExpr(expr, name);
+            fields.add(f);
+            return false;
+          }
         }
 
         state.restore();

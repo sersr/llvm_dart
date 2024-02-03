@@ -44,10 +44,3 @@ impl<T> Deref<T> for HeapPointer<T> {
     return &self.ptr.data; 
   }
 }
-
-com Deref<T> {
-  fn deref() &T;
-}
-com Clone {
-  fn onClone();
-}

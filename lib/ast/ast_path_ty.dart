@@ -26,11 +26,8 @@ class PathTy with EquatableMixin {
         ty ?? BuiltInTy.from(ident.src) ?? c.getTy(ident) ?? gen?.call(ident);
 
     if (tempTy is NewInst && !tempTy.done) {
-      final types = NewInst.getTysFromGenericInsts(
-          c, genericInsts, tempTy.generics,
+      tempTy = tempTy.newInstWithGenerics(c, genericInsts, tempTy.generics,
           gen: gen);
-
-      tempTy = tempTy.newInst(types, c);
     } else if (tempTy is TypeAliasTy) {
       tempTy = tempTy.getTy(c, genericInsts, gen: gen);
     }

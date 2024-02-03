@@ -37,7 +37,7 @@ fn main(argc: i32, argv:  **i8) i32 {
 
     let i = 0i64;
     while i < size  { // i as u64;
-        kprintln(arr[i]);
+        kprintln(&arr[i]);
         i += 1;
     }
 

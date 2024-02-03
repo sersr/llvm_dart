@@ -1,5 +1,6 @@
 
-import '../lib/d.kc';
+import "d.kc";
+
 extern
 struct stack_t {
   ss_sp : *void,

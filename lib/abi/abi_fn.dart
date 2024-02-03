@@ -200,6 +200,8 @@ abstract interface class AbiFn {
 
           value?.store(context, ret);
         }, retTy, retTy.typeOf(context), retIdent),
+      RefTy(parent: var ty, isPointer: false) =>
+        LLVMAllocaVariable(ret, ty, ty.typeOf(context), retIdent),
       _ => LLVMConstVariable(ret, retTy, retIdent),
     };
 

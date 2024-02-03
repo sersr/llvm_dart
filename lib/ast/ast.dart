@@ -47,7 +47,7 @@ abstract class Ty extends BuildMixin with EquatableMixin implements Clone<Ty> {
   bool get isLimited => _isLimited;
   Ty newConstraints(Tys c, List<ComponentTy> newConstraints, bool isLimited) {
     return clone()
-      .._isLimited = isLimited
+      .._isLimited = newConstraints.isNotEmpty
       .._constraints = newConstraints
       .._buildContext = _buildContext;
   }

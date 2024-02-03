@@ -683,13 +683,22 @@ class FnCallExpr extends Expr with FnCallMixin {
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final temp = expr.build(context);
-    final variable = temp?.variable;
-    final fn = variable?.ty ?? temp?.ty;
-    if (fn is StructTy) {
-      return StructExpr.buildTupeOrStruct(fn, context, params);
+    if (temp == null) return null;
+    final variable = temp.variable;
+    final ty = temp.ty;
+
+    if (ty is StructTy && variable != null) {
+      return temp;
     }
+
+    if (ty is StructTy) {
+      return StructExpr.buildTupeOrStruct(ty, context, params);
+    }
+
+    final fn = ty;
+
     final builtinFn =
-        doBuiltFns(context, fn, temp?.ident ?? Identifier.none, params);
+        doBuiltFns(context, fn, temp.ident ?? Identifier.none, params);
     if (builtinFn != null) {
       return builtinFn;
     }

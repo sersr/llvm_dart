@@ -16,8 +16,8 @@ abstract class ImplStackTy {
 
   static Variable _getDeref(FnBuildMixin context, Variable variable) {
     for (;;) {
-      if (variable.ty case RefTy ty) {
-        if (ty.isPointer) break;
+      if (variable.ty is RefTy) {
+        break;
       }
 
       final v = variable.defaultDeref(context, Identifier.none);

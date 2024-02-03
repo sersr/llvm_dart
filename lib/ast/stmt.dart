@@ -164,6 +164,8 @@ class LetSwapStmt extends Stmt {
         return;
       }
 
+      if (lhs.alloca == rValue) continue;
+
       final ignore = lhs.ty is RefTy || rhs.ty is RefTy;
 
       if (!ignore) {

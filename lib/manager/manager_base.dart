@@ -1,3 +1,4 @@
+import 'package:meta/meta.dart';
 import 'package:nop/nop.dart';
 import 'package:path/path.dart';
 
@@ -15,6 +16,9 @@ abstract class ManagerBase extends GlobalContext {
   ManagerBase() {
     _stdPaths = stds.map((e) => normalize(join(stdRoot, e))).toList();
     init();
+    for (var std in _stdPaths) {
+      initStd(std);
+    }
   }
 
   static const stds = [
@@ -27,6 +31,9 @@ abstract class ManagerBase extends GlobalContext {
 
   late final List<String> _stdPaths;
 
+  List<String> get stdPaths => _stdPaths;
+
+  @mustCallSuper
   void init() {}
 
   @override
@@ -37,7 +44,11 @@ abstract class ManagerBase extends GlobalContext {
     return false;
   }
 
+  @mustCallSuper
+  void initStd(String path) {}
+
   void importStdTys(Tys c) {
+    if (_stdPaths.contains(c.currentPath)) return;
     for (var path in _stdPaths) {
       c.pushImport(ImportPath.path(path));
     }
@@ -151,6 +162,12 @@ mixin BuildContextMixin on ManagerBase {
   }
 
   @override
+  void initStd(String path) {
+    super.initStd(path);
+    build(path);
+  }
+
+  @override
   void dispose() {
     rootBuildContext.dispose();
     for (var ctx in llvmCtxs.values) {
@@ -223,6 +240,12 @@ mixin AnalysisContextMixin on ManagerBase {
     rootAnalysis.global = this;
     initBuiltinFns(rootAnalysis);
     super.init();
+  }
+
+  @override
+  void initStd(String path) {
+    analysis(path);
+    super.initStd(path);
   }
 
   @override

@@ -101,9 +101,13 @@ class AbiFnArm64 implements AbiFn {
       return null;
     }
 
+    final retIdent = '_ret'.ident;
+
     final v = switch (retTy) {
       StructTy() => fromFnParamsOrRet(context, retTy, ret, Identifier.none),
-      _ => LLVMConstVariable(ret, retTy, '_ret'.ident)
+      RefTy(parent: var ty, isPointer: false) =>
+        LLVMAllocaVariable(ret, ty, ty.typeOf(context), retIdent),
+      _ => LLVMConstVariable(ret, retTy, retIdent)
     };
 
     return ExprTempValue(v);
