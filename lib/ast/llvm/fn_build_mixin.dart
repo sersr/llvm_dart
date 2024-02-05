@@ -5,29 +5,29 @@ mixin FnBuildMixin
   LLVMConstVariable buildFnBB(Fn fn,
       [Set<AnalysisVariable>? extra,
       bool ignoreFree = false,
-      Map<Identifier, Set<AnalysisVariable>> map = const {},
-      void Function(FnBuildMixin context)? onCreated]) {
-    final fv = AbiFn.createFunction(this, fn, extra, (fv) {
-      final block = fn.block?.clone();
-      if (block == null) return;
+      Map<Identifier, Set<AnalysisVariable>> map = const {}]) {
+    final fv = AbiFn.createFunction(this, fn, extra);
 
-      final fnContext = fn.currentContext!.createChildContext();
+    final block = fn.block?.clone();
+    if (block == null) return fv;
 
-      fnContext._fnVariable = fv;
-      fnContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
-      fnContext._isFnBBContext = true;
-      fnContext.instertFnEntryBB();
-      onCreated?.call(fnContext);
+    final fnContext = fn.currentContext!.createChildContext();
 
-      fnContext.initFnParamsStart(fv.value, fn, extra,
-          ignoreFree: ignoreFree, map: map);
+    fnContext._fnVariable = fv;
+    fnContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
+    fnContext._isFnBBContext = true;
+    fnContext.instertFnEntryBB();
+    fn.pushTyGenerics(fnContext);
 
-      block.build(fnContext, hasRet: true);
+    fnContext.initFnParamsStart(fv.value, fn, extra,
+        ignoreFree: ignoreFree, map: map);
 
-      if (block.isEmpty) {
-        fnContext.ret(null);
-      }
-    });
+    block.build(fnContext, hasRet: true);
+
+    if (block.isEmpty) {
+      fnContext.ret(null);
+    }
+
     return fv;
   }
 

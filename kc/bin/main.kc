@@ -74,11 +74,11 @@ fn main() i32 {
   bcxData.gee();
   let s = sizeOf(bcxData);
   printf("s: %d\n", s);
-
+{
   let b = true;
   if b {
     print("hello b");
-  }
+  }}
 
   "hello world".print();
   print("end print");
@@ -89,7 +89,7 @@ fn main() i32 {
 
 impl str {
   fn print() {
-    print(&self);
+    printf("%s\n",&self);
   }
 }
 

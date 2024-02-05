@@ -12,21 +12,19 @@ import 'lexers/token_stream.dart';
 import 'str.dart';
 import 'token_it.dart';
 
-Parser parseTopItem(String src) {
-  final m = Parser(src);
-  m.parse();
-  return m;
-}
-
 class Parser {
-  Parser(this.src);
+  Parser(this.src, this.fileName) {
+    _parse();
+  }
   final String src;
-  void parse() {
+  final String fileName;
+
+  void _parse() {
     Identifier.run(() {
       final reader = TokenReader(src);
       final root = reader.parse(false);
 
-      _start = Identifier.fromToken(root.token, src);
+      _start = Identifier.fromToken(root.token, src, fileName);
       final it = root.child.tokenIt;
       loop(it, () {
         final token = getToken(it);
@@ -49,7 +47,8 @@ class Parser {
   late Identifier _end;
 
   Block get block {
-    return Block(stmts.map((e) => e.clone()).toList(), null, _start, _end);
+    return Block(stmts.map((e) => e.clone()).toList(), null, _start, _end,
+        inc: false);
   }
 
   Ty? parseIdent(TokenIterator it, {bool global = true}) {
@@ -93,7 +92,7 @@ class Parser {
     return ty;
   }
 
-  Ty? parseType(TokenIterator it) {
+  TypeAliasTy? parseType(TokenIterator it) {
     eatLfIfNeed(it);
     it.moveNext();
     final ident = getIdent(it);
@@ -177,6 +176,9 @@ class Parser {
     if (getToken(it).kind == TokenKind.openBrace) {
       final fns = <Fn>[];
       final staticFns = <Fn>[];
+      final aliasTys = <TyStmt>[];
+      final orderList = <TyStmt>[];
+
       it = it.current.child.tokenIt;
       loop(it, () {
         final t = getToken(it);
@@ -197,7 +199,15 @@ class Parser {
               } else {
                 fns.add(fn);
               }
+              orderList.add(TyStmt(fn));
             }
+            // } else if (key == Key.kType) {
+            //   var alias = parseType(it);
+            //   if (alias != null) {
+            //     final stmt = TyStmt(alias);
+            //     aliasTys.add(stmt);
+            //     orderList.add(stmt);
+            //   }
           }
         }
         return false;
@@ -205,7 +215,7 @@ class Parser {
 
       if (ty == null) return null;
 
-      return ImplTy(types, com, ty, label, fns, staticFns);
+      return ImplTy(types, com, ty, label, fns, staticFns, aliasTys, orderList);
     }
 
     return null;
@@ -427,11 +437,11 @@ class Parser {
   }
 
   Identifier getIdent(TokenIterator it) {
-    return Identifier.fromToken(it.current.token, src);
+    return Identifier.fromToken(it.current.token, src, fileName);
   }
 
   Identifier getEndIdent(TokenIterator it) {
-    return Identifier.fromToken(it.current.end!, src);
+    return Identifier.fromToken(it.current.end!, src, fileName);
   }
 
   Stmt? parseStmt(TokenIterator it) {
@@ -446,7 +456,7 @@ class Parser {
     } else if (key == Key.struct) {
       final struct = parseStruct(it);
       if (struct != null) {
-        stmt = StructStmt(struct);
+        stmt = TyStmt(struct);
       }
     } else if (key == Key.kRet) {
       final ident = getIdent(it);
@@ -575,12 +585,12 @@ class Parser {
           eatLfIfNeed(it);
           if (it.moveNext()) {
             if (getToken(it).kind == TokenKind.ident) {
-              return ExprStmt(ImportExpr(path, name: getIdent(it)));
+              return ImportStmt(path, name: getIdent(it));
             }
           }
         } else {
           it.moveBack();
-          return ExprStmt(ImportExpr(path));
+          return ImportStmt(path);
         }
       }
     }
@@ -1065,7 +1075,7 @@ class Parser {
           }
         }
 
-        ident = Identifier.str(t, tokenEnd, buffer.toString());
+        ident = Identifier.str(t, tokenEnd, buffer.toString(), fileName);
       }
       expr = LiteralExpr(ident ?? getIdent(it), lit.ty);
     }

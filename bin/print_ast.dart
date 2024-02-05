@@ -13,6 +13,8 @@ void main(List<String> args) async {
           argsFile.readAsStringSync().replaceAll(RegExp('\r\n|\n'), ' ');
       name = debugArgs.split(' ').first;
     }
+  } else {
+    name = args.first;
   }
 
   File? runFile = kcBinDir.childFile(name);
@@ -41,6 +43,7 @@ void main(List<String> args) async {
     return;
   }
   final data = runFile.readAsStringSync();
-  final parser = Parser(data)..parse();
-  Log.w(parser.stmts);
+  final parser = Parser(data, runFile.path);
+  Log.logPathFn = (path) => path;
+  Log.w(parser.stmts, showTag: false);
 }

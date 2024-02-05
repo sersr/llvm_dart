@@ -168,7 +168,7 @@ class LLVMFnType extends LLVMType {
 
     if (fn is ImplFn) {
       LLVMTypeRef ty;
-      final tty = (fn as ImplFn).ty;
+      final tty = (fn as ImplFn).implty.ty;
       if (tty is BuiltInTy) {
         ty = tty.typeOf(c);
       } else {
@@ -207,9 +207,7 @@ class LLVMFnType extends LLVMType {
   late final _cacheFns = <ListKey, LLVMConstVariable>{};
 
   LLVMConstVariable createFunction(
-      StoreLoadMixin c,
-      Set<AnalysisVariable>? variables,
-      void Function(LLVMConstVariable fnValue) after) {
+      StoreLoadMixin c, Set<AnalysisVariable>? variables) {
     final key = ListKey(variables?.toList() ?? []);
 
     return _cacheFns.putIfAbsent(key, () {
@@ -240,9 +238,7 @@ class LLVMFnType extends LLVMType {
       c.setFnLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
       c.setFnLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
 
-      final fnVariable = LLVMConstVariable(v, fn, fn.fnName);
-      after(fnVariable);
-      return fnVariable;
+      return LLVMConstVariable(v, fn, fn.fnName);
     });
   }
 

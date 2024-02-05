@@ -34,7 +34,6 @@ abstract class Expr extends BuildMixin implements Clone<Expr> {
 
   Ty? getTy(StoreLoadMixin context) => null;
 
-  @override
   AnalysisVariable? analysis(AnalysisContext context);
 
   @protected
@@ -100,8 +99,6 @@ abstract class BuildMixin {
 
   final extensions = <Object, dynamic>{};
 
-  void analysis(AnalysisContext context);
-
   static int padSize = 2;
 
   String get pad => getWhiteSpace(level, padSize);
@@ -114,7 +111,26 @@ abstract class BuildMixin {
 abstract class Stmt extends BuildMixin
     with EquatableMixin
     implements Clone<Stmt> {
-  void build(FnBuildMixin context, bool isRet);
+  void build(bool isRet);
+
+  FnBuildMixin? _buildContext;
+  FnBuildMixin get buildContext => _buildContext!;
+
+  @mustCallSuper
+  void prepareBuild(FnBuildMixin context) {
+    assert(_buildContext == null);
+    _buildContext = context;
+  }
+
+  AnalysisContext? _analysisContext;
+  AnalysisContext get analysisContext => _analysisContext!;
+  @mustCallSuper
+  void prepareAnalysis(AnalysisContext context) {
+    assert(_analysisContext == null);
+    _analysisContext = context;
+  }
+
+  void analysis(bool isRet) {}
 }
 
 String getWhiteSpace(int level, int pad) {

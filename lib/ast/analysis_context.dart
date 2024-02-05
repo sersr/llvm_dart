@@ -1,5 +1,6 @@
 import 'ast.dart';
 import 'expr.dart';
+import 'llvm/llvm_types.dart';
 import 'tys.dart';
 
 class RootAnalysis with Tys<AnalysisVariable> {
@@ -196,6 +197,29 @@ class AnalysisContext with Tys<AnalysisVariable> {
     final val = AnalysisStructVariable._(ty, ident, map, kind ?? []);
     val.lifecycle.fnContext = this;
     return val;
+  }
+}
+
+class AnalysisTy extends Ty {
+  AnalysisTy(this.pathTy);
+  final PathTy pathTy;
+
+  @override
+  Identifier get ident => pathTy.ident;
+  @override
+  Ty clone() {
+    return this;
+  }
+
+  @override
+  LLVMType get llty => throw UnimplementedError();
+
+  @override
+  List<Object?> get props => [pathTy];
+
+  @override
+  String toString() {
+    return pathTy.toString();
   }
 }
 

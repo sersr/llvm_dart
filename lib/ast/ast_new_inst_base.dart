@@ -89,7 +89,7 @@ mixin NewInst<T extends Ty> on Ty {
 
   @override
   FnBuildMixin? get currentContext =>
-      super.currentContext ??= _parent?.currentContext;
+      super.currentContext ?? _parent?.currentContext;
 
   @override
   bool isTy(Ty? other) {

@@ -27,9 +27,10 @@ class FnDecl with EquatableMixin {
 
   void analysis(AnalysisContext context, Fn fn) {
     for (var p in params) {
-      final t = fn.getFieldTy(context, p);
+      final t = fn.getFieldTyOrT(context, p);
       context.pushVariable(
-        context.createVal(t, p.ident, p.rawTy.kind)..lifecycle.isOut = true,
+        context.createVal(t ?? AnalysisTy(p.rawTy), p.ident, p.rawTy.kind)
+          ..lifecycle.isOut = true,
       );
     }
   }
@@ -78,7 +79,7 @@ class Fn extends Ty with NewInst<Fn> {
   String toString() {
     var b = '';
     if (block != null) {
-      b = '$block';
+      b = ' $block';
     }
 
     var ext = '';
@@ -110,18 +111,16 @@ class Fn extends Ty with NewInst<Fn> {
   final _cache = <ListKey, LLVMConstVariable>{};
 
   @override
-  void build() {
-    final context = currentContext;
-    assert(context != null);
-    if (context == null) return;
-    context.pushFn(fnName, this);
+  void prepareBuild(FnBuildMixin context, {bool push = true}) {
+    super.prepareBuild(context);
+    if (push) context.pushFn(fnName, this);
   }
 
   void copy(Fn from) {
     _parent = from.parentOrCurrent;
     selfVariables = from.selfVariables;
     _get = from._get;
-    currentContext = from.currentContext;
+    _buildContext = from.currentContext;
   }
 
   LLVMConstVariable? genFn([
@@ -158,10 +157,10 @@ class Fn extends Ty with NewInst<Fn> {
     }
     final key = ListKey(vk);
 
-    return parentOrCurrent._cache.putIfAbsent(key, () {
-      return context.buildFnBB(
-          this, variables, ignoreFree, map ?? const {}, pushTyGenerics);
-    });
+    var fn = parentOrCurrent._cache[key];
+    if (fn != null) return fn;
+    fn = context.buildFnBB(this, variables, ignoreFree, map ?? const {});
+    return parentOrCurrent._cache[key] = fn;
   }
 
   void pushTyGenerics(Tys context) {
@@ -185,12 +184,18 @@ class Fn extends Ty with NewInst<Fn> {
 
   bool _anaysised = false;
 
-  void analysisContext(AnalysisContext context) {}
   @override
-  void analysis(AnalysisContext context) {
-    if (_anaysised) return;
+  void prepareAnalysis(AnalysisContext context) {
+    super.prepareAnalysis(context);
+    context.pushFn(ident, this);
+  }
+
+  void analysisStart(AnalysisContext context) {}
+
+  void analysisFn() {
+    final context = analysisContext;
+    if (_anaysised || context == null) return;
     _anaysised = true;
-    if (context.getFn(fnName) == null) context.pushFn(fnName, this);
     if (generics.isNotEmpty && tys.isEmpty) {
       return;
     }
@@ -200,14 +205,10 @@ class Fn extends Ty with NewInst<Fn> {
 
     child.setFnContext(this);
     fnSign.fnDecl.analysis(child, this);
-    analysisContext(child);
-    block?.analysis(child);
+    analysisStart(child);
+    block?.analysis(child, hasRet: true);
     selfVariables = child.catchVariables;
     _get = () => child.childrenVariables;
-
-    final lastStmt = block?._stmts.lastOrNull;
-
-    if (lastStmt is ExprStmt) RetStmt.analysisAll(child, lastStmt.expr);
   }
 
   @override
@@ -226,12 +227,19 @@ class Fn extends Ty with NewInst<Fn> {
 }
 
 mixin ImplFnMixin on Fn {
-  Ty get ty;
   ImplTy get implty;
 
-  @override
-  FnBuildMixin? get currentContext =>
-      super.currentContext ?? implty.currentContext;
+  Ty get ty => implty.ty!;
+
+  final _fnList = <ImplTy, ImplFnMixin>{};
+
+  ImplFnMixin? getWith(ImplTy ty) {
+    final parent = parentOrCurrent as ImplFnMixin;
+    if (parent.implty == ty) return parent;
+    return parent._fnList.putIfAbsent(ty, () => newWithImplTy(ty));
+  }
+
+  ImplFnMixin newWithImplTy(ImplTy ty);
 
   @override
   ImplFnMixin newTy(List<FieldDef> fields);
@@ -245,10 +253,9 @@ mixin ImplFnMixin on Fn {
   static final _selfTyIdent = 'Self'.ident;
 
   void _pushSelf(Tys context) {
-    final structTy = ty;
-    context.pushDyTy(_selfTyIdent, structTy);
+    final structTy = implty.ty;
+    if (structTy != null) context.pushDyTy(_selfTyIdent, structTy);
 
-    if (structTy is! NewInst) return;
     context.pushDyTys(implty.tys);
   }
 
@@ -264,7 +271,7 @@ mixin ImplFnMixin on Fn {
       return tempTy;
     }
 
-    final ty = this.ty;
+    final ty = implty.ty;
     if (ident.src == 'Self') {
       return ty;
     }
@@ -272,31 +279,32 @@ mixin ImplFnMixin on Fn {
     return implty.tys[ident];
   }
 
-  @override
-  List<Object?> get props => [super.props, ty, implty, _constraints];
+  // @override
+  // List<Object?> get props => [super.props, _constraints];
 }
 
 class ImplFn extends Fn with ImplFnMixin {
-  ImplFn(super.fnSign, super.block, this.ty, this.implty);
-  @override
-  final Ty ty;
+  ImplFn(super.fnSign, super.block, this.implty);
   @override
   final ImplTy implty;
 
   @override
   ImplFnMixin newTy(List<FieldDef> fields) {
     final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
-    return ImplFn(s, block, ty, implty)..copy(this);
-  }
-
-  ImplFn cloneWith(Ty ty, ImplTy other) {
-    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields.clone()));
-    return ImplFn(s, block, ty, other)..copy(this);
+    return ImplFn(s, block, implty)..copy(this);
   }
 
   @override
-  void analysisContext(AnalysisContext context) {
+  ImplFn newWithImplTy(ImplTy ty) {
+    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields.clone()));
+    return ImplFn(s, block, ty)..copy(this);
+  }
+
+  @override
+  void analysisStart(AnalysisContext context) {
     final ident = Identifier.self;
+    final ty = implty.ty;
+    if (ty == null) return;
     final v = context.createVal(ty, ident);
     v.lifecycle.isOut = true;
     context.pushVariable(v);
@@ -304,21 +312,20 @@ class ImplFn extends Fn with ImplFnMixin {
 }
 
 class ImplStaticFn extends Fn with ImplFnMixin {
-  ImplStaticFn(super.fnSign, super.block, this.ty, this.implty);
-  @override
-  final Ty ty;
+  ImplStaticFn(super.fnSign, super.block, this.implty);
   @override
   final ImplTy implty;
 
   @override
   ImplFnMixin newTy(List<FieldDef> fields) {
     final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
-    return ImplStaticFn(s, block, ty, implty)..copy(this);
+    return ImplStaticFn(s, block, implty)..copy(this);
   }
 
-  ImplStaticFn cloneWith(Ty ty, ImplTy other) {
+  @override
+  ImplStaticFn newWithImplTy(ImplTy ty) {
     final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields.clone()));
-    return ImplStaticFn(s, block, ty, other)..copy(this);
+    return ImplStaticFn(s, block, ty)..copy(this);
   }
 }
 

@@ -10,6 +10,7 @@ import 'llvm/build_context_mixin.dart';
 import 'llvm/coms.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
+import 'tys.dart';
 
 class LetStmt extends Stmt {
   LetStmt(this.isFinal, this.ident, this.nameIdent, this.rExpr, this.ty);
@@ -39,7 +40,8 @@ class LetStmt extends Stmt {
   }
 
   @override
-  void build(FnBuildMixin context, bool isRet) {
+  void build(bool isRet) {
+    final context = buildContext;
     final realTy = ty?.grt(context);
     Ty? baseTy = realTy;
 
@@ -102,7 +104,8 @@ class LetStmt extends Stmt {
   List<Object?> get props => [ident, nameIdent, ty, rExpr];
 
   @override
-  void analysis(AnalysisContext context) {
+  void analysis(bool isRet) {
+    final context = analysisContext;
     final realTy = ty?.grt(context);
     final v = rExpr?.analysis(context);
 
@@ -118,7 +121,8 @@ class LetSwapStmt extends Stmt {
   final List<Expr> rightExprs;
 
   @override
-  void analysis(AnalysisContext context) {
+  void analysis(bool isRet) {
+    final context = analysisContext;
     final rightVals = rightExprs.map((e) => e.analysis(context)).toList();
     final leftVals = leftExprs.map((e) => e.analysis(context)).toList();
     var length = leftVals.length;
@@ -140,7 +144,8 @@ class LetSwapStmt extends Stmt {
   }
 
   @override
-  void build(FnBuildMixin context, bool isRet) {
+  void build(bool isRet) {
+    final context = buildContext;
     final rightVals = rightExprs.map((e) {
       var e2 = e;
       final val = e2.build(context)?.variable;
@@ -200,12 +205,17 @@ extension on List {
   }
 }
 
-class ExprStmt extends Stmt {
+class ExprStmt extends Stmt implements LogPretty {
   ExprStmt(this.expr);
   final Expr expr;
   @override
   Stmt clone() {
     return ExprStmt(expr.clone());
+  }
+
+  @override
+  (Object, int) logPretty(int level) {
+    return (expr, level);
   }
 
   @override
@@ -221,7 +231,10 @@ class ExprStmt extends Stmt {
   }
 
   @override
-  void build(FnBuildMixin context, bool isRet) {
+  void build(bool isRet) {
+    final context = buildContext;
+    context.currentStmts.add(this);
+
     Ty? baseTy;
 
     if (isRet) {
@@ -257,8 +270,8 @@ class ExprStmt extends Stmt {
   List<Object?> get props => [expr];
 
   @override
-  void analysis(AnalysisContext context) {
-    expr.analysis(context);
+  void analysis(bool isRet) {
+    expr.analysis(analysisContext);
   }
 }
 
@@ -268,7 +281,8 @@ class RetStmt extends Stmt {
   final Identifier ident;
 
   @override
-  void build(FnBuildMixin context, bool isRet) {
+  void build(bool isRet) {
+    final context = buildContext;
     Ty? baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
     if (baseTy.isTy(LiteralKind.kVoid.ty)) {
       baseTy = null;
@@ -287,14 +301,13 @@ class RetStmt extends Stmt {
   }
 
   @override
-  void analysis(AnalysisContext context) {
+  void analysis(bool isRet) {
     if (expr == null) return;
-
-    analysisAll(context, expr!, ident);
+    expr!.analysis(analysisContext);
   }
 
-  static AnalysisVariable? analysisAll(AnalysisContext context, Expr expr,
-      [Identifier? currentIdent]) {
+  /// todo;
+  static AnalysisVariable? analysisAll(AnalysisContext context, Expr expr) {
     final val = expr.analysis(context);
     final current = context.getLastFnContext();
 
@@ -304,9 +317,8 @@ class RetStmt extends Stmt {
         if (valLife != null) {
           if (val.kind.isRef) {
             if (val.lifecycle.isInner && current.isChildOrCurrent(valLife)) {
-              final ident = currentIdent ?? val.lifeIdent ?? val.ident;
-              Log.e('lifecycle Error: (${context.currentPath}'
-                  ':${ident.offset.pathStyle})\n${ident.light}');
+              final ident = val.lifeIdent ?? val.ident;
+              Log.e('lifecycle Error\n${ident.light}');
             }
           }
         }
@@ -348,7 +360,7 @@ class RetStmt extends Stmt {
 
   @override
   String toString() {
-    return 'return $expr [Ret]';
+    return '${pad}return $expr [Ret]';
   }
 }
 
@@ -372,8 +384,9 @@ class StaticStmt extends Stmt {
 
   bool _run = false;
   @override
-  void build(FnBuildMixin context, bool isRet) {
+  void build(bool isRet) {
     if (_run) return;
+    final context = buildContext;
     final realTy = ty?.grtOrT(context);
     if (ty != null && realTy == null) return;
 
@@ -437,7 +450,8 @@ class StaticStmt extends Stmt {
   List<Object?> get props => [ident, ty, expr];
 
   @override
-  void analysis(AnalysisContext context) {
+  void analysis(bool isRet) {
+    final context = analysisContext;
     final realTy = ty?.grt(context);
     final val = expr.analysis(context);
     final vTy = realTy ?? val?.ty;
@@ -455,86 +469,73 @@ class TyStmt extends Stmt {
   }
 
   @override
-  void build(FnBuildMixin context, bool isRet) {
-    ty.currentContext ??= context;
+  void incLevel([int count = 1]) {
+    super.incLevel(count);
+    ty.incLevel(count);
+  }
+
+  @override
+  void prepareBuild(FnBuildMixin context) {
+    super.prepareBuild(context);
+    ty.prepareBuild(context);
+  }
+
+  @override
+  void build(bool isRet) {
     ty.build();
   }
 
   @override
-  void analysis(AnalysisContext context) {
-    ty.analysis(context);
+  void prepareAnalysis(AnalysisContext context) {
+    super.prepareAnalysis(context);
+    ty.prepareAnalysis(context);
+  }
+
+  @override
+  void analysis(bool isRet) {
+    ty.analysis();
   }
 
   @override
   String toString() {
-    return '$pad$ty';
+    return ty.toString();
   }
 
   @override
   List<Object?> get props => [ty];
 }
 
-class StructStmt extends Stmt {
-  StructStmt(this.ty);
+class ImportStmt extends Stmt {
+  ImportStmt(this.path, {this.name});
+  final Identifier? name;
+  final ImportPath path;
+
   @override
-  Stmt clone() {
-    return StructStmt(ty);
+  void prepareAnalysis(AnalysisContext context) {
+    super.prepareAnalysis(context);
+    context.pushImport(path, name: name);
   }
 
   @override
-  void incLevel([int count = 1]) {
-    super.incLevel(count);
-    ty.incLevel(count);
+  void prepareBuild(FnBuildMixin context) {
+    super.prepareBuild(context);
+    context.pushImport(path, name: name);
   }
 
-  final StructTy ty;
-
   @override
-  void build(FnBuildMixin context, bool isRet) {
-    ty.currentContext ??= context;
-    ty.build();
+  ImportStmt clone() {
+    return ImportStmt(path, name: name);
   }
 
   @override
   String toString() {
-    return '$pad$ty';
+    final n = name == null ? '' : ' as $name';
+    return 'import $path$n';
   }
 
   @override
-  List<Object?> get props => [ty];
+  void build(bool isRet) {}
 
   @override
-  void analysis(AnalysisContext context) {
-    ty.analysis(context);
-  }
-}
-
-class EnumStmt extends Stmt {
-  EnumStmt(this.ty);
-  @override
-  Stmt clone() {
-    return EnumStmt(ty);
-  }
-
-  @override
-  void incLevel([int count = 1]) {
-    super.incLevel(count);
-    ty.incLevel(count);
-  }
-
-  final EnumTy ty;
-
-  @override
-  void build(FnBuildMixin context, bool isRet) {
-    ty.currentContext ??= context;
-    ty.build();
-  }
-
-  @override
-  List<Object?> get props => [ty];
-
-  @override
-  void analysis(AnalysisContext context) {
-    ty.analysis(context);
-  }
+  List<Object?> get props => [path, name];
 }

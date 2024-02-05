@@ -212,8 +212,7 @@ class AbiFnWinx86_64 implements AbiFn {
   }
 
   @override
-  LLVMConstVariable createFunctionAbi(
-      StoreLoadMixin c, Fn fn, void Function(LLVMConstVariable fnValue) after) {
+  LLVMConstVariable createFunctionAbi(StoreLoadMixin c, Fn fn) {
     final ty = createFnType(c, fn);
     var ident = fn.fnName.src;
     if (ident.isEmpty) {
@@ -285,9 +284,7 @@ class AbiFnWinx86_64 implements AbiFn {
     c.setFnLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
     c.setFnLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
     c.setFnLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
-    final fnVaraible = LLVMConstVariable(v, fn, fn.fnName);
-    after(fnVaraible);
-    return fnVaraible;
+    return LLVMConstVariable(v, fn, fn.fnName);
   }
 
   @override

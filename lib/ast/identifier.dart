@@ -35,7 +35,7 @@ extension StringIdentExt on String {
 }
 
 class Identifier with EquatableMixin {
-  Identifier.fromToken(Token token, this.data)
+  Identifier.fromToken(Token token, this.data, this.fileName)
       : start = token.start,
         end = token.end,
         lineStart = token.lineStart,
@@ -53,8 +53,10 @@ class Identifier with EquatableMixin {
         isStr = false,
         lineNumber = 0,
         end = 0,
+        fileName = '',
         data = '';
-  Identifier.str(Token tokenStart, Token tokenEnd, this.builtInValue)
+  Identifier.str(
+      Token tokenStart, Token tokenEnd, this.builtInValue, this.fileName)
       : start = tokenStart.start,
         end = tokenEnd.end,
         lineStart = tokenStart.lineStart,
@@ -72,6 +74,7 @@ class Identifier with EquatableMixin {
   final int end;
   final String builtInValue;
   final bool isStr;
+  final String fileName;
 
   @protected
   final String data;
@@ -128,6 +131,8 @@ class Identifier with EquatableMixin {
     return _src = data.substring(start, end);
   }
 
+  String get path => '$src ($fileName:${offset.pathStyle})';
+
   /// 指示当前的位置
   String get light {
     if (lineStart == -1) {
@@ -138,7 +143,7 @@ class Identifier with EquatableMixin {
     final space = ' ' * (start - lineStart);
     // lineEnd 没有包括换行符
     final arrow = '^' * (math.min(end, lineEnd + 1) - start);
-    return '$line\n$space\x1B[31m$arrow\x1B[0m';
+    return '\x1B[39m$fileName:${offset.pathStyle}:\x1B[0m\n$line\n$space\x1B[31m$arrow\x1B[0m';
   }
 
   static String lightSrc(String src, int start, int end) {

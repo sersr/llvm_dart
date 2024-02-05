@@ -56,7 +56,7 @@ class LiteralExpr extends Expr {
   }
 }
 
-class IfExprBlock implements Clone<IfExprBlock> {
+class IfExprBlock extends Expr implements LogPretty {
   IfExprBlock(this.expr, this.block);
 
   final Expr? expr;
@@ -69,15 +69,32 @@ class IfExprBlock implements Clone<IfExprBlock> {
     return IfExprBlock(expr?.clone(), block.clone());
   }
 
-  void incLvel([int count = 1]) {
+  @override
+  void incLevel([int count = 1]) {
+    super.incLevel(count);
     block.incLevel(count);
   }
 
   @override
   String toString() {
-    return '$expr$block';
+    if (expr == null) {
+      return block.toString();
+    }
+    return 'if $expr $block';
   }
 
+  @override
+  (Map, int) logPretty(int level) {
+    return (
+      {
+        "condition": expr,
+        "stmts": block,
+      },
+      level,
+    );
+  }
+
+  @override
   AnalysisVariable? analysis(AnalysisContext context) {
     expr?.analysis(context);
     return analysisBlock(block, context);
@@ -101,9 +118,14 @@ class IfExprBlock implements Clone<IfExprBlock> {
     }
     return null;
   }
+
+  @override
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
+    return null;
+  }
 }
 
-class IfExpr extends Expr with RetExprMixin {
+class IfExpr extends Expr with RetExprMixin implements LogPretty {
   IfExpr(this.ifExprBlocks) {
     if (ifExprBlocks.isEmpty) return;
     IfExprBlock? last;
@@ -124,10 +146,20 @@ class IfExpr extends Expr with RetExprMixin {
   }
 
   @override
+  (Object, int) logPretty(int level) {
+    return (
+      {
+        "if expr": ifExprBlocks,
+      },
+      level
+    );
+  }
+
+  @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
     for (var element in ifExprBlocks) {
-      element.incLvel(count);
+      element.incLevel(count);
     }
   }
 
@@ -135,9 +167,7 @@ class IfExpr extends Expr with RetExprMixin {
 
   @override
   String toString() {
-    final elIf = ifExprBlocks.join(' else');
-
-    return elIf;
+    return ifExprBlocks.join(' else ');
   }
 
   Ty? _getTy() {
@@ -475,8 +505,7 @@ class AssignExpr extends Expr {
         if (rhs.kind.isRef) {
           if (rhs.lifecycle.isInner && lhs.lifecycle.isOut) {
             final ident = rhs.lifeIdent ?? rhs.ident;
-            Log.e('lifecycle Error: (${context.currentPath}'
-                ':${ident.offset.pathStyle})\n${ident.light}');
+            Log.e('lifecycle Error\n${ident.light}');
           }
         }
       }
@@ -575,15 +604,15 @@ class FnExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    assert(fn.currentContext == null);
-    fn.currentContext ??= context;
+    fn.prepareBuild(context);
     fn.build();
     return ExprTempValue.ty(fn, fn.ident);
   }
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    fn.analysis(context);
+    fn.prepareAnalysis(context);
+    fn.analysis();
     return context.createVal(fn, fn.fnSign.fnDecl.ident);
   }
 
@@ -736,7 +765,8 @@ class FnCallExpr extends Expr with FnCallMixin {
 
     if (fnty is! Fn) return null;
     final fnnn = fnty.resolveGeneric(context, params);
-    fnnn.analysis(context);
+
+    fnnn.analysisFn();
     autoAddChild(fnnn, params, context);
 
     return context.createVal(
@@ -789,7 +819,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     }
 
     if (temp != null) {
-      final builtin = context.global
+      final builtin = context.root
           .arrayBuiltin(context, ident, fnName, val, structTy, params);
       if (builtin != null) return builtin;
     }
@@ -855,7 +885,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
       if (p != null) return p;
     }
 
-    structTy = structTy.resolveGeneric(context, params);
     var implFn = context.getImplFnForTy(structTy, ident);
 
     if (!structTy.done && implFn is ImplStaticFn) {
@@ -886,7 +915,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (fn == null) return null;
     fn = fn.resolveGeneric(context, params);
 
-    fn.analysis(context.getLastFnContext() ?? context);
+    fn.analysisFn();
 
     return context.createVal(fn.getRetTy(context), Identifier.none);
   }
@@ -964,14 +993,11 @@ class StructDotFieldExpr extends Expr {
       return null;
     }
 
-    final ty = v.grtOrT(context);
-    if (ty != null) {
-      final vv = context.createVal(ty, ident);
-      vv.lifecycle.fnContext = variable.lifecycle.fnContext;
-      return vv;
-    }
+    final ty = structTy.getFieldTyOrT(context, v);
 
-    return null;
+    final vv = context.createVal(ty ?? AnalysisTy(v.rawTy), ident);
+    vv.lifecycle.fnContext = variable.lifecycle.fnContext;
+    return vv;
   }
 }
 
@@ -1298,23 +1324,20 @@ class VariableIdentExpr extends Expr {
       return ExprTempValue(val.newIdent(ident, dirty: false));
     }
 
-    final ty = pathTy.grtOrT(context, gen: (ident) {
-      if (baseTy is NewInst) {
-        return baseTy.tys[ident];
-      }
-      return null;
-    });
+    final ty = switch (baseTy) {
+      NewInst ty => pathTy.grtOrT(context, gen: (ident) => ty.tys[ident]),
+      _ => pathTy.grtOrT(context),
+    };
 
-    if (ty is NewInst && ty.done) {
-      if (ty is StructTy && ty.fields.isEmpty) {
+    switch (ty) {
+      case StructTy() when ty.fields.isEmpty && ty.done:
         final val = ty.llty.buildTupeOrStruct(context, const []);
         return ExprTempValue(val, ty: ty);
-      } else if (ty is Fn) {
+      case Fn() when ty.done:
         final value = ty.genFn();
         if (value != null) {
           return ExprTempValue(value.newIdent(ident, dirty: false));
         }
-      }
     }
 
     if (ty != null) return ExprTempValue.ty(ty, ident);
@@ -1333,7 +1356,6 @@ class VariableIdentExpr extends Expr {
 
     if (v != null) return v.copy(ident: ident);
     final ty = pathTy.grtOrT(context);
-
     if (ty is Fn) {
       context.addChild(ty);
     }
@@ -1384,11 +1406,11 @@ class RefExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     final vv = current.analysis(context);
     if (vv == null) return null;
-    return vv.copy(ident: pointerIdent)..kind.add(kind);
+    return vv.copy(ident: pointerIdent, kind: [kind, ...vv.kind]);
   }
 }
 
-class BlockExpr extends Expr {
+class BlockExpr extends Expr implements LogPretty {
   BlockExpr(this.block);
 
   final Block block;
@@ -1400,6 +1422,11 @@ class BlockExpr extends Expr {
   }
 
   @override
+  (Object, int) logPretty(int level) {
+    return ({'block': block}, level);
+  }
+
+  @override
   AnalysisVariable? analysis(AnalysisContext context) {
     final child = context.childContext();
     block.analysis(child);
@@ -1408,7 +1435,10 @@ class BlockExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    throw StateError('use block.build(context) instead.');
+    final childContext = context.createBlockContext();
+    block.build(childContext);
+    childContext.freeHeapCurrent(childContext);
+    return null;
   }
 
   @override
@@ -1422,7 +1452,8 @@ class BlockExpr extends Expr {
   }
 }
 
-class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
+class MatchItemExpr extends BuildMixin
+    implements Clone<MatchItemExpr>, LogPretty {
   MatchItemExpr(this.expr, this.block, this.op);
   final Expr expr;
   final Block block;
@@ -1437,6 +1468,17 @@ class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
   }
 
   @override
+  (Object, int) logPretty(int level) {
+    return (
+      {
+        "expr": expr,
+        "op": op,
+        "stmts": block,
+      },
+      level
+    );
+  }
+
   AnalysisVariable? analysis(AnalysisContext context) {
     final child = context.childContext();
     final e = expr;
@@ -1453,11 +1495,11 @@ class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
           final f = enumTy.fields[i];
           final ident = p.pattern;
           if (ident != null) {
-            final ty =
-                enumTy.getFieldTyOrT(child, f) ?? p.analysis(context)?.ty;
-            if (ty != null) {
-              child.pushVariable(child.createVal(ty, ident));
-            }
+            final ty = enumTy.getFieldTyOrT(child, f) ??
+                p.analysis(context)?.ty ??
+                AnalysisTy(f.rawTy);
+
+            child.pushVariable(child.createVal(ty, ident));
           }
         }
       }
@@ -1535,11 +1577,11 @@ class MatchItemExpr extends BuildMixin implements Clone<MatchItemExpr> {
   @override
   String toString() {
     final o = op == null ? '' : '${op!.op} ';
-    return '$pad$o$expr =>$block';
+    return '$pad$o$expr => $block';
   }
 }
 
-class MatchExpr extends Expr with RetExprMixin {
+class MatchExpr extends Expr with RetExprMixin implements LogPretty {
   MatchExpr(this.expr, this.items) {
     for (var item in items) {
       item.incLevel();
@@ -1548,6 +1590,17 @@ class MatchExpr extends Expr with RetExprMixin {
 
   final Expr expr;
   final List<MatchItemExpr> items;
+
+  @override
+  (Object, int) logPretty(int level) {
+    return (
+      {
+        "match expr": expr,
+        "items": items,
+      },
+      level
+    );
+  }
 
   @override
   void incLevel([int count = 1]) {
@@ -1653,34 +1706,6 @@ class AsExpr extends Expr {
   @override
   String toString() {
     return '$lhs as $rhs';
-  }
-}
-
-class ImportExpr extends Expr {
-  ImportExpr(this.path, {this.name});
-  final Identifier? name;
-  final ImportPath path;
-  @override
-  AnalysisVariable? analysis(AnalysisContext context) {
-    context.pushImport(path, name: name);
-    return null;
-  }
-
-  @override
-  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    context.pushImport(path, name: name);
-    return null;
-  }
-
-  @override
-  Expr clone() {
-    return ImportExpr(path, name: name);
-  }
-
-  @override
-  String toString() {
-    final n = name == null ? '' : ' as $name';
-    return 'import $path$n';
   }
 }
 

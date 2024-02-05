@@ -1,71 +1,36 @@
 part of 'ast.dart';
 
-class Block extends BuildMixin with EquatableMixin {
-  Block(this._innerStmts, this.ident, this.blockStart, this.blockEnd) {
-    _init();
-    final fnStmt = <Fn>[];
-    final others = <Stmt>[];
-    final tyStmts = <Stmt>[];
-    final implStmts = <Stmt>[];
-    final aliasStmts = <Stmt>[];
-    final importStmts = <Stmt>[];
-    // 函数声明前置
-    for (var stmt in _innerStmts) {
-      if (stmt is TyStmt) {
-        final ty = stmt.ty;
-        switch (ty) {
-          case Fn ty:
-            fnStmt.add(ty);
-          case ImplTy _:
-            implStmts.add(stmt);
-          case TypeAliasTy _:
-            aliasStmts.add(stmt);
-          case _:
-            tyStmts.add(stmt);
-        }
-
-        continue;
-      } else if (stmt case ExprStmt(expr: ImportExpr())) {
-        importStmts.add(stmt);
-        continue;
-      }
-      others.add(stmt);
-    }
-    _fnExprs = fnStmt;
-    _stmts = others;
-    _tyStmts = tyStmts;
-    _implTyStmts = implStmts;
-    _aliasStmts = aliasStmts;
-    _importStmts = importStmts;
+class Block extends BuildMixin with EquatableMixin implements LogPretty {
+  Block(this._innerStmts, this.ident, this.blockStart, this.blockEnd,
+      {bool inc = true}) {
+    if (inc) _init();
+    _lastIndex = _innerStmts.lastIndexWhere((element) => element is! TyStmt);
   }
 
   Block._(this._innerStmts, this.ident, this.blockStart, this.blockEnd);
 
   void _init() {
-    // {
-    //   stmt
-    // }
     for (var s in _innerStmts) {
       s.incLevel();
     }
   }
 
+  @override
+  (List, int) logPretty(int level) {
+    return (_innerStmts, level);
+  }
+
   final Identifier? ident;
   final List<Stmt> _innerStmts;
+  late final int _lastIndex;
 
-  late List<Fn> _fnExprs;
-  late List<Stmt> _stmts;
-  late List<Stmt> _tyStmts;
-  late List<Stmt> _implTyStmts;
-  late List<Stmt> _aliasStmts;
-  late List<Stmt> _importStmts;
   final Identifier blockStart;
   final Identifier blockEnd;
 
-  bool get isNotEmpty => _stmts.isNotEmpty;
-  bool get isEmpty => _stmts.isEmpty;
+  bool get isNotEmpty => _lastIndex != -1;
+  bool get isEmpty => _lastIndex == -1;
 
-  Stmt? get lastOrNull => _stmts.lastOrNull;
+  Stmt? get lastOrNull => _lastIndex == -1 ? null : _innerStmts[_lastIndex];
 
   @override
   void incLevel([int count = 1]) {
@@ -77,55 +42,29 @@ class Block extends BuildMixin with EquatableMixin {
   }
 
   Block clone() {
-    return Block._(_innerStmts, ident, blockStart, blockEnd)
-      .._fnExprs = _fnExprs.clone()
-      .._stmts = _stmts.clone()
-      .._implTyStmts = _implTyStmts.clone()
-      .._aliasStmts = _aliasStmts.clone()
-      .._importStmts = _importStmts.clone()
-      .._tyStmts = _tyStmts.clone();
+    return Block._(_innerStmts.clone(), ident, blockStart, blockEnd)
+      .._lastIndex = _lastIndex;
   }
 
   @override
   String toString() {
     final p = getWhiteSpace(level, BuildMixin.padSize);
     final s = _innerStmts.map((e) => '$e\n').join();
-    return '${ident ?? ''} {\n$s$p}';
+    return '${ident == null ? '' : '$ident '}{\n$s$p}';
   }
 
   void build(FnBuildMixin context, {bool hasRet = false}) {
-    for (var stmt in _importStmts) {
-      stmt.build(context, false);
+    for (var stmt in _innerStmts) {
+      stmt.prepareBuild(context);
     }
-
-    for (var fn in _fnExprs) {
-      fn.currentContext = context;
-      fn.build();
-    }
-
-    for (var ty in _tyStmts) {
-      ty.build(context, false);
-    }
-
-    for (var alias in _aliasStmts) {
-      alias.build(context, false);
-    }
-
-    for (var implTy in _implTyStmts) {
-      implTy.build(context, false);
-    }
-
     if (!hasRet) {
-      for (var stmt in _stmts) {
-        stmt.build(context, false);
+      for (var stmt in _innerStmts) {
+        stmt.build(false);
       }
     } else {
-      final length = _stmts.length;
-      final max = length - 1;
-
-      for (var i = 0; i < length; i++) {
-        final stmt = _stmts[i];
-        stmt.build(context, i == max);
+      for (var i = 0; i < _innerStmts.length; i++) {
+        final stmt = _innerStmts[i];
+        stmt.build(i == _lastIndex);
       }
     }
   }
@@ -133,34 +72,26 @@ class Block extends BuildMixin with EquatableMixin {
   @override
   List<Object?> get props => [_innerStmts];
 
-  @override
-  void analysis(AnalysisContext context) {
-    for (var stmt in _importStmts) {
-      stmt.analysis(context);
+  void analysis(AnalysisContext context, {bool hasRet = false}) {
+    for (var stmt in _innerStmts) {
+      stmt.prepareAnalysis(context);
     }
 
-    for (var fn in _fnExprs) {
-      context.pushFn(fn.fnName, fn);
+    if (!hasRet) {
+      for (var stmt in _innerStmts) {
+        stmt.analysis(false);
+      }
+    } else {
+      for (var i = 0; i < _innerStmts.length; i++) {
+        final stmt = _innerStmts[i];
+        stmt.analysis(i == _lastIndex);
+      }
     }
 
-    for (var ty in _tyStmts) {
-      ty.analysis(context);
-    }
-
-    for (var alais in _aliasStmts) {
-      alais.analysis(context);
-    }
-
-    for (var implTy in _implTyStmts) {
-      implTy.analysis(context);
-    }
-
-    for (var stmt in _stmts) {
-      stmt.analysis(context);
-    }
-
-    for (var fn in _fnExprs) {
-      fn.analysis(context);
+    for (var stmt in _innerStmts) {
+      if (stmt case TyStmt(ty: Fn ty)) {
+        ty.analysisFn();
+      }
     }
   }
 }

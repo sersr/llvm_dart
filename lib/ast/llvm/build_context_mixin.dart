@@ -37,13 +37,15 @@ abstract class BuildContext
         OverflowMath,
         StoreLoadMixin,
         Cast {
-  set builder(LLVMBuilderRef b);
+  void copyBuilderFrom(BuildContext other);
   Abi get abi;
 
   @override
   FnBuildMixin? getLastFnContext();
   FnBuildMixin createNewRunContext();
   FnBuildMixin createChildContext();
+
+  final List<Stmt> currentStmts = [];
 }
 
 mixin SretMixin on BuildContext {

@@ -16,9 +16,6 @@ abstract class ManagerBase extends GlobalContext {
   ManagerBase() {
     _stdPaths = stds.map((e) => normalize(join(stdRoot, e))).toList();
     init();
-    for (var std in _stdPaths) {
-      initStd(std);
-    }
   }
 
   static const stds = [
@@ -44,9 +41,6 @@ abstract class ManagerBase extends GlobalContext {
     return false;
   }
 
-  @mustCallSuper
-  void initStd(String path) {}
-
   void importStdTys(Tys c) {
     if (_stdPaths.contains(c.currentPath)) return;
     for (var path in _stdPaths) {
@@ -60,7 +54,9 @@ abstract class ManagerBase extends GlobalContext {
     final file = currentDir.childFile(path);
     if (file.existsSync()) {
       final data = file.readAsStringSync();
-      return parseTopItem(data);
+      final sufPath = getSufPath(path);
+
+      return Parser(data, sufPath);
     }
     return null;
   }
@@ -162,12 +158,6 @@ mixin BuildContextMixin on ManagerBase {
   }
 
   @override
-  void initStd(String path) {
-    super.initStd(path);
-    build(path);
-  }
-
-  @override
   void dispose() {
     rootBuildContext.dispose();
     for (var ctx in llvmCtxs.values) {
@@ -227,12 +217,6 @@ mixin AnalysisContextMixin on ManagerBase {
     final block = parser.block;
 
     block.analysis(context);
-
-    for (var fns in context.fns.values) {
-      for (var fn in fns) {
-        fn.analysis(context);
-      }
-    }
   }
 
   @override
@@ -240,12 +224,6 @@ mixin AnalysisContextMixin on ManagerBase {
     rootAnalysis.global = this;
     initBuiltinFns(rootAnalysis);
     super.init();
-  }
-
-  @override
-  void initStd(String path) {
-    analysis(path);
-    super.initStd(path);
   }
 
   @override
@@ -257,7 +235,7 @@ mixin AnalysisContextMixin on ManagerBase {
   void printAst() {
     void printParser(Parser parser, String path) {
       Log.i('--- $path', showTag: false);
-      Log.w(parser.stmts.join('\n'), showTag: false);
+      Log.w(parser.stmts, showTag: false);
     }
 
     for (var entry in alcs.entries) {

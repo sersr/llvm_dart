@@ -1,6 +1,9 @@
+import 'package:nop/nop.dart';
+
 import '../../abi/abi_fn.dart';
 import '../../llvm_dart.dart';
 import '../ast.dart';
+import '../expr.dart';
 import '../memory.dart';
 import '../tys.dart';
 import 'build_context_mixin.dart';
@@ -98,10 +101,55 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
 
   @override
   String get currentPath => throw UnimplementedError();
+
+  ExprTempValue? arrayBuiltin(FnBuildMixin context, Identifier ident,
+      String fnName, Variable? val, Ty valTy, List<FieldExpr> params) {
+    if (valTy is ArrayTy && val != null) {
+      if (fnName == 'getSize') {
+        final size =
+            LiteralKind.usize.ty.llty.createValue(ident: '${valTy.size}'.ident);
+        return ExprTempValue(size);
+      } else if (fnName == 'toStr') {
+        final element = valTy.llty.toStr(context, val);
+        return ExprTempValue(element);
+      }
+    }
+
+    if (valTy is StructTy) {
+      if (valTy.ident.src == 'Array') {
+        if (fnName == 'new') {
+          if (params.isNotEmpty) {
+            final first = params.first
+                .build(context, baseTy: LiteralKind.usize.ty)
+                ?.variable;
+
+            if (first is LLVMLitVariable) {
+              if (valTy.tys.isNotEmpty) {
+                final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
+
+                final value = LLVMAllocaProxyVariable(context, (value, _) {
+                  if (value == null) return;
+                  value.store(
+                    context,
+                    llvm.LLVMConstNull(arr.typeOf(context)),
+                  );
+                }, arr, arr.llty.typeOf(context), ident);
+
+                return ExprTempValue(value);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return null;
+  }
 }
 
 class BuildContextImpl extends BuildContext
-    with FreeMixin, FlowMixin, FnContextMixin, SretMixin, FnBuildMixin {
+    with FreeMixin, FlowMixin, FnContextMixin, SretMixin, FnBuildMixin
+    implements LogPretty {
   BuildContextImpl._baseChild(BuildContextImpl this.parent, this.currentPath)
       : root = parent.root {
     init(parent!);
@@ -132,12 +180,15 @@ class BuildContextImpl extends BuildContext
       _builder ??= llvm.LLVMCreateBuilderInContext(llvmContext);
 
   @override
-  set builder(LLVMBuilderRef v) {
+  void copyBuilderFrom(BuildContext other) {
     if (_builder != null) {
       llvm.LLVMDisposeBuilder(_builder!);
     }
-    _builder = v;
+    _ignoreDisposeBuilder = true;
+    _builder = other.builder;
   }
+
+  bool _ignoreDisposeBuilder = false;
 
   final List<BuildContextImpl> _children = [];
 
@@ -181,7 +232,7 @@ class BuildContextImpl extends BuildContext
 
   @override
   void dispose() {
-    llvm.LLVMDisposeBuilder(builder);
+    if (!_ignoreDisposeBuilder) llvm.LLVMDisposeBuilder(builder);
     super.dispose();
 
     for (var child in _children) {
@@ -202,5 +253,27 @@ class BuildContextImpl extends BuildContext
       if (current == fn) return;
       current = current.parent;
     }
+  }
+
+  bool get _isEmpty =>
+      currentStmts.isEmpty && _children.every((element) => element._isEmpty);
+
+  @override
+  String toString() {
+    return logPretty(0, ignorePath: false).$1.logPretty();
+  }
+
+  @override
+  (Map, int) logPretty(int level, {bool ignorePath = true}) {
+    final children = _children.where((element) => !element._isEmpty).toList();
+    if (children.isEmpty && currentStmts.isEmpty) return ({}, level);
+
+    final map = {
+      if (!ignorePath) "path:": currentPath,
+      if (currentFn != null) "fn": currentFn?.fnName.path,
+      if (currentStmts.isNotEmpty) "stmts": currentStmts,
+      if (children.isNotEmpty) "children": children,
+    };
+    return (map, level);
   }
 }

@@ -5,6 +5,7 @@ fn main() i32 {
 
   printf("add 10\n");
   printf("v.len %d\n", v.getLength());
+
   let x = v.pop();
 
   match x {
@@ -21,7 +22,7 @@ fn main() i32 {
   let vc = Vec<Point>.new();
 
   vc.add(Point{y: 10, x: 22});
-  let x = vc[0];
+  let x = &vc[0];
   printf("vc[0] %d\n", x.y);
 
   printf("vc.len %d\n", vc.getLength());

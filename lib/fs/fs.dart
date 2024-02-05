@@ -28,3 +28,20 @@ Directory get buildDir {
 Pointer<Char> buildFileChar(String name) {
   return buildDir.childFile(name).path.toChar();
 }
+
+String getSufPath(String path, {String? dir}) {
+  dir ??= currentDir.path;
+
+  if (path.contains(dir)) {
+    var length = dir.length;
+
+    // / | \
+    if (path.length > dir.length) {
+      length += 1;
+    }
+
+    path = path.replaceRange(0, length, '');
+  }
+
+  return path;
+}

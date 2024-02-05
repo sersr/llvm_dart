@@ -123,7 +123,7 @@ abstract class MatchBuilder {
 
     if (length <= 2) {
       final first = items.first;
-      final child = items.lastOrNull;
+      var child = length == 2 ? items.last : null;
 
       final then = context.buildSubBB(name: 'm_then');
       final after = context.buildSubBB(name: 'm_after');

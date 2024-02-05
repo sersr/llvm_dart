@@ -40,8 +40,7 @@ abstract interface class AbiFn {
   ExprTempValue? fnCall(
       FnBuildMixin context, Fn fn, Identifier ident, List<FieldExpr> params);
 
-  LLVMConstVariable createFunctionAbi(
-      StoreLoadMixin c, Fn fn, void Function(LLVMConstVariable fnValue) after);
+  LLVMConstVariable createFunctionAbi(StoreLoadMixin c, Fn fn);
 
   static final _instances = <Abi, AbiFn>{};
 
@@ -209,16 +208,13 @@ abstract interface class AbiFn {
   }
 
   static LLVMConstVariable createFunction(
-      FnBuildMixin c,
-      Fn fn,
-      Set<AnalysisVariable>? variables,
-      void Function(LLVMConstVariable fnValue) after) {
+      FnBuildMixin c, Fn fn, Set<AnalysisVariable>? variables) {
     if (fn.extern) {
       return fn.llty.getOrCreate(() {
-        return AbiFn.get(c.abi).createFunctionAbi(c, fn, after);
+        return AbiFn.get(c.abi).createFunctionAbi(c, fn);
       });
     }
-    return fn.llty.createFunction(c, variables, after);
+    return fn.llty.createFunction(c, variables);
   }
 
   LLVMAllocaVariable? initFnParamsImpl(

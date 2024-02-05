@@ -17,7 +17,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
   LLVMValueRef get fnValue => _fnValue ?? _fnVariable!.value;
 
   Fn? _currentFn;
-  Fn? get currentFn => _fnVariable?.ty as Fn? ?? _currentFn!;
+  Fn? get currentFn => _fnVariable?.ty as Fn? ?? _currentFn;
 
   StoreVariable? _sret;
   StoreVariable? get sret => _sret;
@@ -41,7 +41,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
   }
 
   void _updateDebugFn(FnContextMixin parent, FnContextMixin debug) {
-    builder = parent.builder;
+    copyBuilderFrom(parent);
     _fnValue = parent.getLastFnContext()?.fnValue;
     assert(dBuilder == null);
 

@@ -2,13 +2,9 @@ import 'dart:async';
 
 import 'package:equatable/equatable.dart';
 
-import '../llvm_dart.dart';
 import '../parsers/str.dart';
 import 'ast.dart';
 import 'buildin.dart';
-import 'expr.dart';
-import 'llvm/llvm_context.dart';
-import 'llvm/variables.dart';
 
 abstract class LifeCycleVariable {
   Identifier get ident;
@@ -46,7 +42,7 @@ class ImportPath with EquatableMixin {
 
   @override
   String toString() {
-    return name.toString();
+    return path;
   }
 }
 
@@ -60,50 +56,6 @@ abstract class GlobalContext {
       {bool Function(VA v)? test});
 
   bool isStd(Tys c);
-
-  ExprTempValue? arrayBuiltin(FnBuildMixin context, Identifier ident,
-      String fnName, Variable? val, Ty valTy, List<FieldExpr> params) {
-    if (valTy is ArrayTy && val != null) {
-      if (fnName == 'getSize') {
-        final size =
-            LiteralKind.usize.ty.llty.createValue(ident: '${valTy.size}'.ident);
-        return ExprTempValue(size);
-      } else if (fnName == 'toStr') {
-        final element = valTy.llty.toStr(context, val);
-        return ExprTempValue(element);
-      }
-    }
-
-    if (valTy is StructTy) {
-      if (valTy.ident.src == 'Array') {
-        if (fnName == 'new') {
-          if (params.isNotEmpty) {
-            final first = params.first
-                .build(context, baseTy: LiteralKind.usize.ty)
-                ?.variable;
-
-            if (first is LLVMLitVariable) {
-              if (valTy.tys.isNotEmpty) {
-                final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
-
-                final value = LLVMAllocaProxyVariable(context, (value, _) {
-                  if (value == null) return;
-                  value.store(
-                    context,
-                    llvm.LLVMConstNull(arr.typeOf(context)),
-                  );
-                }, arr, arr.llty.typeOf(context), ident);
-
-                return ExprTempValue(value);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return null;
-  }
 }
 
 mixin Tys<V extends LifeCycleVariable> {

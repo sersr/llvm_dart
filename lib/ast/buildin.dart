@@ -70,8 +70,6 @@ final class BuiltinFn extends Ty {
   @override
   Identifier get ident => name;
 
-  @override
-  void analysis(AnalysisContext context) {}
   final Ty? retType;
 
   final BuiltinFnRun runFn;

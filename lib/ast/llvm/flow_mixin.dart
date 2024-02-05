@@ -65,6 +65,12 @@ mixin FlowMixin on BuildContext, FreeMixin {
     return LLVMBasicBlock(bb, child, false);
   }
 
+  FnBuildMixin createBlockContext({String name = 'entry'}) {
+    final child = createChildContext();
+    child.copyBuilderFrom(this);
+    return child;
+  }
+
   void appendBB(LLVMBasicBlock bb) {
     assert(!bb.inserted);
     llvm.LLVMAppendExistingBasicBlock(getLastFnContext()!.fnValue, bb.bb);

@@ -1,5 +1,6 @@
 import 'package:characters/characters.dart';
 import 'package:llvm_dart/ast/ast.dart';
+import 'package:llvm_dart/fs/fs.dart';
 import 'package:llvm_dart/parsers/lexers/token_kind.dart';
 import 'package:llvm_dart/parsers/lexers/token_stream.dart';
 import 'package:llvm_dart/parsers/token_it.dart';
@@ -21,8 +22,12 @@ void main() {
   });
 
   test('light', () {
-    final src = kcBinDir.childFile('main.kc').readAsStringSync();
+    final file = kcBinDir.childFile('main.kc');
+    final sufPath = getSufPath(file.path);
+    final src = file.readAsStringSync();
+
     Log.logPathFn = (path) => path;
+
     final tokenReader = TokenReader(src);
 
     void test() {
@@ -33,7 +38,7 @@ void main() {
             loop(token);
           }
         }
-        final ident = Identifier.fromToken(tree.token, src);
+        final ident = Identifier.fromToken(tree.token, src, sufPath);
         Log.i(
             '${ident.light} | ${ident.lineStart} <= ${ident.start} <= ${ident.end} ?? ${ident.lineEnd} | ${ident.offset.pathStyle}');
       }
@@ -63,7 +68,7 @@ void main() {
         lineEnd: index - 1,
         end: index,
       );
-      final ident = Identifier.fromToken(token, src);
+      final ident = Identifier.fromToken(token, src, sufPath);
       start = index;
       Log.i(
           '${ident.light} | ${token.lineStart} <= ${token.start} <= ${token.end}'
