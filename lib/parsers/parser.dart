@@ -201,13 +201,13 @@ class Parser {
               }
               orderList.add(TyStmt(fn));
             }
-            // } else if (key == Key.kType) {
-            //   var alias = parseType(it);
-            //   if (alias != null) {
-            //     final stmt = TyStmt(alias);
-            //     aliasTys.add(stmt);
-            //     orderList.add(stmt);
-            //   }
+          } else if (key == Key.kType) {
+            var alias = parseType(it);
+            if (alias != null) {
+              final stmt = TyStmt(alias);
+              aliasTys.add(stmt);
+              orderList.add(stmt);
+            }
           }
         }
         return false;
