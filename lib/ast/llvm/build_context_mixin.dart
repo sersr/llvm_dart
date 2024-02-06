@@ -44,8 +44,6 @@ abstract class BuildContext
   FnBuildMixin? getLastFnContext();
   FnBuildMixin createNewRunContext();
   FnBuildMixin createChildContext();
-
-  final List<Stmt> currentStmts = [];
 }
 
 mixin SretMixin on BuildContext {

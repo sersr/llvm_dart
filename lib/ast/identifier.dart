@@ -6,7 +6,7 @@ class RawIdent with EquatableMixin {
   final int end;
 
   @override
-  List<Object?> get props => [start, end];
+  late final props = [start, end];
 }
 
 class Offset {
@@ -96,6 +96,8 @@ class Identifier with EquatableMixin {
 
   static final Identifier none = Identifier.builtIn('');
   static final Identifier self = Identifier.builtIn('self');
+  // ignore: non_constant_identifier_names
+  static final Identifier Self = Identifier.builtIn('Self');
 
   /// 在parser下要求更多字段相等
   static bool get identicalEq {
@@ -132,6 +134,7 @@ class Identifier with EquatableMixin {
   }
 
   String get path => '$src ($fileName:${offset.pathStyle})';
+  String get basePath => '$fileName:${offset.pathStyle}';
 
   /// 指示当前的位置
   String get light {

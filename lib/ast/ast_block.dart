@@ -54,6 +54,7 @@ class Block extends BuildMixin with EquatableMixin implements LogPretty {
   }
 
   void build(FnBuildMixin context, {bool hasRet = false}) {
+    context.block = this;
     for (var stmt in _innerStmts) {
       stmt.prepareBuild(context);
     }
@@ -70,7 +71,7 @@ class Block extends BuildMixin with EquatableMixin implements LogPretty {
   }
 
   @override
-  List<Object?> get props => [_innerStmts];
+  List<Object?> get props => _innerStmts;
 
   void analysis(AnalysisContext context, {bool hasRet = false}) {
     for (var stmt in _innerStmts) {
@@ -85,12 +86,6 @@ class Block extends BuildMixin with EquatableMixin implements LogPretty {
       for (var i = 0; i < _innerStmts.length; i++) {
         final stmt = _innerStmts[i];
         stmt.analysis(i == _lastIndex);
-      }
-    }
-
-    for (var stmt in _innerStmts) {
-      if (stmt case TyStmt(ty: Fn ty)) {
-        ty.analysisFn();
       }
     }
   }

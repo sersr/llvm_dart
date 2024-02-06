@@ -19,7 +19,7 @@ class PathTy with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [ident];
+  late final props = [ident];
 
   Ty? grtOrT(Tys c, {GenTy? gen}) {
     var tempTy =

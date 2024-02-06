@@ -27,7 +27,7 @@ class GenericDef with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [constraints, ident];
+  late final props = [constraints, ident];
 }
 
 /// 字段定义
@@ -67,7 +67,7 @@ class FieldDef with EquatableMixin implements Clone<FieldDef> {
   }
 
   @override
-  List<Object?> get props => [_rty, _ty, ident];
+  late final props = [_rty, _ty, ident];
 }
 
 typedef GenTy = Ty? Function(Identifier ident);
@@ -100,16 +100,14 @@ mixin NewInst<T extends Ty> on Ty {
   }
 
   @override
-  Ty newConstraints(Tys c, List<ComponentTy> newConstraints, bool isLimited) {
-    final ty = super.newConstraints(c, newConstraints, isLimited) as NewInst;
-    ty._initData(c, parentOrCurrent, tys);
-    return ty;
+  void cloneTys(Tys c, covariant NewInst<T> parent) {
+    _initData(c, parent.parentOrCurrent, tys);
   }
 
   _initData(Tys c, T parent, Map<Identifier, Ty> tys) {
     _parent = parent;
     if (tys.isNotEmpty) _tys = tys;
-    // init ty
+
     for (var fd in fields) {
       getFieldTyOrT(c, fd);
     }
@@ -126,11 +124,14 @@ mixin NewInst<T extends Ty> on Ty {
 
       final ty = newTy(newFields);
       (ty as NewInst)._initData(c, parent, tys);
+      ty.initNewInst(c);
       return ty;
     });
 
     return newInst as T;
   }
+
+  void initNewInst(Tys c) {}
 
   /// 从泛型实体获取map
   ///

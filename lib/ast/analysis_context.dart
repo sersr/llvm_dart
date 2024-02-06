@@ -190,14 +190,6 @@ class AnalysisContext with Tys<AnalysisVariable> {
     val.lifecycle.fnContext = this;
     return val;
   }
-
-  AnalysisStructVariable createStructVal(
-      Ty ty, Identifier ident, Map<Identifier, AnalysisVariable> map,
-      [List<PointerKind>? kind]) {
-    final val = AnalysisStructVariable._(ty, ident, map, kind ?? []);
-    val.lifecycle.fnContext = this;
-    return val;
-  }
 }
 
 class AnalysisTy extends Ty {
@@ -215,7 +207,7 @@ class AnalysisTy extends Ty {
   LLVMType get llty => throw UnimplementedError();
 
   @override
-  List<Object?> get props => [pathTy];
+  late final props = [pathTy];
 
   @override
   String toString() {
@@ -225,6 +217,7 @@ class AnalysisTy extends Ty {
 
 class AnalysisVariable extends LifeCycleVariable {
   AnalysisVariable._(this.ty, this._ident, this.kind);
+  @override
   final Ty ty;
   final List<PointerKind> kind;
   final Identifier _ident;
@@ -263,33 +256,6 @@ class AnalysisVariable extends LifeCycleVariable {
   @override
   String toString() {
     return '$ident: [$ty]';
-  }
-}
-
-class AnalysisStructVariable extends AnalysisVariable {
-  AnalysisStructVariable._(Ty ty, Identifier ident,
-      Map<Identifier, AnalysisVariable> map, List<PointerKind> kind)
-      : _params = map,
-        super._(ty, ident, kind);
-
-  @override
-  AnalysisStructVariable copy(
-      {Ty? ty,
-      Identifier? ident,
-      Map<Identifier, AnalysisVariable>? map,
-      List<PointerKind>? kind,
-      bool isGlobal = false}) {
-    return AnalysisStructVariable._(ty ?? this.ty, ident ?? this.ident,
-        map ?? _params, kind ?? this.kind.toList())
-      ..lifecycle.from(lifecycle)
-      ..isGlobal = isGlobal
-      ..parent = this;
-  }
-
-  final Map<Identifier, AnalysisVariable> _params;
-
-  AnalysisVariable? getParam(Identifier ident) {
-    return _params[ident];
   }
 }
 

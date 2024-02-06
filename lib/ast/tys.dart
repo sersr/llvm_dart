@@ -8,6 +8,7 @@ import 'buildin.dart';
 
 abstract class LifeCycleVariable {
   Identifier get ident;
+  Ty get ty;
 
   Identifier? lifeEnd;
 
@@ -38,7 +39,7 @@ class ImportPath with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [name, rawPath];
+  late final props = [name, rawPath];
 
   @override
   String toString() {

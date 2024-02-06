@@ -269,7 +269,7 @@ class BuildContextImpl extends BuildContext
     if (children.isEmpty && currentStmts.isEmpty) return ({}, level);
 
     final map = {
-      if (!ignorePath) "path:": currentPath,
+      if (currentFn == null && !ignorePath) "path": block?.blockStart.basePath,
       if (currentFn != null) "fn": currentFn?.fnName.path,
       if (currentStmts.isNotEmpty) "stmts": currentStmts,
       if (children.isNotEmpty) "children": children,

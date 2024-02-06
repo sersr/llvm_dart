@@ -5,6 +5,8 @@ import 'package:nop/nop.dart';
 Directory get kcBinDir => currentDir.childDirectory('kc').childDirectory('bin');
 Directory get stdRoot => currentDir.childDirectory('kc').childDirectory('lib');
 void main(List<String> args) async {
+  Log.logPathFn = (path) => path;
+
   var name = 'c_array';
   if (args.isEmpty) {
     final argsFile = currentDir.childFile('.debug_args');
@@ -44,6 +46,5 @@ void main(List<String> args) async {
   }
   final data = runFile.readAsStringSync();
   final parser = Parser(data, runFile.path);
-  Log.logPathFn = (path) => path;
   Log.w(parser.stmts, showTag: false);
 }

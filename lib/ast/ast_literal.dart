@@ -81,3 +81,56 @@ enum LiteralKind {
 
   LLVMTypeLit get llty => ty.llty;
 }
+
+class BuiltInTy extends Ty {
+  BuiltInTy._lit(this.literal);
+
+  static final _instances = <LiteralKind, BuiltInTy>{};
+
+  factory BuiltInTy._get(LiteralKind lit) {
+    if (lit == LiteralKind.kFloat) {
+      lit = LiteralKind.f32;
+    } else if (lit == LiteralKind.kDouble) {
+      lit = LiteralKind.f64;
+    }
+
+    return _instances.putIfAbsent(lit, () => BuiltInTy._lit(lit));
+  }
+
+  static BuiltInTy? from(String src) {
+    final lit = LiteralKind.values.firstWhereOrNull((e) => e.lit == src);
+    if (lit == null) return null;
+
+    return BuiltInTy._get(lit);
+  }
+
+  final LiteralKind literal;
+
+  Identifier? _ident;
+  @override
+  Identifier get ident => _ident ??= literal.name.ident;
+
+  @override
+  bool isTy(Ty? other) {
+    if (other is BuiltInTy) {
+      return other.literal == literal;
+    }
+    return super.isTy(other);
+  }
+
+  @override
+  BuiltInTy clone() {
+    return BuiltInTy._lit(literal);
+  }
+
+  @override
+  String toString() {
+    return '${literal.lit}${constraints.constraints}';
+  }
+
+  @override
+  late final props = [literal, _constraints];
+
+  @override
+  LLVMTypeLit get llty => LLVMTypeLit(this);
+}

@@ -2,33 +2,30 @@ part of 'build_context_mixin.dart';
 
 mixin FnBuildMixin
     on BuildContext, SretMixin, FreeMixin, FlowMixin, FnContextMixin {
-  LLVMConstVariable buildFnBB(Fn fn,
-      [Set<AnalysisVariable>? extra,
+  void buildFnBB(Fn fn,
+      {Set<AnalysisVariable>? extra,
+      required LLVMConstVariable fnValue,
       bool ignoreFree = false,
-      Map<Identifier, Set<AnalysisVariable>> map = const {}]) {
-    final fv = AbiFn.createFunction(this, fn, extra);
-
+      Map<Identifier, Set<AnalysisVariable>>? map}) {
     final block = fn.block?.clone();
-    if (block == null) return fv;
+    if (block == null) return;
 
     final fnContext = fn.currentContext!.createChildContext();
 
-    fnContext._fnVariable = fv;
-    fnContext._fnScope = llvm.LLVMGetSubprogram(fv.value);
+    fnContext._fnVariable = fnValue;
+    fnContext._fnScope = llvm.LLVMGetSubprogram(fnValue.value);
     fnContext._isFnBBContext = true;
     fnContext.instertFnEntryBB();
     fn.pushTyGenerics(fnContext);
 
-    fnContext.initFnParamsStart(fv.value, fn, extra,
-        ignoreFree: ignoreFree, map: map);
+    fnContext.initFnParamsStart(fnValue.value, fn, extra,
+        ignoreFree: ignoreFree, map: map ?? const {});
 
     block.build(fnContext, hasRet: true);
 
     if (block.isEmpty) {
       fnContext.ret(null);
     }
-
-    return fv;
   }
 
   void initFnParamsStart(LLVMValueRef fn, Fn fnty, Set<AnalysisVariable>? extra,

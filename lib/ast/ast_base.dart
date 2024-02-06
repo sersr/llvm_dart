@@ -32,7 +32,7 @@ abstract class Expr extends BuildMixin implements Clone<Expr> {
 
   ExprTempValue? get temp => _temp;
 
-  Ty? getTy(StoreLoadMixin context) => null;
+  Ty? getTy(Tys context) => null;
 
   AnalysisVariable? analysis(AnalysisContext context);
 
@@ -111,7 +111,7 @@ abstract class BuildMixin {
 abstract class Stmt extends BuildMixin
     with EquatableMixin
     implements Clone<Stmt> {
-  void build(bool isRet);
+  void build(bool isRet) {}
 
   FnBuildMixin? _buildContext;
   FnBuildMixin get buildContext => _buildContext!;
@@ -148,12 +148,17 @@ extension ListClone<S, T extends Clone<S>> on List<T> {
 extension ListStr<T> on List<T> {
   String get str {
     if (isEmpty) return '';
-    return '<${join(',')}>';
+    return '<${join(', ')}>';
+  }
+
+  String get ast {
+    if (isEmpty) return '';
+    return join(', ');
   }
 
   String get constraints {
     if (isEmpty) return '';
-    return '[[\n${join(',')}\n]]\n';
+    return '[[\n${join(', ')}\n]]\n';
   }
 }
 

@@ -101,7 +101,7 @@ class LetStmt extends Stmt {
   }
 
   @override
-  List<Object?> get props => [ident, nameIdent, ty, rExpr];
+  late final props = [ident, nameIdent, ty, rExpr];
 
   @override
   void analysis(bool isRet) {
@@ -267,7 +267,7 @@ class ExprStmt extends Stmt implements LogPretty {
   }
 
   @override
-  List<Object?> get props => [expr];
+  late final props = [expr];
 
   @override
   void analysis(bool isRet) {
@@ -294,7 +294,7 @@ class RetStmt extends Stmt {
   }
 
   @override
-  List<Object?> get props => [expr, ident];
+  late final props = [expr, ident];
   @override
   RetStmt clone() {
     return RetStmt(expr?.clone(), ident);
@@ -385,6 +385,7 @@ class StaticStmt extends Stmt {
   bool _run = false;
   @override
   void build(bool isRet) {
+    assert(!_run);
     if (_run) return;
     final context = buildContext;
     final realTy = ty?.grtOrT(context);
@@ -447,7 +448,7 @@ class StaticStmt extends Stmt {
   }
 
   @override
-  List<Object?> get props => [ident, ty, expr];
+  late final props = [ident, ty, expr];
 
   @override
   void analysis(bool isRet) {
@@ -502,7 +503,7 @@ class TyStmt extends Stmt {
   }
 
   @override
-  List<Object?> get props => [ty];
+  late final props = [ty];
 }
 
 class ImportStmt extends Stmt {
@@ -534,8 +535,5 @@ class ImportStmt extends Stmt {
   }
 
   @override
-  void build(bool isRet) {}
-
-  @override
-  List<Object?> get props => [path, name];
+  late final props = [path, name];
 }

@@ -19,7 +19,6 @@ abstract class Variable extends LifeCycleVariable {
   LLVMValueRef getBaseValue(StoreLoadMixin c) => load(c);
 
   Variable asType(StoreLoadMixin c, Ty ty);
-  Ty get ty;
 
   @override
   final Identifier ident;

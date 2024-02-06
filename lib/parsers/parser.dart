@@ -712,17 +712,13 @@ class Parser {
     return null;
   }
 
-  bool get onBrace {
-    return Zone.current[#onBrace] == true;
-  }
-
   Stmt? parseWhileExpr(TokenIterator it) {
     final isLoop = getKey(it) == Key.kWhile;
     if (!isLoop) return null;
     final ident = getIdent(it);
     eatLfIfNeed(it);
 
-    final expr = runZoned(() => parseExpr(it), zoneValues: {#onBrace: true});
+    final expr = runBraceParseExpr(it);
 
     checkBlock(it);
     if (isBlockStart(it)) {
@@ -803,7 +799,8 @@ class Parser {
   }
 
   IfExprBlock parseIfBlock(TokenIterator it) {
-    final expr = runZoned(() => parseExpr(it), zoneValues: {#ifExpr: true});
+    final expr = runBraceParseExpr(it);
+    it.moveNext();
 
     Block block;
     checkBlock(it);
@@ -818,41 +815,36 @@ class Parser {
     return IfExprBlock(expr, block);
   }
 
-  bool hasIfBlock(TokenIterator it) {
-    final isIfExpr = Zone.current[#ifExpr] == true;
+  Expr runBraceParseExpr(TokenIterator it) {
+    return runZoned(() => parseExpr(it), zoneValues: {#brace: true});
+  }
 
-    if (!isIfExpr) return true;
+  /// ???
+  bool canParseStructExpr(TokenIterator it) {
+    var onOtherExpr = Zone.current[#brace] == true;
+
+    if (!onOtherExpr) return true;
     final state = it.cursor;
-    if (getToken(it).kind == TokenKind.openBrace) {
-      if (it.moveNext()) /** `}` */ {
-        if (it.moveNext()) {
-          final k = getToken(it).kind;
-          if (k == TokenKind.lf || k == TokenKind.ident) {
-            state.restore();
-            return false;
-          }
-        }
-      }
-    }
-    state.restore();
+    var result = true;
 
     eatLfIfNeed(it);
     // 如果紧接着是关键字，不可无视
-    if (it.moveNext()) {
-      if (getKey(it) == null) {
-        if (getToken(it).kind != TokenKind.openBrace) {
-          loop(it, () {
-            final t = getToken(it);
-            if (t.kind == TokenKind.semi) return true;
-            if (t.kind == TokenKind.openBrace) return true;
-            if (getKey(it) != null) return true;
-            return false;
-          });
-        }
-      }
-    }
+    loop(it, () {
+      final t = getToken(it);
 
-    final result = getToken(it).kind == TokenKind.openBrace;
+      if (t.kind == TokenKind.openBrace) {
+        result = true;
+        return true;
+      }
+
+      if (getKey(it) != null) {
+        result = false;
+        return true;
+      }
+
+      return false;
+    });
+
     state.restore();
     return result;
   }
@@ -1132,46 +1124,35 @@ class Parser {
   }
 
   Expr? parserStructOrVariableExpr(TokenIterator it) {
-    Expr? expr;
-
     final t = getToken(it);
-    if (t.kind == TokenKind.ident) {
-      final ident = getIdent(it);
-      final key = getKey(it);
-      if (key?.isBool == true) {
-        final ty = LiteralKind.kBool.ty;
-        expr = LiteralExpr(ident, ty);
-      }
-      eatLfIfNeed(it);
+    if (t.kind != TokenKind.ident) return null;
+    final ident = getIdent(it);
+    final key = getKey(it);
+    if (key?.isBool == true) {
+      final ty = LiteralKind.kBool.ty;
+      return LiteralExpr(ident, ty);
+    }
 
-      if (!onBrace) {
-        final cursor = it.cursor;
-        final generics = parseGenericsInstance(it);
-        if (it.moveNext()) {
-          final t = getToken(it);
-          if (t.kind == TokenKind.openBrace) {
-            if (hasIfBlock(it)) {
-              final struct = parseStructExpr(it, ident, generics);
+    eatLfIfNeed(it);
+    final generics = parseGenericsInstance(it);
+    Expr expr = VariableIdentExpr(ident, generics);
 
-              /// 只需检查最后一个即可
-              if (struct.fields case [..., FieldExpr(expr: UnknownExpr _)]) {
-                cursor.restore();
-              } else {
-                expr = struct;
-              }
-            } else {
-              cursor.restore();
-            }
-          } else {
-            cursor.restore();
-          }
+    final cursor = it.cursor;
+    if (it.moveNext()) {
+      final t = getToken(it);
+      if (t.kind == TokenKind.openBrace && canParseStructExpr(it)) {
+        final struct = parseStructExpr(it, expr);
+
+        if (struct.params case [..., FieldExpr(expr: UnknownExpr())]) {
+          cursor.restore();
+        } else {
+          expr = struct;
         }
-      }
-      if (expr == null) {
-        final generics = parseGenericsInstance(it);
-        expr = VariableIdentExpr(ident, generics);
+      } else {
+        cursor.restore();
       }
     }
+
     return expr;
   }
 
@@ -1370,8 +1351,7 @@ class Parser {
 
   /// { }: 由于这个token会回解析到`child`中
   /// 和[parseCallExpr]有点区别
-  StructExpr parseStructExpr(
-      TokenIterator it, Identifier ident, List<PathTy> generics) {
+  StructExpr parseStructExpr(TokenIterator it, Expr expr) {
     final fields = <FieldExpr>[];
     it = it.current.child.tokenIt;
 
@@ -1380,7 +1360,7 @@ class Parser {
       if (t.kind == TokenKind.lf) return false;
       if (t.kind == TokenKind.semi) {
         final e = UnknownExpr(getIdent(it), 'is not struct expr');
-        fields.add(FieldExpr(e, ident));
+        fields.add(FieldExpr(e, e.ident));
         return true;
       }
 
@@ -1415,7 +1395,7 @@ class Parser {
       return parseCommon();
     });
 
-    return StructExpr(ident, fields, generics);
+    return StructExpr(expr, fields);
   }
 
   OpKind? resolveOp(TokenIterator it) {

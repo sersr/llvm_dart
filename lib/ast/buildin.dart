@@ -77,7 +77,7 @@ final class BuiltinFn extends Ty {
   LLVMType get llty => throw UnimplementedError();
 
   @override
-  List<Object?> get props => [name];
+  late final props = [name, retType, runFn];
 
   @override
   BuiltinFn clone() {

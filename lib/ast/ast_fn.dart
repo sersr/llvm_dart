@@ -23,7 +23,7 @@ class FnDecl with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [ident, params, returnTy];
+  late final props = [ident, params, returnTy];
 
   void analysis(AnalysisContext context, Fn fn) {
     for (var p in params) {
@@ -55,7 +55,7 @@ class FnSign with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [fnDecl, extern];
+  late final props = [fnDecl, extern];
 }
 
 class Fn extends Ty with NewInst<Fn> {
@@ -91,7 +91,7 @@ class Fn extends Ty with NewInst<Fn> {
   }
 
   @override
-  List<Object?> get props => [fnSign, block, _tys, _constraints];
+  late final props = [fnSign, block, _tys, _constraints];
 
   Ty getRetTy(Tys c) {
     return getRetTyOrT(c)!;
@@ -121,20 +121,18 @@ class Fn extends Ty with NewInst<Fn> {
     selfVariables = from.selfVariables;
     _get = from._get;
     _buildContext = from.currentContext;
+    _analysisContext = from.analysisContext;
   }
 
-  LLVMConstVariable? genFn([
+  LLVMConstVariable genFn([
     Set<AnalysisVariable>? variables,
     Map<Identifier, Set<AnalysisVariable>>? map,
     bool ignoreFree = false,
   ]) {
-    final context = currentContext;
-    assert(context != null);
-    if (context == null) return null;
-    return _customBuild(context, variables, ignoreFree, map);
+    return _customBuild(currentContext!, variables, ignoreFree, map);
   }
 
-  LLVMConstVariable? _customBuild(FnBuildMixin context,
+  LLVMConstVariable _customBuild(FnBuildMixin context,
       [Set<AnalysisVariable>? variables,
       bool ignoreFree = false,
       Map<Identifier, Set<AnalysisVariable>>? map]) {
@@ -151,16 +149,25 @@ class Fn extends Ty with NewInst<Fn> {
     for (var v in selfVariables) {
       final vt = v.ty;
       vk.add(vt);
-      // if (vt is StructTy) {
-      //   vk.add(vt.tys);
-      // }
     }
+
     final key = ListKey(vk);
 
     var fn = parentOrCurrent._cache[key];
     if (fn != null) return fn;
-    fn = context.buildFnBB(this, variables, ignoreFree, map ?? const {});
-    return parentOrCurrent._cache[key] = fn;
+
+    fn = AbiFn.createFunction(context, this, variables);
+    parentOrCurrent._cache[key] = fn;
+
+    context.buildFnBB(
+      this,
+      fnValue: fn,
+      map: map,
+      extra: variables,
+      ignoreFree: ignoreFree,
+    );
+
+    return fn;
   }
 
   void pushTyGenerics(Tys context) {
@@ -182,8 +189,6 @@ class Fn extends Ty with NewInst<Fn> {
 
   Set<RawIdent> returnVariables = {};
 
-  bool _anaysised = false;
-
   @override
   void prepareAnalysis(AnalysisContext context) {
     super.prepareAnalysis(context);
@@ -192,13 +197,9 @@ class Fn extends Ty with NewInst<Fn> {
 
   void analysisStart(AnalysisContext context) {}
 
-  void analysisFn() {
-    final context = analysisContext;
-    if (_anaysised || context == null) return;
-    _anaysised = true;
-    if (generics.isNotEmpty && tys.isEmpty) {
-      return;
-    }
+  @override
+  void analysis() {
+    final context = analysisContext!;
 
     final child = context.childContext();
     pushTyGenerics(child);
@@ -250,11 +251,9 @@ mixin ImplFnMixin on Fn {
     _pushSelf(context);
   }
 
-  static final _selfTyIdent = 'Self'.ident;
-
   void _pushSelf(Tys context) {
     final structTy = implty.ty;
-    if (structTy != null) context.pushDyTy(_selfTyIdent, structTy);
+    if (structTy != null) context.pushDyTy(Identifier.Self, structTy);
 
     context.pushDyTys(implty.tys);
   }
@@ -272,15 +271,12 @@ mixin ImplFnMixin on Fn {
     }
 
     final ty = implty.ty;
-    if (ident.src == 'Self') {
+    if (ident == Identifier.Self) {
       return ty;
     }
 
     return implty.tys[ident];
   }
-
-  // @override
-  // List<Object?> get props => [super.props, _constraints];
 }
 
 class ImplFn extends Fn with ImplFnMixin {

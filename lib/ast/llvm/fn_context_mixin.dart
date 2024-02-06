@@ -104,4 +104,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
     if (block != null) current._br(block.context);
     return true;
   }
+
+  Block? block;
+  final currentStmts = <Stmt>[];
 }

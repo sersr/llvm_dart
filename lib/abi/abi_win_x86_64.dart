@@ -24,13 +24,8 @@ class AbiFnWinx86_64 implements AbiFn {
 
   @override
   ExprTempValue? fnCall(
-    FnBuildMixin context,
-    Fn fn,
-    Identifier ident,
-    List<FieldExpr> params,
-  ) {
+      FnBuildMixin context, Fn fn, Identifier ident, List<FieldExpr> params) {
     final fnAlloca = fn.genFn();
-    if (fnAlloca == null) return null;
     final fnValue = fnAlloca.getBaseValue(context);
 
     final fnParams = fn.fnSign.fnDecl.params;

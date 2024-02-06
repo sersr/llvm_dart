@@ -8,9 +8,9 @@ import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
 import 'package:nop/nop.dart';
 
+import '../abi/abi_fn.dart';
 import '../llvm_core.dart';
 import '../parsers/lexers/token_kind.dart';
-import 'tys.dart';
 import 'analysis_context.dart';
 import 'builders/builders.dart';
 import 'expr.dart';
@@ -19,14 +19,15 @@ import 'llvm/build_methods.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';
 import 'stmt.dart';
+import 'tys.dart';
 
 part 'ast_base.dart';
 part 'ast_block.dart';
 part 'ast_fn.dart';
 part 'ast_literal.dart';
 part 'ast_new_inst_base.dart';
-part 'identifier.dart';
 part 'ast_path_ty.dart';
+part 'identifier.dart';
 
 /// ----- Ty -----
 
@@ -47,10 +48,13 @@ abstract class Ty extends BuildMixin with EquatableMixin implements Clone<Ty> {
   bool get isLimited => _isLimited;
   Ty newConstraints(Tys c, List<ComponentTy> newConstraints, bool isLimited) {
     return clone()
+      ..cloneTys(c, this)
       .._isLimited = newConstraints.isNotEmpty
       .._constraints = newConstraints
       .._buildContext = _buildContext;
   }
+
+  void cloneTys(Tys c, covariant Ty parent) {}
 
   LLVMTypeRef typeOf(StoreLoadMixin c) => llty.typeOf(c);
 
@@ -73,59 +77,6 @@ abstract class Ty extends BuildMixin with EquatableMixin implements Clone<Ty> {
 
   void build() {}
   void analysis() {}
-}
-
-class BuiltInTy extends Ty {
-  BuiltInTy._lit(this.literal);
-
-  static final _instances = <LiteralKind, BuiltInTy>{};
-
-  factory BuiltInTy._get(LiteralKind lit) {
-    if (lit == LiteralKind.kFloat) {
-      lit = LiteralKind.f32;
-    } else if (lit == LiteralKind.kDouble) {
-      lit = LiteralKind.f64;
-    }
-
-    return _instances.putIfAbsent(lit, () => BuiltInTy._lit(lit));
-  }
-
-  static BuiltInTy? from(String src) {
-    final lit = LiteralKind.values.firstWhereOrNull((e) => e.lit == src);
-    if (lit == null) return null;
-
-    return BuiltInTy._get(lit);
-  }
-
-  final LiteralKind literal;
-
-  Identifier? _ident;
-  @override
-  Identifier get ident => _ident ??= literal.name.ident;
-
-  @override
-  bool isTy(Ty? other) {
-    if (other is BuiltInTy) {
-      return other.literal == literal;
-    }
-    return super.isTy(other);
-  }
-
-  @override
-  BuiltInTy clone() {
-    return BuiltInTy._lit(literal);
-  }
-
-  @override
-  String toString() {
-    return '${literal.lit}${constraints.constraints}';
-  }
-
-  @override
-  List<Object?> get props => [literal, _constraints];
-
-  @override
-  LLVMTypeLit get llty => LLVMTypeLit(this);
 }
 
 class RefTy extends Ty {
@@ -168,7 +119,7 @@ class RefTy extends Ty {
   late LLVMRefType llty = LLVMRefType(this);
 
   @override
-  List<Object?> get props => [parent, _constraints];
+  late final props = [parent, _constraints];
 
   @override
   String toString() {
@@ -207,7 +158,7 @@ class StructTy extends Ty with EquatableMixin, NewInst<StructTy> {
   }
 
   @override
-  List<Object?> get props => [ident, fields, _tys, _constraints];
+  late final props = [ident, fields, _tys, _constraints];
 
   @override
   void prepareBuild(FnBuildMixin context) {
@@ -250,7 +201,7 @@ class EnumTy extends Ty with NewInst<EnumTy> {
   }
 
   @override
-  List<Object?> get props => [ident, variants, _constraints];
+  late final props = [ident, variants, _constraints];
 
   @override
   void build() {
@@ -400,7 +351,7 @@ class ComponentTy extends Ty with NewInst<ComponentTy> {
   }
 
   @override
-  List<Object?> get props => [ident, fns, _tys, _constraints];
+  late final props = [ident, fns, _tys, _constraints];
 
   @override
   LLVMType get llty => throw UnimplementedError();
@@ -502,7 +453,7 @@ class ImplTy extends Ty with NewInst<ImplTy> {
           NewInst.resolve(c, exactTy, struct, generics, genMap, true);
       if (!result) return null;
 
-      final impl = newInst(genMap, c).._initTys(c);
+      final impl = newInst(genMap, c);
       parentOrCurrent._implTyList[exactTy] = impl;
       cache = impl;
     }
@@ -514,14 +465,12 @@ class ImplTy extends Ty with NewInst<ImplTy> {
     return null;
   }
 
-  bool _init = false;
-  void _initTys(Tys c) {
-    if (_init) return;
-    _init = true;
-    _initC(c);
+  @override
+  void initNewInst(Tys c) {
+    _getComAndTy(c);
   }
 
-  void _initC(Tys context) {
+  void _getComAndTy(Tys context) {
     final comTy = com?.grtOrT(context, gen: (ident) => tys[ident]);
 
     assert(comTy == null ||
@@ -544,9 +493,7 @@ class ImplTy extends Ty with NewInst<ImplTy> {
 
   @override
   void build() {
-    final context = currentContext;
-    if (context == null) return;
-    _initTys(context);
+    _getComAndTy(currentContext!);
   }
 
   @override
@@ -565,35 +512,22 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   }
 
   @override
-  String toString() {
-    final l = label == null ? '' : ': $label';
-    final cc = com == null ? '' : '$com$l for ';
-    return 'impl${generics.str} $cc$struct {\n${orderStmts.join('\n')}\n$pad}${tys.str}';
-  }
-
-  @override
-  List<Object?> get props => [tys, struct, orderStmts, label, _constraints];
-
-  @override
-  LLVMType get llty => throw UnimplementedError();
-
-  @override
   void analysis() {
+    _getComAndTy(analysisContext!);
     for (var alias in aliasTys) {
       alias.analysis(false);
     }
     for (var impl in implFns) {
-      impl.analysisFn();
+      impl.analysis();
     }
     for (var impl in implStaticFns) {
-      impl.analysisFn();
+      impl.analysis();
     }
   }
 
   @override
   void prepareAnalysis(AnalysisContext context) {
     super.prepareAnalysis(context);
-    _initC(context);
     final child = context.childContext();
     for (var impl in implFns) {
       impl.prepareAnalysis(child);
@@ -605,6 +539,26 @@ class ImplTy extends Ty with NewInst<ImplTy> {
       alias.prepareAnalysis(child);
     }
   }
+
+  @override
+  String toString() {
+    final l = label == null ? '' : ': $label';
+    final cc = com == null ? '' : '$com$l for ';
+    return 'impl${generics.str} $cc$struct {\n${orderStmts.join('\n')}\n$pad}${tys.str}';
+  }
+
+  @override
+  late List<Object?> props = [
+    tys,
+    struct,
+    com,
+    orderStmts,
+    label,
+    _constraints
+  ];
+
+  @override
+  LLVMType get llty => throw UnimplementedError();
 }
 
 class ArrayTy extends Ty {
@@ -625,7 +579,7 @@ class ArrayTy extends Ty {
   late final ArrayLLVMType llty = ArrayLLVMType(this);
 
   @override
-  List<Object?> get props => [elementTy, _constraints];
+  late final props = [elementTy, _constraints];
 }
 
 class TypeAliasTy extends Ty {
@@ -672,7 +626,7 @@ class TypeAliasTy extends Ty {
   late final LLVMAliasType llty = LLVMAliasType(this);
 
   @override
-  List<Object?> get props => [ident, generics, aliasTy, _constraints];
+  late final props = [ident, generics, aliasTy, _constraints];
 
   @override
   String toString() {
