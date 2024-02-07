@@ -1,0 +1,4 @@
+
+com FnCall {
+  fn call();
+}

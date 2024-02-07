@@ -4,7 +4,7 @@ mixin FnBuildMixin
     on BuildContext, SretMixin, FreeMixin, FlowMixin, FnContextMixin {
   void buildFnBB(Fn fn,
       {Set<AnalysisVariable>? extra,
-      required LLVMConstVariable fnValue,
+      required LLVMValueRef fnValue,
       bool ignoreFree = false,
       Map<Identifier, Set<AnalysisVariable>>? map}) {
     final block = fn.block?.clone();
@@ -12,13 +12,14 @@ mixin FnBuildMixin
 
     final fnContext = fn.currentContext!.createChildContext();
 
-    fnContext._fnVariable = fnValue;
-    fnContext._fnScope = llvm.LLVMGetSubprogram(fnValue.value);
+    fnContext._fnValue = fnValue;
+    fnContext._currentFn = fn;
+    fnContext._fnScope = llvm.LLVMGetSubprogram(fnValue);
     fnContext._isFnBBContext = true;
     fnContext.instertFnEntryBB();
     fn.pushTyGenerics(fnContext);
 
-    fnContext.initFnParamsStart(fnValue.value, fn, extra,
+    fnContext.initFnParamsStart(fnValue, fn, extra,
         ignoreFree: ignoreFree, map: map ?? const {});
 
     block.build(fnContext, hasRet: true);
@@ -36,13 +37,12 @@ mixin FnBuildMixin
     if (sret != null) _sret = sret;
   }
 
-  void initFnParams(LLVMValueRef fn, Fn fnty, Set<AnalysisVariable>? extra,
-      {bool ignoreFree = false,
-      Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
+  void initFnParams(LLVMValueRef fn, Fn fnty, {bool ignoreFree = false}) {
     final params = fnty.fnDecl.fields;
+    final decl = fnty.fnDecl;
     var index = 0;
 
-    if (fnty is ImplFn) {
+    if (fnty is ImplFn && !fnty.isStatic) {
       final p = fnty.ty;
       final selfValue = llvm.LLVMGetParam(fn, index);
       final ident = Identifier.self;
@@ -55,18 +55,21 @@ mixin FnBuildMixin
       setName(selfValue, ident.src);
       pushVariable(value);
       index += 1;
+    } else if (decl is FnClosure) {
+      decl.llty.pushVariables(this, fn);
+      index += 1;
     }
 
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
       final fnParam = llvm.LLVMGetParam(fn, index);
-      var realTy = fnty.getFieldTy(this, p);
-      if (realTy is FnDecl) {
-        final extra = map[p.ident];
-        if (extra != null) {
-          realTy = realTy.copyExtra(this, extra);
-        }
-      }
+      var realTy = fnty.fnDecl.getFieldTy(this, p);
+      // if (realTy is FnDecl) {
+      //   final extra = map[p.ident];
+      //   if (extra != null) {
+      //     realTy = realTy.copyExtra(this, extra);
+      //   }
+      // }
 
       resolveParam(realTy, fnParam, p.ident, ignoreFree);
       index += 1;
@@ -89,17 +92,17 @@ mixin FnBuildMixin
       pushVariable(alloca);
     }
 
-    for (var variable in fnty.variables) {
-      fnCatchVariable(variable, index);
-      index += 1;
-    }
+    // for (var variable in fnty.variables) {
+    //   fnCatchVariable(variable, index);
+    //   index += 1;
+    // }
 
-    if (extra != null) {
-      for (var variable in extra) {
-        fnCatchVariable(variable, index);
-        index += 1;
-      }
-    }
+    // if (extra != null) {
+    //   for (var variable in extra) {
+    //     fnCatchVariable(variable, index);
+    //     index += 1;
+    //   }
+    // }
   }
 
   void resolveParam(

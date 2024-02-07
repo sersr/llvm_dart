@@ -13,8 +13,8 @@ import 'abi_fn.dart';
 // ignore: camel_case_types
 class AbiFnx86_64 implements AbiFn {
   @override
-  bool isSret(StoreLoadMixin c, Fn fn) {
-    var retTy = fn.getRetTy(c);
+  bool isSret(StoreLoadMixin c, FnDecl decl) {
+    var retTy = decl.getRetTy(c);
     if (retTy is StructTy) {
       final size = retTy.llty.getBytes(c);
       if (size > 16) return true;
@@ -24,16 +24,15 @@ class AbiFnx86_64 implements AbiFn {
 
   @override
   ExprTempValue? fnCall(
-      FnBuildMixin context, Fn fn, Identifier ident, List<FieldExpr> params) {
-    final fnAlloca = fn.genFn();
-    final fnValue = fnAlloca.getBaseValue(context);
+      FnBuildMixin context, Variable fn, FnDecl decl, List<FieldExpr> params) {
+    final fnValue = fn.load(context);
 
-    final fnParams = fn.fnDecl.fields;
+    final fnParams = decl.fields;
     final args = <LLVMValueRef>[];
-    final retTy = fn.getRetTy(context);
+    final retTy = decl.getRetTy(context);
 
     StoreVariable? sret;
-    if (isSret(context, fn)) {
+    if (isSret(context, decl)) {
       sret = retTy.llty.createAlloca(context, 'sret'.ident);
 
       args.add(sret.alloca);
@@ -47,7 +46,7 @@ class AbiFnx86_64 implements AbiFn {
       final p = sortFields[i];
       Ty? c;
       if (i < fnParams.length) {
-        c = fn.getFieldTy(context, fnParams[i]);
+        c = decl.getFieldTy(context, fnParams[i]);
       }
       final temp = p.build(context, baseTy: c);
       final v = temp?.variable;
@@ -68,18 +67,18 @@ class AbiFnx86_64 implements AbiFn {
       }
     }
 
-    for (var variable in fn.variables) {
-      var v = context.getVariable(variable.ident);
-      if (v == null) {
-        // error
-        continue;
-      }
-      args.add(v.load(context));
-    }
+    // for (var variable in fn.variables) {
+    //   var v = context.getVariable(variable.ident);
+    //   if (v == null) {
+    //     // error
+    //     continue;
+    //   }
+    //   args.add(v.load(context));
+    // }
 
-    final fnType = createFnType(context, fn);
+    final fnType = createFnType(context, decl);
 
-    context.diSetCurrentLoc(ident.offset);
+    context.diSetCurrentLoc(fn.ident.offset);
 
     final ret = llvm.LLVMBuildCall2(
         context.builder, fnType, fnValue, args.toNative(), args.length, unname);
@@ -176,7 +175,7 @@ class AbiFnx86_64 implements AbiFn {
       return struct.llty.createAlloca(context, ident)..store(context, src);
     }
 
-    context.setName(src, ident.src);
+    if (ident.isValid) context.setName(src, ident.src);
     // ptr
     return LLVMAllocaVariable(src, struct, llType, ident);
   }
@@ -197,12 +196,12 @@ class AbiFnx86_64 implements AbiFn {
         context.builder, llType, src.getBaseValue(context), unname);
   }
 
-  LLVMTypeRef createFnType(StoreLoadMixin c, Fn fn) {
-    final params = fn.fnDecl.fields;
+  LLVMTypeRef createFnType(StoreLoadMixin c, FnDecl decl) {
+    final params = decl.fields;
     final list = <LLVMTypeRef>[];
-    var retTy = fn.getRetTy(c);
+    var retTy = decl.getRetTy(c);
 
-    var retIsSret = isSret(c, fn);
+    var retIsSret = isSret(c, decl);
     if (retIsSret) {
       list.add(c.typePointer(retTy.typeOf(c)));
     }
@@ -218,7 +217,7 @@ class AbiFnx86_64 implements AbiFn {
     }
 
     for (var p in params) {
-      final realTy = fn.getFieldTy(c, p);
+      final realTy = decl.getFieldTy(c, p);
       LLVMTypeRef ty = cType(realTy);
       list.add(ty);
     }
@@ -231,13 +230,13 @@ class AbiFnx86_64 implements AbiFn {
       ret = cType(retTy);
     }
 
-    return c.typeFn(list, ret, fn.fnDecl.isVar);
+    return c.typeFn(list, ret, decl.isVar);
   }
 
   @override
-  LLVMConstVariable createFunctionAbi(StoreLoadMixin c, Fn fn) {
-    final ty = createFnType(c, fn);
-    var ident = fn.fnName.src;
+  LLVMConstVariable createFunctionAbi(StoreLoadMixin c, FnDecl decl) {
+    final ty = createFnType(c, decl);
+    var ident = decl.ident.src;
     if (ident.isEmpty) {
       ident = '_fn';
     }
@@ -245,16 +244,16 @@ class AbiFnx86_64 implements AbiFn {
     final v = llvm.LLVMAddFunction(c.module, ident.toChar(), ty);
     llvm.LLVMSetLinkage(v, LLVMLinkage.LLVMExternalLinkage);
 
-    var retTy = fn.getRetTy(c);
+    var retTy = decl.getRetTy(c);
     var index = 0;
-    if (isSret(c, fn)) {
+    if (isSret(c, decl)) {
       c.setFnLLVMAttr(v, 1, LLVMAttr.StructRet);
       index += 1;
     }
 
-    for (var p in fn.fnDecl.fields) {
+    for (var p in decl.fields) {
       index += 1;
-      final realTy = fn.getFieldTy(c, p);
+      final realTy = decl.getFieldTy(c, p);
       if (realTy is StructTy) {
         final size = realTy.llty.getBytes(c);
         if (size > 16) {
@@ -264,17 +263,17 @@ class AbiFnx86_64 implements AbiFn {
         }
       }
     }
-    final offset = fn.fnDecl.ident.offset;
+    final offset = decl.ident.offset;
 
     final dBuilder = c.dBuilder;
-    if (dBuilder != null && fn.block?.isNotEmpty == true) {
+    if (dBuilder != null) {
       final file = llvm.LLVMDIScopeGetFile(c.unit);
       final params = <Pointer>[];
       params.add(retTy.llty.createDIType(c));
 
-      for (var p in fn.fnDecl.fields) {
+      for (var p in decl.fields) {
         index += 1;
-        final realTy = fn.getFieldTy(c, p);
+        final realTy = decl.getFieldTy(c, p);
         final ty = realTy.llty.createDIType(c);
         params.add(ty);
       }
@@ -307,7 +306,7 @@ class AbiFnx86_64 implements AbiFn {
     c.setFnLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
     c.setFnLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
     c.setFnLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
-    return LLVMConstVariable(v, fn, fn.fnName);
+    return LLVMConstVariable(v, decl, decl.ident);
   }
 
   @override
@@ -318,9 +317,9 @@ class AbiFnx86_64 implements AbiFn {
 
     LLVMAllocaVariable? sret;
 
-    var retTy = fnty.getRetTy(context);
+    var retTy = fnty.fnDecl.getRetTy(context);
 
-    if (isSret(context, fnty)) {
+    if (isSret(context, fnty.fnDecl)) {
       final first = llvm.LLVMGetParam(fn, index);
       final alloca = LLVMAllocaVariable(
           first, retTy, retTy.typeOf(context), Identifier.none);
@@ -333,7 +332,7 @@ class AbiFnx86_64 implements AbiFn {
       final p = params[i];
 
       final fnParam = llvm.LLVMGetParam(fn, i + index);
-      var realTy = fnty.getFieldTy(context, p);
+      var realTy = fnty.fnDecl.getFieldTy(context, p);
       resolveParam(context, realTy, fnParam, p.ident);
     }
 

@@ -10,14 +10,12 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
   @override
   bool get isFnBBContext => _isFnBBContext;
 
-  LLVMConstVariable? _fnVariable;
-
   LLVMValueRef? _fnValue;
   @override
-  LLVMValueRef get fnValue => _fnValue ?? _fnVariable!.value;
+  LLVMValueRef get fnValue => _fnValue!;
 
   Fn? _currentFn;
-  Fn? get currentFn => _fnVariable?.ty as Fn? ?? _currentFn;
+  Fn? get currentFn => _currentFn;
 
   StoreVariable? _sret;
   StoreVariable? get sret => _sret;
@@ -32,7 +30,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
     if (_compileRetValue != null) return _compileRetValue;
     final fn = _currentFn;
     if (fn == null) return null;
-    final ty = fn.getRetTy(this);
+    final ty = fn.fnDecl.getRetTy(this);
 
     return _compileRetValue = LLVMAllocaProxyVariable(this, (value, isProxy) {
       if (isProxy) return;

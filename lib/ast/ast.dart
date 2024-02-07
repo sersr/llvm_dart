@@ -1,6 +1,7 @@
 // ignore_for_file: constant_identifier_names
 
 import 'dart:async';
+import 'dart:ffi';
 import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
@@ -10,6 +11,7 @@ import 'package:nop/nop.dart';
 
 import '../abi/abi_fn.dart';
 import '../llvm_core.dart';
+import '../llvm_dart.dart';
 import '../parsers/lexers/token_kind.dart';
 import 'analysis_context.dart';
 import 'builders/builders.dart';
@@ -18,6 +20,7 @@ import 'llvm/build_context_mixin.dart';
 import 'llvm/build_methods.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';
+import 'memory.dart';
 import 'stmt.dart';
 import 'tys.dart';
 
@@ -368,9 +371,12 @@ class ComponentTy extends Ty with NewInst<ComponentTy> {
 class ImplTy extends Ty with NewInst<ImplTy> {
   ImplTy(this.generics, this.com, this.struct, this.label, List<Fn> fns,
       List<Fn> staticFns, this.aliasTys, this.orderStmts) {
-    implFns = fns.map((e) => ImplFn(e.fnDecl, e.block, this)).toList();
-    implStaticFns =
-        staticFns.map((e) => ImplStaticFn(e.fnDecl, e.block, this)).toList();
+    implFns = fns.map((e) => ImplFn.decl(e.fnDecl, e.block, this)).toList();
+
+    implStaticFns = staticFns
+        .map((e) => ImplFn.decl(e.fnDecl, e.block, this, true))
+        .toList();
+
     for (var stmt in orderStmts) {
       stmt.incLevel();
     }
@@ -382,7 +388,7 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   final PathTy? com;
   final PathTy? label;
   late final List<ImplFn> implFns;
-  late final List<ImplStaticFn> implStaticFns;
+  late final List<ImplFn> implStaticFns;
   final List<TyStmt> aliasTys;
   final List<TyStmt> orderStmts;
 
@@ -427,6 +433,15 @@ class ImplTy extends Ty with NewInst<ImplTy> {
     final fn = implFns.firstWhereOrNull((e) => e.fnDecl.ident == ident) ??
         implStaticFns.firstWhereOrNull((e) => e.fnDecl.ident == ident);
     return fn?.getWith(ty);
+  }
+
+  @override
+  Ty? getTy(Tys c, Identifier ident) {
+    if (ident == Identifier.Self) {
+      return ty;
+    }
+
+    return super.getTy(c, ident);
   }
 
   Ty? _ty;

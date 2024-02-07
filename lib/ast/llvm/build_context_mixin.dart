@@ -9,7 +9,7 @@ import '../expr.dart';
 import '../memory.dart';
 import '../tys.dart';
 import 'build_methods.dart';
-import 'coms.dart';
+import '../builders/coms.dart';
 import 'intrinsics.dart';
 import 'variables.dart';
 

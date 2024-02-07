@@ -3,7 +3,6 @@ import 'dart:ffi';
 import 'package:nop/nop.dart';
 
 import '../../llvm_dart.dart';
-import '../analysis_context.dart';
 import '../ast.dart';
 import '../builders/builders.dart';
 import '../expr.dart';
@@ -143,11 +142,9 @@ class LLVMTypeLit extends LLVMType {
 }
 
 class LLVMFnDeclType extends LLVMType {
-  LLVMFnDeclType(this.decl);
-  final FnDecl decl;
-
+  LLVMFnDeclType(this.ty);
   @override
-  Ty get ty => decl;
+  final FnDecl ty;
 
   @override
   LLVMTypeRef typeOf(StoreLoadMixin c) {
@@ -164,96 +161,118 @@ class LLVMFnDeclType extends LLVMType {
     return llvm.LLVMDIBuilderCreateBasicType(
         c.dBuilder!, 'ptr'.toChar(), 3, getBytes(c) * 8, 1, 0);
   }
-}
 
-class LLVMFnType extends LLVMType {
-  LLVMFnType(this.fn);
-  final Fn fn;
-  @override
-  Ty get ty => fn;
-
-  FnDecl get decl => fn.fnDecl;
-
-  LLVMTypeRef createFnType(StoreLoadMixin c,
-      [Set<AnalysisVariable>? variables]) {
+  LLVMTypeRef createFnType(StoreLoadMixin context) {
+    final decl = ty;
     final fields = decl.fields;
     final list = <LLVMTypeRef>[];
-    var retTy = fn.getRetTy(c);
+    var retTy = decl.getRetTy(context);
 
-    if (fn is ImplFn) {
-      LLVMTypeRef ty;
-      final tty = (fn as ImplFn).implty.ty;
+    if (decl case ImplFnDecl(implFn: ImplFnMixin(isStatic: false))) {
+      LLVMTypeRef forTy;
+      final tty = decl.implFn.implty.ty;
       if (tty is BuiltInTy) {
-        ty = tty.typeOf(c);
+        forTy = tty.typeOf(context);
       } else {
-        ty = c.pointer();
+        forTy = context.pointer();
       }
-      list.add(ty);
+      list.add(forTy);
     }
 
     for (var p in fields) {
-      final realTy = fn.getFieldTy(c, p);
-      LLVMTypeRef ty = realTy.typeOf(c);
+      final realTy = ty.getFieldTy(context, p);
+      LLVMTypeRef type = realTy.typeOf(context);
 
-      list.add(ty);
+      list.add(type);
     }
-    final vv = [...fn.variables, ...?variables];
+    final ret = retTy.typeOf(context);
 
-    for (var variable in vv) {
-      final v = c.getVariable(variable.ident);
-
-      if (v != null) {
-        final dty = v.ty;
-        LLVMTypeRef ty = dty.typeOf(c);
-        ty = c.typePointer(ty);
-
-        list.add(ty);
-      }
-    }
-
-    LLVMTypeRef ret;
-
-    ret = retTy.typeOf(c);
-
-    return c.typeFn(list, ret, decl.isVar);
+    return context.typeFn(list, ret, ty.isVar);
   }
+}
+
+class LLVMFnType extends LLVMType {
+  LLVMFnType(this.ty);
+  @override
+  final Fn ty;
+
+  FnDecl get decl => ty.fnDecl;
+
+  // LLVMTypeRef createFnType(StoreLoadMixin c,
+  //     [Set<AnalysisVariable>? variables]) {
+  //   final fields = decl.fields;
+  //   final list = <LLVMTypeRef>[];
+  //   var retTy = decl.getRetTy(c);
+
+  //   if (ty is ImplFn) {
+  //     LLVMTypeRef forTy;
+  //     final tty = (ty as ImplFn).implty.ty;
+  //     if (tty is BuiltInTy) {
+  //       forTy = tty.typeOf(c);
+  //     } else {
+  //       forTy = c.pointer();
+  //     }
+  //     list.add(forTy);
+  //   }
+
+  //   for (var p in fields) {
+  //     final realTy = ty.getFieldTy(c, p);
+  //     LLVMTypeRef type = realTy.typeOf(c);
+
+  //     list.add(type);
+  //   }
+  //   final vv = [...ty.variables, ...?variables];
+
+  //   for (var variable in vv) {
+  //     final v = c.getVariable(variable.ident);
+
+  //     if (v != null) {
+  //       final dty = v.ty;
+  //       LLVMTypeRef ty = dty.typeOf(c);
+  //       ty = c.typePointer(ty);
+
+  //       list.add(ty);
+  //     }
+  //   }
+
+  //   LLVMTypeRef ret;
+
+  //   ret = retTy.typeOf(c);
+
+  //   return c.typeFn(list, ret, decl.isVar);
+  // }
 
   late final _cacheFns = <ListKey, LLVMConstVariable>{};
 
-  LLVMConstVariable createFunction(
-      StoreLoadMixin c, Set<AnalysisVariable>? variables) {
-    final key = ListKey(variables?.toList() ?? []);
+  LLVMConstVariable createFunction(StoreLoadMixin c) {
+    final type = decl.llty.createFnType(c);
+    var ident = ty.fnName.src;
+    if (ident.isEmpty) {
+      ident = '_fn';
+    }
+    final extern = ident == 'main';
 
-    return _cacheFns.putIfAbsent(key, () {
-      final ty = createFnType(c, variables);
-      var ident = fn.fnName.src;
-      if (ident.isEmpty) {
-        ident = '_fn';
-      }
-      final extern = ident == 'main';
+    if (_cacheFns.isNotEmpty) {
+      ident = '${ident}_${_cacheFns.length}';
+    }
+    final v = llvm.LLVMAddFunction(c.module, ident.toChar(), type);
+    llvm.LLVMSetLinkage(
+        v,
+        extern
+            ? LLVMLinkage.LLVMExternalLinkage
+            : LLVMLinkage.LLVMInternalLinkage);
+    llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
 
-      if (_cacheFns.isNotEmpty) {
-        ident = '${ident}_${_cacheFns.length}';
-      }
-      final v = llvm.LLVMAddFunction(c.module, ident.toChar(), ty);
-      llvm.LLVMSetLinkage(
-          v,
-          extern
-              ? LLVMLinkage.LLVMExternalLinkage
-              : LLVMLinkage.LLVMInternalLinkage);
-      llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
+    final scope = createScope(c);
+    if (scope != null) {
+      llvm.LLVMSetSubprogram(v, scope);
+    }
 
-      final scope = createScope(c);
-      if (scope != null) {
-        llvm.LLVMSetSubprogram(v, scope);
-      }
+    c.setFnLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
+    c.setFnLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
+    c.setFnLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
 
-      c.setFnLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
-      c.setFnLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
-      c.setFnLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
-
-      return LLVMConstVariable(v, fn, fn.fnName);
-    });
+    return LLVMConstVariable(v, ty.fnDecl, ty.fnName);
   }
 
   LLVMMetadataRef? _scope;
@@ -262,19 +281,19 @@ class LLVMFnType extends LLVMType {
     if (dBuilder == null) return null;
 
     if (_scope != null) return _scope;
-    var retTy = fn.getRetTy(c);
+    var retTy = decl.getRetTy(c);
 
-    if (fn.block?.isNotEmpty == true) {
-      final offset = fn.fnName.offset;
-      final (namePointer, nameLength) = fn.fnName.src.toNativeUtf8WithLength();
+    if (ty.block?.isNotEmpty == true) {
+      final offset = ty.fnName.offset;
+      final (namePointer, nameLength) = ty.fnName.src.toNativeUtf8WithLength();
       final file = llvm.LLVMDIScopeGetFile(c.unit);
       final params = <Pointer>[];
       params.add(retTy.llty.createDIType(c));
 
       for (var p in decl.fields) {
-        final realTy = fn.getFieldTy(c, p);
-        final ty = realTy.llty.createDIType(c);
-        params.add(ty);
+        final realTy = decl.getFieldTy(c, p);
+        final fieldTy = realTy.llty.createDIType(c);
+        params.add(fieldTy);
       }
 
       final fnTy = llvm.LLVMDIBuilderCreateSubroutineType(
@@ -385,12 +404,18 @@ class LLVMStructType extends LLVMType {
   }
 
   LLVMAllocaVariable? getField(
-      Variable alloca, StoreLoadMixin context, Identifier ident) {
+      Variable alloca, StoreLoadMixin context, Identifier ident,
+      {int? index}) {
     LLVMTypeRef type = typeOf(context);
 
     final fields = ty.fields;
-    final fi = fields.indexWhere((element) => element.ident == ident);
-    if (fi == -1) return null;
+
+    var fi = index;
+    if (fi == null) {
+      fi = fields.indexWhere((element) => element.ident == ident);
+      if (fi == -1) return null;
+    }
+
     final field = fields[fi];
     final pty = field.grt(context);
 
@@ -399,6 +424,7 @@ class LLVMStructType extends LLVMType {
     final val = LLVMAllocaVariable.delay(() {
       final ptr = alloca.getBaseValue(context);
       context.diSetCurrentLoc(ident.offset);
+
       return llvm.LLVMBuildStructGEP2(context.builder, type, ptr, ind, unname);
     }, pty, pty.typeOf(context), ident);
 

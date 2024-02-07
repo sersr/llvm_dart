@@ -7,7 +7,7 @@ import 'analysis_context.dart';
 import 'ast.dart';
 import 'expr.dart';
 import 'llvm/build_context_mixin.dart';
-import 'llvm/coms.dart';
+import 'builders/coms.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
 import 'tys.dart';
@@ -46,7 +46,7 @@ class LetStmt extends Stmt {
     Ty? baseTy = realTy;
 
     if (isRet) {
-      baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
+      baseTy = context.getLastFnContext()!.currentFn!.fnDecl.getRetTy(context);
       if (baseTy.isTy(LiteralKind.kVoid.ty)) {
         baseTy = null;
       }
@@ -238,7 +238,7 @@ class ExprStmt extends Stmt implements LogPretty {
     Ty? baseTy;
 
     if (isRet) {
-      baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
+      baseTy = context.getLastFnContext()!.currentFn!.fnDecl.getRetTy(context);
       if (baseTy.isTy(LiteralKind.kVoid.ty)) {
         baseTy = null;
       }
@@ -283,7 +283,8 @@ class RetStmt extends Stmt {
   @override
   void build(bool isRet) {
     final context = buildContext;
-    Ty? baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
+    Ty? baseTy =
+        context.getLastFnContext()!.currentFn!.fnDecl.getRetTy(context);
     if (baseTy.isTy(LiteralKind.kVoid.ty)) {
       baseTy = null;
     }

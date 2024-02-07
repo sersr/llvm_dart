@@ -2,7 +2,7 @@ import '../llvm_dart.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
 import 'expr.dart';
-import 'llvm/coms.dart';
+import 'builders/coms.dart';
 import 'llvm/llvm_context.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';

@@ -1,7 +1,4 @@
-import '../lib/d.kc';
 
-extern fn malloc(size: usize) *void;
-extern fn free(ptr: *void);
 
 fn main() i32 {
 

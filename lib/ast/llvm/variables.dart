@@ -4,7 +4,7 @@ import '../stmt.dart';
 import '../tys.dart';
 import 'build_context_mixin.dart';
 import 'build_methods.dart';
-import 'coms.dart';
+import '../builders/coms.dart';
 import 'llvm_types.dart';
 
 abstract class Variable extends LifeCycleVariable {

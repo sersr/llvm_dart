@@ -10,10 +10,10 @@ import '../parsers/lexers/token_kind.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
 import 'builders/builders.dart';
+import 'builders/coms.dart';
 import 'buildin.dart';
 import 'llvm/build_context_mixin.dart';
 import 'llvm/build_methods.dart';
-import 'llvm/coms.dart';
 import 'llvm/variables.dart';
 import 'memory.dart';
 import 'stmt.dart';
@@ -191,7 +191,7 @@ class VariableIdentExpr extends Expr {
       case StructTy() when ty.fields.isEmpty && ty.done:
         final val = ty.llty.buildTupeOrStruct(context, const []);
         return ExprTempValue(val, ty: ty);
-      case Fn() when ty.done:
+      case Fn(fnDecl: var decl) when decl.done:
         final value = ty.genFn();
         return ExprTempValue(value.newIdent(ident, dirty: false));
     }

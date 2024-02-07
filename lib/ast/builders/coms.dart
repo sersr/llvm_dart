@@ -3,8 +3,8 @@ import '../../llvm_dart.dart';
 import '../ast.dart';
 import '../expr.dart';
 import '../tys.dart';
-import 'llvm_context.dart';
-import 'variables.dart';
+import '../llvm/llvm_context.dart';
+import '../llvm/variables.dart';
 
 abstract class ImplStackTy {
   static final _stackCom = 'Stack'.ident;
@@ -56,9 +56,11 @@ abstract class ImplStackTy {
     }
     if (test != null && test(variable.getBaseValue(context))) return false;
 
+    final fnValue = fn.genFn(ignoreFree);
     AbiFn.fnCallInternal(
       context: context,
-      fn: fn,
+      fn: fnValue,
+      decl: fn.fnDecl,
       struct: variable,
       valArgs: args,
       ignoreFree: ignoreFree,
@@ -81,8 +83,7 @@ abstract class ImplStackTy {
       ty = ty.baseTy;
     }
 
-    final stackImpl = context.getImplWith(ty, comIdent: _stackCom) ??
-        ty.currentContext?.getImplWith(ty, comIdent: _stackCom);
+    final stackImpl = context.getImplWith(ty, comIdent: _stackCom);
     if (stackImpl != null) return true;
 
     if (ty is StructTy) {
@@ -118,7 +119,7 @@ abstract class ImplStackTy {
       FnBuildMixin context, Variable target, Variable src) {
     final fn = getImplFn(context, target.ty, _stackCom, _replaceStack);
 
-    final srcIdent = fn?.fields.firstOrNull?.ident ?? _srcIdent;
+    final srcIdent = fn?.fnDecl.fields.firstOrNull?.ident ?? _srcIdent;
     var arg = LLVMConstVariable(src.getBaseValue(context), src.ty, srcIdent);
 
     var hasFn = false;
@@ -270,12 +271,13 @@ abstract class ArrayOpImpl {
       FnBuildMixin context, Variable variable, Identifier ident, Expr param) {
     final fn = getImplFn(context, variable.ty, _arrayOpCom, _arrayOpIdent);
     if (fn == null) return null;
-    final pIdent = fn.fields.firstOrNull?.ident ?? _index;
+    final pIdent = fn.fnDecl.fields.firstOrNull?.ident ?? _index;
 
+    final fnValue = fn.genFn();
     return AbiFn.fnCallInternal(
       context: context,
-      fn: fn,
-      ident: ident,
+      fn: fnValue,
+      decl: fn.fnDecl,
       params: [FieldExpr(param, pIdent)],
       struct: variable,
     );

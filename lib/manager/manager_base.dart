@@ -21,6 +21,7 @@ abstract class ManagerBase extends GlobalContext {
   static const stds = [
     'd.kc',
     'vec.kc',
+    'fn.kc',
     'box.kc',
     'option.kc',
     'allocator.kc',
