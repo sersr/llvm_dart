@@ -24,11 +24,6 @@ com Hell {
 }
 
 fn return_value() Base {
-
-  com Hx {
-    fn xx();
-    fn yy();
-  }
   let x = Base {10, 20 };
   printf("inner: %d\n", x.y);
   x
