@@ -27,7 +27,7 @@ class AbiFnArm64 implements AbiFn {
     final fnAlloca = fn.genFn();
     final fnValue = fnAlloca.getBaseValue(context);
 
-    final fnParams = fn.fnSign.fnDecl.params;
+    final fnParams = fn.fnDecl.fields;
     final args = <LLVMValueRef>[];
     final retTy = fn.getRetTy(context);
 
@@ -194,7 +194,7 @@ class AbiFnArm64 implements AbiFn {
   }
 
   LLVMTypeRef createFnType(StoreLoadMixin c, Fn fn) {
-    final params = fn.fnSign.fnDecl.params;
+    final params = fn.fnDecl.fields;
     final list = <LLVMTypeRef>[];
     var retTy = fn.getRetTy(c);
 
@@ -227,7 +227,7 @@ class AbiFnArm64 implements AbiFn {
       ret = cType(retTy);
     }
 
-    return c.typeFn(list, ret, fn.fnSign.fnDecl.isVar);
+    return c.typeFn(list, ret, fn.fnDecl.isVar);
   }
 
   @override
@@ -246,7 +246,7 @@ class AbiFnArm64 implements AbiFn {
       c.setFnLLVMAttr(v, 1, LLVMAttr.StructRet);
     }
 
-    final offset = fn.fnSign.fnDecl.ident.offset;
+    final offset = fn.fnDecl.ident.offset;
 
     final dBuilder = c.dBuilder;
     if (dBuilder != null && fn.block?.isNotEmpty == true) {
@@ -254,7 +254,7 @@ class AbiFnArm64 implements AbiFn {
       final params = <Pointer>[];
       params.add(retTy.llty.createDIType(c));
 
-      for (var p in fn.fnSign.fnDecl.params) {
+      for (var p in fn.fnDecl.fields) {
         final realTy = fn.getFieldTy(c, p);
         final ty = realTy.llty.createDIType(c);
         params.add(ty);
@@ -308,7 +308,7 @@ class AbiFnArm64 implements AbiFn {
       sret = alloca;
     }
 
-    final params = fnty.fnSign.fnDecl.params;
+    final params = fnty.fnDecl.fields;
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
 

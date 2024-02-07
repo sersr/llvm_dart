@@ -88,5 +88,11 @@ class Block extends BuildMixin with EquatableMixin implements LogPretty {
         stmt.analysis(i == _lastIndex);
       }
     }
+
+    for (var stmt in _innerStmts) {
+      if (stmt case TyStmt(ty: Fn ty)) {
+        ty.analysisFn();
+      }
+    }
   }
 }

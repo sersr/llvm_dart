@@ -1,29 +1,23 @@
 part of 'ast.dart';
 
 /// [PathTy] 只用于声明
-class PathTy with EquatableMixin {
-  PathTy(this.ident, this.genericInsts, [this.kind = const []]) : ty = null;
-  PathTy.ty(Ty this.ty, [this.kind = const []])
-      : ident = Identifier.none,
-        genericInsts = const [];
+class PathTy {
+  PathTy(this.ident, this.genericInsts, [this.kind = const []]);
   final Identifier ident;
-  final Ty? ty;
   final List<PointerKind> kind;
 
   final List<PathTy> genericInsts;
 
+  static final none = PathTy(Identifier.none, const []);
+
   @override
   String toString() {
-    if (ty != null) return ty!.toString();
     return '${kind.join('')}$ident${genericInsts.str}';
   }
 
-  @override
-  late final props = [ident];
-
   Ty? grtOrT(Tys c, {GenTy? gen}) {
     var tempTy =
-        ty ?? BuiltInTy.from(ident.src) ?? c.getTy(ident) ?? gen?.call(ident);
+        BuiltInTy.from(ident.src) ?? c.getTy(ident) ?? gen?.call(ident);
 
     if (tempTy is NewInst && !tempTy.done) {
       tempTy = tempTy.newInstWithGenerics(c, genericInsts, tempTy.generics,
@@ -42,7 +36,31 @@ class PathTy with EquatableMixin {
   }
 
   Ty? getBaseTy(Tys c) {
-    return ty ?? BuiltInTy.from(ident.src) ?? c.getTy(ident);
+    return BuiltInTy.from(ident.src) ?? c.getTy(ident);
+  }
+}
+
+class PathFnDeclTy extends PathTy with EquatableMixin {
+  PathFnDeclTy(this.decl, [List<PointerKind> kind = const []])
+      : super(Identifier.none, const [], kind);
+  final FnDecl decl;
+
+  @override
+  Ty? grtOrT(Tys c, {GenTy? gen}) {
+    return kind.wrapRefTy(decl);
+  }
+
+  @override
+  Ty? getBaseTy(Tys c) {
+    return decl;
+  }
+
+  @override
+  late final props = [decl];
+
+  @override
+  String toString() {
+    return decl.toString();
   }
 }
 

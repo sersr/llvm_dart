@@ -39,7 +39,7 @@ mixin FnBuildMixin
   void initFnParams(LLVMValueRef fn, Fn fnty, Set<AnalysisVariable>? extra,
       {bool ignoreFree = false,
       Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
-    final params = fnty.fnSign.fnDecl.params;
+    final params = fnty.fnDecl.fields;
     var index = 0;
 
     if (fnty is ImplFn) {
@@ -61,10 +61,10 @@ mixin FnBuildMixin
       final p = params[i];
       final fnParam = llvm.LLVMGetParam(fn, index);
       var realTy = fnty.getFieldTy(this, p);
-      if (realTy is FnTy) {
+      if (realTy is FnDecl) {
         final extra = map[p.ident];
         if (extra != null) {
-          realTy = realTy.copyWith(extra);
+          realTy = realTy.copyExtra(this, extra);
         }
       }
 

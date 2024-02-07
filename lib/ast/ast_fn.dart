@@ -1,67 +1,63 @@
 part of 'ast.dart';
 
 // 函数声明
-class FnDecl with EquatableMixin {
-  FnDecl(this.ident, this.params, this.generics, this.returnTy, this.isVar);
+class FnDecl extends Ty {
+  FnDecl(this.ident, this.fields, this.generics, this._returnTy, this.isVar);
+  @override
   final Identifier ident;
 
-  FnDecl copywith(List<FieldDef> params) {
-    return FnDecl(ident, params, generics, returnTy, isVar);
-  }
-
-  final List<FieldDef> params;
+  final List<FieldDef> fields;
   final List<GenericDef> generics;
 
-  final PathTy returnTy;
+  final PathTy? _returnTy;
   final bool isVar;
+
+  FnDecl copyWith([List<FieldDef>? newFields]) {
+    return FnDecl(
+        ident, newFields ?? fields.clone(), generics, _returnTy, isVar);
+  }
+
+  FnDecl copyExtra(StoreLoadMixin c, Set<AnalysisVariable> extra) {
+    final newFields = fields.clone();
+    for (var e in extra) {
+      final ty = c.getVariable(e.ident)?.ty ?? e.ty;
+      newFields.add(FieldDef.newDef(e.ident, PathTy.none, ty));
+    }
+
+    return copyWith(newFields).._constraints = _constraints;
+  }
 
   @override
   String toString() {
     final isVals = isVar ? ', ...' : '';
-    final g = generics.isNotEmpty ? '<${generics.join(',')}>' : '';
-    return '$ident$g(${params.join(',')}$isVals) -> $returnTy';
+    return 'fn $ident${generics.str}(${fields.join(',')}$isVals) -> ${_returnTy ?? 'void'}';
   }
 
   @override
-  late final props = [ident, params, returnTy];
+  late final props = [ident, fields, _returnTy];
 
-  void analysis(AnalysisContext context, Fn fn) {
-    for (var p in params) {
-      final t = fn.getFieldTyOrT(context, p);
+  void analysisFn(AnalysisContext context, Fn fn) {
+    for (var p in fields) {
+      final t = fn.getFieldTyOrT(context, p) ?? AnalysisTy(p.rawTy);
       context.pushVariable(
-        context.createVal(t ?? AnalysisTy(p.rawTy), p.ident, p.rawTy.kind)
-          ..lifecycle.isOut = true,
+        context.createVal(t, p.ident, p.rawTy.kind)..lifecycle.isOut = true,
       );
     }
   }
-}
-
-// 函数签名
-class FnSign with EquatableMixin {
-  FnSign(this.extern, this.fnDecl);
-  final FnDecl fnDecl;
-  // header
-  final bool extern;
-
-  Identifier get ident => fnDecl.ident;
 
   @override
-  String toString() {
-    return fnDecl.toString();
-  }
-
-  void analysis(AnalysisContext context, Fn fn) {
-    fnDecl.analysis(context, fn);
+  Ty clone() {
+    return FnDecl(ident, fields.clone(), generics, _returnTy, isVar);
   }
 
   @override
-  late final props = [fnDecl, extern];
+  late final LLVMType llty = LLVMFnDeclType(this);
 }
 
 class Fn extends Ty with NewInst<Fn> {
-  Fn(this.fnSign, this.block);
+  Fn(this.fnDecl, this.block);
 
-  Identifier get fnName => fnSign.fnDecl.ident;
+  Identifier get fnName => fnDecl.ident;
 
   @override
   Identifier get ident => fnName;
@@ -72,7 +68,7 @@ class Fn extends Ty with NewInst<Fn> {
     block?.incLevel(count);
   }
 
-  final FnSign fnSign;
+  final FnDecl fnDecl;
   final Block? block;
 
   @override
@@ -87,28 +83,28 @@ class Fn extends Ty with NewInst<Fn> {
       ext = 'extern ';
     }
 
-    return '$pad${ext}fn $fnSign$b${tys.str}';
+    return '$pad$ext$fnDecl$b${tys.str}';
   }
 
   @override
-  late final props = [fnSign, block, _tys, _constraints];
+  late final props = [fnDecl, block, _tys, _constraints];
 
   Ty getRetTy(Tys c) {
     return getRetTyOrT(c)!;
   }
 
   Ty? getRetTyOrT(Tys c) {
-    return fnSign.fnDecl.returnTy.grtOrT(c, gen: (ident) {
-      return getTy(c, ident);
-    });
+    final retTy = fnDecl._returnTy;
+    if (retTy == null) return LiteralKind.kVoid.ty;
+    return retTy.grtOrT(c, gen: (ident) => getTy(c, ident));
   }
 
   @override
   Fn clone() {
-    return Fn(fnSign, block)..copy(this);
+    return Fn(fnDecl, block)..copy(this);
   }
 
-  final _cache = <ListKey, LLVMConstVariable>{};
+  late final _cache = <ListKey, LLVMConstVariable>{};
 
   @override
   void prepareBuild(FnBuildMixin context, {bool push = true}) {
@@ -190,22 +186,21 @@ class Fn extends Ty with NewInst<Fn> {
   Set<RawIdent> returnVariables = {};
 
   @override
-  void prepareAnalysis(AnalysisContext context) {
+  void prepareAnalysis(AnalysisContext context, {bool push = true}) {
     super.prepareAnalysis(context);
-    context.pushFn(ident, this);
+    if (push) context.pushFn(ident, this);
   }
 
   void analysisStart(AnalysisContext context) {}
 
-  @override
-  void analysis() {
+  void analysisFn() {
     final context = analysisContext!;
 
     final child = context.childContext();
     pushTyGenerics(child);
 
     child.setFnContext(this);
-    fnSign.fnDecl.analysis(child, this);
+    fnDecl.analysisFn(child, this);
     analysisStart(child);
     block?.analysis(child, hasRet: true);
     selfVariables = child.catchVariables;
@@ -216,14 +211,13 @@ class Fn extends Ty with NewInst<Fn> {
   late final LLVMFnType llty = LLVMFnType(this);
 
   @override
-  List<FieldDef> get fields => fnSign.fnDecl.params;
+  List<FieldDef> get fields => fnDecl.fields;
   @override
-  List<GenericDef> get generics => fnSign.fnDecl.generics;
+  List<GenericDef> get generics => fnDecl.generics;
 
   @override
   Fn newTy(List<FieldDef> fields) {
-    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
-    return Fn(s, block)..copy(this);
+    return Fn(fnDecl.copyWith(fields), block)..copy(this);
   }
 }
 
@@ -232,7 +226,7 @@ mixin ImplFnMixin on Fn {
 
   Ty get ty => implty.ty!;
 
-  final _fnList = <ImplTy, ImplFnMixin>{};
+  late final _fnList = <ImplTy, ImplFnMixin>{};
 
   ImplFnMixin? getWith(ImplTy ty) {
     final parent = parentOrCurrent as ImplFnMixin;
@@ -286,14 +280,12 @@ class ImplFn extends Fn with ImplFnMixin {
 
   @override
   ImplFnMixin newTy(List<FieldDef> fields) {
-    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
-    return ImplFn(s, block, implty)..copy(this);
+    return ImplFn(fnDecl.copyWith(fields), block, implty)..copy(this);
   }
 
   @override
   ImplFn newWithImplTy(ImplTy ty) {
-    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields.clone()));
-    return ImplFn(s, block, ty)..copy(this);
+    return ImplFn(fnDecl.copyWith(), block, ty)..copy(this);
   }
 
   @override
@@ -314,42 +306,40 @@ class ImplStaticFn extends Fn with ImplFnMixin {
 
   @override
   ImplFnMixin newTy(List<FieldDef> fields) {
-    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields));
-    return ImplStaticFn(s, block, implty)..copy(this);
+    return ImplStaticFn(fnDecl.copyWith(fields), block, implty)..copy(this);
   }
 
   @override
   ImplStaticFn newWithImplTy(ImplTy ty) {
-    final s = FnSign(fnSign.extern, fnSign.fnDecl.copywith(fields.clone()));
-    return ImplStaticFn(s, block, ty)..copy(this);
+    return ImplStaticFn(fnDecl.copyWith(), block, ty)..copy(this);
   }
 }
 
-class FnTy extends Fn {
-  FnTy(FnDecl fnDecl) : super(FnSign(false, fnDecl), null);
+// class FnTy extends Fn {
+//   FnTy(FnDecl fnDecl) : super(FnSign(false, fnDecl), null);
 
-  FnTy copyWith(Set<AnalysisVariable> extra) {
-    final rawDecl = fnSign.fnDecl;
-    final cache = rawDecl.params.toList();
-    for (var e in extra) {
-      cache.add(FieldDef(e.ident, PathTy.ty(e.ty, [PointerKind.ref])));
-    }
-    final decl = FnDecl(rawDecl.ident, cache, rawDecl.generics,
-        rawDecl.returnTy, rawDecl.isVar);
-    return FnTy(decl)
-      ..copy(this)
-      .._constraints = _constraints;
-  }
+//   FnTy copyWith(Set<AnalysisVariable> extra) {
+//     final rawDecl = fnSign.fnDecl;
+//     final cache = rawDecl.fields.toList();
+//     for (var e in extra) {
+//       cache.add(FieldDef.newDef(e.ident, PathTy.none, e.ty));
+//     }
+//     final decl = FnDecl(rawDecl.ident, cache, rawDecl.generics,
+//         rawDecl._returnTy, rawDecl.isVar);
+//     return FnTy(decl)
+//       ..copy(this)
+//       .._constraints = _constraints;
+//   }
 
-  @override
-  Fn clone() {
-    return FnTy(fnSign.fnDecl)..copy(this);
-  }
+//   @override
+//   Fn clone() {
+//     return FnTy(fnSign.fnDecl)..copy(this);
+//   }
 
-  @override
-  LLVMConstVariable? build(
-      [Set<AnalysisVariable>? variables,
-      Map<Identifier, Set<AnalysisVariable>>? map]) {
-    return null;
-  }
-}
+//   @override
+//   LLVMConstVariable? build(
+//       [Set<AnalysisVariable>? variables,
+//       Map<Identifier, Set<AnalysisVariable>>? map]) {
+//     return null;
+//   }
+// }

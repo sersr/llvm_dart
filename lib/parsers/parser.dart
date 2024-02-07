@@ -233,7 +233,7 @@ class Parser {
     checkBlock(it);
 
     if (getToken(it).kind == TokenKind.openBrace) {
-      final fns = <FnSign>[];
+      final fns = <FnDecl>[];
       it = it.current.child.tokenIt;
       loop(it, () {
         final t = getToken(it);
@@ -243,7 +243,7 @@ class Parser {
             it.moveNext();
             final ident = getIdent(it);
             final fn = parseFnDecl(it, ident);
-            fns.add(FnSign(true, fn));
+            fns.add(fn);
           }
         }
         return false;
@@ -317,8 +317,6 @@ class Parser {
       state.restore();
     }
 
-    retTy ??= PathTy.ty(LiteralKind.kVoid.ty);
-
     return FnDecl(ident, params, generics, retTy, isVar);
   }
 
@@ -333,7 +331,7 @@ class Parser {
       it.moveNext(); // '('
     }
 
-    final fnSign = FnSign(true, parseFnDecl(it, ident));
+    final fnDecl = parseFnDecl(it, ident);
 
     final state = it.cursor;
 
@@ -344,7 +342,7 @@ class Parser {
 
         if (getToken(it).kind == TokenKind.openBrace) {
           final block = parseBlock(it);
-          return Fn(fnSign, block);
+          return Fn(fnDecl, block);
         } else {
           state.restore();
         }
@@ -352,7 +350,7 @@ class Parser {
         state.restore();
       }
     }
-    return Fn(fnSign, null);
+    return Fn(fnDecl, null);
   }
 
   PathTy? parsePathTy(TokenIterator it) {
@@ -368,7 +366,7 @@ class Parser {
       if (getKey(it) == Key.fn) {
         it.moveNext();
         final decl = parseFnDecl(it, Identifier.none);
-        ty = PathTy.ty(FnTy(decl), pointerKind);
+        ty = PathFnDeclTy(decl, pointerKind);
       } else if (getToken(it).kind == TokenKind.ident) {
         ty = PathTy(getIdent(it), parseGenericsInstance(it), pointerKind);
       } else if (getToken(it).kind == TokenKind.openBracket) {

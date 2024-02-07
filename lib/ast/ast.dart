@@ -154,7 +154,7 @@ class StructTy extends Ty with EquatableMixin, NewInst<StructTy> {
       ext = '$extern ';
     }
 
-    return '$pad${ext}struct $ident${generics.str} {${fields.join(',')}}${tys.str} ${constraints.constraints}';
+    return '$pad${ext}struct $ident${generics.str} {${fields.ast}}${tys.str} ${constraints.constraints}';
   }
 
   @override
@@ -197,7 +197,7 @@ class EnumTy extends Ty with NewInst<EnumTy> {
 
   @override
   String toString() {
-    return '${pad}enum $ident${generics.str} {${variants.join(',')}}${tys.str}';
+    return '${pad}enum $ident${generics.str} {${variants.ast}}${tys.str}';
   }
 
   @override
@@ -277,7 +277,7 @@ class EnumItem extends StructTy {
 
   @override
   String toString() {
-    final fy = fields.isEmpty ? '' : '(${fields.join(', ')})';
+    final fy = fields.isEmpty ? '' : '(${fields.ast})';
 
     return '$ident$fy${parent.tys.str}';
   }
@@ -324,7 +324,7 @@ class ComponentTy extends Ty with NewInst<ComponentTy> {
   final Identifier ident;
   @override
   final List<GenericDef> generics;
-  final List<FnSign> fns;
+  final List<FnDecl> fns;
 
   @override
   void prepareBuild(FnBuildMixin context) {
@@ -368,9 +368,9 @@ class ComponentTy extends Ty with NewInst<ComponentTy> {
 class ImplTy extends Ty with NewInst<ImplTy> {
   ImplTy(this.generics, this.com, this.struct, this.label, List<Fn> fns,
       List<Fn> staticFns, this.aliasTys, this.orderStmts) {
-    implFns = fns.map((e) => ImplFn(e.fnSign, e.block, this)).toList();
+    implFns = fns.map((e) => ImplFn(e.fnDecl, e.block, this)).toList();
     implStaticFns =
-        staticFns.map((e) => ImplStaticFn(e.fnSign, e.block, this)).toList();
+        staticFns.map((e) => ImplStaticFn(e.fnDecl, e.block, this)).toList();
     for (var stmt in orderStmts) {
       stmt.incLevel();
     }
@@ -407,8 +407,8 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   Identifier get ident => label?.ident ?? Identifier.none;
 
   bool contains(Identifier ident) {
-    return implFns.any((e) => e.fnSign.fnDecl.ident == ident) ||
-        implStaticFns.any((e) => e.fnSign.fnDecl.ident == ident);
+    return implFns.any((e) => e.fnDecl.ident == ident) ||
+        implStaticFns.any((e) => e.fnDecl.ident == ident);
   }
 
   @override
@@ -424,9 +424,8 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   }
 
   ImplFnMixin? _getFn(Identifier ident, ImplTy ty) {
-    final fn = implFns
-            .firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident) ??
-        implStaticFns.firstWhereOrNull((e) => e.fnSign.fnDecl.ident == ident);
+    final fn = implFns.firstWhereOrNull((e) => e.fnDecl.ident == ident) ??
+        implStaticFns.firstWhereOrNull((e) => e.fnDecl.ident == ident);
     return fn?.getWith(ty);
   }
 
@@ -518,10 +517,10 @@ class ImplTy extends Ty with NewInst<ImplTy> {
       alias.analysis(false);
     }
     for (var impl in implFns) {
-      impl.analysis();
+      impl.analysisFn();
     }
     for (var impl in implStaticFns) {
-      impl.analysis();
+      impl.analysisFn();
     }
   }
 
@@ -530,10 +529,10 @@ class ImplTy extends Ty with NewInst<ImplTy> {
     super.prepareAnalysis(context);
     final child = context.childContext();
     for (var impl in implFns) {
-      impl.prepareAnalysis(child);
+      impl.prepareAnalysis(child, push: false);
     }
     for (var impl in implStaticFns) {
-      impl.prepareAnalysis(child);
+      impl.prepareAnalysis(child, push: false);
     }
     for (var alias in aliasTys) {
       alias.prepareAnalysis(child);
@@ -548,14 +547,7 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   }
 
   @override
-  late List<Object?> props = [
-    tys,
-    struct,
-    com,
-    orderStmts,
-    label,
-    _constraints
-  ];
+  late List<Object?> props = [tys, struct, _constraints];
 
   @override
   LLVMType get llty => throw UnimplementedError();

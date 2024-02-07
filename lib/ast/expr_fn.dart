@@ -25,7 +25,7 @@ class FnExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     fn.prepareAnalysis(context);
     fn.analysis();
-    return context.createVal(fn, fn.fnSign.fnDecl.ident);
+    return context.createVal(fn, fn.fnDecl.ident);
   }
 
   @override
@@ -58,7 +58,7 @@ mixin FnCallMixin {
 
   void autoAddChild(Fn fn, List<FieldExpr> params, AnalysisContext context) {
     // ignore: invalid_use_of_protected_member
-    final fields = fn.fnSign.fnDecl.params;
+    final fields = fn.fnDecl.fields;
     final sortFields =
         alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
     for (var f in sortFields) {
@@ -167,8 +167,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     final fnnn = fnty.resolveGeneric(context, params);
     autoAddChild(fnnn, params, context);
 
-    return context.createVal(
-        fnnn.fnSign.fnDecl.returnTy.grt(context), Identifier.none);
+    return context.createVal(fnnn.getRetTy(context), Identifier.none);
   }
 }
 
@@ -252,9 +251,9 @@ class MethodCallExpr extends Expr with FnCallMixin {
         final field = structTy.llty.getField(val, context, ident);
         if (field != null) {
           // 匿名函数作为参数要处理捕捉的变量
-          if (field.ty is FnTy) {
+          if (field.ty is Fn) {
             assert(_paramFn is Fn, 'ty: ${field.ty}, _paramFn: $_paramFn');
-            fn = _paramFn ?? field.ty as FnTy;
+            fn = _paramFn ?? field.ty as Fn;
           }
         }
       }
@@ -295,7 +294,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
       final field =
           structTy.fields.firstWhereOrNull((element) => element.ident == ident);
       final ty = field?.grtOrT(context);
-      if (ty is FnTy) {
+      if (ty is Fn) {
         fn = ty;
         autoAddChild(fn, params, context);
       }

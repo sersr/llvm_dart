@@ -168,7 +168,7 @@ class AnalysisContext with Tys<AnalysisVariable> {
     int l = 0;
     while (p != null) {
       buf.write(' ' * l);
-      buf.write('_${p.currentFn?.fnSign.fnDecl.ident}\n');
+      buf.write('_${p.currentFn?.fnDecl.ident}\n');
       l += 4;
       p = p.parent;
     }

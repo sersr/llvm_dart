@@ -76,7 +76,7 @@ abstract interface class AbiFn {
 
     fn = fn.resolveGeneric(context, params);
 
-    final fnParams = fn.fnSign.fnDecl.params;
+    final fnParams = fn.fnDecl.fields;
     final sortFields = alignParam(
         params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
 
@@ -148,14 +148,6 @@ abstract interface class AbiFn {
     if (extra != null) {
       for (var variable in extra) {
         var v = context.getVariable(variable.ident);
-        addCatchArg(v);
-      }
-    }
-
-    if (fn is FnTy) {
-      final params = fn.fnSign.fnDecl.params;
-      for (var p in params) {
-        var v = context.getVariable(p.ident);
         addCatchArg(v);
       }
     }

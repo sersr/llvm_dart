@@ -13,8 +13,22 @@ struct Base {
   y: i32,
 }
 
+struct BaseFn {
+  y: i32,
+  f: fn(),
+}
+
+com Hell {
+  fn hlli();
+  fn xxx();
+}
+
 fn return_value() Base {
 
+  com Hx {
+    fn xx();
+    fn yy();
+  }
   let x = Base {10, 20 };
   printf("inner: %d\n", x.y);
   x

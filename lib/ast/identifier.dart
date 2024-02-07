@@ -1,12 +1,14 @@
 part of 'ast.dart';
 
 class RawIdent with EquatableMixin {
-  RawIdent(this.start, this.end);
+  RawIdent(this.start, this.end, this.fileName, this.name);
   final int start;
   final int end;
+  final String fileName;
+  final String name;
 
   @override
-  late final props = [start, end];
+  late final props = [start, end, fileName, name];
 }
 
 class Offset {
@@ -82,7 +84,7 @@ class Identifier with EquatableMixin {
   bool get isValid => end != 0;
 
   RawIdent get toRawIdent {
-    return RawIdent(start, end);
+    return RawIdent(start, end, fileName, name);
   }
 
   Offset? _offset;
@@ -112,7 +114,7 @@ class Identifier with EquatableMixin {
   @override
   List<Object?> get props {
     if (identicalEq) {
-      return [data, start, end, name];
+      return [fileName, data, start, end, name];
     }
     return [src];
   }

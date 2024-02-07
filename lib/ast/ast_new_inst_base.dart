@@ -35,7 +35,7 @@ class GenericDef with EquatableMixin {
 /// 函数，结构体的字段格式
 class FieldDef with EquatableMixin implements Clone<FieldDef> {
   FieldDef(this.ident, this._ty) : _rty = null;
-  FieldDef._internal(this.ident, this._ty, this._rty);
+  FieldDef.newDef(this.ident, this._ty, this._rty);
   final Identifier ident;
   final PathTy _ty;
   PathTy get rawTy => _ty;
@@ -54,10 +54,9 @@ class FieldDef with EquatableMixin implements Clone<FieldDef> {
 
   @override
   FieldDef clone() {
-    return FieldDef._internal(ident, _ty, _rty);
+    return FieldDef.newDef(ident, _ty, _rty);
   }
 
-  List<PointerKind> get kinds => _ty.kind;
   @override
   String toString() {
     if (!ident.isValid) {

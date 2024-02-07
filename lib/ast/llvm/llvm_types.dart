@@ -1,6 +1,5 @@
 import 'dart:ffi';
 
-import 'package:meta/meta.dart';
 import 'package:nop/nop.dart';
 
 import '../../llvm_dart.dart';
@@ -143,26 +142,41 @@ class LLVMTypeLit extends LLVMType {
   }
 }
 
+class LLVMFnDeclType extends LLVMType {
+  LLVMFnDeclType(this.decl);
+  final FnDecl decl;
+
+  @override
+  Ty get ty => decl;
+
+  @override
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
+    return c.pointer();
+  }
+
+  @override
+  int getBytes(StoreLoadMixin c) {
+    return c.pointerSize();
+  }
+
+  @override
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
+    return llvm.LLVMDIBuilderCreateBasicType(
+        c.dBuilder!, 'ptr'.toChar(), 3, getBytes(c) * 8, 1, 0);
+  }
+}
+
 class LLVMFnType extends LLVMType {
   LLVMFnType(this.fn);
   final Fn fn;
   @override
   Ty get ty => fn;
 
-  Variable createAllocaParam(
-      StoreLoadMixin c, Identifier ident, LLVMValueRef val) {
-    return LLVMConstVariable(val, ty, ident);
-  }
-
-  @protected
-  @override
-  LLVMTypeRef typeOf(StoreLoadMixin c) {
-    return c.pointer();
-  }
+  FnDecl get decl => fn.fnDecl;
 
   LLVMTypeRef createFnType(StoreLoadMixin c,
       [Set<AnalysisVariable>? variables]) {
-    final params = fn.fnSign.fnDecl.params;
+    final fields = decl.fields;
     final list = <LLVMTypeRef>[];
     var retTy = fn.getRetTy(c);
 
@@ -177,7 +191,7 @@ class LLVMFnType extends LLVMType {
       list.add(ty);
     }
 
-    for (var p in params) {
+    for (var p in fields) {
       final realTy = fn.getFieldTy(c, p);
       LLVMTypeRef ty = realTy.typeOf(c);
 
@@ -201,7 +215,7 @@ class LLVMFnType extends LLVMType {
 
     ret = retTy.typeOf(c);
 
-    return c.typeFn(list, ret, fn.fnSign.fnDecl.isVar);
+    return c.typeFn(list, ret, decl.isVar);
   }
 
   late final _cacheFns = <ListKey, LLVMConstVariable>{};
@@ -212,7 +226,7 @@ class LLVMFnType extends LLVMType {
 
     return _cacheFns.putIfAbsent(key, () {
       final ty = createFnType(c, variables);
-      var ident = fn.fnSign.fnDecl.ident.src;
+      var ident = fn.fnName.src;
       if (ident.isEmpty) {
         ident = '_fn';
       }
@@ -257,7 +271,7 @@ class LLVMFnType extends LLVMType {
       final params = <Pointer>[];
       params.add(retTy.llty.createDIType(c));
 
-      for (var p in fn.fnSign.fnDecl.params) {
+      for (var p in decl.fields) {
         final realTy = fn.getFieldTy(c, p);
         final ty = realTy.llty.createDIType(c);
         params.add(ty);
@@ -285,14 +299,18 @@ class LLVMFnType extends LLVMType {
   }
 
   @override
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
+    return decl.typeOf(c);
+  }
+
+  @override
   int getBytes(StoreLoadMixin c) {
-    return c.pointerSize();
+    return decl.llty.getBytes(c);
   }
 
   @override
   LLVMMetadataRef createDIType(StoreLoadMixin c) {
-    return llvm.LLVMDIBuilderCreateBasicType(
-        c.dBuilder!, 'ptr'.toChar(), 3, getBytes(c) * 8, 1, 0);
+    return decl.llty.createDIType(c);
   }
 
   LLVMConstVariable? _externFn;
@@ -405,14 +423,10 @@ class LLVMStructType extends LLVMType {
     for (var field in fields) {
       var rty = field.grt(c);
       LLVMMetadataRef ty;
-      int alignSize;
-      if (rty is FnTy) {
-        ty = rty.llty.createDIType(c);
-        alignSize = c.pointerSize() * 8;
-      } else {
-        ty = rty.llty.createDIType(c);
-        alignSize = rty.llty.getBytes(c) * 8;
-      }
+
+      ty = rty.llty.createDIType(c);
+      final alignSize = rty.llty.getBytes(c) * 8;
+
       final fieldName = field.ident.src;
 
       final (namePointer, nameLength) = fieldName.toNativeUtf8WithLength();
@@ -717,13 +731,9 @@ class LLVMEnumItemType extends LLVMStructType {
     final map = <FieldDef, FieldIndex>{};
     for (var field in newList) {
       var rty = field.grt(c);
-      var currentSize = 0;
-      if (rty is FnTy) {
-        currentSize = c.pointerSize();
-      } else {
-        final ty = rty.typeOf(c);
-        currentSize = c.typeSize(ty);
-      }
+
+      final ty = rty.typeOf(c);
+      final currentSize = c.typeSize(ty);
 
       var newCount = count + currentSize;
       final lastIndex = count ~/ alignSize;
