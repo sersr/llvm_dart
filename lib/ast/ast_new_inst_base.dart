@@ -87,6 +87,9 @@ mixin NewInst<T extends Ty> on Ty {
   T get parentOrCurrent => _parent ?? this as T;
 
   @override
+  bool get extern => _parent?.extern ?? super.extern;
+
+  @override
   FnBuildMixin? get currentContext =>
       super.currentContext ?? _parent?.currentContext;
 

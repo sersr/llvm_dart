@@ -336,9 +336,20 @@ class Cursor {
     if (rawNumbers.contains(char)) {
       return number();
     }
-    if (char == "'" || char == '"') {
+
+    var str = char;
+
+    bool isRawStr = false;
+
+    if (str == 'r') {
+      isRawStr = true;
+      str = nextCharRead;
+    }
+
+    if (str == "'" || str == '"') {
       final start = cursor;
-      _eatStr(char);
+      if (isRawStr) nextChar;
+      _eatStr(str);
       return Token.literal(
         literalKind: LiteralKind.kStr,
         getLineStart: getLineStart,
@@ -438,7 +449,6 @@ class Cursor {
     var lastChar = '';
     // 字符串自带结尾
     loop(back: false, (char) {
-      // if (char == '"') return true;
       if (lastChar != '\\' && char == pattern) return true;
 
       // 两个反义符号

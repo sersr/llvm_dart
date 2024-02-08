@@ -22,6 +22,7 @@ abstract class ManagerBase extends GlobalContext {
     'd.kc',
     'vec.kc',
     'fn.kc',
+    'closure.kc',
     'box.kc',
     'option.kc',
     'allocator.kc',
@@ -47,6 +48,11 @@ abstract class ManagerBase extends GlobalContext {
     for (var path in _stdPaths) {
       c.pushImport(ImportPath.path(path));
     }
+  }
+
+  @override
+  Ty? getStdTy(Tys<LifeCycleVariable> c, Identifier ident) {
+    return null;
   }
 
   void dispose() {}
@@ -105,6 +111,26 @@ mixin BuildContextMixin on ManagerBase {
   final llvmCtxs = <String, BuildContextImpl>{};
 
   RootBuildContext get rootBuildContext;
+  final _stdTys = <BuildContextImpl>{};
+
+  @override
+  Ty? getStdTy(Tys<LifeCycleVariable> c, Identifier ident) {
+    if (c case BuildContextImpl()) {
+      if (_stdTys.isEmpty) {
+        for (var ctx in llvmCtxs.entries) {
+          if (isStd(ctx.value)) {
+            _stdTys.add(ctx.value);
+          }
+        }
+      }
+      for (var std in _stdTys) {
+        final ty = std.getTy(ident);
+        if (ty != null) return ty;
+      }
+    }
+
+    return super.getStdTy(c, ident);
+  }
 
   BuildContextImpl build(String path) {
     final cache = llvmCtxs[path];

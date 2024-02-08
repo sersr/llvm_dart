@@ -40,6 +40,7 @@ impl<T> Bcx<T> {
       printf("hin pr: %d\n", y);
     }
     hin();
+    hin();
   }
 }
 
@@ -57,32 +58,32 @@ fn main() i32 {
   print('start');
   let y = 55 as i64;
   let bcx = Bcx { 1002, Gen { 3343434 } };
-  let size = bcx.getb(& Gen { 66666 }).x;
-  printf("main size: %d\n", size);
+  // let size = bcx.getb(& Gen { 66666 }).x;
+  // printf("main size: %d\n", size);
 
-  fn pp() {
-   //  printf("size: %d\n", size);
-  }
-  pp();
+  // fn pp() {
+  //  //  printf("size: %d\n", size);
+  // }
+  // pp();
   bcx.gee();
 
-  print('---------');
+//   print('---------');
 
   let bcxData = Bcx { 10001, Data { 33 ,555}, }
-  let size = bcxData.getb(& Data { 44, 666 }).x;
-    printf("main size data: %d\n", size);
+//   let size = bcxData.getb(& Data { 44, 666 }).x;
+//     printf("main size data: %d\n", size);
   bcxData.gee();
-  let s = sizeOf(bcxData);
-  printf("s: %d\n", s);
-{
-  let b = true;
-  if b {
-    print("hello b");
-  }}
+//   let s = sizeOf(bcxData);
+//   printf("s: %d\n", s);
+// {
+//   let b = true;
+//   if b {
+//     print("hello b");
+//   }}
 
-  "hello world".print();
-  print("end print");
-  33.ll();
+//   "hello world".print();
+//   print("end print");
+//   33.ll();
 
   0;
 }

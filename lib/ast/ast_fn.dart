@@ -51,7 +51,7 @@ class FnDecl extends Ty with NewInst<FnDecl> {
   }
 
   @override
-  late final props = [ident.toRawIdent, fields, _returnTy, _tys];
+  late final props = [ident, fields, _returnTy, _tys];
 
   void analysisFn(AnalysisContext context) {
     for (var p in fields) {
@@ -79,19 +79,28 @@ class FnDecl extends Ty with NewInst<FnDecl> {
     return ImplFnDecl(ident, fields, generics, _returnTy, isVar);
   }
 
+  final _closures = <ListKey, FnClosure>{};
+
   FnClosure toClosure(List<Variable> variable) {
-    final list = <FieldDef>[];
-    list.add(FieldDef.newDef(
-        'fn'.ident, PathTy.none, RefTy.pointer(LiteralKind.kVoid.ty)));
+    final keys = variable.map((e) => e.ty).toList();
+    return parentOrCurrent._closures.putIfAbsent(ListKey(keys), () {
+      final list = <FieldDef>[];
+      list.add(FieldDef.newDef(
+          'fn'.ident, PathTy.none, RefTy.pointer(LiteralKind.kVoid.ty)));
 
-    for (var val in variable) {
-      final field = FieldDef.newDef(val.ident, PathTy.none, val.ty);
-      list.add(field);
-    }
+      for (var val in variable) {
+        final field = FieldDef.newDef(val.ident, PathTy.none, RefTy(val.ty));
+        list.add(field);
+      }
 
-    return FnClosure(ident, fields, generics, _returnTy, isVar, list)
-      .._tys = tys
-      .._parent = parentOrCurrent;
+      return newClosure(list)
+        .._tys = tys
+        .._parent = parentOrCurrent;
+    });
+  }
+
+  FnClosure newClosure(List<FieldDef> catchVariables) {
+    return FnClosure(ident, fields, generics, _returnTy, isVar, catchVariables);
   }
 }
 
@@ -132,6 +141,15 @@ class Fn extends Ty {
   Identifier get ident => fnName;
 
   @override
+  bool get extern => throw "use fnDecl.extern";
+
+  @override
+  set extern(bool v) {
+    super.extern = v;
+    _fnDecl.extern = v;
+  }
+
+  @override
   void incLevel([int count = 1]) {
     super.incLevel(count);
     block?.incLevel(count);
@@ -146,13 +164,7 @@ class Fn extends Ty {
     if (block != null) {
       b = ' $block';
     }
-
-    var ext = '';
-    if (extern) {
-      ext = 'extern ';
-    }
-
-    return '$pad$ext$fnDecl$b';
+    return '$pad$fnDecl$b';
   }
 
   @override
@@ -168,11 +180,12 @@ class Fn extends Ty {
     return Fn(newFnDecl, block)..copy(this);
   }
 
-  late final _cache = <ListKey, Variable>{};
+  late final _cache = <ListKey, Map<ListKey, (Variable, Variable?)>>{};
 
   @override
   void prepareBuild(FnBuildMixin context, {bool push = true}) {
     super.prepareBuild(context);
+    _depFns = null;
     if (push) context.pushFn(fnName, this);
   }
 
@@ -180,8 +193,7 @@ class Fn extends Ty {
   Fn get parentOrCurrent => _parent ?? this;
   void copy(Fn from) {
     _parent = from.parentOrCurrent;
-    selfVariables = from.selfVariables;
-    _get = from._get;
+    variables = from.variables;
     _buildContext = from.currentContext;
     _analysisContext = from.analysisContext;
   }
@@ -193,46 +205,62 @@ class Fn extends Ty {
   FnDecl get fnDecl => _closure ?? _fnDecl;
   FnDecl? _closure;
 
+  Set<FnBuildMixin?>? _depFns;
+
   Variable genFn([bool ignoreFree = false]) {
     final context = currentContext ?? parentOrCurrent.currentContext!;
     FnDecl decl = fnDecl;
 
-    final allCatchs = <Variable>[];
+    late final allCatchs = <Variable>[];
+    var depFns = _depFns;
+    if (depFns == null) {
+      for (var val in variables) {
+        final variable = context.getVariable(val.ident);
+        if (variable != null) {
+          allCatchs.add(variable);
+        }
+      }
 
-    for (var val in variables) {
-      final variable = context.getVariable(val.ident);
-      if (variable != null) {
-        allCatchs.add(variable);
+      depFns = _depFns = allCatchs
+          .map((e) => (e.pushContext as FnBuildMixin?)?.getLastFnContext())
+          .toSet();
+
+      if (allCatchs.isNotEmpty) {
+        decl = _fnDecl.toClosure(allCatchs);
       }
     }
 
-    if (allCatchs.isNotEmpty) {
-      decl = fnDecl.toClosure(allCatchs);
-    }
     _closure = decl;
 
     final key = ListKey([getKey(), decl]);
 
-    var fn = parentOrCurrent._cache[key];
+    final map = parentOrCurrent._cache.putIfAbsent(key, () => {});
+    final secKey = ListKey(depFns);
+    final baseValue = map.values.firstOrNull;
+    var fn = map[secKey];
+
     if (fn != null) {
-      if (decl is FnClosure) {
-        fn = decl.llty.wrapFn(context, fn, allCatchs);
-      }
-      return fn;
+      return fn.$2 ?? fn.$1;
+    } else if (baseValue != null && decl is FnClosure) {
+      final (base, _) = baseValue;
+      final wrapValue = decl.llty.wrapFn(context, base, allCatchs);
+      final newFn = (base, wrapValue);
+      map[secKey] = newFn;
+      return wrapValue;
     }
 
     final fnValue = AbiFn.createFunction(context, this);
     if (decl is FnClosure) {
-      fn = decl.llty.wrapFn(context, fnValue, allCatchs);
+      fn = (fnValue, decl.llty.wrapFn(context, fnValue, allCatchs));
     } else {
-      fn = fnValue;
+      fn = (fnValue, null);
     }
 
-    parentOrCurrent._cache[key] = fnValue;
+    map[secKey] = fn;
 
     context.buildFnBB(this, fnValue: fnValue.value, ignoreFree: ignoreFree);
 
-    return fn;
+    return fn.$2 ?? fn.$1;
   }
 
   void pushTyGenerics(Tys context) {
@@ -243,14 +271,7 @@ class Fn extends Ty {
     return null;
   }
 
-  Set<AnalysisVariable> selfVariables = {};
-  Set<AnalysisVariable> get variables {
-    final v = _get?.call();
-    if (v == null) return selfVariables;
-    return {...selfVariables, ...v};
-  }
-
-  Set<AnalysisVariable> Function()? _get;
+  Set<AnalysisVariable> variables = {};
 
   Set<RawIdent> returnVariables = {};
 
@@ -272,8 +293,7 @@ class Fn extends Ty {
     _fnDecl.analysisFn(child);
     analysisStart(child);
     block?.analysis(child, hasRet: true);
-    selfVariables = child.catchVariables;
-    _get = () => child.childrenVariables;
+    variables = {...child.catchVariables, ...child.childrenVariables};
   }
 
   @override
@@ -364,8 +384,8 @@ class FnClosure extends FnDecl {
 
   @override
   FnClosure clone() {
-    return FnClosure(ident, fields.clone(), generics, _returnTy, isVar,
-        catchVariables.clone())
+    return FnClosure(
+        ident, fields.clone(), generics, _returnTy, isVar, catchVariables)
       .._tys = _tys
       .._parent = parentOrCurrent;
   }
@@ -434,7 +454,10 @@ class LLVMFnClosureType extends LLVMFnDeclType {
 
   @override
   LLVMMetadataRef createDIType(StoreLoadMixin c) {
-    final name = 'Fn_closure';
+    final fnClosure = c.global.getStdTy(c, 'FnClosure'.ident);
+
+    final name = fnClosure?.ident.src ?? 'FnClosure';
+    final offset = fnClosure?.ident.offset ?? Offset.zero;
 
     final elements = <LLVMMetadataRef>[];
     final fields = ty.catchVariables;
@@ -482,7 +505,7 @@ class LLVMFnClosureType extends LLVMFnDeclType {
       namePointer,
       nameLength,
       llvm.LLVMDIScopeGetFile(c.unit),
-      12,
+      offset.row,
       getBytes(c) * 8,
       alignSize * 8,
       0,
@@ -511,7 +534,7 @@ class LLVMFnClosureType extends LLVMFnDeclType {
         continue;
       }
       final val = variables[i - 1];
-      field.store(c, val.load(c));
+      field.store(c, val.getBaseValue(c));
     }
 
     return alloca;
@@ -529,7 +552,8 @@ class LLVMFnClosureType extends LLVMFnDeclType {
       final value = llvm.LLVMBuildStructGEP2(
           context.builder, type, alloca.alloca, i, unname);
       final field = LLVMAllocaVariable(
-          value, fieldTy, fieldTy.typeOf(context), item.ident);
+              value, fieldTy, fieldTy.typeOf(context), item.ident)
+          .defaultDeref(context, item.ident);
 
       context.pushVariable(field);
     }

@@ -3,10 +3,7 @@ part of 'build_context_mixin.dart';
 mixin FnBuildMixin
     on BuildContext, SretMixin, FreeMixin, FlowMixin, FnContextMixin {
   void buildFnBB(Fn fn,
-      {Set<AnalysisVariable>? extra,
-      required LLVMValueRef fnValue,
-      bool ignoreFree = false,
-      Map<Identifier, Set<AnalysisVariable>>? map}) {
+      {required LLVMValueRef fnValue, bool ignoreFree = false}) {
     final block = fn.block?.clone();
     if (block == null) return;
 
@@ -19,8 +16,7 @@ mixin FnBuildMixin
     fnContext.instertFnEntryBB();
     fn.pushTyGenerics(fnContext);
 
-    fnContext.initFnParamsStart(fnValue, fn, extra,
-        ignoreFree: ignoreFree, map: map ?? const {});
+    fnContext.initFnParamsStart(fnValue, fn, ignoreFree: ignoreFree);
 
     block.build(fnContext, hasRet: true);
 
@@ -29,11 +25,8 @@ mixin FnBuildMixin
     }
   }
 
-  void initFnParamsStart(LLVMValueRef fn, Fn fnty, Set<AnalysisVariable>? extra,
-      {bool ignoreFree = false,
-      Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
-    final sret = AbiFn.initFnParams(this, fn, fnty, extra,
-        ignoreFree: ignoreFree, map: map);
+  void initFnParamsStart(LLVMValueRef fn, Fn fnty, {bool ignoreFree = false}) {
+    final sret = AbiFn.initFnParams(this, fn, fnty, ignoreFree: ignoreFree);
     if (sret != null) _sret = sret;
   }
 
@@ -64,45 +57,10 @@ mixin FnBuildMixin
       final p = params[i];
       final fnParam = llvm.LLVMGetParam(fn, index);
       var realTy = fnty.fnDecl.getFieldTy(this, p);
-      // if (realTy is FnDecl) {
-      //   final extra = map[p.ident];
-      //   if (extra != null) {
-      //     realTy = realTy.copyExtra(this, extra);
-      //   }
-      // }
 
       resolveParam(realTy, fnParam, p.ident, ignoreFree);
       index += 1;
     }
-
-    void fnCatchVariable(AnalysisVariable variable, int index) {
-      final value = llvm.LLVMGetParam(fn, index);
-      final ident = variable.ident;
-      final val = getVariable(ident);
-
-      if (val == null) {
-        return;
-      }
-
-      final ty = val.ty;
-      final type = ty.typeOf(this);
-      final alloca = LLVMAllocaVariable(value, ty, type, ident);
-      if (!ignoreFree) addFree(alloca);
-      setName(value, ident.src);
-      pushVariable(alloca);
-    }
-
-    // for (var variable in fnty.variables) {
-    //   fnCatchVariable(variable, index);
-    //   index += 1;
-    // }
-
-    // if (extra != null) {
-    //   for (var variable in extra) {
-    //     fnCatchVariable(variable, index);
-    //     index += 1;
-    //   }
-    // }
   }
 
   void resolveParam(

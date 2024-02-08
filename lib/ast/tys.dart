@@ -23,6 +23,9 @@ abstract class LifeCycleVariable {
       lifeEnd = ident;
     }
   }
+
+  Tys? _pushContext;
+  Tys? get pushContext => _pushContext;
 }
 
 class ImportPath with EquatableMixin {
@@ -57,6 +60,8 @@ abstract class GlobalContext {
       {bool Function(VA v)? test});
 
   bool isStd(Tys c);
+
+  Ty? getStdTy(Tys c, Identifier ident);
 }
 
 mixin Tys<V extends LifeCycleVariable> {
@@ -133,6 +138,7 @@ mixin Tys<V extends LifeCycleVariable> {
     final list = variables.putIfAbsent(variable.ident, () => []);
     if (!list.contains(variable)) {
       if (list.isEmpty) {
+        variable._pushContext = this;
         assert(!identical(variable.ident, Identifier.none), variable);
         list.add(variable);
       } else {

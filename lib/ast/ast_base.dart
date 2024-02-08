@@ -168,3 +168,18 @@ extension on Map<Identifier, Ty> {
     return ' : ${toString()}';
   }
 }
+
+/// #[attributeItem, attributeItem2(x), attributeItem3(y = "vvv")]
+class Attribute {
+  Attribute(this.items);
+  final List<AttributeItem> items;
+}
+
+class AttributeItem {
+  AttributeItem(this.name, this.value, this.items);
+  AttributeItem.kV(this.name, this.value) : items = const [];
+
+  final String name;
+  final String value;
+  final List<AttributeItem> items;
+}

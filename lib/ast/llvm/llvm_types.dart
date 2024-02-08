@@ -192,11 +192,10 @@ class LLVMFnDeclType extends LLVMType {
 }
 
 class LLVMFnType extends LLVMType {
-  LLVMFnType(this.ty);
+  LLVMFnType(this.fn);
+  final Fn fn;
   @override
-  final Fn ty;
-
-  FnDecl get decl => ty.fnDecl;
+  FnDecl get ty => fn.fnDecl;
 
   // LLVMTypeRef createFnType(StoreLoadMixin c,
   //     [Set<AnalysisVariable>? variables]) {
@@ -245,8 +244,8 @@ class LLVMFnType extends LLVMType {
   late final _cacheFns = <ListKey, LLVMConstVariable>{};
 
   LLVMConstVariable createFunction(StoreLoadMixin c) {
-    final type = decl.llty.createFnType(c);
-    var ident = ty.fnName.src;
+    final type = ty.llty.createFnType(c);
+    var ident = fn.fnName.src;
     if (ident.isEmpty) {
       ident = '_fn';
     }
@@ -272,7 +271,7 @@ class LLVMFnType extends LLVMType {
     c.setFnLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
     c.setFnLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
 
-    return LLVMConstVariable(v, ty.fnDecl, ty.fnName);
+    return LLVMConstVariable(v, ty, fn.fnName);
   }
 
   LLVMMetadataRef? _scope;
@@ -281,17 +280,17 @@ class LLVMFnType extends LLVMType {
     if (dBuilder == null) return null;
 
     if (_scope != null) return _scope;
-    var retTy = decl.getRetTy(c);
+    var retTy = ty.getRetTy(c);
 
-    if (ty.block?.isNotEmpty == true) {
-      final offset = ty.fnName.offset;
-      final (namePointer, nameLength) = ty.fnName.src.toNativeUtf8WithLength();
+    if (fn.block?.isNotEmpty == true) {
+      final offset = fn.fnName.offset;
+      final (namePointer, nameLength) = fn.fnName.src.toNativeUtf8WithLength();
       final file = llvm.LLVMDIScopeGetFile(c.unit);
       final params = <Pointer>[];
       params.add(retTy.llty.createDIType(c));
 
-      for (var p in decl.fields) {
-        final realTy = decl.getFieldTy(c, p);
+      for (var p in ty.fields) {
+        final realTy = ty.getFieldTy(c, p);
         final fieldTy = realTy.llty.createDIType(c);
         params.add(fieldTy);
       }
@@ -319,24 +318,32 @@ class LLVMFnType extends LLVMType {
 
   @override
   LLVMTypeRef typeOf(StoreLoadMixin c) {
-    return decl.typeOf(c);
+    return ty.typeOf(c);
   }
 
   @override
   int getBytes(StoreLoadMixin c) {
-    return decl.llty.getBytes(c);
+    return ty.llty.getBytes(c);
   }
 
   @override
   LLVMMetadataRef createDIType(StoreLoadMixin c) {
-    return decl.llty.createDIType(c);
+    return ty.llty.createDIType(c);
   }
 
   LLVMConstVariable? _externFn;
 
-  LLVMConstVariable getOrCreate(LLVMConstVariable Function() action) {
+  LLVMConstVariable getOrCreate(
+      StoreLoadMixin c, LLVMConstVariable Function() action) {
     if (_externFn != null) return _externFn!;
-    return _externFn = action();
+    final value = _externFn = action();
+    final meta = createScope(c);
+
+    if (meta != null) {
+      llvm.LLVMSetSubprogram(value.value, meta);
+    }
+
+    return value;
   }
 }
 

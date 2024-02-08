@@ -5,9 +5,14 @@ fn main() i32 {
   let y = 10;
   fn hello() {
     printf("hello y %d\n", y);
+    y = 111002;
   }
 
   hello();
+  printf("main: %d\n", y);
+  y = 2220;
+  hello();
 
+  printf(r"rawString \n", y);
   0;
 }

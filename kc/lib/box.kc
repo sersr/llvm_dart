@@ -1,6 +1,8 @@
 import "d.kc";
 import "allocator.kc";
+import "closure.kc";
 
+#[FnClosureCopy]
 struct Box<T> {
   ptr: *BoxData<T>,
 }

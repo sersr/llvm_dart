@@ -1,4 +1,5 @@
 import 'package:characters/characters.dart';
+import 'package:nop/nop.dart';
 
 import 'lexers/token_kind.dart';
 import 'token_it.dart';
@@ -8,10 +9,20 @@ bool isLF(String text) {
 }
 
 String parseStr(String str) {
+  if (str.length < 2) {
+    Log.e('parse str error: $str');
+    return str;
+  }
+
+  if (str.startsWith('r')) {
+    return str.substring(2, str.length - 1);
+  }
+
   final buf = StringBuffer();
   var lastChar = '';
-  final pattern = str.characters.first == "'" ? '"' : "'";
+
   final slice = str.substring(1, str.length - 1);
+  final pattern = str.characters.last == "'" ? '"' : "'";
   final it = slice.characters.toList().tokenIt;
   bool? eatLn;
 

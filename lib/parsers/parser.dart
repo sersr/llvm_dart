@@ -320,6 +320,15 @@ class Parser {
     return FnDecl(ident, params, generics, retTy, isVar);
   }
 
+  Ty? parseFnOrFnDecl(TokenIterator it) {
+    final fn = parseFn(it);
+    if (fn case Fn(block: null, fnDecl: var fnDecl)) {
+      return fnDecl;
+    }
+
+    return fn;
+  }
+
   Fn? parseFn(TokenIterator it) {
     var ident = Identifier.none;
     if (!it.moveNext()) {

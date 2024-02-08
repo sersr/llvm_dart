@@ -17,7 +17,7 @@ class PathTy {
 
   Ty? grtOrT(Tys c, {GenTy? gen}) {
     var tempTy =
-        BuiltInTy.from(ident.src) ?? c.getTy(ident) ?? gen?.call(ident);
+        BuiltInTy.from(ident.src) ?? gen?.call(ident) ?? c.getTy(ident);
 
     if (tempTy is NewInst && !tempTy.done) {
       tempTy = tempTy.newInstWithGenerics(c, genericInsts, tempTy.generics,

@@ -3,13 +3,12 @@ import 'package:nop/nop.dart';
 
 import '../../abi/abi_fn.dart';
 import '../../llvm_dart.dart';
-import '../analysis_context.dart';
 import '../ast.dart';
+import '../builders/coms.dart';
 import '../expr.dart';
 import '../memory.dart';
 import '../tys.dart';
 import 'build_methods.dart';
-import '../builders/coms.dart';
 import 'intrinsics.dart';
 import 'variables.dart';
 

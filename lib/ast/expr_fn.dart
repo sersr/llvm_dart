@@ -17,14 +17,13 @@ class FnExpr extends Expr {
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     fn.prepareBuild(context);
-    fn.build();
     return ExprTempValue.ty(fn, fn.ident);
   }
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     fn.prepareAnalysis(context);
-    fn.analysis();
+    fn.analysisFn();
     return context.createVal(fn, fn.fnDecl.ident);
   }
 
@@ -60,7 +59,7 @@ mixin FnCallMixin {
       decl: fn.fnDecl,
       params: params,
       struct: struct,
-      extern: fn.extern,
+      extern: fn.fnDecl.extern,
     );
   }
 }

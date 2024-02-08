@@ -188,10 +188,10 @@ class VariableIdentExpr extends Expr {
     };
 
     switch (ty) {
-      case StructTy() when ty.fields.isEmpty && ty.done:
+      case StructTy(fields: List(isEmpty: true), done: true):
         final val = ty.llty.buildTupeOrStruct(context, const []);
         return ExprTempValue(val, ty: ty);
-      case Fn(fnDecl: var decl) when decl.done:
+      case Fn(fnDecl: FnDecl(done: true)):
         final value = ty.genFn();
         return ExprTempValue(value.newIdent(ident, dirty: false));
     }

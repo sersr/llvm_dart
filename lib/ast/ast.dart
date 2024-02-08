@@ -10,7 +10,6 @@ import 'package:meta/meta.dart';
 import 'package:nop/nop.dart';
 
 import '../abi/abi_fn.dart';
-import '../llvm_core.dart';
 import '../llvm_dart.dart';
 import '../parsers/lexers/token_kind.dart';
 import 'analysis_context.dart';

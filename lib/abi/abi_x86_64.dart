@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import '../ast/ast.dart';
 import '../ast/builders/builders.dart';
 import '../ast/expr.dart';
@@ -244,7 +242,6 @@ class AbiFnx86_64 implements AbiFn {
     final v = llvm.LLVMAddFunction(c.module, ident.toChar(), ty);
     llvm.LLVMSetLinkage(v, LLVMLinkage.LLVMExternalLinkage);
 
-    var retTy = decl.getRetTy(c);
     var index = 0;
     if (isSret(c, decl)) {
       c.setFnLLVMAttr(v, 1, LLVMAttr.StructRet);
@@ -262,45 +259,6 @@ class AbiFnx86_64 implements AbiFn {
           c.setFnTypeAttr(v, index, LLVMAttr.ByVal, ty);
         }
       }
-    }
-    final offset = decl.ident.offset;
-
-    final dBuilder = c.dBuilder;
-    if (dBuilder != null) {
-      final file = llvm.LLVMDIScopeGetFile(c.unit);
-      final params = <Pointer>[];
-      params.add(retTy.llty.createDIType(c));
-
-      for (var p in decl.fields) {
-        index += 1;
-        final realTy = decl.getFieldTy(c, p);
-        final ty = realTy.llty.createDIType(c);
-        params.add(ty);
-      }
-
-      final (namePointer, nameLength) = ident.toNativeUtf8WithLength();
-
-      final fnTy = llvm.LLVMDIBuilderCreateSubroutineType(
-          dBuilder, file, params.toNative(), params.length, 0);
-      final fnScope = llvm.LLVMDIBuilderCreateFunction(
-          dBuilder,
-          c.unit,
-          namePointer,
-          nameLength,
-          unname,
-          0,
-          file,
-          offset.row,
-          fnTy,
-          LLVMFalse,
-          LLVMTrue,
-          offset.row,
-          0,
-          LLVMFalse);
-
-      llvm.LLVMSetSubprogram(v, fnScope);
-
-      c.diSetCurrentLoc(offset);
     }
 
     c.setFnLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function

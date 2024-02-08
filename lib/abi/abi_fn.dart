@@ -4,9 +4,9 @@ import 'package:nop/nop.dart';
 import '../ast/analysis_context.dart';
 import '../ast/ast.dart';
 import '../ast/builders/builders.dart';
+import '../ast/builders/coms.dart';
 import '../ast/expr.dart';
 import '../ast/llvm/build_methods.dart';
-import '../ast/builders/coms.dart';
 import '../ast/llvm/llvm_context.dart';
 import '../ast/llvm/variables.dart';
 import '../ast/memory.dart';
@@ -178,8 +178,8 @@ abstract interface class AbiFn {
   }
 
   static LLVMConstVariable createFunction(FnBuildMixin c, Fn fn) {
-    if (fn.extern) {
-      return fn.llty.getOrCreate(() {
+    if (fn.fnDecl.extern) {
+      return fn.llty.getOrCreate(c, () {
         return AbiFn.get(c.abi).createFunctionAbi(c, fn.fnDecl);
       });
     }
@@ -189,11 +189,11 @@ abstract interface class AbiFn {
   LLVMAllocaVariable? initFnParamsImpl(
       StoreLoadMixin context, LLVMValueRef fn, Fn fnty);
 
-  static StoreVariable? initFnParams(FnBuildMixin context, LLVMValueRef fn,
-      Fn fnty, Set<AnalysisVariable>? extra,
+  static StoreVariable? initFnParams(
+      FnBuildMixin context, LLVMValueRef fn, Fn fnty,
       {bool ignoreFree = false,
       Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
-    if (fnty.extern) {
+    if (fnty.fnDecl.extern) {
       return AbiFn.get(context.abi).initFnParamsImpl(context, fn, fnty);
     }
     context.initFnParams(fn, fnty, ignoreFree: ignoreFree);
@@ -201,7 +201,7 @@ abstract interface class AbiFn {
   }
 
   static LLVMValueRef fnRet(BuildContext context, Fn fn, Variable src) {
-    if (fn.extern) {
+    if (fn.fnDecl.extern) {
       return AbiFn.get(context.abi).classifyFnRet(context, src);
     }
     return src.load(context);
