@@ -72,11 +72,8 @@ mixin LLVMTypeMixin {
       return llvm.LLVMStructTypeInContext(
           llvmContext, types.toNative(), types.length, LLVMFalse);
     }
-    final struct =
-        llvm.LLVMStructCreateNamed(llvmContext, 'struct_$ident'.toChar());
-    llvm.LLVMStructSetBody(struct, types.toNative(), types.length, LLVMFalse);
 
-    return struct;
+    return root.createStructType(types, ident);
   }
 
   LLVMTypeRef pointer() {

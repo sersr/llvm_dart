@@ -10,7 +10,7 @@ fn main(argc: usize, argv:  **u8) i32 {
         printf("c_array:%d,, %s\n",y, &arr[y]);
         y+=1;
     }
-    let new_arr = Array<i32>.new(10);
+    let new_arr:[i32; 10] = [];
 
     let new_max = new_arr.getSize() as i32;
 

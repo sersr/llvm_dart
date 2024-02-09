@@ -25,7 +25,7 @@ class AbiFnx86_64 implements AbiFn {
       FnBuildMixin context, Variable fn, FnDecl decl, List<FieldExpr> params) {
     final fnValue = fn.load(context);
 
-    final fnParams = decl.fields;
+    final fields = decl.fields;
     final args = <LLVMValueRef>[];
     final retTy = decl.getRetTy(context);
 
@@ -36,15 +36,14 @@ class AbiFnx86_64 implements AbiFn {
       args.add(sret.alloca);
     }
 
-    final sortFields = alignParam(
-        params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
+    final sortFields = alignParam(params, fields);
 
     final listByvals = <(int, LLVMTypeRef)>[];
     for (var i = 0; i < sortFields.length; i++) {
       final p = sortFields[i];
       Ty? c;
-      if (i < fnParams.length) {
-        c = decl.getFieldTy(context, fnParams[i]);
+      if (i < fields.length) {
+        c = decl.getFieldTy(context, fields[i]);
       }
       final temp = p.build(context, baseTy: c);
       final v = temp?.variable;

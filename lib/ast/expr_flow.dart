@@ -114,7 +114,7 @@ class IfExpr extends Expr with RetExprMixin implements LogPretty {
     return ifExprBlocks.join(' else ');
   }
 
-  Ty? _getTy() {
+  Ty? _getTy(Tys context) {
     if (_variable == null) return null;
     Ty? ty;
 
@@ -128,14 +128,23 @@ class IfExpr extends Expr with RetExprMixin implements LogPretty {
       }
     }
 
+    if (ty is AnalysisTy) {
+      return ty.pathTy.grt(context);
+    }
+
     return ty;
+  }
+
+  @override
+  Ty? getTy(Tys context, Ty? baseTy) {
+    return LiteralExpr.resolveBuiltinTy(context, _getTy(context), baseTy);
   }
 
   @override
   ExprTempValue? buildRetExpr(FnBuildMixin context, Ty? baseTy, bool isRet) {
     if (ifExprBlocks.isEmpty) return null;
 
-    var ty = baseTy ?? _getTy();
+    var ty = getTy(context, baseTy);
 
     if (LiteralKind.kVoid.ty.isTy(ty)) ty = null;
 
@@ -467,7 +476,7 @@ class MatchExpr extends Expr with RetExprMixin implements LogPretty {
     return AnalysisListVariable(variables);
   }
 
-  Ty? _getTy() {
+  Ty? _getTy(Tys context) {
     if (_variables == null) return null;
     Ty? ty;
 
@@ -480,8 +489,16 @@ class MatchExpr extends Expr with RetExprMixin implements LogPretty {
         return null;
       }
     }
+    if (ty is AnalysisTy) {
+      return ty.pathTy.grt(context);
+    }
 
     return ty;
+  }
+
+  @override
+  Ty? getTy(Tys context, Ty? baseTy) {
+    return LiteralExpr.resolveBuiltinTy(context, _getTy(context), baseTy);
   }
 
   @override
@@ -489,7 +506,7 @@ class MatchExpr extends Expr with RetExprMixin implements LogPretty {
     final temp = expr.build(context);
     if (temp == null) return null;
 
-    var ty = baseTy ?? _getTy();
+    var ty = getTy(context, baseTy);
 
     if (LiteralKind.kVoid.ty.isTy(ty)) ty = null;
 

@@ -146,7 +146,7 @@ class StructTy extends Ty with EquatableMixin, NewInst<StructTy> {
 
   @override
   StructTy clone() {
-    return StructTy(ident, fields.clone(), generics).._llty = llty;
+    return StructTy(ident, fields.clone(), generics);
   }
 
   @override
@@ -174,10 +174,8 @@ class StructTy extends Ty with EquatableMixin, NewInst<StructTy> {
     context.pushStruct(ident, parentOrCurrent);
   }
 
-  LLVMStructType? _llty;
-
   @override
-  LLVMStructType get llty => _llty ??= LLVMStructType(this);
+  late final LLVMStructType llty = LLVMStructType(this);
 }
 
 class EnumTy extends Ty with NewInst<EnumTy> {
@@ -286,7 +284,7 @@ class EnumItem extends StructTy {
 
   @override
   EnumItem clone() {
-    return EnumItem(ident, fields.clone(), generics).._llty = llty;
+    return EnumItem(ident, fields.clone(), generics);
   }
 
   @override
@@ -315,8 +313,8 @@ class EnumItem extends StructTy {
   }
 
   @override
-  LLVMEnumItemType get llty =>
-      (_llty ??= LLVMEnumItemType(this)) as LLVMEnumItemType;
+  // ignore: overridden_fields
+  late final LLVMEnumItemType llty = LLVMEnumItemType(this);
 }
 
 class ComponentTy extends Ty with NewInst<ComponentTy> {
@@ -567,25 +565,46 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   LLVMType get llty => throw UnimplementedError();
 }
 
-class ArrayTy extends Ty {
-  ArrayTy(this.elementTy, this.size);
+class SliceTy extends Ty {
+  SliceTy(this.elementTy);
   final Ty elementTy;
-  final int size;
+
+  @override
+  Ty clone() {
+    return SliceTy(elementTy.clone());
+  }
 
   Identifier? _ident;
+  @override
+  Identifier get ident => _ident ??= '[$elementTy]'.ident;
+
+  @override
+  late final SliceLLVMType llty = SliceLLVMType(this);
+
+  @override
+  late final props = [elementTy, _constraints];
+}
+
+class ArrayTy extends SliceTy {
+  ArrayTy(super.elementTy, this.sizeTy);
+  final ConstTy sizeTy;
+  int get size => sizeTy.size;
+
   @override
   Identifier get ident => _ident ??= '[$size; $elementTy]'.ident;
 
   @override
   ArrayTy clone() {
-    return ArrayTy(elementTy.clone(), size);
+    return ArrayTy(elementTy.clone(), sizeTy);
+  }
+
+  SliceTy getSlice() {
+    return SliceTy(elementTy);
   }
 
   @override
+  // ignore: overridden_fields
   late final ArrayLLVMType llty = ArrayLLVMType(this);
-
-  @override
-  late final props = [elementTy, _constraints];
 }
 
 class TypeAliasTy extends Ty {

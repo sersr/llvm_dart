@@ -4,28 +4,21 @@ fn print(data: *u8) {
     printf("log: %s\n", data);
 }
 
-struct Array<T> {
-  ptr: *T,
-}
-
-impl<T> Array<T> {
-
-    static fn new(size: usize) Self;
-    
-    fn getSize() usize;
-}
-
-
-impl<T> ArrayOp<T> for Array<T> {
-  fn elementAt(index: usize) &T {
-    return self.ptr[index] as &T;
+impl<T, N> [T; N] {
+  fn getSize() usize {
+    getArraySize(self)
   }
 }
 
-
-impl Array<u8> {
+impl [u8] {
   fn toStr() *u8 {
-    return self.ptr;
+    &self
+  }
+}
+
+impl [i8] {
+  fn toStr() *i8 {
+    &self
   }
 }
 

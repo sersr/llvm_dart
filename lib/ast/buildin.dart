@@ -24,6 +24,7 @@ void _init() {
   memCopyFn;
   addFreeFn;
   ptrSetValueFn;
+  getArraySizeFn;
 }
 
 ExprTempValue? doBuiltFns(
@@ -41,6 +42,14 @@ AnalysisVariable? doAnalysisFns(AnalysisContext context, Ty? fn) {
     if (ty != null) {
       return context.createVal(ty, Identifier.none);
     }
+  }
+
+  return null;
+}
+
+Ty? doTysFns(Tys context, Ty? fn) {
+  if (fn is BuiltinFn) {
+    return fn.retType;
   }
 
   return null;
@@ -197,3 +206,16 @@ ExprTempValue? ptrSetValue(
 }
 
 final ptrSetValueFn = BuiltinFn('ptrSetValue', ptrSetValue);
+
+final getArraySizeFn = BuiltinFn('getArraySize', (context, ident, params) {
+  final val = params[0].build(context)!.variable!;
+  final ty = val.ty;
+
+  if (ty is ArrayTy) {
+    final size =
+        LiteralKind.usize.ty.llty.createValue(ident: '${ty.size}'.ident);
+    return ExprTempValue(size);
+  }
+
+  return null;
+}, retType: LiteralKind.usize.ty);

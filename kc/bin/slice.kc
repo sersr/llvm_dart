@@ -1,0 +1,13 @@
+fn main() i32 {
+  let sxx:[i32; 10] = [10];
+  sxx.hello();
+  let size = sxx.getSize();
+  printf("size: %d\n", size);
+  0;
+}
+
+impl [i32] {
+  fn hello() {
+    printf("hello world %d\n", self[0]);
+  }
+}

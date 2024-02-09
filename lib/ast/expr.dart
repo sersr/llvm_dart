@@ -52,6 +52,11 @@ class FieldExpr extends Expr {
   }
 
   @override
+  Ty? getTy(Tys<LifeCycleVariable> context, Ty? baseTy) {
+    return expr.getTy(context, baseTy);
+  }
+
+  @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     return expr.build(context, baseTy: baseTy);
   }
@@ -76,6 +81,18 @@ class StructDotFieldExpr extends Expr {
   @override
   Expr clone() {
     return StructDotFieldExpr(struct.clone(), ident);
+  }
+
+  @override
+  Ty? getTy(Tys context, Ty? baseTy) {
+    final ty = struct.getTy(context, null);
+    if (ty is! StructTy) return null;
+
+    for (var field in ty.fields) {
+      if (field.ident == ident) return field.grtOrTUd(context);
+    }
+
+    return null;
   }
 
   @override
@@ -157,8 +174,8 @@ class VariableIdentExpr extends Expr {
   }
 
   @override
-  Ty? getTy(Tys context) {
-    return context.getVariable(ident)?.ty ?? pathTy.grtOrT(context);
+  Ty? getTy(Tys context, Ty? baseTy) {
+    return context.getVariable(ident)?.ty ?? pathTy.grtOrT(context) ?? baseTy;
   }
 
   @override
@@ -264,7 +281,7 @@ class AsExpr extends Expr {
   final PathTy rhs;
 
   @override
-  Ty? getTy(Tys context) {
+  Ty? getTy(Tys context, Ty? baseTy) {
     return rhs.grt(context);
   }
 

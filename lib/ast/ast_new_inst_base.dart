@@ -103,7 +103,7 @@ mixin NewInst<T extends Ty> on Ty {
 
   @override
   void cloneTys(Tys c, covariant NewInst<T> parent) {
-    _initData(c, parent.parentOrCurrent, tys);
+    _initData(c, parent.parentOrCurrent, parent.tys);
   }
 
   _initData(Tys c, T parent, Map<Identifier, Ty> tys) {
@@ -205,6 +205,14 @@ mixin NewInst<T extends Ty> on Ty {
     // ==> exactTy: Gen<i32>; pathTy: Gen<T>
     void visitor(Ty exactTy, PathTy pathTy) {
       ComponentTy? checkTy(Ty exactTy, PathTy pathTy) {
+        if (pathTy is SlicePathTy && exactTy is SliceTy) {
+          visitor(exactTy.elementTy, pathTy.elementTy);
+          if (pathTy is ArrayPathTy && exactTy is ArrayTy) {
+            visitor(exactTy.sizeTy, pathTy.size);
+          }
+          return null;
+        }
+
         ComponentTy? tyConstraint;
 
         final tryTy = c.runIgnoreImport(() => pathTy.getBaseTy(c));
@@ -226,8 +234,7 @@ mixin NewInst<T extends Ty> on Ty {
           generics = exactTy.generics;
           tys = exactTy.tys;
 
-          if (tryTy is! NewInst ||
-              tryTy.parentOrCurrent != exactTy.parentOrCurrent) {
+          if (!exactTy.isTy(tryTy)) {
             result = false;
             return null;
           }
@@ -305,8 +312,7 @@ mixin NewInst<T extends Ty> on Ty {
 
     final genMapTy = <Identifier, Ty>{};
     final fields = this.fields.clone();
-    final sortFields =
-        alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
+    final sortFields = alignParam(params, fields);
 
     bool isBuild = context is FnBuildMixin;
 
@@ -334,9 +340,8 @@ mixin NewInst<T extends Ty> on Ty {
     return genMapTy;
   }
 
-  T resolveGeneric(Tys context, List<FieldExpr> params,
-      {List<GenericDef> others = const []}) {
-    final genMapTy = getTysWith(context, params, others: others);
+  T resolveGeneric(Tys context, List<FieldExpr> params) {
+    final genMapTy = getTysWith(context, params);
     if (genMapTy.isEmpty) return this as T;
 
     return newInst(genMapTy, context);

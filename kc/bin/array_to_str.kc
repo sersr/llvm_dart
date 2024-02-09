@@ -1,6 +1,6 @@
 
 fn main() i32 {
-  let arr = Array<u8>.new(10);
+  let arr: [u8; 10] = [];
   let size = 10;
 
   printf("size: %d\n", size);
@@ -31,7 +31,7 @@ fn main() i32 {
 
   arr[vSize + 1] = 0;
   
-  let n_arr = Array<u8>.new(10);
+  let n_arr:[u8; 10] = [];
 
   print("reverse");
 

@@ -15,8 +15,19 @@ class FnExpr extends Expr {
   }
 
   @override
+  Ty? getTy(Tys<LifeCycleVariable> context, Ty? baseTy) {
+    return fn;
+  }
+
+  @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     fn.prepareBuild(context);
+
+    if (fn.fnDecl.done) {
+      final value = fn.genFn();
+      return ExprTempValue(value);
+    }
+
     return ExprTempValue.ty(fn, fn.ident);
   }
 
@@ -52,6 +63,33 @@ mixin FnCallMixin {
     Variable? struct,
   }) {
     fn = fn.resolveGeneric(context, params);
+    final decl = fn.fnDecl;
+    if (decl case ImplFnDecl(ident: Identifier(src: 'new'), implFn: var implFn)
+        when implFn.isStatic) {
+      final fields = decl.fields;
+      final sortFields = alignParam(params, fields);
+      final newParams = <Variable>[];
+      for (var i = 0; i < sortFields.length; i++) {
+        final p = sortFields[i];
+        Ty? baseTy;
+        if (i < fields.length) {
+          baseTy = decl.getFieldTy(context, fields[i]);
+        }
+
+        final temp = p.build(context, baseTy: baseTy);
+        var v = temp?.variable;
+        if (v != null) {
+          v = v.newIdent(fields[i].ident);
+          newParams.add(v);
+        }
+      }
+
+      var variable = context.compileRun(implFn, newParams);
+      if (variable == null) return null;
+
+      return ExprTempValue(variable);
+    }
+
     final fnValue = fn.genFn();
     return AbiFn.fnCallInternal(
       context: context,
@@ -83,6 +121,24 @@ class FnCallExpr extends Expr with FnCallMixin {
   }
 
   @override
+  Ty? getTy(Tys<LifeCycleVariable> context, Ty? baseTy) {
+    final temp = expr.getTy(context, null);
+    if (temp is StructTy) return temp;
+    if (temp is BuiltinFn) {
+      return doTysFns(context, temp);
+    }
+
+    if (temp == null) return null;
+
+    final callTemp = CallBuilder.callImplTy(context, temp, params);
+    if (callTemp != null) return callTemp;
+    if (temp is FnDecl) return temp.getRetTyOrT(context);
+    if (temp is Fn) return temp.fnDecl.getRetTyOrT(context);
+
+    return null;
+  }
+
+  @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final temp = expr.build(context);
     if (temp == null) return null;
@@ -98,11 +154,8 @@ class FnCallExpr extends Expr with FnCallMixin {
     }
 
     final fn = ty;
-
-    final builtinFn =
-        doBuiltFns(context, fn, temp.ident ?? Identifier.none, params);
-    if (builtinFn != null) {
-      return builtinFn;
+    if (fn is BuiltinFn) {
+      return doBuiltFns(context, fn, temp.ident ?? Identifier.none, params);
     }
 
     if (variable != null) {
@@ -136,17 +189,17 @@ class FnCallExpr extends Expr with FnCallMixin {
     final temp = CallBuilder.callImplTys(context, variable, params);
     if (temp != null) return temp;
 
-    final builtVal = doAnalysisFns(context, variable.ty);
-    if (builtVal != null) return builtVal;
+    if (variable.ty is BuiltinFn) {
+      return doAnalysisFns(context, variable.ty);
+    }
 
     if (valTy is FnDecl) {
       return context.createVal(valTy.getRetTy(context), variable.ident);
     }
 
     if (valTy is! Fn) return null;
-    final fnnn = valTy.resolveGeneric(context, params);
-
-    return context.createVal(fnnn.fnDecl.getRetTy(context), Identifier.none);
+    final fn = valTy.resolveGeneric(context, params);
+    return context.createVal(fn.fnDecl.getRetTy(context), Identifier.none);
   }
 }
 
@@ -172,11 +225,65 @@ class MethodCallExpr extends Expr with FnCallMixin {
     return '$receiver.$ident(${params.ast})';
   }
 
+  ImplFnMixin? resolveImplFn(Tys context, Ty structTy) {
+    var implFn = context.getImplFnForTy(structTy, ident);
+
+    if (structTy case StructTy(done: false)
+        when implFn != null && implFn.isStatic) {
+      /// 对于类方法(静态方法)，struct 中存在泛型，并且没有指定时，从静态方法中的参数列表
+      /// 自动获取
+      final map =
+          implFn.fnDecl.getTysWith(context, params, others: structTy.generics);
+
+      final newTys = <Identifier, Ty>{}..addAll(structTy.tys);
+      for (var g in structTy.generics) {
+        final ty = map[g.ident];
+        if (ty != null) {
+          newTys[g.ident] = ty;
+        }
+      }
+      structTy = structTy.newInst(newTys, context);
+      implFn = context.getImplFnForTy(structTy, ident);
+    }
+
+    return implFn;
+  }
+
+  @override
+  Ty? getTy(Tys context, Ty? baseTy) {
+    final temp = receiver.getTy(context, null);
+    var structTy = temp;
+
+    if (structTy is StructTy && structTy.tys.isEmpty) {
+      if (baseTy is StructTy && structTy.ident == baseTy.ident) {
+        structTy = baseTy;
+      }
+    }
+
+    if (structTy == null) return null;
+
+    final callTemp = CallBuilder.callImplTy(context, structTy, params);
+    if (callTemp != null) return callTemp;
+
+    if (structTy is StructTy) {
+      for (var field in structTy.fields) {
+        if (field.ident != ident) continue;
+
+        if (field.grtOrTUd(context) case FnDecl decl) {
+          return decl.getRetTyOrT(context);
+        }
+      }
+    }
+
+    final implFn = resolveImplFn(context, structTy);
+
+    return implFn?.fnDecl.getRetTyOrT(context);
+  }
+
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final temp = receiver.build(context);
     final variable = temp?.variable;
-    final fnName = ident.src;
 
     final val = variable?.defaultDeref(context, variable.ident);
 
@@ -196,38 +303,12 @@ class MethodCallExpr extends Expr with FnCallMixin {
       }
     }
 
-    if (temp != null) {
-      final builtin = context.root
-          .arrayBuiltin(context, ident, fnName, val, structTy, params);
-      if (builtin != null) return builtin;
-    }
-
-    var implFn = context.getImplFnForTy(structTy, ident);
-
-    if (structTy case StructTy(done: false)
-        when implFn != null && implFn.isStatic) {
-      /// 对于类方法(静态方法)，struct 中存在泛型，并且没有指定时，从静态方法中的参数列表
-      /// 自动获取
-      final map =
-          implFn.fnDecl.getTysWith(context, params, others: structTy.generics);
-      if (structTy.tys.length != structTy.generics.length) {
-        final newTys = <Identifier, Ty>{}..addAll(structTy.tys);
-        for (var g in structTy.generics) {
-          final ty = map[g.ident];
-          if (ty != null) {
-            newTys[g.ident] = ty;
-          }
-        }
-        structTy = structTy.newInst(newTys, context);
-        implFn = context.getImplFnForTy(structTy, ident);
-      }
-    }
+    final implFn = resolveImplFn(context, structTy);
 
     if (implFn != null) return fnCall(context, implFn, params, struct: val);
 
     // 字段有可能是一个函数指针
-
-    if (val != null && structTy is StructTy && variable != null) {
+    if (val != null && structTy is StructTy) {
       final field = structTy.llty.getField(val, context, ident);
       final fn = field?.ty;
       if (fn is FnDecl && field != null) {
@@ -251,29 +332,10 @@ class MethodCallExpr extends Expr with FnCallMixin {
     final temp = CallBuilder.callImplTys(context, variable, params);
     if (temp != null) return temp;
 
-    if (structTy is! StructTy) return null;
-
-    var implFn = context.getImplFnForTy(structTy, ident);
-
-    if (!structTy.done && implFn != null && implFn.isStatic) {
-      final map =
-          implFn.fnDecl.getTysWith(context, params, others: structTy.generics);
-      if (structTy.tys.length != structTy.generics.length) {
-        final newTys = <Identifier, Ty>{...structTy.tys};
-        for (var g in structTy.generics) {
-          final ty = map[g.ident];
-          if (ty != null) {
-            newTys[g.ident] = ty;
-          }
-        }
-        structTy = structTy.newInst(newTys, context);
-        implFn = context.getImplFnForTy(structTy, ident);
-      }
-    }
-
-    Fn? fn = implFn;
+    Fn? fn = resolveImplFn(context, structTy);
 
     if (fn == null) {
+      if (structTy is! StructTy) return null;
       final field =
           structTy.fields.firstWhereOrNull((element) => element.ident == ident);
       final ty = field?.grtOrT(context);

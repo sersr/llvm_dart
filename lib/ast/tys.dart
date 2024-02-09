@@ -278,22 +278,35 @@ mixin Tys<V extends LifeCycleVariable> {
       return false;
     }
 
-    /// for ty 可识别
-    getKV((c) {
-      return c._implForTy[ty];
-    }, test: test);
-    if (cache != null) return cache;
+    void tryCtxTy(Tys c, Ty ty) {
+      c.getKV((c) {
+        return c._implForTy[ty];
+      }, test: test);
+      if (cache != null) return;
 
-    // for ty 无法识别的情况
-    getKV((c) => c._implTys, test: test);
+      // for ty 无法识别的情况
+      c.getKV((c) => c._implTys, test: test);
+      if (cache != null) return;
+    }
+
+    /// for ty 可识别
+    tryCtxTy(this, ty);
     if (cache != null) return cache;
 
     final tyCtx = ty.currentContext;
     if (tyCtx != null) {
-      tyCtx.getKV((c) => c._implForTy[ty], test: test);
+      tryCtxTy(tyCtx, ty);
+      if (cache != null) return cache;
+    }
+
+    if (ty is ArrayTy) {
+      final slice = ty.getSlice();
+      tryCtxTy(this, slice);
       if (cache != null) return cache;
 
-      tyCtx.getKV((c) => c._implTys, test: test);
+      if (tyCtx != null) {
+        tryCtxTy(tyCtx, slice);
+      }
     }
 
     return cache;

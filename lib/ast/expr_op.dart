@@ -180,15 +180,21 @@ class OpExpr extends Expr {
   }
 
   @override
-  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    final lty = lhs.getTy(context);
-    final rty = rhs.getTy(context);
+  Ty? getTy(Tys<LifeCycleVariable> context, Ty? baseTy) {
+    final lty = lhs.getTy(context, baseTy);
+    final rty = rhs.getTy(context, baseTy);
     Ty? bestTy = lty ?? rty;
-    if (lty != null && rty != null) {
-      final lsize = lty.llty.getBytes(context);
-      final rsize = rty.llty.getBytes(context);
-      bestTy = lsize > rsize ? lty : rty;
+
+    if (lty is BuiltInTy && rty is BuiltInTy) {
+      final big = lty.literal.index > rty.literal.index;
+      bestTy = big ? lty : rty;
     }
+    return bestTy;
+  }
+
+  @override
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
+    final bestTy = getTy(context, baseTy);
 
     var l = lhs.build(context, baseTy: bestTy);
     var r = rhs.build(context, baseTy: bestTy);
@@ -197,6 +203,11 @@ class OpExpr extends Expr {
     final value = math(context, op, l.variable, rhs, opIdent);
     var val = value?.variable;
     final valTy = val?.ty;
+
+    if (valTy != null && valTy.isTy(baseTy)) {
+      return value;
+    }
+
     if (baseTy is BuiltInTy && baseTy != valTy && valTy is BuiltInTy) {
       final v =
           context.castLit(valTy.literal, val!.load(context), baseTy.literal);
@@ -248,6 +259,11 @@ enum PointerKind {
       return PointerKind.pointer;
     }
     return null;
+  }
+
+  Ty? unWrapTy(Ty? baseTy) {
+    if (baseTy is! RefTy) return null;
+    return baseTy.parent;
   }
 
   Variable? refDeref(Variable? val, StoreLoadMixin c, Identifier id) {
@@ -304,6 +320,21 @@ class RefExpr extends Expr {
   @override
   Expr clone() {
     return RefExpr(current.clone(), pointerIdent, kind);
+  }
+
+  @override
+  Ty? getTy(Tys<LifeCycleVariable> context, Ty? baseTy) {
+    if (baseTy != null) {
+      baseTy = kind.unWrapTy(baseTy);
+    }
+
+    final temp = current.getTy(context, baseTy);
+
+    if (temp != null) {
+      return RefTy.from(temp, kind == PointerKind.pointer);
+    }
+
+    return null;
   }
 
   @override
@@ -364,6 +395,18 @@ class UnaryExpr extends Expr {
   @override
   String toString() {
     return '${op.op}$expr';
+  }
+
+  @override
+  Ty? getTy(Tys<LifeCycleVariable> context, Ty? baseTy) {
+    final temp = expr.getTy(context, baseTy);
+
+    if (op == UnaryKind.Not) {
+      if (LiteralKind.kBool.ty.isTy(temp)) return temp;
+      return null;
+    }
+
+    return temp;
   }
 
   @override

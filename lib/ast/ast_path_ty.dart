@@ -26,7 +26,13 @@ class PathTy {
       tempTy = tempTy.getTy(c, genericInsts, gen: gen);
     }
 
-    if (tempTy == null) return null;
+    if (tempTy == null) {
+      final size = int.tryParse(ident.src);
+      if (size != null) {
+        return ConstTy(size);
+      }
+      return null;
+    }
 
     return kind.wrapRefTy(tempTy);
   }
@@ -64,23 +70,73 @@ class PathFnDeclTy extends PathTy with EquatableMixin {
   }
 }
 
-class ArrayPathTy extends PathTy {
-  ArrayPathTy(this.elementTy, Identifier ident, List<PointerKind> kinds)
-      : super(ident, const [], kinds);
+class SlicePathTy extends PathTy {
+  SlicePathTy(this.elementTy, List<PointerKind> kinds)
+      : super(Identifier.none, const [], kinds);
   final PathTy elementTy;
 
   @override
-  Ty? grtOrT(Tys c, {GenTy? gen}) {
-    final e = elementTy.grtOrT(c, gen: gen);
-    if (e == null) return null;
+  Ty? grtOrT(Tys<LifeCycleVariable> c, {GenTy? gen}) {
+    final element = elementTy.grtOrT(c, gen: gen);
+    if (element == null) return null;
+    return kind.wrapRefTy(SliceTy(element));
+  }
 
-    final array = ArrayTy(e, LLVMRawValue(ident).iValue);
-    return kind.wrapRefTy(array);
+  @override
+  Ty? getBaseTy(Tys<LifeCycleVariable> c) {
+    return grtOrT(c);
   }
 
   @override
   String toString() {
-    return '[$elementTy; $ident]';
+    return '[$elementTy]';
+  }
+}
+
+class ConstTy extends Ty {
+  ConstTy(this.size);
+  final int size;
+  @override
+  Ty clone() {
+    return ConstTy(size);
+  }
+
+  @override
+  Identifier get ident => Identifier.none;
+  @override
+  LLVMType get llty => throw UnimplementedError();
+
+  @override
+  late final props = [size];
+
+  @override
+  String toString() {
+    return '$size';
+  }
+}
+
+class ArrayPathTy extends SlicePathTy {
+  ArrayPathTy(super.elementTy, super.kinds, this.size);
+
+  final PathTy size;
+  @override
+  Ty? grtOrT(Tys c, {GenTy? gen}) {
+    final e = elementTy.grtOrT(c, gen: gen);
+    final sizeTy = size.grtOrT(c, gen: gen);
+    if (e == null || sizeTy is! ConstTy) return null;
+
+    final array = ArrayTy(e, sizeTy);
+    return kind.wrapRefTy(array);
+  }
+
+  @override
+  Ty? getBaseTy(Tys<LifeCycleVariable> c) {
+    return grtOrT(c);
+  }
+
+  @override
+  String toString() {
+    return '[$elementTy; $size]';
   }
 }
 

@@ -23,6 +23,13 @@ abstract class CallBuilder {
     );
   }
 
+  static Ty? callImplTy(Tys context, Ty ty, List<FieldExpr> params) {
+    final implFn = context
+        .getImplWith(ty, comIdent: _callCom, fnIdent: _callIdent)
+        ?.getFn(_callIdent);
+    return implFn?.fnDecl.getRetTyOrT(context);
+  }
+
   static AnalysisVariable? callImplTys(AnalysisContext context,
       AnalysisVariable variable, List<FieldExpr> params) {
     final implFn = context

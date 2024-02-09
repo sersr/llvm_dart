@@ -32,7 +32,7 @@ abstract class Expr extends BuildMixin implements Clone<Expr> {
 
   ExprTempValue? get temp => _temp;
 
-  Ty? getTy(Tys context) => null;
+  Ty? getTy(Tys context, Ty? baseTy) => null;
 
   AnalysisVariable? analysis(AnalysisContext context);
 

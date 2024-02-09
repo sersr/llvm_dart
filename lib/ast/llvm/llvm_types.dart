@@ -373,11 +373,10 @@ class LLVMStructType extends LLVMType {
 
   LLVMAllocaProxyVariable buildTupeOrStruct(
       FnBuildMixin context, List<FieldExpr> params,
-      {List<FieldExpr>? sFields}) {
+      {bool isSort = false}) {
     final structType = ty.typeOf(context);
     final fields = ty.fields;
-    final sortFields = sFields ??
-        alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
+    final sortFields = isSort ? params : alignParam(params, fields);
 
     void create(LLVMAllocaProxyVariable? value, bool isProxy) {
       if (value == null) return;
@@ -965,11 +964,51 @@ class FieldsSize {
   }
 }
 
-class ArrayLLVMType extends LLVMType {
-  ArrayLLVMType(this.ty);
+class SliceLLVMType extends LLVMType {
+  SliceLLVMType(this.ty);
 
   @override
-  final ArrayTy ty;
+  final SliceTy ty;
+  @override
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
+    return c.pointer();
+  }
+
+  @override
+  int getBytes(StoreLoadMixin c) {
+    return c.typeSize(typeOf(c));
+  }
+
+  Variable getElement(
+      StoreLoadMixin c, Variable value, LLVMValueRef index, Identifier id) {
+    final indics = <LLVMValueRef>[index];
+
+    final elType = ty.elementTy.typeOf(c);
+
+    final vv = LLVMAllocaVariable.delay(() {
+      c.diSetCurrentLoc(id.offset);
+      final p = value.getBaseValue(c);
+      return llvm.LLVMBuildInBoundsGEP2(
+          c.builder, elType, p, indics.toNative(), indics.length, unname);
+    }, ty.elementTy, elType, id);
+
+    return vv;
+  }
+
+  @override
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
+    final size = ty.elementTy.llty.getBytes(c) * 8;
+    return llvm.LLVMDIBuilderCreatePointerType(c.dBuilder!,
+        ty.elementTy.llty.createDIType(c), size, size, 0, unname, 0);
+  }
+}
+
+class ArrayLLVMType extends SliceLLVMType {
+  ArrayLLVMType(ArrayTy super.ty);
+
+  @override
+  ArrayTy get ty => super.ty as ArrayTy;
+
   @override
   LLVMTypeRef typeOf(StoreLoadMixin c) {
     return c.arrayType(ty.elementTy.typeOf(c), ty.size);
@@ -993,27 +1032,6 @@ class ArrayLLVMType extends LLVMType {
   LLVMConstVariable createArray(StoreLoadMixin c, List<LLVMValueRef> values) {
     final value = c.constArray(ty.elementTy.typeOf(c), values);
     return LLVMConstVariable(value, ty, Identifier.none);
-  }
-
-  Variable getElement(
-      StoreLoadMixin c, Variable value, LLVMValueRef index, Identifier id) {
-    final indics = <LLVMValueRef>[index];
-
-    final elementTy = ty.elementTy.typeOf(c);
-
-    final vv = LLVMAllocaVariable.delay(() {
-      c.diSetCurrentLoc(id.offset);
-      final p = value.getBaseValue(c);
-      return llvm.LLVMBuildInBoundsGEP2(
-          c.builder, elementTy, p, indics.toNative(), indics.length, unname);
-    }, ty.elementTy, elementTy, id);
-
-    return vv;
-  }
-
-  Variable toStr(StoreLoadMixin c, Variable value) {
-    return LLVMConstVariable(
-        value.getBaseValue(c), LiteralKind.kStr.ty, Identifier.none);
   }
 
   @override

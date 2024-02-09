@@ -17,9 +17,24 @@ class LiteralExpr extends Expr {
     return '${ident.src}[:$ty]';
   }
 
+  static Ty? resolveBuiltinTy(Tys context, Ty? ty, Ty? baseTy) {
+    if (baseTy is! BuiltInTy) {
+      return ty;
+    }
+    if (ty is! BuiltInTy) return ty;
+
+    if (!ty.literal.isNum) return ty;
+
+    if (!baseTy.literal.isNum) {
+      Log.e('error: $ty: $baseTy');
+    }
+
+    return baseTy;
+  }
+
   @override
-  Ty? getTy(Tys context) {
-    return ty;
+  Ty? getTy(Tys context, Ty? baseTy) {
+    return resolveBuiltinTy(context, ty, baseTy);
   }
 
   @override
@@ -45,8 +60,16 @@ class StructExpr extends Expr {
   final List<FieldExpr> params;
 
   @override
-  Ty? getTy(Tys context) {
-    return expr.getTy(context);
+  StructTy? getTy(Tys context, Ty? baseTy) {
+    var struct = expr.getTy(context, baseTy);
+    if (struct case StructTy(tys: Map(isEmpty: true))
+        when struct.isTy(baseTy)) {
+      struct = baseTy;
+    }
+
+    if (struct is! StructTy) return null;
+
+    return struct.resolveGeneric(context, params);
   }
 
   @override
@@ -61,15 +84,8 @@ class StructExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    var structTy = getTy(context);
-
-    if (structTy is StructTy && structTy.tys.isEmpty) {
-      if (baseTy is StructTy && structTy.ident == baseTy.ident) {
-        structTy = baseTy;
-      }
-    }
-
-    if (structTy is! StructTy) return null;
+    var structTy = getTy(context, baseTy);
+    if (structTy == null) return null;
 
     return buildTupeOrStruct(structTy, context, params);
   }
@@ -78,9 +94,9 @@ class StructExpr extends Expr {
       StructTy struct, FnBuildMixin context, List<FieldExpr> params) {
     struct = struct.resolveGeneric(context, params);
     var fields = struct.fields;
-    final sortFields =
-        alignParam(params, (p) => fields.indexWhere((e) => e.ident == p.ident));
+    final sortFields = alignParam(params, fields);
 
+    // 按原始顺序逐一调用
     for (var i = 0; i < params.length; i++) {
       final param = params[i];
       final sfIndex = sortFields.indexOf(param);
@@ -91,8 +107,8 @@ class StructExpr extends Expr {
 
     final value = struct.llty.buildTupeOrStruct(
       context,
-      params,
-      sFields: sortFields,
+      sortFields,
+      isSort: true,
     );
 
     return ExprTempValue(value);
@@ -110,7 +126,7 @@ class StructExpr extends Expr {
       AnalysisContext context, StructTy ty, List<FieldExpr> params) {
     final struct = ty.resolveGeneric(context, params);
 
-    final sortFields = alignParam(
+    final sortFields = alignList(
         params, (p) => struct.fields.indexWhere((e) => e.ident == p.ident));
 
     for (var field in sortFields) {
@@ -139,7 +155,25 @@ class ArrayExpr extends Expr {
     }
 
     if (ty == null) return null;
-    return context.createVal(ArrayTy(ty, elements.length), Identifier.none);
+    return context.createVal(
+        ArrayTy(ty, ConstTy(elements.length)), Identifier.none);
+  }
+
+  @override
+  Ty? getTy(Tys<LifeCycleVariable> context, Ty? baseTy) {
+    if (baseTy is ArrayTy) return baseTy;
+    Ty? elementTy;
+    for (var element in elements) {
+      final v = element.getTy(context, elementTy);
+      if (v != null) {
+        elementTy ??= v;
+      }
+    }
+
+    if (elementTy != null) {
+      return ArrayTy(elementTy, ConstTy(elements.length));
+    }
+    return null;
   }
 
   @override
@@ -165,7 +199,7 @@ class ArrayExpr extends Expr {
     ty ??= elementTy;
 
     if (arrTy == null && ty != null) {
-      arrTy = ArrayTy(ty, elements.length);
+      arrTy = ArrayTy(ty, ConstTy(elements.length));
     }
     if (arrTy is ArrayTy) {
       final extra = arrTy.size - values.length;
@@ -217,7 +251,7 @@ class ArrayOpExpr extends Expr {
     final locVal = loc?.variable;
     if (locVal == null || loc == null) return null;
 
-    if (ty is ArrayTy) {
+    if (ty is SliceTy) {
       final element =
           ty.llty.getElement(context, arrVal, locVal.load(context), ident);
 

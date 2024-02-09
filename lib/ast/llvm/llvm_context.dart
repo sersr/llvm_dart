@@ -3,7 +3,6 @@ import 'package:nop/nop.dart';
 import '../../abi/abi_fn.dart';
 import '../../llvm_dart.dart';
 import '../ast.dart';
-import '../expr.dart';
 import '../memory.dart';
 import '../tys.dart';
 import 'build_context_mixin.dart';
@@ -102,48 +101,61 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
   @override
   String get currentPath => throw UnimplementedError();
 
-  ExprTempValue? arrayBuiltin(FnBuildMixin context, Identifier ident,
-      String fnName, Variable? val, Ty valTy, List<FieldExpr> params) {
-    if (valTy is ArrayTy && val != null) {
-      if (fnName == 'getSize') {
-        final size =
-            LiteralKind.usize.ty.llty.createValue(ident: '${valTy.size}'.ident);
-        return ExprTempValue(size);
-      } else if (fnName == 'toStr') {
-        final element = valTy.llty.toStr(context, val);
-        return ExprTempValue(element);
-      }
-    }
+  // ExprTempValue? arrayBuiltin(FnBuildMixin context, Identifier ident,
+  //     String fnName, Variable? val, Ty valTy, List<FieldExpr> params) {
+  //   if (valTy is ArrayTy && val != null) {
+  //     if (fnName == 'getSize') {
+  //       final size =
+  //           LiteralKind.usize.ty.llty.createValue(ident: '${valTy.size}'.ident);
+  //       return ExprTempValue(size);
+  //     } else if (fnName == 'toStr') {
+  //       final element = valTy.llty.toStr(context, val);
+  //       return ExprTempValue(element);
+  //     }
+  //   }
 
-    if (valTy is StructTy) {
-      if (valTy.ident.src == 'Array') {
-        if (fnName == 'new') {
-          if (params.isNotEmpty) {
-            final first = params.first
-                .build(context, baseTy: LiteralKind.usize.ty)
-                ?.variable;
+  //   if (valTy is StructTy) {
+  //     if (valTy.ident.src == 'Array') {
+  //       if (fnName == 'new') {
+  //         if (params.isNotEmpty) {
+  //           final first = params.first
+  //               .build(context, baseTy: LiteralKind.usize.ty)
+  //               ?.variable;
 
-            if (first is LLVMLitVariable) {
-              if (valTy.tys.isNotEmpty) {
-                final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
+  //           if (first is LLVMLitVariable) {
+  //             if (valTy.tys.isNotEmpty) {
+  //               final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
 
-                final value = LLVMAllocaProxyVariable(context, (value, _) {
-                  if (value == null) return;
-                  value.store(
-                    context,
-                    llvm.LLVMConstNull(arr.typeOf(context)),
-                  );
-                }, arr, arr.llty.typeOf(context), ident);
+  //               final value = LLVMAllocaProxyVariable(context, (value, _) {
+  //                 if (value == null) return;
+  //                 value.store(
+  //                   context,
+  //                   llvm.LLVMConstNull(arr.typeOf(context)),
+  //                 );
+  //               }, arr, arr.llty.typeOf(context), ident);
 
-                return ExprTempValue(value);
-              }
-            }
-          }
-        }
-      }
-    }
+  //               return ExprTempValue(value);
+  //             }
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
 
-    return null;
+  //   return null;
+  // }
+
+  final _structTypes = <ListKey, LLVMTypeRef>{};
+
+  LLVMTypeRef createStructType(List<LLVMTypeRef> types, String name) {
+    final key = ListKey([types, name]);
+
+    return _structTypes.putIfAbsent(key, () {
+      final struct =
+          llvm.LLVMStructCreateNamed(llvmContext, 'struct_$name'.toChar());
+      llvm.LLVMStructSetBody(struct, types.toNative(), types.length, LLVMFalse);
+      return struct;
+    });
   }
 }
 

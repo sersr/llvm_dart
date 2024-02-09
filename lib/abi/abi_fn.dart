@@ -74,32 +74,8 @@ abstract interface class AbiFn {
     }
 
     final ident = fn.ident;
-    final fnParams = decl.fields;
-    final sortFields = alignParam(
-        params, (p) => fnParams.indexWhere((e) => e.ident == p.ident));
-
-    // if (fn is ImplStaticFn && decl.ident.src == 'new') {
-    //   final newParams = <Variable>[];
-    //   for (var i = 0; i < sortFields.length; i++) {
-    //     final p = sortFields[i];
-    //     Ty? baseTy;
-    //     if (i < fnParams.length) {
-    //       baseTy = decl.getFieldTy(context, fnParams[i]);
-    //     }
-    //     baseTy ??= p.getTy(context);
-    //     final temp = p.build(context, baseTy: baseTy);
-    //     var v = temp?.variable;
-    //     if (v != null) {
-    //       v = v.newIdent(fnParams[i].ident);
-    //       newParams.add(v);
-    //     }
-    //   }
-
-    //   var variable = context.compileRun(fn, newParams);
-    //   if (variable == null) return null;
-
-    //   return ExprTempValue(variable);
-    // }
+    final fields = decl.fields;
+    final sortFields = alignParam(params, fields);
 
     final args = <LLVMValueRef>[];
     final retTy = decl.getRetTy(context);
@@ -123,12 +99,12 @@ abstract interface class AbiFn {
 
     for (var i = 0; i < sortFields.length; i++) {
       final p = sortFields[i];
-      Ty? c;
-      if (i < fnParams.length) {
-        final p = fnParams[i];
-        c = decl.getFieldTy(context, p);
+      Ty? fieldTy;
+      if (i < fields.length) {
+        final p = fields[i];
+        fieldTy = decl.getFieldTy(context, p);
       }
-      final temp = p.build(context, baseTy: c);
+      final temp = p.build(context, baseTy: fieldTy);
       addArg(temp?.variable);
     }
 

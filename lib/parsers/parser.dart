@@ -372,34 +372,38 @@ class Parser {
     final state = it.cursor;
     if (it.moveNext()) {
       eatLfIfNeed(it, back: false);
+      final kind = getToken(it).kind;
+
       if (getKey(it) == Key.fn) {
         it.moveNext();
         final decl = parseFnDecl(it, Identifier.none);
         ty = PathFnDeclTy(decl, pointerKind);
-      } else if (getToken(it).kind == TokenKind.ident) {
+      } else if (kind == TokenKind.ident) {
         ty = PathTy(getIdent(it), parseGenericsInstance(it), pointerKind);
-      } else if (getToken(it).kind == TokenKind.openBracket) {
+      } else if (kind == TokenKind.openBracket) {
         ty = parseArrayPathTy(it, pointerKind);
+      } else if (kind == TokenKind.literal) {
+        ty = PathTy(getIdent(it), const []);
       }
     }
+
     if (ty == null) {
       state.restore();
     }
     return ty;
   }
 
-  ArrayPathTy? parseArrayPathTy(TokenIterator it, List<PointerKind> kind) {
+  SlicePathTy? parseArrayPathTy(TokenIterator it, List<PointerKind> kind) {
     it = it.current.child.tokenIt;
-    final aty = parsePathTy(it);
+    final elementTy = parsePathTy(it);
 
-    if (aty == null) return null;
-    it.moveNext();
-    eatLfIfNeed(it);
+    if (elementTy == null) return null;
     if (it.moveNext()) {
-      final size = getIdent(it);
-      return ArrayPathTy(aty, size, kind);
+      final size = parsePathTy(it);
+      if (size != null) return ArrayPathTy(elementTy, kind, size);
     }
-    return null;
+
+    return SlicePathTy(elementTy, kind);
   }
 
   bool isBlockStart(TokenIterator it) {
@@ -571,11 +575,7 @@ class Parser {
       return false;
     });
 
-    if (exprs.isNotEmpty) {
-      return ArrayExpr(exprs, identStart, identEnd);
-    }
-
-    return null;
+    return ArrayExpr(exprs, identStart, identEnd);
   }
 
   Stmt? parseImportStmt(TokenIterator it) {
@@ -1173,7 +1173,7 @@ class Parser {
     if (baseExpr == null) {
       final ident = getIdent(it);
       if (!isStructExpr) {
-        Log.e('${ident.src} ${ident.offset}', onlyDebug: false);
+        Log.e('${ident.light} ${ident.offset}', onlyDebug: false);
       }
       return UnknownExpr(ident, '');
     }
