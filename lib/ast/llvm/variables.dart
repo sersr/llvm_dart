@@ -32,6 +32,15 @@ abstract class Variable extends LifeCycleVariable {
 
   Variable newIdentInternal(Identifier id, bool dirty);
 
+  Variable getBaseVariable(StoreLoadMixin c, Identifier ident) {
+    Variable current = this;
+    for (;;) {
+      final newVal = current.defaultDeref(c, ident);
+      if (newVal == current) return current;
+      current = newVal;
+    }
+  }
+
   Variable defaultDeref(StoreLoadMixin c, Identifier ident) {
     final cTy = ty;
     if (cTy is! RefTy) return this;

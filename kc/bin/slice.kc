@@ -10,6 +10,9 @@ fn main() i32 {
   arr.hello();
 
   (arr as [u8]).hello();
+
+  let b = Box.new([110,1200]);
+  b.hello();
   0;
 }
 

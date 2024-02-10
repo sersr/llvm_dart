@@ -29,6 +29,12 @@ impl<T> Box<T> {
   }
 }
 
+impl<T> Deref<T> for Box<T> {
+  fn deref() &T {
+    &self.ptr.data;
+  }
+}
+
 
 impl<T> Stack for Box<T> {
   fn addStack() {

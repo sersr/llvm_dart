@@ -254,16 +254,11 @@ class MethodCallExpr extends Expr with FnCallMixin {
     final temp = receiver.getTy(context, null);
     var structTy = temp;
 
-    if (structTy is StructTy && structTy.tys.isEmpty) {
-      if (baseTy is StructTy && structTy.ident == baseTy.ident) {
-        structTy = baseTy;
-      }
+    if (structTy is NewInst && structTy.tys.isEmpty && structTy.isTy(baseTy)) {
+      structTy = baseTy!;
     }
 
     if (structTy == null) return null;
-
-    final callTemp = CallBuilder.callImplTy(context, structTy, params);
-    if (callTemp != null) return callTemp;
 
     if (structTy is StructTy) {
       for (var field in structTy.fields) {
@@ -285,36 +280,42 @@ class MethodCallExpr extends Expr with FnCallMixin {
     final temp = receiver.build(context);
     final variable = temp?.variable;
 
-    final val = variable?.defaultDeref(context, variable.ident);
+    var structTy = variable?.ty ?? temp?.ty;
+    if (structTy == null) return null;
 
-    if (variable != null) {
-      final temp = CallBuilder.callImpl(context, variable, params);
-      if (temp != null) return temp;
+    if (structTy is NewInst && structTy.tys.isEmpty && structTy.isTy(baseTy)) {
+      structTy = baseTy!;
     }
 
-    var valTy = val?.ty ?? temp?.ty;
-    if (valTy == null) return null;
+    ImplFnMixin? implFn;
+    Variable? val;
 
-    var structTy = valTy;
-
-    if (structTy is StructTy && structTy.tys.isEmpty) {
-      if (baseTy is StructTy && structTy.ident == baseTy.ident) {
-        structTy = baseTy;
+    if (variable == null) {
+      implFn = resolveImplFn(context, structTy);
+    } else {
+      val = variable.getBaseVariable(context, variable.ident);
+      // 字段有可能是一个函数指针
+      if (val.ty case StructTy ty) {
+        final field = ty.llty.getField(val, context, ident);
+        if (field case Variable(ty: FnDecl ty)) {
+          return baseCall(context, field!, ty, params);
+        }
       }
+
+      RefDerefCom.loopGetDeref(context, val, (variable) {
+        final fn = context.getImplFnForTy(variable.ty, ident);
+        if (fn != null) {
+          assert(!fn.isStatic);
+          implFn = fn;
+          val = variable;
+          return true;
+        }
+
+        return false;
+      });
     }
 
-    final implFn = resolveImplFn(context, structTy);
-
-    if (implFn != null) return fnCall(context, implFn, params, struct: val);
-
-    // 字段有可能是一个函数指针
-    if (val != null && structTy is StructTy) {
-      final field = structTy.llty.getField(val, context, ident);
-      final fn = field?.ty;
-      if (fn is FnDecl && field != null) {
-        return baseCall(context, field, fn, params);
-      }
-    }
+    if (implFn != null) return fnCall(context, implFn!, params, struct: val);
 
     return null;
   }
