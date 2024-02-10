@@ -137,6 +137,64 @@ class StructExpr extends Expr {
   }
 }
 
+class ArrayInitExpr extends Expr {
+  ArrayInitExpr(this.expr, this.size, this.identStart, this.identEnd);
+  final Expr expr;
+  final int size;
+  final Identifier identStart;
+  final Identifier identEnd;
+
+  @override
+  Ty? getTy(Tys<LifeCycleVariable> context, Ty? baseTy) {
+    if (baseTy is ArrayTy) return baseTy;
+    if (size <= 0) return null;
+    final ty = expr.getTy(context, null);
+    if (ty == null) return null;
+    return ArrayTy.int(ty, size);
+  }
+
+  @override
+  AnalysisVariable? analysis(AnalysisContext context) {
+    Ty? ty = expr.analysis(context)?.ty;
+    if (ty == null) return null;
+    return context.createVal(ArrayTy.int(ty, size), Identifier.none);
+  }
+
+  @override
+  ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
+    if (size <= 0) return null;
+    Ty? arrTy = baseTy;
+
+    Ty? ty;
+    if (arrTy is ArrayTy) {
+      ty = arrTy.elementTy;
+    }
+
+    final temp = expr.build(context, baseTy: ty);
+    final val = temp?.variable;
+
+    if (val?.ty case Ty elementTy) {
+      final ty = ArrayTy.int(elementTy, size);
+      final elements = List.generate(
+          size, (index) => llvm.LLVMConstNull(elementTy.typeOf(context)));
+      final variable = ty.llty.createArray(context, elements);
+      return ExprTempValue(variable);
+    }
+
+    return null;
+  }
+
+  @override
+  ArrayInitExpr clone() {
+    return ArrayInitExpr(expr.clone(), size, identStart, identEnd);
+  }
+
+  @override
+  String toString() {
+    return '[$expr; $size]';
+  }
+}
+
 class ArrayExpr extends Expr {
   ArrayExpr(this.elements, this.identStart, this.identEnd);
 
@@ -155,8 +213,7 @@ class ArrayExpr extends Expr {
     }
 
     if (ty == null) return null;
-    return context.createVal(
-        ArrayTy(ty, ConstTy(elements.length)), Identifier.none);
+    return context.createVal(ArrayTy.int(ty, elements.length), Identifier.none);
   }
 
   @override
@@ -171,7 +228,7 @@ class ArrayExpr extends Expr {
     }
 
     if (elementTy != null) {
-      return ArrayTy(elementTy, ConstTy(elements.length));
+      return ArrayTy.int(elementTy, elements.length);
     }
     return null;
   }
@@ -199,13 +256,12 @@ class ArrayExpr extends Expr {
     ty ??= elementTy;
 
     if (arrTy == null && ty != null) {
-      arrTy = ArrayTy(ty, ConstTy(elements.length));
+      arrTy = ArrayTy.int(ty, elements.length);
     }
     if (arrTy is ArrayTy) {
       final extra = arrTy.size - values.length;
       if (extra > 0) {
-        final zero =
-            values.lastOrNull ?? llvm.LLVMConstNull(ty!.typeOf(context));
+        final zero = llvm.LLVMConstNull(ty!.typeOf(context));
         values.addAll(List.generate(extra, (index) => zero));
       }
       final v = arrTy.llty.createArray(context, values);

@@ -494,7 +494,11 @@ class ImplTy extends Ty with NewInst<ImplTy> {
 
     final ty = struct.grtOrT(context, gen: (ident) => tys[ident]);
     if (ty == null) {
-      context.pushImplTy(this);
+      if (struct case SlicePathTy()) {
+        context.pushImplSliceTy(this);
+      } else {
+        context.pushImplTy(this);
+      }
       return;
     }
     _ty = ty;
@@ -587,11 +591,13 @@ class SliceTy extends Ty {
 
 class ArrayTy extends SliceTy {
   ArrayTy(super.elementTy, this.sizeTy);
+  ArrayTy.int(super.elementTy, int size) : sizeTy = ConstTy(size);
   final ConstTy sizeTy;
+
   int get size => sizeTy.size;
 
   @override
-  Identifier get ident => _ident ??= '[$size; $elementTy]'.ident;
+  Identifier get ident => _ident ??= '[$sizeTy; $elementTy]'.ident;
 
   @override
   ArrayTy clone() {

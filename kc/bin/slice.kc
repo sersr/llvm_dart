@@ -3,11 +3,25 @@ fn main() i32 {
   sxx.hello();
   let size = sxx.getSize();
   printf("size: %d\n", size);
+
+  let arr = [1u8; 10];
+  arr.hello();
+  arr[0] = 44;
+  arr.hello();
+  arr[0] = 111;
+  arr.hello();
   0;
 }
 
-impl [i32] {
+
+impl [u8] {
   fn hello() {
-    printf("hello world %d\n", self[0]);
+    printf("hello world u8 %c\n", self[0]);
+  }
+}
+
+impl<T> [T] {
+  fn hello() {
+    printf("hello world %d\n", self[0] as i64);
   }
 }

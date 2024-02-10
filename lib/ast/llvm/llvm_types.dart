@@ -997,7 +997,7 @@ class SliceLLVMType extends LLVMType {
 
   @override
   LLVMMetadataRef createDIType(StoreLoadMixin c) {
-    final size = ty.elementTy.llty.getBytes(c) * 8;
+    final size = ty.elementTy.llty.getBytes(c);
     return llvm.LLVMDIBuilderCreatePointerType(c.dBuilder!,
         ty.elementTy.llty.createDIType(c), size, size, 0, unname, 0);
   }
@@ -1012,11 +1012,6 @@ class ArrayLLVMType extends SliceLLVMType {
   @override
   LLVMTypeRef typeOf(StoreLoadMixin c) {
     return c.arrayType(ty.elementTy.typeOf(c), ty.size);
-  }
-
-  @override
-  int getBytes(StoreLoadMixin c) {
-    return c.typeSize(typeOf(c));
   }
 
   @override

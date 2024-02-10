@@ -557,6 +557,30 @@ class Parser {
     return result;
   }
 
+  ArrayInitExpr? parseArrayInitExpr(TokenIterator it) {
+    final isArrayKind = getToken(it).kind == TokenKind.openBracket;
+    if (!isArrayKind) return null;
+    final identStart = getIdent(it);
+    final identEnd = getEndIdent(it);
+    it = it.current.child.tokenIt;
+    final expr = parseExpr(it);
+    if (it.moveNext()) {
+      eatLfIfNeed(it);
+      final token = getToken(it);
+      if (token.kind == TokenKind.semi) {
+        eatLfIfNeed(it);
+        if (it.moveNext()) {
+          final size = int.tryParse(getIdent(it).src);
+          if (size != null) {
+            return ArrayInitExpr(expr, size, identStart, identEnd);
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
   ArrayExpr? parseArrayExpr(TokenIterator it) {
     final isArrayKind = getToken(it).kind == TokenKind.openBracket;
     if (!isArrayKind) return null;
@@ -1079,6 +1103,7 @@ class Parser {
       expr = LiteralExpr(ident ?? getIdent(it), lit.ty);
     }
 
+    expr ??= parseArrayInitExpr(it);
     expr ??= parseArrayExpr(it);
     expr ??= parseIfExpr(it);
     expr ??= parseMatchExpr(it);
@@ -1165,7 +1190,10 @@ class Parser {
 
   Expr parseExpr(TokenIterator it,
       {bool runOp = false, bool isStructExpr = false}) {
-    if (!it.moveNext()) return UnknownExpr(getIdent(it), '');
+    if (!it.moveNext()) {
+      return UnknownExpr(it.curentIsValid ? getIdent(it) : Identifier.none, '');
+    }
+
     var baseExpr = parseKeyExpr(it);
     if (baseExpr != null) return baseExpr;
 

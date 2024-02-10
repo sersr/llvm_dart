@@ -199,9 +199,31 @@ mixin Tys<V extends LifeCycleVariable> {
     pushKV(ident, com, _components);
   }
 
+  /// 优先级最高：有比较精确的类型
   final _implForTy = <Ty, List<ImplTy>>{};
+
+  /// 数组[ArrayTy]和切片[SliceTy]的[ImplTy]
+  final _implArrTys = <ImplTy>[];
+
+  /// 如：impl<T> T {}; 基本类型无法确定，优先级最低
+  final _implTys = <ImplTy>[];
+
   ImplFnMixin? getImplFnForTy(Ty ty, Identifier fnIdent) {
     return getImplWith(ty, fnIdent: fnIdent)?.getFn(fnIdent);
+  }
+
+  void pushImplTy(ImplTy ty) {
+    ty = ty.parentOrCurrent;
+    if (!_implTys.contains(ty)) {
+      _implTys.add(ty);
+    }
+  }
+
+  void pushImplSliceTy(ImplTy ty) {
+    ty = ty.parentOrCurrent;
+    if (!_implArrTys.contains(ty)) {
+      _implArrTys.add(ty);
+    }
   }
 
   /// 为泛型实现`Com`时
@@ -266,6 +288,12 @@ mixin Tys<V extends LifeCycleVariable> {
             cache = tyImpl;
             return true;
           }
+        } else if (raw is SliceTy) {
+          if (raw is ArrayTy) {
+            score = 1;
+          } else {
+            score = 0;
+          }
         }
 
         if (score > cacheScore) {
@@ -279,34 +307,32 @@ mixin Tys<V extends LifeCycleVariable> {
     }
 
     void tryCtxTy(Tys c, Ty ty) {
-      c.getKV((c) {
-        return c._implForTy[ty];
-      }, test: test);
+      /// for ty 可识别
+      c.getKV((c) => c._implForTy[ty], test: test);
       if (cache != null) return;
 
+      /// ArrayTy 可以转化成 SliceTy，所以需要再搜索一遍[_implForTy]
+      if (ty is ArrayTy) {
+        final slice = ty.getSlice();
+        c.getKV((c) => c._implForTy[slice], test: test);
+        if (cache != null) return;
+      }
+
+      if (ty is SliceTy) {
+        c.getKV((c) => c._implArrTys, test: test);
+        if (cache != null) return;
+      }
       // for ty 无法识别的情况
       c.getKV((c) => c._implTys, test: test);
       if (cache != null) return;
     }
 
-    /// for ty 可识别
     tryCtxTy(this, ty);
     if (cache != null) return cache;
 
     final tyCtx = ty.currentContext;
     if (tyCtx != null) {
       tryCtxTy(tyCtx, ty);
-      if (cache != null) return cache;
-    }
-
-    if (ty is ArrayTy) {
-      final slice = ty.getSlice();
-      tryCtxTy(this, slice);
-      if (cache != null) return cache;
-
-      if (tyCtx != null) {
-        tryCtxTy(tyCtx, slice);
-      }
     }
 
     return cache;
@@ -317,14 +343,6 @@ mixin Tys<V extends LifeCycleVariable> {
       structTy = structTy.parentOrCurrent;
     }
     pushKV(structTy, ty, _implForTy);
-  }
-
-  final _implTys = <ImplTy>[];
-  void pushImplTy(ImplTy ty) {
-    ty = ty.parentOrCurrent;
-    if (!_implTys.contains(ty)) {
-      _implTys.add(ty);
-    }
   }
 
   final _aliasTys = <Identifier, List<TypeAliasTy>>{};
