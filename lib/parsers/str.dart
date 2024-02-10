@@ -39,28 +39,58 @@ String parseStr(String str) {
 
   loop(it, () {
     final char = it.current;
+
     // 两个反义符号
     if (lastChar == '\\') {
-      if (char == pattern) {
-        buf.write(pattern);
-      } else if (char == 'n') {
-        buf.write('\n');
-      } else if (isLF(char)) {
-        if (eatLn != false) {
-          eatLn = true;
-          eatLine();
-        }
-      } else if (char == '\\') {
-        buf.write('\\');
+      switch (char) {
+        case == 'u':
+          var unicodeBuf = StringBuffer();
+
+          if (it.moveNext()) {
+            if (it.current != '{') {
+              unicodeBuf.write(it.current);
+              for (var i = 0; i < 3; i++) {
+                if (it.moveNext()) {
+                  unicodeBuf.write(it.current);
+                }
+              }
+            } else {
+              for (;;) {
+                if (it.moveNext()) {
+                  if (it.current == '}') break;
+                  unicodeBuf.write(it.current);
+                }
+              }
+            }
+          }
+
+          final v = int.tryParse(unicodeBuf.toString(), radix: 16);
+          // max: 0x10FFFF
+          if (v == null || v < 0 || v > 1114111) {
+            Log.w('Invalid value: $unicodeBuf: [0..1114111]');
+            break;
+          }
+
+          buf.write(String.fromCharCode(v));
+        case == 'n':
+          buf.write('\n');
+        case == '\\':
+          buf.write('\\');
+        case var v when v == pattern:
+          buf.write(pattern);
+        case var v when isLF(v):
+          if (eatLn != false) {
+            eatLn = true;
+            eatLine();
+          }
       }
+
       lastChar = '';
       return false;
     }
 
-    if (eatLn == null) {
-      if (isLF(char)) {
-        eatLn = false;
-      }
+    if (eatLn == null && isLF(char)) {
+      eatLn = false;
     }
 
     if (eatLn == true && isLF(char)) {

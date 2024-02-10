@@ -174,9 +174,11 @@ class ArrayInitExpr extends Expr {
     final val = temp?.variable;
 
     if (val?.ty case Ty elementTy) {
+      final base = val!.load(context);
+      final isConst = llvm.LLVMIsConstant(base);
+      assert(isConst == LLVMTrue, '$expr must be a constant.');
       final ty = ArrayTy.int(elementTy, size);
-      final elements = List.generate(
-          size, (index) => llvm.LLVMConstNull(elementTy.typeOf(context)));
+      final elements = List.generate(size, (index) => base);
       final variable = ty.llty.createArray(context, elements);
       return ExprTempValue(variable);
     }

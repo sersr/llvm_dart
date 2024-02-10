@@ -92,6 +92,7 @@ class BackIterator<T> implements Iterator<T> {
   BackIterator(List<T> tree) : _current = List.of(tree);
   final List<T> _current;
   int get length => _current.length;
+  bool get isEmpty => _current.isEmpty;
   int _cursor = -1;
 
   @override

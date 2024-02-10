@@ -1,0 +1,5 @@
+fn main() i32 {
+  printf("\u0020\ud83d\ude0a\u0020\u{1D11E}\n");
+
+  0;
+}

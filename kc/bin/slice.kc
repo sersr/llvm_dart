@@ -4,15 +4,20 @@ fn main() i32 {
   let size = sxx.getSize();
   printf("size: %d\n", size);
 
-  let arr = [1u8; 10];
+  let arr = [48u8; 10];
   arr.hello();
-  arr[0] = 44;
+  arr[0] = 50;
   arr.hello();
-  arr[0] = 111;
-  arr.hello();
+
+  (arr as [u8]).hello();
   0;
 }
 
+impl<N> [u8; N] {
+  fn hello() {
+    printf("N: u8 %c\n", self[0]);
+  }
+}
 
 impl [u8] {
   fn hello() {

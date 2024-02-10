@@ -206,10 +206,25 @@ mixin NewInst<T extends Ty> on Ty {
     void visitor(Ty exactTy, PathTy pathTy) {
       ComponentTy? checkTy(Ty exactTy, PathTy pathTy) {
         if (pathTy is SlicePathTy && exactTy is SliceTy) {
-          visitor(exactTy.elementTy, pathTy.elementTy);
-          if (pathTy is ArrayPathTy && exactTy is ArrayTy) {
-            visitor(exactTy.sizeTy, pathTy.size);
+          final tryTy = pathTy.elementTy.grtOrT(c);
+
+          if (tryTy == null) {
+            visitor(exactTy.elementTy, pathTy.elementTy);
+          } else if (!exactTy.elementTy.isTy(tryTy)) {
+            result = false;
+            return null;
           }
+
+          if (pathTy is ArrayPathTy && exactTy is ArrayTy) {
+            final trySize = pathTy.size.grtOrT(c);
+            if (trySize == null) {
+              visitor(exactTy.sizeTy, pathTy.size);
+            } else if (trySize != exactTy.sizeTy) {
+              result = false;
+              return null;
+            }
+          }
+
           return null;
         }
 

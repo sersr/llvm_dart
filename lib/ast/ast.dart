@@ -494,8 +494,8 @@ class ImplTy extends Ty with NewInst<ImplTy> {
 
     final ty = struct.grtOrT(context, gen: (ident) => tys[ident]);
     if (ty == null) {
-      if (struct case SlicePathTy()) {
-        context.pushImplSliceTy(this);
+      if (struct case SlicePathTy ty) {
+        context.pushImplSliceTy(ty, this);
       } else {
         context.pushImplTy(this);
       }

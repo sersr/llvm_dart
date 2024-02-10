@@ -563,6 +563,8 @@ class Parser {
     final identStart = getIdent(it);
     final identEnd = getEndIdent(it);
     it = it.current.child.tokenIt;
+    if (it.isEmpty) return null;
+
     final expr = parseExpr(it);
     if (it.moveNext()) {
       eatLfIfNeed(it);

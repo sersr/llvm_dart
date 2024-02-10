@@ -204,6 +204,7 @@ mixin Tys<V extends LifeCycleVariable> {
 
   /// 数组[ArrayTy]和切片[SliceTy]的[ImplTy]
   final _implArrTys = <ImplTy>[];
+  final _implSliceTys = <ImplTy>[];
 
   /// 如：impl<T> T {}; 基本类型无法确定，优先级最低
   final _implTys = <ImplTy>[];
@@ -219,10 +220,11 @@ mixin Tys<V extends LifeCycleVariable> {
     }
   }
 
-  void pushImplSliceTy(ImplTy ty) {
+  void pushImplSliceTy(SlicePathTy pathTy, ImplTy ty) {
     ty = ty.parentOrCurrent;
-    if (!_implArrTys.contains(ty)) {
-      _implArrTys.add(ty);
+    final list = pathTy is ArrayPathTy ? _implArrTys : _implSliceTys;
+    if (!list.contains(ty)) {
+      list.add(ty);
     }
   }
 
@@ -313,13 +315,16 @@ mixin Tys<V extends LifeCycleVariable> {
 
       /// ArrayTy 可以转化成 SliceTy，所以需要再搜索一遍[_implForTy]
       if (ty is ArrayTy) {
+        c.getKV((c) => c._implArrTys, test: test);
+        if (cache != null) return;
+
         final slice = ty.getSlice();
         c.getKV((c) => c._implForTy[slice], test: test);
         if (cache != null) return;
       }
 
       if (ty is SliceTy) {
-        c.getKV((c) => c._implArrTys, test: test);
+        c.getKV((c) => c._implSliceTys, test: test);
         if (cache != null) return;
       }
       // for ty 无法识别的情况
