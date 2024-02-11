@@ -94,6 +94,10 @@ mixin NewInst<T extends Ty> on Ty {
       super.currentContext ?? _parent?.currentContext;
 
   @override
+  AnalysisContext? get analysisContext =>
+      super.analysisContext ?? _parent?.analysisContext;
+
+  @override
   bool isTy(Ty? other) {
     if (other is NewInst) {
       return other.parentOrCurrent == parentOrCurrent;
@@ -230,7 +234,7 @@ mixin NewInst<T extends Ty> on Ty {
 
         ComponentTy? tyConstraint;
 
-        final tryTy = c.runIgnoreImport(() => pathTy.getBaseTy(c));
+        final tryTy = pathTy.getBaseTy(c);
         var generics = const <GenericDef>[];
         var tys = const <Identifier, Ty>{};
 
@@ -255,8 +259,7 @@ mixin NewInst<T extends Ty> on Ty {
           }
         } else if (tryTy is ComponentTy) {
           /// exactTy不支持泛型如: i32 , i64 ...
-          final currentImplTy =
-              c.runIgnoreImport(() => c.getImplWith(exactTy, comTy: tryTy));
+          final currentImplTy = c.getImplWith(exactTy, comTy: tryTy);
           final com = currentImplTy?.comTy;
 
           if (com?.parentOrCurrent != tryTy.parentOrCurrent) {

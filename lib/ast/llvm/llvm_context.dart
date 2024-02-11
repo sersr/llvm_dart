@@ -2,7 +2,6 @@ import 'package:nop/nop.dart';
 
 import '../../abi/abi_fn.dart';
 import '../../llvm_dart.dart';
-import '../ast.dart';
 import '../memory.dart';
 import '../tys.dart';
 import 'build_context_mixin.dart';
@@ -235,11 +234,6 @@ class BuildContextImpl extends BuildContext
       {bool Function(VA v)? test}) {
     return super.getKVImpl(map, test: test) ??
         parent?.getKVImpl(map, test: test);
-  }
-
-  @override
-  Variable? getVariableImpl(Identifier ident) {
-    return super.getVariableImpl(ident) ?? parent?.getVariableImpl(ident);
   }
 
   @override

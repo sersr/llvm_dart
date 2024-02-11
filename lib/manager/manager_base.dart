@@ -100,11 +100,6 @@ abstract class ManagerBase extends GlobalContext {
       {bool Function(VA v)? test}) {
     throw UnimplementedError();
   }
-
-  @override
-  V? getVariable<V>(Identifier ident) {
-    throw UnimplementedError();
-  }
 }
 
 mixin BuildContextMixin on ManagerBase {
@@ -202,14 +197,6 @@ mixin BuildContextMixin on ManagerBase {
       _ => super.getKVImpl<VA, T>(map, test: test),
     };
   }
-
-  @override
-  V? getVariable<V>(Identifier ident) {
-    return switch (V) {
-      Variable => rootBuildContext.getVariableImpl(ident) as V?,
-      _ => super.getVariable(ident),
-    };
-  }
 }
 
 mixin AnalysisContextMixin on ManagerBase {
@@ -284,14 +271,6 @@ mixin AnalysisContextMixin on ManagerBase {
     return switch (T) {
       AnalysisVariable => rootAnalysis.getKVImpl<VA>(map, test: test),
       _ => super.getKVImpl<VA, T>(map, test: test),
-    };
-  }
-
-  @override
-  V? getVariable<V>(Identifier ident) {
-    return switch (V) {
-      AnalysisVariable => rootAnalysis.getVariableImpl(ident) as V?,
-      _ => super.getVariable(ident),
     };
   }
 }

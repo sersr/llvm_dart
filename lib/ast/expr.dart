@@ -142,10 +142,6 @@ class StructDotFieldExpr extends Expr {
       structTy = structTy.baseTy;
     }
     if (structTy is! StructTy) return null;
-    // if (variable is AnalysisStructVariable) {
-    //   final p = variable.getParam(ident);
-    //   return p;
-    // }
 
     final v =
         structTy.fields.firstWhereOrNull((element) => element.ident == ident);

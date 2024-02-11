@@ -450,6 +450,7 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   final _implTyList = <Ty, ImplTy>{};
 
   ImplTy? compareStruct(Tys c, Ty exactTy, Ty? comTy) {
+    c = c is FnBuildMixin ? currentContext as Tys : analysisContext as Tys;
     if (generics.isEmpty) {
       if (comTy == null || comTy.isTy(this.comTy)) {
         return this;
@@ -611,6 +612,11 @@ class ArrayTy extends SliceTy {
   @override
   // ignore: overridden_fields
   late final ArrayLLVMType llty = ArrayLLVMType(this);
+
+  @override
+  String toString() {
+    return '[$elementTy; $sizeTy]';
+  }
 }
 
 class TypeAliasTy extends Ty {

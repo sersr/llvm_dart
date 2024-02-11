@@ -40,6 +40,9 @@ abstract class BuildContext
   Abi get abi;
 
   @override
+  bool get isGlobal => getLastFnContext() == null;
+
+  @override
   FnBuildMixin? getLastFnContext();
   FnBuildMixin createNewRunContext();
   FnBuildMixin createChildContext();

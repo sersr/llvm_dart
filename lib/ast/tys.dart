@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:equatable/equatable.dart';
 
 import '../parsers/str.dart';
@@ -55,7 +53,6 @@ typedef RunImport<T> = T Function(T Function());
 
 abstract class GlobalContext {
   Tys import(Tys current, ImportPath path);
-  V? getVariable<V>(Identifier ident);
   VA? getKVImpl<VA, T>(List<VA>? Function(Tys c) map,
       {bool Function(VA v)? test});
 
@@ -69,21 +66,12 @@ mixin Tys<V extends LifeCycleVariable> {
   String get currentPath;
   GlobalContext get global;
 
-  final _imports = <ImportPath, Tys>{};
-
-  R? runImport<R>(R Function() body) {
-    if (_runImport) return null;
-    return runZoned(body, zoneValues: {#_runImport: true});
-  }
-
-  R? runIgnoreImport<R>(R Function() body) {
-    return runZoned(body, zoneValues: {#_runImport: false});
-  }
+  final _imports = <ImportPath, Tys<V>>{};
 
   void pushImport(ImportPath path, {Identifier? name}) {
     if (!_imports.containsKey(path)) {
       final im = global.import(this, path);
-      _imports[path] = im;
+      _imports[path] = im as Tys<V>;
       initImportContext(im);
     }
   }
@@ -92,46 +80,30 @@ mixin Tys<V extends LifeCycleVariable> {
 
   final variables = <Identifier, List<V>>{};
 
-  bool get _runImport {
-    return Zone.current[#_runImport] == true;
-  }
+  bool get isGlobal => true;
 
-  V? getVariable(Identifier ident) =>
-      getVariableImpl(ident) ?? global.getVariable(ident);
+  V? getVariable(Identifier ident) {
+    var isGlobal = false;
+    var ignore = false;
+    bool test(V variable) {
+      if (isGlobal) return true;
+      if (!ignore && variable.ident.start > ident.start) {
+        return false;
+      }
 
-  V? getVariableImpl(Identifier ident) {
-    final list = variables[ident];
-    if (list != null) {
-      var last = list.last;
-      // ignore: invalid_use_of_protected_member
-      if (last.ident.data != ident.data) {
-        return last;
-      }
-      for (var val in list) {
-        final valIdent = val.ident;
-        if (valIdent.start > ident.start) {
-          break;
-        }
-        if (valIdent.start == ident.start) {
-          return val;
-        }
-        last = val;
-      }
-      last.updateLifeCycle(ident);
-      return last;
+      variable.updateLifeCycle(ident);
+      return true;
     }
 
-    final v = runImport(() {
-      for (var imp in _imports.values) {
-        final v = imp.getVariable(ident);
-        if (v != null) {
-          v.updateLifeCycle(ident);
-          return v;
-        }
+    return getKV((c) {
+      isGlobal = c.isGlobal;
+      final list = c.variables[ident] as List<V>?;
+      if (list?.last case var v? when !v.ident.inSameFile(ident)) {
+        ignore = true;
+        return [v];
       }
-    });
-
-    return v as V?;
+      return list;
+    }, test: test);
   }
 
   void pushVariable(V variable, {bool isAlloca = true}) {
@@ -264,8 +236,7 @@ mixin Tys<V extends LifeCycleVariable> {
           return true;
         }
       }
-      final tyImpl =
-          runIgnoreImport(() => impl.compareStruct(this, raw, comTy));
+      final tyImpl = impl.compareStruct(this, raw, comTy);
 
       if (tyImpl != null) {
         if (raw.isLimited) {
@@ -334,12 +305,6 @@ mixin Tys<V extends LifeCycleVariable> {
 
     tryCtxTy(this, ty);
     if (cache != null) return cache;
-
-    final tyCtx = ty.currentContext;
-    if (tyCtx != null) {
-      tryCtxTy(tyCtx, ty);
-    }
-
     return cache;
   }
 
@@ -422,13 +387,11 @@ mixin Tys<V extends LifeCycleVariable> {
     if (list != null) getItem(list);
 
     if (cache == null) {
-      runImport(() {
-        for (var imp in _imports.values) {
-          final list = map(imp);
-          if (list == null) continue;
-          getItem(list);
-        }
-      });
+      for (var imp in _imports.values) {
+        final list = map(imp);
+        if (list == null) continue;
+        getItem(list);
+      }
     }
 
     return cache;

@@ -49,27 +49,24 @@ class AnalysisContext with Tys<AnalysisVariable> {
     }
   }
 
-  AnalysisVariable? _getVariable(Identifier ident, AnalysisContext? currentFn) {
-    final list = variables[ident];
+  @override
+  bool get isGlobal => getLastFnContext() == null;
 
-    final fnContext = getLastFnContext();
-    if (list != null) {
-      var last = list.last;
-      for (var val in list.reversed) {
-        last = val;
-        if (val.ident.start > ident.start) continue;
-        break;
+  @override
+  AnalysisVariable? getVariable(Identifier ident) {
+    final currentFn = getLastFnContext();
+
+    final variable = super.getVariable(ident);
+
+    if (variable case AnalysisVariable(pushContext: AnalysisContext context)
+        when currentFn != null) {
+      if (context.getLastFnContext() case AnalysisContext context
+          when context != currentFn) {
+        currentFn.catchVariables.add(variable);
       }
-      if (fnContext != currentFn) {
-        if (!last.isGlobal) {
-          currentFn?.catchVariables.add(last);
-        }
-      }
-      last.updateLifeCycle(ident);
-      return last;
     }
 
-    return parent?._getVariable(ident, currentFn);
+    return variable;
   }
 
   bool isCurrentFn(AnalysisVariable variable, AnalysisContext? current) {
@@ -105,24 +102,6 @@ class AnalysisContext with Tys<AnalysisVariable> {
       Log.w(target);
       fn.childrenVariables.addAll(c);
     }
-  }
-
-  @override
-  AnalysisVariable? getVariableImpl(Identifier ident, {bool prin = false}) {
-    final list = variables[ident];
-    if (list != null) {
-      var last = list.last;
-      for (var val in list.reversed) {
-        last = val;
-        if (val.ident.start > ident.start) continue;
-        break;
-      }
-      last.updateLifeCycle(ident);
-
-      return last;
-    }
-    final fnContext = getLastFnContext();
-    return _getVariable(ident, fnContext);
   }
 
   @override

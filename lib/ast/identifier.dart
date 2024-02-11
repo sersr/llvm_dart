@@ -81,6 +81,10 @@ class Identifier with EquatableMixin {
   @protected
   final String data;
 
+  bool inSameFile(Identifier other) {
+    return data == other.data && fileName == other.fileName;
+  }
+
   bool get isValid => end != 0;
 
   RawIdent get toRawIdent {

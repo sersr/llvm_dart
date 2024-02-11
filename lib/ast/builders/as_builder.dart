@@ -13,19 +13,20 @@ abstract class AsBuilder {
 
     Variable? asValue;
 
-    switch (asTy) {
-      case BuiltInTy(literal: var literial) when literial.isInt && lty is RefTy:
-        final type = asTy.typeOf(context);
-        final v = llvm.LLVMBuildPtrToInt(
-            context.builder, lv.load(context), type, unname);
-        asValue = LLVMConstVariable(v, asTy, asId);
-      case RefTy() when lty is BuiltInTy && lty.literal.isInt:
-        final type = asTy.typeOf(context);
-        final v = llvm.LLVMBuildIntToPtr(
-            context.builder, lv.load(context), type, unname);
-        asValue = LLVMConstVariable(v, asTy, asId);
-      case _:
-        asValue = lv.asType(context, asTy);
+    if (asTy case BuiltInTy(literal: LiteralKind(isInt: true))
+        when lty is RefTy) {
+      final type = asTy.typeOf(context);
+      final v = llvm.LLVMBuildPtrToInt(
+          context.builder, lv.load(context), type, unname);
+      asValue = LLVMConstVariable(v, asTy, asId);
+    } else if (lty case BuiltInTy(literal: LiteralKind(isInt: true))
+        when asTy is RefTy) {
+      final type = asTy.typeOf(context);
+      final v = llvm.LLVMBuildIntToPtr(
+          context.builder, lv.load(context), type, unname);
+      asValue = LLVMConstVariable(v, asTy, asId);
+    } else {
+      asValue = lv.asType(context, asTy);
     }
 
     return asValue;
