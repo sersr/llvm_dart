@@ -29,7 +29,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
     assert(_retValue == null);
     if (_compileRetValue != null) return _compileRetValue;
     final fn = _currentFn;
-    if (fn == null) return null;
+    if (fn == null || fn.fnDecl.isVoidRet) return null;
     final ty = fn.fnDecl.getRetTy(this);
 
     return _compileRetValue = LLVMAllocaProxyVariable(this, (value, isProxy) {

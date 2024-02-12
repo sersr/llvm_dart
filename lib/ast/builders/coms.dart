@@ -282,4 +282,11 @@ abstract class ArrayOpImpl {
       struct: variable,
     );
   }
+
+  static Ty? elementAtTy(Tys context, Ty struct) {
+    final fn = getImplFn(context, struct, _arrayOpCom, _arrayOpIdent);
+    if (fn == null) return null;
+
+    return fn.fnDecl.getRetTyOrT(context);
+  }
 }

@@ -1,7 +1,6 @@
 import 'package:nop/nop.dart';
 
 import 'ast.dart';
-import 'expr.dart';
 import 'llvm/llvm_types.dart';
 import 'tys.dart';
 
@@ -107,9 +106,14 @@ class AnalysisContext with Tys<AnalysisVariable> {
   @override
   void pushVariable(AnalysisVariable variable, {bool isAlloca = true}) {
     variable.lifecycle.fnContext = getLastFnContext();
+    variable._isAlloca = isAlloca;
     allLifeCycyle.add(variable);
 
-    super.pushVariable(variable, isAlloca: isAlloca);
+    super.pushVariable(variable);
+  }
+
+  void pushNew(AnalysisVariable variable) {
+    pushVariable(variable, isAlloca: false);
   }
 
   AnalysisContext? getFnContext(Identifier ident) {
@@ -164,9 +168,10 @@ class AnalysisContext with Tys<AnalysisVariable> {
     }
   }
 
-  AnalysisVariable createVal(Ty ty, Identifier ident) {
+  AnalysisVariable createVal(Ty ty, Identifier ident, {bool isGlobal = false}) {
     final val = AnalysisVariable._(ty, ident);
     val.lifecycle.fnContext = this;
+    val._isGlobal = isGlobal;
     return val;
   }
 }
@@ -211,14 +216,18 @@ class AnalysisVariable extends LifeCycleVariable {
   @override
   Identifier get ident => _ident;
 
-  AnalysisVariable copy({Ty? ty, Identifier? ident, bool isGlobal = false}) {
-    return AnalysisVariable._(ty ?? this.ty, ident ?? this.ident)
+  AnalysisVariable copy({required Identifier ident}) {
+    return AnalysisVariable._(ty, ident)
       ..lifecycle.from(lifecycle)
-      ..isGlobal = isGlobal
-      ..parent = this;
+      .._isGlobal = isGlobal
+      .._isAlloca = _isAlloca
+      .._parent = this;
   }
 
-  bool isGlobal = false;
+  bool _isGlobal = false;
+  bool get isGlobal => _isGlobal;
+  bool _isAlloca = false;
+  bool get isAlloca => _isAlloca;
 
   bool get isRef {
     if (ty case RefTy(isPointer: false)) {
@@ -227,19 +236,19 @@ class AnalysisVariable extends LifeCycleVariable {
     return false;
   }
 
-  AnalysisVariable? parent;
+  AnalysisVariable? _parent;
 
   List<AnalysisVariable> get allParent {
     final l = <AnalysisVariable>[];
-    var p = parent;
+    var p = _parent;
     while (p != null) {
       l.add(p);
-      p = p.parent;
+      p = p._parent;
     }
     return l;
   }
 
-  late final LifeCycle lifecycle = LifeCycle();
+  late final Lifecycle lifecycle = Lifecycle(this);
 
   @override
   String toString() {
@@ -259,43 +268,51 @@ class AnalysisListVariable extends AnalysisVariable {
   bool get isGlobal => vals.firstOrNull?.isGlobal ?? false;
 
   @override
-  set isGlobal(bool v) {
-    vals.firstOrNull?.isGlobal = v;
-  }
-
-  @override
-  AnalysisVariable? get parent => vals.firstOrNull?.parent;
+  AnalysisVariable? get _parent => vals.firstOrNull?._parent;
 
   @override
   Identifier get ident => vals.firstOrNull?.ident ?? super.ident;
 
   @override
-  LifeCycle get lifecycle => vals.firstOrNull?.lifecycle ?? super.lifecycle;
+  Lifecycle get lifecycle => vals.firstOrNull?.lifecycle ?? super.lifecycle;
 
   @override
-  set parent(AnalysisVariable? v) {
-    vals.firstOrNull?.parent == v;
-  }
-
-  @override
-  AnalysisVariable copy(
-      {Ty? ty,
-      Identifier? ident,
-      List<PointerKind>? kind,
-      bool isGlobal = false}) {
-    return vals.first.copy(ty: ty, ident: ident, isGlobal: isGlobal);
+  AnalysisVariable copy({required Identifier ident}) {
+    return vals.first.copy(ident: ident);
   }
 }
 
-class LifeCycle {
-  LifeCycle();
+class Lifecycle {
+  Lifecycle(this.current);
   AnalysisContext? fnContext;
+  final AnalysisVariable current;
 
-  void from(LifeCycle other) {
+  void from(Lifecycle other) {
     fnContext = other.fnContext;
-    isOut = other.isOut;
+    _isStackRef = other._isStackRef;
+    _deps = other._deps;
   }
 
-  bool isOut = false;
-  bool get isInner => !isOut;
+  bool _isStackRef = false;
+  bool get isStackRef => _isStackRef;
+
+  List<AnalysisVariable>? _deps;
+
+  List<String> light() {
+    return [
+      ...?_deps?.expand((e) => e.lifecycle.light()),
+      if (!_ignoreCurrent) current.ident.light,
+    ];
+  }
+
+  bool _ignoreCurrent = false;
+  void updateDeps(List<AnalysisVariable> deps) {
+    _deps = deps;
+    _ignoreCurrent = true;
+  }
+
+  void updateRef(bool state, {List<AnalysisVariable>? deps}) {
+    _isStackRef = state;
+    _deps = deps;
+  }
 }

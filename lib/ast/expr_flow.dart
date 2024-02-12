@@ -41,12 +41,6 @@ class IfExprBlock extends Expr implements LogPretty {
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     expr?.analysis(context);
-    return analysisBlock(block, context);
-  }
-
-  static AnalysisVariable? analysisBlock(
-      Block? block, AnalysisContext context) {
-    if (block == null) return null;
     block.analysis(context);
 
     return retFromBlock(block, context);
@@ -54,12 +48,11 @@ class IfExprBlock extends Expr implements LogPretty {
 
   static AnalysisVariable? retFromBlock(Block block, AnalysisContext context) {
     if (block.isNotEmpty) {
-      final last = block.lastOrNull;
-      if (last is ExprStmt) {
-        final expr = last.expr;
+      if (block.lastOrNull case ExprStmt(expr: var expr)) {
         return expr.analysis(context);
       }
     }
+
     return null;
   }
 
@@ -351,7 +344,7 @@ class MatchItemExpr extends BuildMixin
                 p.analysis(context)?.ty ??
                 AnalysisTy(f.rawTy);
 
-            child.pushVariable(child.createVal(ty, ident));
+            child.pushNew(child.createVal(ty, ident));
           }
         }
       }
@@ -406,8 +399,7 @@ class MatchItemExpr extends BuildMixin
     if (val != null) {
       final valTy = val.ty;
       if (item is EnumItem && valTy is NewInst) {
-        assert(item.parent.parentOrCurrent == valTy.parentOrCurrent,
-            "error: ${item.parent} is not $valTy");
+        assert(item.parent.isTy(valTy), "error: ${item.parent} is not $valTy");
 
         item = item.newInst(valTy.tys, context);
         value = item.llty.load(child, val, params);

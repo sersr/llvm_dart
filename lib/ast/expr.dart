@@ -218,7 +218,7 @@ class VariableIdentExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     final v = context.getVariable(ident);
 
-    if (v != null) return v.copy(ident: ident);
+    if (v != null) return v.copy(ident: ident)..lifecycle.updateDeps([v]);
     final ty = pathTy.grtOrT(context);
     if (ty is Fn) {
       context.addChild(ty);

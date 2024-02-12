@@ -49,7 +49,7 @@ class LiteralExpr extends Expr {
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    return context.createVal(ty, ident);
+    return context.createVal(ty, Identifier.none);
   }
 }
 
@@ -116,11 +116,12 @@ class StructExpr extends Expr {
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    var val = expr.analysis(context);
-    var ty = val?.ty;
-    if (ty is! StructTy) return null;
+    final val = expr.analysis(context);
 
-    return analysisStruct(context, ty, params);
+    if (val case AnalysisVariable(ty: StructTy ty)) {
+      return analysisStruct(context, ty, params).copy(ident: val.ident);
+    }
+    return null;
   }
 
   static AnalysisVariable analysisStruct(
@@ -130,15 +131,23 @@ class StructExpr extends Expr {
     final sortFields = alignList(
         params, (p) => struct.fields.indexWhere((e) => e.ident == p.ident));
 
+    var deps = <AnalysisVariable>[];
     for (var field in sortFields) {
-      field.analysis(context);
+      final val = field.analysis(context);
+      if (val != null) {
+        if (val.lifecycle.isStackRef) {
+          deps.add(val);
+        }
+      }
     }
 
     Ty valTy = struct;
     if (valTy is EnumItem) {
       valTy = valTy.parent;
     }
-    return context.createVal(valTy, valTy.ident);
+
+    return context.createVal(valTy, valTy.ident)
+      ..lifecycle.updateRef(deps.isNotEmpty, deps: deps);
   }
 }
 
@@ -178,10 +187,8 @@ class ArrayInitExpr extends Expr {
     final temp = expr.build(context, baseTy: ty);
     final val = temp?.variable;
 
-    if (val?.ty case Ty elementTy) {
-      final base = val!.load(context);
-      final isConst = llvm.LLVMIsConstant(base);
-      assert(isConst == LLVMTrue, '$expr must be a constant.');
+    if (val case Variable(ty: Ty elementTy)) {
+      final base = val.load(context);
       final ty = ArrayTy.int(elementTy, size);
       final elements = List.generate(size, (index) => base);
       final variable = ty.llty.createArray(context, elements);
@@ -212,6 +219,7 @@ class ArrayExpr extends Expr {
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
     Ty? ty;
+
     for (var element in elements) {
       final v = element.analysis(context);
       if (v != null) {
@@ -220,7 +228,7 @@ class ArrayExpr extends Expr {
     }
 
     if (ty == null) return null;
-    return context.createVal(ArrayTy.int(ty, elements.length), Identifier.none);
+    return context.createVal(ArrayTy.int(ty, elements.length), identStart);
   }
 
   @override
@@ -296,6 +304,30 @@ class ArrayOpExpr extends Expr {
   final Expr expr;
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
+    final exprValue = arrayOrPtr.analysis(context);
+
+    if (exprValue == null) return null;
+    final ty = exprValue.ty;
+
+    final temp = ArrayOpImpl.elementAtTy(context, ty);
+
+    if (temp != null) {
+      return context.createVal(temp, ident);
+    }
+
+    expr.analysis(context);
+
+    Ty? valTy;
+    if (ty is SliceTy) {
+      valTy = ty.elementTy;
+    } else if (ty is RefTy) {
+      valTy = ty.parent;
+    }
+
+    if (valTy != null) {
+      return context.createVal(valTy, ident);
+    }
+
     return null;
   }
 

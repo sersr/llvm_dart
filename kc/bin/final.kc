@@ -1,46 +1,45 @@
 
-import '../lib/d.kc';
-import '../lib/stack_overflow.kc';;
+import "std:stack_overflow.kc";
 fn main() i32 {
-  final y = 10;
-  printf("hello: %d\n", y);
-  // init_sig_stack();
+  // final y = 10;
+  // printf("hello: %d\n", y);
+  // // init_sig_stack();
 
-  if y == 10 {
-    print("end");
-  }
+  // if y == 10 {
+  //   print("end");
+  // }
 
-  let y = 10i64;
-  let ha = Hy{};
-  let hh = HH {1, ha};
+  // let y = 10i64;
+  // let ha = Hy{};
+  // let hh = HH {1, ha};
 
-  printf("hh: %d\n", hh.y);
-  printf("hh: %p\n", hh.x);
+  // printf("hh: %d\n", hh.y);
+  // printf("hh: %p\n", hh.x);
 
-  y = null;
-  let yy = 10;
-  if 10 == y {
-    print("y == yy");
-  }
-  if p {
-    print("null");
-  }
-  let yx = 0x10;
-  printf("yx: %d\n", yx);
-  let y = Hy {};
-  y.print();
-  hh.x = y;
-  let size = sizeOf(y);
-  printf("size: %d\n", size);
-  hh.x.print();
+  // y = null;
+  // let yy = 10;
+  // if 10 == y {
+  //   print("y == yy");
+  // }
+  // if p {
+  //   print("null");
+  // }
+  // let yx = 0x10;
+  // printf("yx: %d\n", yx);
+  // let y = Hy {};
+  // y.print();
+  // hh.x = y;
+  // let size = sizeOf(y);
+  // printf("size: %d\n", size);
+  // hh.x.print();
 
-  let y = -1f32;
-  if y == null {
-    print("y == null");
-  }else {
-    print("y == -1");
-  }
-  loopx();
+  // let y = -1f32;
+  // if y == null {
+  //   print("y == null");
+  // }else {
+  //   print("y == -1");
+  // }
+  // loopx();
 
   let option = Some { 10 };
   option = None{};

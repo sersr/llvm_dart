@@ -183,7 +183,8 @@ class FnCallExpr extends Expr with FnCallMixin {
 
     final valTy = variable.ty;
     if (valTy is StructTy) {
-      return StructExpr.analysisStruct(context, valTy, params);
+      return StructExpr.analysisStruct(context, valTy, params)
+          .copy(ident: variable.ident);
     }
 
     final temp = CallBuilder.callImplTys(context, variable, params);
@@ -305,7 +306,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
       RefDerefCom.loopGetDeref(context, val, (variable) {
         final fn = context.getImplFnForTy(variable.ty, ident);
         if (fn != null) {
-          assert(!fn.isStatic);
           implFn = fn;
           val = variable;
           return true;

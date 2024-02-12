@@ -60,7 +60,8 @@ abstract class IfExprBuilder {
         : c.buildSubBB(name: current == null ? 'then' : 'else_if');
 
     final elseOrAfter = switch (child) {
-      != null => c.buildSubBB(name: 'elif_condition'),
+      != null =>
+        c.buildSubBB(name: child.expr == null ? 'else' : 'elif_condition'),
       _ => afterBlock,
     };
 

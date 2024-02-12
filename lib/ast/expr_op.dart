@@ -362,10 +362,12 @@ class RefExpr extends Expr {
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    final vv = current.analysis(context);
-    if (vv == null) return null;
-    final ty = kind.refDrefTy(context, vv.ty);
-    return context.createVal(ty, pointerIdent);
+    final val = current.analysis(context);
+    if (val == null) return null;
+    final state = kind == PointerKind.ref && val.isAlloca && !val.isGlobal;
+    final ty = kind.refDrefTy(context, val.ty);
+    return context.createVal(ty, pointerIdent)
+      ..lifecycle.updateRef(state, deps: [val]);
   }
 }
 
@@ -500,18 +502,17 @@ class AssignExpr extends Expr {
     final lhs = ref.analysis(context);
     final rhs = expr.analysis(context);
     if (lhs != null) {
-      final lty = lhs.ty;
+      // final lty = lhs.ty;
 
       if (rhs != null) {
-        if (lty is! BuiltInTy && lty is! AnalysisTy && !rhs.ty.isTy(lty)) {
-          Log.e('$lty != ${rhs.ty}');
-        }
+        // if (lty is! BuiltInTy && lty is! AnalysisTy && !rhs.ty.isTy(lty)) {
+        //   Log.e('$lty != ${rhs.ty}');
+        // }
 
-        if (rhs.isRef) {
-          if (rhs.lifecycle.isInner && lhs.lifecycle.isOut) {
-            final ident = rhs.lifeIdent ?? rhs.ident;
-            Log.e('lifecycle Error\n${ident.light}');
-          }
+        if (rhs.lifecycle.isStackRef) {
+          final newVal = lhs.copy(ident: lhs.ident);
+          newVal.lifecycle.updateRef(true, deps: [rhs]);
+          return newVal;
         }
       }
 

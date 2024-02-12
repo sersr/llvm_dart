@@ -1,0 +1,30 @@
+fn main() i32 {
+
+  let ref = ref_ret(true);
+  printf("ref value %d\n", *ref);
+
+  let x = ref_s();
+  0;
+}
+
+
+fn ref_ret(enable: bool) *i32 {
+  let y = 140;
+  let x = 2240;
+
+  if enable {
+    &y
+  } else {
+    &x
+  }
+}
+
+struct S {
+  y: &i32,
+}
+
+fn ref_s() S {
+  let y = 100;
+  
+  S { &y };
+}

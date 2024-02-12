@@ -110,7 +110,7 @@ class LetStmt extends Stmt {
     final v = rExpr?.analysis(context);
 
     if (v == null) return;
-    final value = v.copy(ty: realTy, ident: nameIdent);
+    final value = context.createVal(realTy ?? v.ty, nameIdent);
     context.pushVariable(value);
   }
 }
@@ -138,8 +138,8 @@ class LetSwapStmt extends Stmt {
         Log.e('let error.');
         return;
       }
-      context.pushVariable(lhs.copy(ident: rhs.ident));
-      context.pushVariable(rhs.copy(ident: lhs.ident));
+      context.pushNew(lhs.copy(ident: rhs.ident));
+      context.pushNew(rhs.copy(ident: lhs.ident));
     }
   }
 
@@ -271,6 +271,10 @@ class ExprStmt extends Stmt implements LogPretty {
 
   @override
   void analysis(bool isRet) {
+    if (isRet) {
+      RetStmt.analysisAll(analysisContext, expr);
+      return;
+    }
     expr.analysis(analysisContext);
   }
 }
@@ -304,45 +308,34 @@ class RetStmt extends Stmt {
   @override
   void analysis(bool isRet) {
     if (expr == null) return;
-    expr!.analysis(analysisContext);
+    analysisAll(analysisContext, expr!);
   }
 
-  /// todo;
   static AnalysisVariable? analysisAll(AnalysisContext context, Expr expr) {
     final val = expr.analysis(context);
     final current = context.getLastFnContext();
 
     void check(AnalysisVariable? val) {
-      if (val != null && current != null) {
-        final valLife = val.lifecycle.fnContext;
-        if (valLife != null) {
-          if (val.isRef) {
-            if (val.lifecycle.isInner && current.isChildOrCurrent(valLife)) {
-              final ident = val.lifeIdent ?? val.ident;
-              Log.e('lifecycle Error\n${ident.light}');
-            }
-          }
+      if (val != null) {
+        if (val.lifecycle.isStackRef) {
+          Log.e('lifecycle Error: \n${val.lifecycle.light().join('\n')}');
         }
       }
 
-      if (val != null) {
-        final vals = current?.currentFn?.returnVariables;
-        if (vals != null) {
-          final all = val.allParent;
-          all.insert(0, val);
+      if (current
+          case AnalysisContext(
+            currentFn: Fn(
+              returnVariables: var variables,
+              fnDecl: FnDecl(isVoidRet: false)
+            )
+          ) when val != null) {
+        final all = val.allParent;
+        all.insert(0, val);
 
-          // 判断是否同源， 用于`sret`, struct ret
-          //
-          // let y = Foo { 1, 2}
-          // if condition {
-          //  return y;
-          // } else {
-          //  let x = y;
-          //  return x; // 与 `y` 同源
-          // }
-          for (var val in all) {
+        for (var val in all) {
+          if (val.ident.isValid) {
             final ident = val.ident.toRawIdent;
-            vals.add(ident);
+            variables.add(ident);
           }
         }
       }
@@ -456,9 +449,11 @@ class StaticStmt extends Stmt {
     final context = analysisContext;
     final realTy = ty?.grt(context);
     final val = expr.analysis(context);
-    final vTy = realTy ?? val?.ty;
-    if (vTy == null || val == null) return;
-    context.pushVariable(val.copy(ty: vTy, ident: ident, isGlobal: true));
+    final valTy = realTy ?? val?.ty;
+    if (valTy == null) return;
+
+    final globalValue = context.createVal(valTy, ident, isGlobal: true);
+    context.pushNew(globalValue);
   }
 }
 

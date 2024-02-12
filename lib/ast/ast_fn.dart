@@ -20,6 +20,8 @@ class FnDecl extends Ty with NewInst<FnDecl> {
     return this == other;
   }
 
+  bool get isVoidRet => _returnTy == null;
+
   Ty getRetTy(Tys c) {
     return getRetTyOrT(c)!;
   }
@@ -56,9 +58,7 @@ class FnDecl extends Ty with NewInst<FnDecl> {
   void analysisFn(AnalysisContext context) {
     for (var p in fields) {
       final t = getFieldTyOrT(context, p) ?? AnalysisTy(p.rawTy);
-      context.pushVariable(
-        context.createVal(t, p.ident)..lifecycle.isOut = true,
-      );
+      context.pushNew(context.createVal(t, p.ident));
     }
   }
 
@@ -370,9 +370,7 @@ class ImplFn extends Fn with ImplFnMixin {
     final ident = Identifier.self;
     final ty = implty.ty;
     if (ty == null) return;
-    final v = context.createVal(ty, ident);
-    v.lifecycle.isOut = true;
-    context.pushVariable(v);
+    context.pushNew(context.createVal(ty, ident));
   }
 }
 

@@ -10,9 +10,9 @@ abstract class LifeCycleVariable {
 
   Identifier? lifeEnd;
 
-  Identifier? get lifeIdent => lifeEnd ?? ident;
+  Identifier get lifeIdent => lifeEnd ?? ident;
 
-  void updateLifeCycle(Identifier ident) {
+  void _updateIdent(Identifier ident) {
     if (lifeEnd == null) {
       lifeEnd = ident;
       return;
@@ -62,7 +62,6 @@ abstract class GlobalContext {
 }
 
 mixin Tys<V extends LifeCycleVariable> {
-  // Tys defaultImport(String path);
   String get currentPath;
   GlobalContext get global;
 
@@ -91,7 +90,7 @@ mixin Tys<V extends LifeCycleVariable> {
         return false;
       }
 
-      variable.updateLifeCycle(ident);
+      variable._updateIdent(ident);
       return true;
     }
 
@@ -106,7 +105,7 @@ mixin Tys<V extends LifeCycleVariable> {
     }, test: test);
   }
 
-  void pushVariable(V variable, {bool isAlloca = true}) {
+  void pushVariable(V variable) {
     final list = variables.putIfAbsent(variable.ident, () => []);
     if (!list.contains(variable)) {
       if (list.isEmpty) {

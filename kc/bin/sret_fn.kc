@@ -6,11 +6,6 @@ fn main() i32 {
   printf("y: %d, x: %d\n", base.y, base.x);  
   let base = sret(false);
   printf("y: %d, x: %d\n", base.y, base.x);
-
- let newBase = Base { 11, 22, 33 };
-
-  let ss = heap_fn();
-
   0;
 }
 
@@ -29,9 +24,4 @@ extern fn sret(isBase: bool) Base {
   }
 
   base;
-}
-
-fn heap_fn() *HeapCount<Base> {
-  let ss = Base { 10, 220 ,33};
-  &ss
 }
