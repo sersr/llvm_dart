@@ -316,7 +316,7 @@ class RetStmt extends Stmt {
       if (val != null && current != null) {
         final valLife = val.lifecycle.fnContext;
         if (valLife != null) {
-          if (val.kind.isRef) {
+          if (val.isRef) {
             if (val.lifecycle.isInner && current.isChildOrCurrent(valLife)) {
               final ident = val.lifeIdent ?? val.ident;
               Log.e('lifecycle Error\n${ident.light}');

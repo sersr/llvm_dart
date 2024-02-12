@@ -1128,7 +1128,7 @@ class Parser {
     if (t.kind == TokenKind.ident) {
       final ident = getIdent(it);
       final key = getKey(it);
-      if (key == Key.kBreak) {
+      if (key == Key.kBreak || key == Key.kContinue) {
         Identifier? label;
         if (it.moveNext()) {
           final t = getToken(it);
@@ -1139,10 +1139,9 @@ class Parser {
           }
         }
         eatLine(it);
-        return BreakExpr(ident, label);
-      } else if (key == Key.kContinue) {
-        eatLine(it);
-        return ContinueExpr(ident);
+        return key == Key.kBreak
+            ? BreakExpr(ident, label)
+            : ContinueExpr(ident);
       } else if (key == Key.fn) {
         final state = it.cursor;
 

@@ -57,7 +57,7 @@ class FnDecl extends Ty with NewInst<FnDecl> {
     for (var p in fields) {
       final t = getFieldTyOrT(context, p) ?? AnalysisTy(p.rawTy);
       context.pushVariable(
-        context.createVal(t, p.ident, p.rawTy.kind)..lifecycle.isOut = true,
+        context.createVal(t, p.ident)..lifecycle.isOut = true,
       );
     }
   }

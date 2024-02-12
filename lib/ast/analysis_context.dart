@@ -164,9 +164,8 @@ class AnalysisContext with Tys<AnalysisVariable> {
     }
   }
 
-  AnalysisVariable createVal(Ty ty, Identifier ident,
-      [List<PointerKind>? kind]) {
-    final val = AnalysisVariable._(ty, ident, kind ?? []);
+  AnalysisVariable createVal(Ty ty, Identifier ident) {
+    final val = AnalysisVariable._(ty, ident);
     val.lifecycle.fnContext = this;
     return val;
   }
@@ -184,6 +183,14 @@ class AnalysisTy extends Ty {
   }
 
   @override
+  bool isTy(Ty? other) {
+    if (other is AnalysisTy) {
+      return pathTy.ident == other.ident;
+    }
+    return super.isTy(other);
+  }
+
+  @override
   LLVMType get llty => throw UnimplementedError();
 
   @override
@@ -196,28 +203,29 @@ class AnalysisTy extends Ty {
 }
 
 class AnalysisVariable extends LifeCycleVariable {
-  AnalysisVariable._(this.ty, this._ident, this.kind);
+  AnalysisVariable._(this.ty, this._ident);
   @override
   final Ty ty;
-  final List<PointerKind> kind;
   final Identifier _ident;
 
   @override
   Identifier get ident => _ident;
 
-  AnalysisVariable copy(
-      {Ty? ty,
-      Identifier? ident,
-      List<PointerKind>? kind,
-      bool isGlobal = false}) {
-    return AnalysisVariable._(
-        ty ?? this.ty, ident ?? this.ident, kind ?? this.kind.toList())
+  AnalysisVariable copy({Ty? ty, Identifier? ident, bool isGlobal = false}) {
+    return AnalysisVariable._(ty ?? this.ty, ident ?? this.ident)
       ..lifecycle.from(lifecycle)
       ..isGlobal = isGlobal
       ..parent = this;
   }
 
   bool isGlobal = false;
+
+  bool get isRef {
+    if (ty case RefTy(isPointer: false)) {
+      return true;
+    }
+    return false;
+  }
 
   AnalysisVariable? parent;
 
@@ -241,7 +249,7 @@ class AnalysisVariable extends LifeCycleVariable {
 
 class AnalysisListVariable extends AnalysisVariable {
   AnalysisListVariable(this.vals)
-      : super._(LiteralKind.kVoid.ty, Identifier.none, const []);
+      : super._(LiteralKind.kVoid.ty, Identifier.none);
 
   final List<AnalysisVariable> vals;
   @override
@@ -255,8 +263,6 @@ class AnalysisListVariable extends AnalysisVariable {
     vals.firstOrNull?.isGlobal = v;
   }
 
-  @override
-  List<PointerKind> get kind => vals.firstOrNull?.kind ?? const [];
   @override
   AnalysisVariable? get parent => vals.firstOrNull?.parent;
 

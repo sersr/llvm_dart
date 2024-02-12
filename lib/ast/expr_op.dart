@@ -151,7 +151,7 @@ class OpExpr extends Expr {
   bool get hasUnknownExpr => lhs.hasUnknownExpr || rhs.hasUnknownExpr;
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return OpExpr(op, lhs.clone(), rhs.clone(), opIdent);
   }
 
@@ -246,7 +246,6 @@ class OpExpr extends Expr {
 
 enum PointerKind {
   pointer('*'),
-  none(''),
   ref('&');
 
   final String char;
@@ -266,8 +265,15 @@ enum PointerKind {
     return baseTy.parent;
   }
 
+  Ty refDrefTy(Tys c, Ty ty) {
+    return switch (this) {
+      pointer when ty is RefTy => ty.parent,
+      ref => RefTy(ty),
+      _ => ty,
+    };
+  }
+
   Variable? refDeref(Variable? val, StoreLoadMixin c, Identifier id) {
-    if (this == PointerKind.none) return val;
     Variable? inst;
     if (val != null) {
       if (this == PointerKind.pointer) {
@@ -284,18 +290,17 @@ enum PointerKind {
 }
 
 extension ListPointerKind on List<PointerKind> {
-  bool get isRef => firstOrNull == PointerKind.ref;
-
   Ty wrapRefTy(Ty baseTy) {
-    for (var kind in this) {
+    for (var i = length - 1; i >= 0; i--) {
+      final kind = this[i];
       baseTy = RefTy.from(baseTy, kind == PointerKind.pointer);
     }
     return baseTy;
   }
 
   Ty unWrapRefTy(Ty baseTy) {
-    for (var kind in this) {
-      if (kind != PointerKind.none && baseTy is RefTy) {
+    for (var _ in this) {
+      if (baseTy is RefTy) {
         baseTy = baseTy.parent;
       }
     }
@@ -318,7 +323,7 @@ class RefExpr extends Expr {
   }
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return RefExpr(current.clone(), pointerIdent, kind);
   }
 
@@ -331,7 +336,7 @@ class RefExpr extends Expr {
     final temp = current.getTy(context, baseTy);
 
     if (temp != null) {
-      return RefTy.from(temp, kind == PointerKind.pointer);
+      return kind.unWrapTy(temp);
     }
 
     return null;
@@ -359,7 +364,8 @@ class RefExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     final vv = current.analysis(context);
     if (vv == null) return null;
-    return vv.copy(ident: pointerIdent, kind: [kind, ...vv.kind]);
+    final ty = kind.refDrefTy(context, vv.ty);
+    return context.createVal(ty, pointerIdent);
   }
 }
 
@@ -388,7 +394,7 @@ class UnaryExpr extends Expr {
   bool get hasUnknownExpr => expr.hasUnknownExpr;
 
   @override
-  UnaryExpr clone() {
+  UnaryExpr cloneSelf() {
     return UnaryExpr(op, expr.clone(), opIdent);
   }
 
@@ -458,7 +464,7 @@ class AssignExpr extends Expr {
   final Expr ref;
   final Expr expr;
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return AssignExpr(ref.clone(), expr.clone());
   }
 
@@ -494,8 +500,14 @@ class AssignExpr extends Expr {
     final lhs = ref.analysis(context);
     final rhs = expr.analysis(context);
     if (lhs != null) {
+      final lty = lhs.ty;
+
       if (rhs != null) {
-        if (rhs.kind.isRef) {
+        if (lty is! BuiltInTy && lty is! AnalysisTy && !rhs.ty.isTy(lty)) {
+          Log.e('$lty != ${rhs.ty}');
+        }
+
+        if (rhs.isRef) {
           if (rhs.lifecycle.isInner && lhs.lifecycle.isOut) {
             final ident = rhs.lifeIdent ?? rhs.ident;
             Log.e('lifecycle Error\n${ident.light}');
@@ -514,7 +526,7 @@ class AssignOpExpr extends AssignExpr {
   final OpKind op;
   final Identifier opIdent;
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return AssignOpExpr(op, opIdent, ref.clone(), expr.clone());
   }
 

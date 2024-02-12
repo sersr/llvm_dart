@@ -77,6 +77,13 @@ abstract class Ty extends BuildMixin with EquatableMixin implements Clone<Ty> {
     _analysisContext = context;
   }
 
+  Tys? getcurrentContext(Tys base) {
+    return switch (base) {
+      FnBuildMixin() => currentContext,
+      _ => analysisContext,
+    } as Tys?;
+  }
+
   void build() {}
   void analysis() {}
 }
@@ -450,7 +457,10 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   final _implTyList = <Ty, ImplTy>{};
 
   ImplTy? compareStruct(Tys c, Ty exactTy, Ty? comTy) {
-    c = c is FnBuildMixin ? currentContext as Tys : analysisContext as Tys;
+    assert(exactTy is! NewInst || exactTy.done);
+
+    c = getcurrentContext(c)!;
+
     if (generics.isEmpty) {
       if (comTy == null || comTy.isTy(this.comTy)) {
         return this;
@@ -612,6 +622,9 @@ class ArrayTy extends SliceTy {
   @override
   // ignore: overridden_fields
   late final ArrayLLVMType llty = ArrayLLVMType(this);
+
+  @override
+  List<Object?> get props => [elementTy, sizeTy];
 
   @override
   String toString() {

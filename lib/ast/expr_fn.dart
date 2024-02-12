@@ -4,7 +4,7 @@ class FnExpr extends Expr {
   FnExpr(this.fn);
   final Fn fn;
   @override
-  FnExpr clone() {
+  FnExpr cloneSelf() {
     return FnExpr(fn.clone());
   }
 
@@ -111,7 +111,7 @@ class FnCallExpr extends Expr with FnCallMixin {
   bool get hasUnknownExpr => expr.hasUnknownExpr;
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return FnCallExpr(expr.clone(), params.clone());
   }
 
@@ -213,7 +213,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
   bool get hasUnknownExpr => receiver.hasUnknownExpr;
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return MethodCallExpr(ident, receiver.clone(), params.clone());
   }
 

@@ -13,6 +13,8 @@ fn main() i32 {
 
   let b = Box.new([110,1200]);
   b.hello();
+  *b.getValue() = [111,222];
+  b.hello();
   0;
 }
 

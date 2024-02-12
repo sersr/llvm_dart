@@ -2,7 +2,7 @@ import "d.kc";
 import "allocator.kc";
 import "closure.kc";
 
-#[FnClosureCopy]
+#[fnClosureCopy]
 struct Box<T> {
   ptr: *BoxData<T>,
 }

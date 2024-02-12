@@ -46,6 +46,15 @@ class Identifier with EquatableMixin {
         builtInValue = '',
         isStr = false,
         name = '';
+  Identifier.tokens(Token start, Token end, this.data, this.fileName)
+      : start = start.start,
+        end = end.end,
+        lineStart = start.lineStart,
+        lineEnd = end.lineEnd,
+        lineNumber = start.lineNumber,
+        builtInValue = '',
+        isStr = false,
+        name = '';
 
   Identifier.builtIn(this.builtInValue)
       : name = '',

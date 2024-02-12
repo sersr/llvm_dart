@@ -39,7 +39,7 @@ class FieldExpr extends Expr {
   }
 
   @override
-  FieldExpr clone() {
+  FieldExpr cloneSelf() {
     return FieldExpr(expr.clone(), ident);
   }
 
@@ -79,7 +79,7 @@ class StructDotFieldExpr extends Expr {
   bool get hasUnknownExpr => struct.hasUnknownExpr;
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return StructDotFieldExpr(struct.clone(), ident);
   }
 
@@ -175,7 +175,7 @@ class VariableIdentExpr extends Expr {
   }
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return VariableIdentExpr(ident, genericInsts);
   }
 
@@ -261,13 +261,13 @@ class BlockExpr extends Expr implements LogPretty {
   }
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return BlockExpr(block.clone());
   }
 
   @override
   String toString() {
-    return '$block'.replaceFirst(' ', '');
+    return block.toString();
   }
 }
 
@@ -302,7 +302,7 @@ class AsExpr extends Expr {
   }
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return AsExpr(lhs.clone(), rhs);
   }
 

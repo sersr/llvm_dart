@@ -18,10 +18,12 @@ abstract class Expr extends BuildMixin implements Clone<Expr> {
 
   bool get hasUnknownExpr => false;
 
-  void reset() {
-    _first = true;
-    _temp = null;
+  @override
+  Expr clone() {
+    return cloneSelf();
   }
+
+  Expr cloneSelf();
 
   ExprTempValue? _temp;
   ExprTempValue? build(FnBuildMixin context, {Ty? baseTy}) {
@@ -65,7 +67,7 @@ class UnknownExpr extends Expr {
   bool get hasUnknownExpr => true;
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return this;
   }
 

@@ -9,7 +9,7 @@ class IfExprBlock extends Expr implements LogPretty {
   IfExprBlock? child;
 
   @override
-  IfExprBlock clone() {
+  IfExprBlock cloneSelf() {
     return IfExprBlock(expr?.clone(), block.clone());
   }
 
@@ -85,7 +85,7 @@ class IfExpr extends Expr with RetExprMixin implements LogPretty {
   }
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return IfExpr(ifExprBlocks.clone()).._variable = _variable;
   }
 
@@ -179,7 +179,7 @@ class IfExpr extends Expr with RetExprMixin implements LogPretty {
 class BreakExpr extends Expr {
   BreakExpr(this.ident, this.label);
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return BreakExpr(ident, label);
   }
 
@@ -210,7 +210,7 @@ class ContinueExpr extends Expr {
   ContinueExpr(this.ident);
   final Identifier ident;
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return ContinueExpr(ident);
   }
 
@@ -237,7 +237,7 @@ class LoopExpr extends Expr {
   final Identifier ident; // label
   final Block block;
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return LoopExpr(ident, block.clone());
   }
 
@@ -270,7 +270,7 @@ class LoopExpr extends Expr {
 class WhileExpr extends Expr {
   WhileExpr(this.ident, this.expr, this.block);
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return WhileExpr(ident, expr.clone(), block.clone());
   }
 
@@ -518,7 +518,7 @@ class MatchExpr extends Expr with RetExprMixin implements LogPretty {
   }
 
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return MatchExpr(expr.clone(), items.clone()).._variables = _variables;
   }
 

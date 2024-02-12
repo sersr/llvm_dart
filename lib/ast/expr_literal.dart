@@ -5,7 +5,7 @@ class LiteralExpr extends Expr {
   final Identifier ident;
   final BuiltInTy ty;
   @override
-  Expr clone() {
+  Expr cloneSelf() {
     return LiteralExpr(ident, ty);
   }
 
@@ -73,7 +73,7 @@ class StructExpr extends Expr {
   }
 
   @override
-  StructExpr clone() {
+  StructExpr cloneSelf() {
     return StructExpr(expr.clone(), params.clone());
   }
 
@@ -119,6 +119,7 @@ class StructExpr extends Expr {
     var val = expr.analysis(context);
     var ty = val?.ty;
     if (ty is! StructTy) return null;
+
     return analysisStruct(context, ty, params);
   }
 
@@ -133,7 +134,11 @@ class StructExpr extends Expr {
       field.analysis(context);
     }
 
-    return context.createVal(struct, struct.ident);
+    Ty valTy = struct;
+    if (valTy is EnumItem) {
+      valTy = valTy.parent;
+    }
+    return context.createVal(valTy, valTy.ident);
   }
 }
 
@@ -187,7 +192,7 @@ class ArrayInitExpr extends Expr {
   }
 
   @override
-  ArrayInitExpr clone() {
+  ArrayInitExpr cloneSelf() {
     return ArrayInitExpr(expr.clone(), size, identStart, identEnd);
   }
 
@@ -274,7 +279,7 @@ class ArrayExpr extends Expr {
   }
 
   @override
-  ArrayExpr clone() {
+  ArrayExpr cloneSelf() {
     return ArrayExpr(elements.clone(), identStart, identEnd);
   }
 
@@ -335,7 +340,7 @@ class ArrayOpExpr extends Expr {
   }
 
   @override
-  ArrayOpExpr clone() {
+  ArrayOpExpr cloneSelf() {
     return ArrayOpExpr(ident, arrayOrPtr.clone(), expr.clone());
   }
 
