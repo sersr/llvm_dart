@@ -54,6 +54,7 @@ mixin FnBuildMixin
       };
 
       setName(selfValue, ident.src);
+      diBuilderDeclare(ident, selfValue, p);
       pushVariable(value);
       index += 1;
     } else if (decl is FnClosure) {
@@ -79,6 +80,7 @@ mixin FnBuildMixin
       final fnParam = llvm.LLVMGetParam(fn, index);
       final value = LLVMAllocaVariable(fnParam, ty, ty.typeOf(this), val.ident);
       setName(fnParam, val.ident.src);
+      diBuilderDeclare(val.ident, fnParam, ty);
       pushVariable(value);
     }
 
@@ -119,12 +121,13 @@ mixin FnBuildMixin
     if (ty.llty.getBytes(this) > 8) {
       final alloca = LLVMAllocaVariable(fnParam, ty, ty.typeOf(this), ident);
       setName(fnParam, ident.src);
+      diBuilderDeclare(ident, fnParam, ty);
       pushVariable(alloca);
     } else {
       final alloca = ty.llty.createAlloca(this, ident);
       alloca.store(this, fnParam);
       if (ignoreFree) removeVal(alloca);
-
+      diBuilderDeclare(ident, alloca.alloca, ty);
       pushVariable(alloca);
     }
   }
