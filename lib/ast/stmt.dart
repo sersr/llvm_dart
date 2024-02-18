@@ -106,11 +106,10 @@ class LetStmt extends Stmt {
   @override
   void analysis(bool isRet) {
     final context = analysisContext;
-    final realTy = ty?.grt(context);
     final v = rExpr?.analysis(context);
 
     if (v == null) return;
-    final value = context.createVal(realTy ?? v.ty, nameIdent);
+    final value = v.copy(ident: nameIdent);
     context.pushVariable(value);
   }
 }

@@ -165,8 +165,11 @@ class AnalysisContext with Tys<AnalysisVariable> {
     }
   }
 
-  AnalysisVariable createVal(Ty ty, Identifier ident, {bool isGlobal = false}) {
-    final val = AnalysisVariable._(ty, ident);
+  AnalysisVariable createVal(Ty ty, Identifier ident,
+      {AnalysisVariable? body, bool isGlobal = false}) {
+    final val = body == null
+        ? AnalysisVariable._(ty, ident)
+        : AnalysisFieldVariable._(ty, ident, body);
     val.lifecycle.fnContext = this;
     val._isGlobal = isGlobal;
     return val;
@@ -253,6 +256,22 @@ class AnalysisVariable extends LifeCycleVariable {
   }
 }
 
+class AnalysisFieldVariable extends AnalysisVariable {
+  AnalysisFieldVariable._(Ty ty, Identifier ident, this.body)
+      : super._(ty, ident);
+
+  final AnalysisVariable body;
+
+  @override
+  AnalysisFieldVariable copy({required Identifier ident}) {
+    return AnalysisFieldVariable._(ty, ident, body)
+      ..lifecycle.from(lifecycle)
+      .._isGlobal = isGlobal
+      .._isAlloca = _isAlloca
+      .._parent = this;
+  }
+}
+
 class AnalysisListVariable extends AnalysisVariable {
   AnalysisListVariable(this.vals)
       : super._(LiteralKind.kVoid.ty, Identifier.none);
@@ -291,25 +310,51 @@ class Lifecycle {
   }
 
   bool _isStackRef = false;
-  bool get isStackRef => _isStackRef;
+
+  bool get isStackRef {
+    if (_isStackRef) return true;
+    if (current case AnalysisFieldVariable v
+        when v.body.lifecycle._idents.contains(v.ident)) return true;
+
+    return false;
+  }
 
   List<AnalysisVariable>? _deps;
+  List<AnalysisVariable>? _otherDeps;
+
+  late final List<Identifier> _idents = [];
 
   List<String> light() {
     return [
+      if (current case AnalysisFieldVariable v
+          when v.body.lifecycle._idents.contains(v.ident))
+        ...v.body.lifecycle.light(),
       ...?_deps?.expand((e) => e.lifecycle.light()),
-      if (!_ignoreCurrent) current.ident.light,
+      current.ident.light,
+      ...?_otherDeps?.expand((e) => e.lifecycle.light()),
     ];
   }
 
-  bool _ignoreCurrent = false;
-  void updateDeps(List<AnalysisVariable> deps) {
-    _deps = deps;
-    _ignoreCurrent = true;
+  void _updateFieldRef(bool state, Identifier ident,
+      {List<AnalysisVariable>? deps}) {
+    _isStackRef = state;
+    if (deps != null) {
+      _otherDeps ??= [];
+      if (!_idents.contains(ident)) {
+        _idents.add(ident);
+      }
+      _otherDeps!.addAll(deps);
+    }
   }
 
   void updateRef(bool state, {List<AnalysisVariable>? deps}) {
     _isStackRef = state;
-    _deps = deps;
+    if (current case AnalysisFieldVariable v) {
+      v.body.lifecycle._updateFieldRef(state, current.ident, deps: deps);
+    }
+    if (deps != null) {
+      _deps ??= [];
+      _deps!.addAll(deps);
+    }
   }
 }

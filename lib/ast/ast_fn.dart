@@ -423,16 +423,7 @@ class FnCatch extends FnDecl {
   }
 
   List<Variable> getVariables(FnBuildMixin c) {
-    if (_variables.length == analysisVariables.length) return _variables;
-    final variables = <Variable>[];
-    for (var val in analysisVariables) {
-      final variable = c.getVariable(val.ident);
-      if (variable == null) {
-        Log.e('error: ${val.ident} == null.');
-      }
-      if (variable != null) variables.add(variable);
-    }
-    return variables;
+    return _variables;
   }
 
   final List<AnalysisVariable> analysisVariables;
@@ -441,7 +432,7 @@ class FnCatch extends FnDecl {
   @override
   FnCatch clone() {
     return FnCatch._(ident, fields.clone(), generics, _returnTy, isVar,
-        analysisVariables, const []);
+        analysisVariables, _variables);
   }
 
   @override

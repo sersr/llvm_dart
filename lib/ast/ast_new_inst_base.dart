@@ -193,133 +193,123 @@ mixin NewInst<T extends Ty> on Ty {
     return newInst(types, c);
   }
 
-  static bool resolve(Tys c, Ty exactTy, PathTy pathTy,
+  static (bool, ComponentTy?) checkTy(Tys c, Ty exactTy, PathTy pathTy,
       List<GenericDef> generics, Map<Identifier, Ty> genMapTy, bool isLimited) {
-    bool result = true;
-    // x: Arc<Gen<T>> => Gen<T> => T
-    //
-    // fn hello<T>(y: T);
-    //
-    // hello(y: 1000);
-    // ==> exactTy: i32; pathTy: T
-    //
-    // fn foo<T>(x: Gen<T>);
-    //
-    // foo(x: Gen<i32> { foo: 1000 } );
-    // ==> exactTy: Gen<i32>; pathTy: Gen<T>
-    void visitor(Ty exactTy, PathTy pathTy) {
-      ComponentTy? checkTy(Ty exactTy, PathTy pathTy) {
-        if (pathTy is SlicePathTy && exactTy is SliceTy) {
-          final tryTy = pathTy.elementTy.grtOrT(c);
+    if (pathTy is SlicePathTy) {
+      if (exactTy is! SliceTy) return (false, null);
 
-          if (tryTy == null) {
-            visitor(exactTy.elementTy, pathTy.elementTy);
-          } else if (!exactTy.elementTy.isTy(tryTy)) {
-            result = false;
-            return null;
-          }
+      final elementTy = pathTy.elementTy.grtOrT(c);
 
-          if (pathTy is ArrayPathTy && exactTy is ArrayTy) {
-            final trySize = pathTy.size.grtOrT(c);
-            if (trySize == null) {
-              visitor(exactTy.sizeTy, pathTy.size);
-            } else if (trySize != exactTy.sizeTy) {
-              result = false;
-              return null;
-            }
-          }
-
-          return null;
-        }
-
-        ComponentTy? tyConstraint;
-
-        final tryTy = pathTy.getBaseTy(c);
-        var generics = const <GenericDef>[];
-        var tys = const <Identifier, Ty>{};
-
-        if (tryTy is TypeAliasTy) {
-          final alias = tryTy.aliasTy;
-
-          // 从[TypeAlaisTy] 中获取基本类型
-          final newMap = <Identifier, Ty>{};
-          result =
-              resolve(c, exactTy, alias, tryTy.generics, newMap, isLimited);
-          if (!result) return null;
-          assert(newMap.length == pathTy.genericInsts.length);
-          generics = tryTy.generics;
-          tys = newMap;
-        } else if (exactTy is NewInst) {
-          generics = exactTy.generics;
-          tys = exactTy.tys;
-
-          if (!exactTy.isTy(tryTy)) {
-            result = false;
-            return null;
-          }
-        } else if (tryTy is ComponentTy) {
-          /// exactTy不支持泛型如: i32 , i64 ...
-          final currentImplTy = c.getImplWith(exactTy, comTy: tryTy);
-          final com = currentImplTy?.comTy;
-
-          if (com?.parentOrCurrent != tryTy.parentOrCurrent) {
-            result = false;
-            return null;
-          }
-          tyConstraint = com;
-
-          generics = com!.generics;
-          tys = com.tys;
-        }
-
-        /// 除了[TypeAliasTy]泛型个数必须一致
-        if (pathTy.genericInsts.length != generics.length) {
-          result = false;
-          return null;
-        }
-
-        for (var i = 0; i < pathTy.genericInsts.length; i += 1) {
-          final genericInst = pathTy.genericInsts[i];
-          final ty = tys[generics[i].ident];
-          if (ty != null) visitor(ty, genericInst);
-        }
-
-        return tyConstraint;
+      if (elementTy == null) {
+        final result = resolve(c, exactTy.elementTy, pathTy.elementTy, generics,
+            genMapTy, isLimited);
+        if (!result) return (false, null);
+      } else if (!exactTy.elementTy.isTy(elementTy)) {
+        return (false, null);
       }
 
-      exactTy = pathTy.kind.unWrapRefTy(exactTy);
-
-      final currentGenField =
-          generics.firstWhereOrNull((e) => e.ident == pathTy.ident);
-      if (currentGenField != null) {
-        // fn bar<T, X: Bar<T>>(x: X);
-        // 处理泛型内部依赖，X已知晓，处理T
-
-        genMapTy.putIfAbsent(pathTy.ident, () {
-          final list = <ComponentTy>[];
-          for (var g in currentGenField.constraints) {
-            final com = checkTy(exactTy, g);
-            if (com != null) {
-              list.add(com);
-            }
-          }
-
-          return exactTy.newConstraints(c, list, isLimited);
-        });
+      if (pathTy is ArrayPathTy && exactTy is ArrayTy) {
+        final constSize = pathTy.size.grtOrT(c);
+        if (constSize == null) {
+          final result = resolve(
+              c, exactTy.sizeTy, pathTy.size, generics, genMapTy, isLimited);
+          return (result, null);
+        } else if (constSize != exactTy.sizeTy) {
+          return (false, null);
+        }
       }
 
-      if (genMapTy.length == generics.length) {
-        return;
-      }
-
-      // Gen<i32> : Gen<T>
-      // 泛型在下一级中
-      checkTy(exactTy, pathTy);
+      return (true, null);
     }
 
-    visitor(exactTy, pathTy);
+    ComponentTy? tyConstraint;
 
-    return result;
+    final pathBaseTy = pathTy.getBaseTy(c);
+    var pathGenerics = const <GenericDef>[];
+    var tys = const <Identifier, Ty>{};
+
+    if (pathBaseTy is TypeAliasTy) {
+      final alias = pathBaseTy.aliasTy;
+
+      // 从[TypeAlaisTy] 中获取基本类型
+      final newMap = <Identifier, Ty>{};
+      final result =
+          resolve(c, exactTy, alias, pathBaseTy.generics, newMap, isLimited);
+      if (!result) return (false, null);
+      assert(newMap.length == pathTy.genericInsts.length);
+      pathGenerics = pathBaseTy.generics;
+      tys = newMap;
+    } else if (exactTy is NewInst) {
+      pathGenerics = exactTy.generics;
+      tys = exactTy.tys;
+
+      if (!exactTy.isTy(pathBaseTy)) {
+        return (false, null);
+      }
+    } else if (pathBaseTy is ComponentTy) {
+      /// exactTy不支持泛型如: i32 , i64 ...
+      final currentImplTy = c.getImplWith(exactTy, comTy: pathBaseTy);
+      final com = currentImplTy?.comTy;
+
+      if (!pathBaseTy.isTy(com)) {
+        return (false, null);
+      }
+
+      tyConstraint = com;
+      pathGenerics = com!.generics;
+      tys = com.tys;
+    }
+
+    if (pathTy.genericInsts.length != pathGenerics.length) {
+      return (false, null);
+    }
+
+    for (var i = 0; i < pathTy.genericInsts.length; i += 1) {
+      final genericInst = pathTy.genericInsts[i];
+      final ty = tys[pathGenerics[i].ident];
+      if (ty != null) {
+        final result =
+            resolve(c, ty, genericInst, generics, genMapTy, isLimited);
+        if (!result) return (false, null);
+      }
+    }
+
+    return (true, tyConstraint);
+  }
+
+  static bool resolve(Tys c, Ty exactTy, PathTy pathTy,
+      List<GenericDef> generics, Map<Identifier, Ty> genMapTy, bool isLimited) {
+    var result = true;
+    exactTy = pathTy.kind.unWrapRefTy(exactTy);
+
+    final currentGenField =
+        generics.firstWhereOrNull((e) => e.ident == pathTy.ident);
+    if (currentGenField != null) {
+      // fn bar<T, X: Bar<T>>(x: X);
+      // 处理泛型内部依赖，X已知晓，处理T
+
+      genMapTy.putIfAbsent(pathTy.ident, () {
+        final list = <ComponentTy>[];
+        for (var g in currentGenField.constraints) {
+          final (r, com) =
+              checkTy(c, exactTy, g, generics, genMapTy, isLimited);
+          result &= r;
+          if (com != null) list.add(com);
+        }
+
+        return exactTy.newConstraints(c, list, isLimited);
+      });
+    }
+
+    if (genMapTy.length == generics.length) {
+      return result;
+    }
+
+    if (!result) return result;
+
+    // Gen<i32> : Gen<T>
+    // 泛型在下一级中
+    return checkTy(c, exactTy, pathTy, generics, genMapTy, isLimited).$1;
   }
 
   Map<Identifier, Ty> getTysWith(Tys context, List<FieldExpr> params,
@@ -329,7 +319,6 @@ mixin NewInst<T extends Ty> on Ty {
     if (tys.length >= generics.length) return const {};
 
     final genMapTy = <Identifier, Ty>{};
-    final fields = this.fields.clone();
     final sortFields = alignParam(params, fields);
 
     bool isBuild = context is FnBuildMixin;
@@ -338,17 +327,15 @@ mixin NewInst<T extends Ty> on Ty {
       return genMapTy[ident] ?? tys[ident];
     }
 
-    for (var i = 0; i < sortFields.length; i += 1) {
-      final f = sortFields[i];
-      if (i >= fields.length) break;
-      final fd = fields[i];
-
+    for (var param in params) {
+      final sfIndex = sortFields.indexOf(param);
+      assert(sfIndex >= 0);
+      final fd = fields[sfIndex];
       Ty? ty;
       if (isBuild) {
-        ty = f.build(context, baseTy: fd.grtOrTUd(context, gen: gen))?.ty;
+        ty = param.build(context, baseTy: fd.grtOrTUd(context, gen: gen))?.ty;
       } else {
-        // fd.grtOrT(context, gen: gen)
-        ty = f.analysis(context as AnalysisContext)?.ty;
+        ty = param.analysis(context as AnalysisContext)?.ty;
       }
       if (ty != null) {
         resolve(context, ty, fd.rawTy, generics, genMapTy, false);

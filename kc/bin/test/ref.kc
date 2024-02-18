@@ -23,8 +23,12 @@ struct S {
   y: &i32,
 }
 
-fn ref_s() S {
+fn ref_s() &i32 {
   let y = 100;
-  
-  S { &y };
+  let x = 111;
+  let z = 333;
+  let s =  S { &y };
+  s.y = &x;
+  s.y = &z;
+  s.y
 }

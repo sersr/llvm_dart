@@ -96,13 +96,15 @@ class StructExpr extends Expr {
     var fields = struct.fields;
     final sortFields = alignParam(params, fields);
 
-    // 按原始顺序逐一调用
-    for (var i = 0; i < params.length; i++) {
-      final param = params[i];
-      final sfIndex = sortFields.indexOf(param);
-      assert(sfIndex >= 0);
-      final fd = fields[sfIndex];
-      param.build(context, baseTy: struct.getFieldTy(context, fd));
+    if (!params.any((e) => e.temp != null)) {
+      // 按原始顺序逐一调用
+      for (var i = 0; i < params.length; i++) {
+        final param = params[i];
+        final sfIndex = sortFields.indexOf(param);
+        assert(sfIndex >= 0);
+        final fd = fields[sfIndex];
+        param.build(context, baseTy: struct.getFieldTy(context, fd));
+      }
     }
 
     final value = struct.llty.buildStruct(

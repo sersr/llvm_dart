@@ -61,12 +61,16 @@ mixin FnBuildMixin
       index += 1;
     }
 
+    final paramIndices = <int, int>{};
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
-      final fnParam = llvm.LLVMGetParam(fn, index);
       var realTy = decl.getFieldTy(this, p);
-
-      resolveParam(realTy, fnParam, p.ident, ignoreFree);
+      if (realTy is! FnCatch) {
+        final fnParam = llvm.LLVMGetParam(fn, index);
+        resolveParam(realTy, fnParam, p.ident, ignoreFree);
+      } else {
+        paramIndices[i] = index;
+      }
       index += 1;
     }
 
@@ -85,14 +89,27 @@ mixin FnBuildMixin
       }
     }
 
-    for (var param in params) {
+    for (var i = 0; i < params.length; i++) {
+      final param = params[i];
       final ty = decl.getFieldTy(this, param);
 
       if (ty is FnCatch) {
+        final paramIndex = paramIndices[i];
+        final fnParam = llvm.LLVMGetParam(fn, paramIndex!);
+
+        final variables = <Variable>[];
         for (var val in ty.analysisVariables) {
-          pushCatch(val);
+          final ty = val.ty;
+          final fnParam = llvm.LLVMGetParam(fn, index);
+          final value =
+              LLVMAllocaVariable(fnParam, ty, ty.typeOf(this), Identifier.none);
+          setName(fnParam, val.ident.src);
+          variables.add(value);
           index += 1;
         }
+
+        final nTy = ty.newVariables(variables);
+        resolveParam(nTy, fnParam, param.ident, ignoreFree);
       }
     }
   }

@@ -138,9 +138,7 @@ class StructDotFieldExpr extends Expr {
       }
       structTy = structTy.parent;
     }
-    if (structTy is RefTy) {
-      structTy = structTy.baseTy;
-    }
+
     if (structTy is! StructTy) return null;
 
     final v =
@@ -151,7 +149,8 @@ class StructDotFieldExpr extends Expr {
 
     final ty = structTy.getFieldTyOrT(context, v);
 
-    final vv = context.createVal(ty ?? AnalysisTy(v.rawTy), ident);
+    final vv =
+        context.createVal(ty ?? AnalysisTy(v.rawTy), ident, body: variable);
     vv.lifecycle.fnContext = variable.lifecycle.fnContext;
     return vv;
   }
@@ -218,7 +217,7 @@ class VariableIdentExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     final v = context.getVariable(ident);
 
-    if (v != null) return v.copy(ident: ident)..lifecycle.updateDeps([v]);
+    if (v != null) return v;
     final ty = pathTy.grtOrT(context);
     if (ty is Fn) {
       context.addChild(ty);
