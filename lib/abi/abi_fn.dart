@@ -93,7 +93,16 @@ abstract interface class AbiFn {
     void addArg(Variable? v) {
       if (v != null) {
         if (!ignoreFree) ImplStackTy.addStack(context, v);
-        args.add(v.load(context));
+        if (v.ty.llty.getBytes(context) > 8) {
+          if (v is! StoreVariable) {
+            final newVal = v.ty.llty.createAlloca(context, v.ident);
+            newVal.store(context, v.load(context));
+            v = newVal;
+          }
+          args.add(v.getBaseValue(context));
+        } else {
+          args.add(v.load(context));
+        }
       }
     }
 
@@ -114,10 +123,40 @@ abstract interface class AbiFn {
         addArg(arg);
       }
     }
+
+    if (decl is FnCatch) {
+      final variables = decl.getVariables(context);
+      for (var val in variables) {
+        args.add(val.getBaseValue(context));
+      }
+    }
+
+    for (var field in fields) {
+      final ty = decl.getFieldTy(context, field);
+      if (ty is FnCatch) {
+        final variables = ty.getVariables(context);
+        for (var val in variables) {
+          args.add(val.getBaseValue(context));
+        }
+      }
+    }
     final fnValue =
         decl is FnClosure ? decl.llty.load(context, fn) : fn.load(context);
 
     final fnType = decl.llty.createFnType(context);
+
+    if (retTy.llty.getBytes(context) > 8) {
+      final ret = LLVMAllocaProxyVariable(context, (variable, isProxy) {
+        final sret = variable ?? retTy.llty.createAlloca(context, 'sret'.ident);
+        args.insert(0, sret.alloca);
+
+        context.diSetCurrentLoc(ident.offset);
+        llvm.LLVMBuildCall2(context.builder, fnType, fnValue, args.toNative(),
+            args.length, unname);
+      }, retTy, retTy.typeOf(context), Identifier.none);
+
+      return ExprTempValue(ret);
+    }
 
     context.diSetCurrentLoc(ident.offset);
     final ret = llvm.LLVMBuildCall2(

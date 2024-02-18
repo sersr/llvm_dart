@@ -67,13 +67,14 @@ mixin LLVMTypeMixin {
     return type;
   }
 
-  LLVMTypeRef typeStruct(List<LLVMTypeRef> types, String? ident) {
+  LLVMTypeRef typeStruct(List<LLVMTypeRef> types, String? ident,
+      {List<Ty> tys = const []}) {
     if (ident == null) {
       return llvm.LLVMStructTypeInContext(
           llvmContext, types.toNative(), types.length, LLVMFalse);
     }
 
-    return root.createStructType(types, ident);
+    return root.createStructType(types, tys, ident);
   }
 
   LLVMTypeRef pointer() {

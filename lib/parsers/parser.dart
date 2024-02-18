@@ -303,16 +303,9 @@ class Parser {
 
     final (params, isVar) = _params(it.current.child.tokenIt);
 
-    PathTy? retTy;
-    eatLfIfNeed(it);
     final state = it.cursor;
-    if (it.moveNext()) {
-      final key = getKey(it);
-      if (key == null) {
-        state.restore();
-        retTy = parsePathTy(it);
-      }
-    }
+    final retTy = parsePathTy(it);
+
     if (retTy == null) {
       state.restore();
     }

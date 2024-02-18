@@ -502,12 +502,12 @@ class AssignExpr extends Expr {
     final lhs = ref.analysis(context);
     final rhs = expr.analysis(context);
     if (lhs != null) {
-      // final lty = lhs.ty;
+      final lty = lhs.ty;
 
       if (rhs != null) {
-        // if (lty is! BuiltInTy && lty is! AnalysisTy && !rhs.ty.isTy(lty)) {
-        //   Log.e('$lty != ${rhs.ty}');
-        // }
+        if (lty is! BuiltInTy && lty is! AnalysisTy && !rhs.ty.isTy(lty)) {
+          Log.e('$lty != ${rhs.ty}');
+        }
 
         if (rhs.lifecycle.isStackRef) {
           final newVal = lhs.copy(ident: lhs.ident);

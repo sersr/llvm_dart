@@ -168,6 +168,11 @@ class LLVMFnDeclType extends LLVMType {
     final list = <LLVMTypeRef>[];
     var retTy = decl.getRetTy(context);
 
+    var retIsSret = retTy.llty.getBytes(context) > 8;
+    if (retIsSret) {
+      list.add(context.typePointer(retTy.typeOf(context)));
+    }
+
     if (decl case ImplFnDecl(implFn: ImplFnMixin(isStatic: false))) {
       LLVMTypeRef forTy;
       final tty = decl.implFn.implty.ty;
@@ -181,11 +186,35 @@ class LLVMFnDeclType extends LLVMType {
 
     for (var p in fields) {
       final realTy = ty.getFieldTy(context, p);
-      LLVMTypeRef type = realTy.typeOf(context);
+
+      LLVMTypeRef type = realTy.llty.getBytes(context) > 8
+          ? context.pointer()
+          : realTy.typeOf(context);
 
       list.add(type);
     }
-    final ret = retTy.typeOf(context);
+
+    if (decl is FnCatch) {
+      for (var _ in decl.analysisVariables) {
+        list.add(context.pointer());
+      }
+    }
+
+    for (var p in fields) {
+      final pty = ty.getFieldTy(context, p);
+      if (pty is FnCatch) {
+        for (var _ in pty.analysisVariables) {
+          list.add(context.pointer());
+        }
+      }
+    }
+
+    final LLVMTypeRef ret;
+    if (retIsSret) {
+      ret = context.typeVoid;
+    } else {
+      ret = retTy.typeOf(context);
+    }
 
     return context.typeFn(list, ret, ty.isVar);
   }
@@ -371,7 +400,7 @@ class LLVMStructType extends LLVMType {
 
   Ty get valTy => ty;
 
-  LLVMAllocaProxyVariable buildTupeOrStruct(
+  LLVMAllocaProxyVariable buildStruct(
       FnBuildMixin context, List<FieldExpr> params,
       {bool isSort = false}) {
     final structType = ty.typeOf(context);
@@ -508,7 +537,7 @@ class LLVMRefType extends LLVMType {
   Ty get parent => ty.parent;
   @override
   LLVMTypeRef typeOf(StoreLoadMixin c) {
-    return c.typePointer(parent.typeOf(c));
+    return c.pointer();
   }
 
   @override
@@ -717,16 +746,15 @@ class LLVMEnumItemType extends LLVMStructType {
     if (_type != null) return _type!;
 
     final m = pTy.getRealIndexType(c);
-    final size =
-        _size ??= alignType(c, ty, initValue: m, sort: true, minToMax: true);
+    final size = _size ??= alignType(c, ty, initValue: m, sort: true, up: true);
 
     // 以数组的形式表示占位符
-    final idnexType = c.arrayType(pTy.getIndexType(c), 1);
-    return _type = size.getTypeStruct(c, ty.ident.src, idnexType);
+    final indexType = c.arrayType(pTy.getIndexType(c), 1);
+    return _type = size.getTypeStruct(c, ty.ident.src, indexType);
   }
 
   static FieldsSize alignType(StoreLoadMixin c, NewInst ty,
-      {int initValue = 0, bool sort = false, bool minToMax = false}) {
+      {int initValue = 0, bool sort = false, bool up = false}) {
     final targetSize = c.pointerSize();
     final fields = ty.fields;
 
@@ -747,7 +775,7 @@ class LLVMEnumItemType extends LLVMStructType {
         final next = n.grt(c).llty.getBytes(c);
         if (pre == next) return 0;
 
-        if (minToMax) {
+        if (up) {
           return pre > next ? 1 : -1;
         } else {
           return pre > next ? -1 : 1;
@@ -932,9 +960,9 @@ class FieldsSize {
       StoreLoadMixin c, String? ident, LLVMTypeRef? enumIndexTy,
       {int initSize = 0}) {
     final vals = <LLVMTypeRef>[];
+    final tys = <Ty>[];
     final fields = map.keys.toList();
     if (enumIndexTy != null) {
-      // 以数组的形式表示占位符
       vals.add(enumIndexTy);
     }
 
@@ -949,6 +977,7 @@ class FieldsSize {
         }
       }
 
+      tys.add(rty);
       vals.add(rty.typeOf(c));
     }
     if (map.isNotEmpty) {
@@ -960,7 +989,7 @@ class FieldsSize {
         vals.add(c.arrayType(c.i8, alignSize - extra));
       }
     }
-    return c.typeStruct(vals, ident);
+    return c.typeStruct(vals, ident, tys: tys);
   }
 }
 
@@ -971,7 +1000,7 @@ class SliceLLVMType extends LLVMType {
   final SliceTy ty;
   @override
   LLVMTypeRef typeOf(StoreLoadMixin c) {
-    return c.pointer();
+    return c.arrayType(ty.elementTy.typeOf(c), 0);
   }
 
   @override
@@ -979,18 +1008,35 @@ class SliceLLVMType extends LLVMType {
     return c.typeSize(typeOf(c));
   }
 
+  Variable getLen(StoreLoadMixin c, Variable src) {
+    final base = src.getBaseValue(c);
+    final ty = llvm.LLVMTypeOf(base);
+    final tyKind = llvm.LLVMGetTypeKind(ty);
+    final sizeTy = LiteralKind.usize.ty;
+    if (tyKind == LLVMTypeKind.LLVMArrayTypeKind) {
+      final len = llvm.LLVMGetArrayLength(ty);
+      return sizeTy.llty.createValue(ident: '$len'.ident);
+    }
+
+    final indics = [c.constI32(0), c.constI32(1)];
+    final value = llvm.LLVMBuildInBoundsGEP2(
+        c.builder, ty, base, indics.toNative(), indics.length, unname);
+    final v = c.load2(sizeTy.typeOf(c), value, '', Offset.zero);
+    return LLVMConstVariable(v, sizeTy, Identifier.none);
+  }
+
   Variable getElement(
       StoreLoadMixin c, Variable value, LLVMValueRef index, Identifier id) {
-    final indics = <LLVMValueRef>[index];
+    final indics = <LLVMValueRef>[c.constI32(0), index];
 
-    final elType = ty.elementTy.typeOf(c);
+    final type = ty.typeOf(c);
 
     final vv = LLVMAllocaVariable.delay(() {
       c.diSetCurrentLoc(id.offset);
       final p = value.getBaseValue(c);
       return llvm.LLVMBuildInBoundsGEP2(
-          c.builder, elType, p, indics.toNative(), indics.length, unname);
-    }, ty.elementTy, elType, id);
+          c.builder, type, p, indics.toNative(), indics.length, unname);
+    }, ty.elementTy, ty.elementTy.typeOf(c), id);
 
     return vv;
   }

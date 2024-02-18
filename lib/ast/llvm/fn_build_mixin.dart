@@ -31,9 +31,17 @@ mixin FnBuildMixin
   }
 
   void initFnParams(LLVMValueRef fn, Fn fnty, {bool ignoreFree = false}) {
-    final params = fnty.fnDecl.fields;
     final decl = fnty.fnDecl;
+    final params = decl.fields;
     var index = 0;
+    final retTy = decl.getRetTy(this);
+    if (retTy.llty.getBytes(this) > 8) {
+      final value = llvm.LLVMGetParam(fn, index);
+      _sret =
+          LLVMAllocaVariable(value, retTy, retTy.typeOf(this), Identifier.none);
+      setName(value, 'sret');
+      index += 1;
+    }
 
     if (fnty is ImplFn && !fnty.isStatic) {
       final p = fnty.ty;
@@ -56,20 +64,52 @@ mixin FnBuildMixin
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
       final fnParam = llvm.LLVMGetParam(fn, index);
-      var realTy = fnty.fnDecl.getFieldTy(this, p);
+      var realTy = decl.getFieldTy(this, p);
 
       resolveParam(realTy, fnParam, p.ident, ignoreFree);
       index += 1;
+    }
+
+    void pushCatch(AnalysisVariable val) {
+      final ty = val.ty;
+      final fnParam = llvm.LLVMGetParam(fn, index);
+      final value = LLVMAllocaVariable(fnParam, ty, ty.typeOf(this), val.ident);
+      setName(fnParam, val.ident.src);
+      pushVariable(value);
+    }
+
+    if (decl is FnCatch) {
+      for (var val in decl.analysisVariables) {
+        pushCatch(val);
+        index += 1;
+      }
+    }
+
+    for (var param in params) {
+      final ty = decl.getFieldTy(this, param);
+
+      if (ty is FnCatch) {
+        for (var val in ty.analysisVariables) {
+          pushCatch(val);
+          index += 1;
+        }
+      }
     }
   }
 
   void resolveParam(
       Ty ty, LLVMValueRef fnParam, Identifier ident, bool ignoreFree) {
-    final alloca = ty.llty.createAlloca(this, ident);
-    alloca.store(this, fnParam);
-    if (ignoreFree) removeVal(alloca);
+    if (ty.llty.getBytes(this) > 8) {
+      final alloca = LLVMAllocaVariable(fnParam, ty, ty.typeOf(this), ident);
+      setName(fnParam, ident.src);
+      pushVariable(alloca);
+    } else {
+      final alloca = ty.llty.createAlloca(this, ident);
+      alloca.store(this, fnParam);
+      if (ignoreFree) removeVal(alloca);
 
-    pushVariable(alloca);
+      pushVariable(alloca);
+    }
   }
 
   Variable? compileRun(Fn fn, List<Variable> params) {
@@ -105,7 +145,11 @@ mixin FnBuildMixin
 
   @override
   void sretRet(StoreVariable sret, Variable val) {
-    sret.storeVariable(this, val);
+    if (val is LLVMAllocaProxyVariable && !val.created) {
+      val.initProxy(proxy: sret);
+    } else {
+      sret.storeVariable(this, val);
+    }
   }
 
   bool _freeDone = false;

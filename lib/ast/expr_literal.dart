@@ -87,10 +87,10 @@ class StructExpr extends Expr {
     var structTy = getTy(context, baseTy);
     if (structTy == null) return null;
 
-    return buildTupeOrStruct(structTy, context, params);
+    return buildStruct(structTy, context, params);
   }
 
-  static ExprTempValue? buildTupeOrStruct(
+  static ExprTempValue? buildStruct(
       StructTy struct, FnBuildMixin context, List<FieldExpr> params) {
     struct = struct.resolveGeneric(context, params);
     var fields = struct.fields;
@@ -105,7 +105,7 @@ class StructExpr extends Expr {
       param.build(context, baseTy: struct.getFieldTy(context, fd));
     }
 
-    final value = struct.llty.buildTupeOrStruct(
+    final value = struct.llty.buildStruct(
       context,
       sortFields,
       isSort: true,

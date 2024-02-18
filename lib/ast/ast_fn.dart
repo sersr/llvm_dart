@@ -20,7 +20,8 @@ class FnDecl extends Ty with NewInst<FnDecl> {
     return this == other;
   }
 
-  bool get isVoidRet => _returnTy == null;
+  bool isVoidRet(Tys c) =>
+      _returnTy == null || getRetTyOrT(c) == LiteralKind.kVoid.ty;
 
   Ty getRetTy(Tys c) {
     return getRetTyOrT(c)!;
@@ -97,6 +98,11 @@ class FnDecl extends Ty with NewInst<FnDecl> {
         .._tys = tys
         .._parent = parentOrCurrent;
     });
+  }
+
+  FnCatch toCatch(List<Variable> variables, List<AnalysisVariable> analysis) {
+    return FnCatch._(
+        ident, fields, generics, _returnTy, isVar, analysis, variables);
   }
 
   FnClosure newClosure(List<FieldDef> catchVariables) {
@@ -226,7 +232,8 @@ class Fn extends Ty {
           .toSet();
 
       if (allCatchs.isNotEmpty) {
-        decl = _fnDecl.toClosure(allCatchs);
+        decl = _fnDecl.toCatch(allCatchs, variables.toList());
+        // decl = _fnDecl.toClosure(allCatchs);
       }
     }
 
@@ -401,6 +408,45 @@ class FnClosure extends FnDecl {
     return FnClosure(
         ident, fields, generics, _returnTy, isVar, catchVariables.clone());
   }
+}
+
+class FnCatch extends FnDecl {
+  FnCatch(super.ident, super.fields, super.generics, super.returnTy,
+      super.isVar, this.analysisVariables)
+      : _variables = const [];
+  FnCatch._(super.ident, super.fields, super.generics, super.returnTy,
+      super.isVar, this.analysisVariables, this._variables);
+
+  FnCatch newVariables(List<Variable> variables) {
+    return FnCatch._(ident, fields.clone(), generics, _returnTy, isVar,
+        analysisVariables, variables);
+  }
+
+  List<Variable> getVariables(FnBuildMixin c) {
+    if (_variables.length == analysisVariables.length) return _variables;
+    final variables = <Variable>[];
+    for (var val in analysisVariables) {
+      final variable = c.getVariable(val.ident);
+      if (variable == null) {
+        Log.e('error: ${val.ident} == null.');
+      }
+      if (variable != null) variables.add(variable);
+    }
+    return variables;
+  }
+
+  final List<AnalysisVariable> analysisVariables;
+  final List<Variable> _variables;
+
+  @override
+  FnCatch clone() {
+    return FnCatch._(ident, fields.clone(), generics, _returnTy, isVar,
+        analysisVariables, const []);
+  }
+
+  @override
+  // ignore: overridden_fields
+  late final props = [...super.props, analysisVariables];
 }
 
 class LLVMFnClosureType extends LLVMFnDeclType {

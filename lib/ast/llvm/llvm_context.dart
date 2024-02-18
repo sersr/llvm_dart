@@ -2,6 +2,7 @@ import 'package:nop/nop.dart';
 
 import '../../abi/abi_fn.dart';
 import '../../llvm_dart.dart';
+import '../ast.dart';
 import '../memory.dart';
 import '../tys.dart';
 import 'build_context_mixin.dart';
@@ -146,8 +147,9 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
 
   final _structTypes = <ListKey, LLVMTypeRef>{};
 
-  LLVMTypeRef createStructType(List<LLVMTypeRef> types, String name) {
-    final key = ListKey([types, name]);
+  LLVMTypeRef createStructType(
+      List<LLVMTypeRef> types, List<Ty> tys, String name) {
+    final key = ListKey([types, tys, name]);
 
     return _structTypes.putIfAbsent(key, () {
       final struct =

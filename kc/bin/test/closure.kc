@@ -1,4 +1,38 @@
+
 fn main() i32 {
+
+  // test_main();
+  let y = He{y: None };
+  y.y = Some(&He{ y: None });
+
+  let ha = ret_ha();
+
+  printf("ha: %d, %d\n", ha.y, ha.x);
+
+  let value = 1001;
+  fn catchx() {
+    printf("hello catch: %d\n", value);
+  }
+
+  catchx();
+  wrap(catchx);
+  0;
+}
+
+fn wrap<F:fn()>(f: F) {
+  f();
+}
+
+struct HA {
+  y: i64,
+  x: i64,
+}
+
+fn ret_ha() HA {
+  return HA{110, 111};
+}
+
+fn test_main() Box<dyn Fn()> {
 
   printf("hello\n");
 
@@ -8,11 +42,32 @@ fn main() i32 {
     y = 111002;
   }
 
-  hello();
-  printf("main: %d\n", y);
-  y = 2220;
-  hello();
+  let hh = Box.new(hello);
 
-  printf(r"rawString \n", y);
-  0;
+//   hello();
+//   printf("main: %d\n", y);
+//   y = 2220;
+//   hello();
+
+//   printf(r"rawString \n
+// ", y);
+
+//   hh();
+//   y = 10011;
+//   hh();
+
+//   fn callb() {
+//     printf("hello sx \n");
+//   }
+
+hh;
+}
+
+struct DynFn {
+  addr: *void,
+  catch: *void,
+}
+
+struct He{
+  y: Option<&He>,
 }

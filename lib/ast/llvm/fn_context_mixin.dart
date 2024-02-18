@@ -28,8 +28,12 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
   StoreVariable? get compileRetValue {
     assert(_retValue == null);
     if (_compileRetValue != null) return _compileRetValue;
-    final fn = _currentFn;
-    if (fn == null || fn.fnDecl.isVoidRet) return null;
+    final fnContext = getLastFnContext();
+    if (fnContext?._inRunMode != true) return null;
+
+    final fn = fnContext?.currentFn;
+
+    if (fn == null || fn.fnDecl.isVoidRet(this)) return null;
     final ty = fn.fnDecl.getRetTy(this);
 
     return _compileRetValue = LLVMAllocaProxyVariable(this, (value, isProxy) {

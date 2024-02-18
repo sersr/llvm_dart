@@ -15,6 +15,8 @@ fn main() i32 {
   b.hello();
   *b.getValue() = [111,222];
   b.hello();
+
+  let x = 11.;
   0;
 }
 
@@ -32,6 +34,6 @@ impl [u8] {
 
 impl<T> [T] {
   fn hello() {
-    printf("hello world %d\n", self[0] as i64);
+    printf("hello world %d\n", self[1] as i64);
   }
 }

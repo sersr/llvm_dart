@@ -473,36 +473,29 @@ class Cursor {
       }
     }
     eatNumberLiteral();
-    final state = _it.cursor;
+
     if (isFloat) {
       isFloat = nextCharRead == '.';
-    }
-    if (isFloat) {
-      nextChar;
-      if (!numbers.contains(nextCharRead)) {
-        state.restore();
-        isFloat = false;
-      }
-    }
-    if (isFloat) {
-      eatNumberLiteral();
-      if (nextCharRead == 'E' || nextCharRead == 'e') {
-        nextChar;
-        if (nextCharRead == '-' || nextCharRead == '+') {
-          nextChar;
-          eatNumberLiteral();
-        }
-        final c = cursorEnd;
-        final k = getLitKind() ?? LiteralKind.f64;
 
-        return Token.literal(
-            literalKind: k, getLineStart: getLineStart, start: start, end: c);
+      if (isFloat) {
+        nextChar;
+
+        if (isFloat) {
+          eatNumberLiteral();
+          if (nextCharRead == 'E' || nextCharRead == 'e') {
+            nextChar;
+            if (nextCharRead == '-' || nextCharRead == '+') {
+              nextChar;
+              eatNumberLiteral();
+            }
+          }
+        }
       }
     }
 
     final end = cursorEnd;
     LiteralKind lkd =
-        getLitKind() ?? (isFloat ? LiteralKind.f32 : LiteralKind.i32);
+        getLitKind() ?? (isFloat ? LiteralKind.f64 : LiteralKind.i32);
 
     return Token.literal(
         literalKind: lkd, getLineStart: getLineStart, start: start, end: end);

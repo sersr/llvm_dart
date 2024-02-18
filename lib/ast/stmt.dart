@@ -326,9 +326,9 @@ class RetStmt extends Stmt {
           case AnalysisContext(
             currentFn: Fn(
               returnVariables: var variables,
-              fnDecl: FnDecl(isVoidRet: false)
+              fnDecl: var decl,
             )
-          ) when val != null) {
+          ) when val != null && !decl.isVoidRet(context)) {
         final all = val.allParent;
         all.insert(0, val);
 

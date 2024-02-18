@@ -145,12 +145,22 @@ class FnCallExpr extends Expr with FnCallMixin {
     final variable = temp.variable;
     final ty = temp.ty;
 
-    if (ty is StructTy && variable != null) {
-      return temp;
+    if (variable != null) {
+      ExprTempValue? temp;
+      RefDerefCom.loopGetDeref(context, variable, (variable) {
+        final ty = variable.ty;
+        if (ty is FnDecl) {
+          temp = baseCall(context, variable, ty, params);
+          return true;
+        }
+        return false;
+      });
+      if (temp != null) return temp;
     }
 
     if (ty is StructTy) {
-      return StructExpr.buildTupeOrStruct(ty, context, params);
+      if (variable != null) return temp;
+      return StructExpr.buildStruct(ty, context, params);
     }
 
     final fn = ty;
@@ -161,10 +171,6 @@ class FnCallExpr extends Expr with FnCallMixin {
     if (variable != null) {
       final temp = CallBuilder.callImpl(context, variable, params);
       if (temp != null) return temp;
-    }
-
-    if (fn is FnDecl && variable != null) {
-      return baseCall(context, variable, fn, params);
     }
 
     if (fn is! Fn) return null;

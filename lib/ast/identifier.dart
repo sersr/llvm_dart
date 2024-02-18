@@ -9,6 +9,11 @@ class RawIdent with EquatableMixin {
 
   @override
   late final props = [start, end, fileName, name];
+
+  @override
+  String toString() {
+    return '$fileName;$start-$end;$name';
+  }
 }
 
 class Offset {

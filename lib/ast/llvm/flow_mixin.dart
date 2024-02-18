@@ -17,32 +17,27 @@ mixin FlowMixin on BuildContext, FreeMixin {
     final retOffset = val?.offset ?? Offset.zero;
 
     final fnty = fn.currentFn!;
-    if (fnty.fnDecl.getRetTy(this).isTy(LiteralKind.kVoid.ty) || val == null) {
+
+    if (val != null) {
+      final sret = fn.sret;
+      final isSretRet = sret != null;
+      if (isSretRet) sretRet(sret, val);
+
+      if (!removeVal(val)) {
+        freeAddStack(val);
+      }
+
       freeHeap();
-      diSetCurrentLoc(retOffset);
-      llvm.LLVMBuildRetVoid(builder);
-      return;
+
+      /// return variable
+      if (!isSretRet && !fnty.fnDecl.isVoidRet(this)) {
+        final v = AbiFn.fnRet(this, fnty, val);
+        diSetCurrentLoc(retOffset);
+        llvm.LLVMBuildRet(builder, v);
+
+        return;
+      }
     }
-
-    if (!removeVal(val)) {
-      freeAddStack(val);
-    }
-
-    freeHeap();
-
-    final sret = fn.sret;
-
-    /// return variable
-    if (sret == null) {
-      final v = AbiFn.fnRet(this, fnty, val);
-      diSetCurrentLoc(retOffset);
-      llvm.LLVMBuildRet(builder, v);
-
-      return;
-    }
-
-    /// struct ret
-    sretRet(sret, val);
 
     diSetCurrentLoc(retOffset);
     llvm.LLVMBuildRetVoid(builder);

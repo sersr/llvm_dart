@@ -3,6 +3,7 @@ import 'package:nop/nop.dart';
 
 import '../../abi/abi_fn.dart';
 import '../../llvm_dart.dart';
+import '../analysis_context.dart';
 import '../ast.dart';
 import '../builders/coms.dart';
 import '../expr.dart';
@@ -53,7 +54,7 @@ mixin SretMixin on BuildContext {
   StoreVariable? sretFromVariable(Identifier? nameIdent, Variable variable) {
     final fnContext = getLastFnContext()!;
     final fnty = fnContext.currentFn!;
-    if (fnty.fnDecl.isVoidRet) return null;
+    if (fnty.fnDecl.isVoidRet(this)) return null;
 
     nameIdent ??= variable.ident;
     final owner = nameIdent.toRawIdent;

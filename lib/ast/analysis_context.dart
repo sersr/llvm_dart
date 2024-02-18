@@ -1,5 +1,3 @@
-import 'package:nop/nop.dart';
-
 import 'ast.dart';
 import 'llvm/llvm_types.dart';
 import 'tys.dart';
@@ -79,28 +77,27 @@ class AnalysisContext with Tys<AnalysisVariable> {
   // 匿名函数自动捕捉的变量集合
   late final catchVariables = <AnalysisVariable>{};
 
-  final childrenVariables = <AnalysisVariable>{};
+  Set<AnalysisVariable> get childrenVariables =>
+      _delay.expand((e) => e()).toSet();
 
-  final _depFns = <Fn>{};
+  final _delay = <Set<AnalysisVariable> Function()>[];
 
   void addChild(Fn target) {
     final fn = getLastFnContext();
     if (fn == null) return;
     if (fn._currentFn == target) return;
 
-    final c = <AnalysisVariable>{};
-    for (var v in target.variables) {
-      if (isCurrentFn(v, fn)) {
-        continue;
+    fn._delay.add(() {
+      final c = <AnalysisVariable>{};
+      for (var v in target.variables) {
+        if (isCurrentFn(v, fn)) {
+          continue;
+        }
+        c.add(v);
       }
-      c.add(v);
-    }
 
-    if (c.isNotEmpty) {
-      _depFns.add(target);
-      Log.w(target);
-      fn.childrenVariables.addAll(c);
-    }
+      return c;
+    });
   }
 
   @override
