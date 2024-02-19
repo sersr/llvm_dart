@@ -47,10 +47,8 @@ class IfExprBlock extends Expr implements LogPretty {
   }
 
   static AnalysisVariable? retFromBlock(Block block, AnalysisContext context) {
-    if (block.isNotEmpty) {
-      if (block.lastOrNull case ExprStmt(expr: var expr)) {
-        return expr.analysis(context);
-      }
+    if (block.lastOrNull case ExprStmt(expr: var expr)) {
+      return expr.analysis(context);
     }
 
     return null;

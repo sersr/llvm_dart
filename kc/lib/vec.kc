@@ -21,7 +21,7 @@ impl<T> Vec<T> {
   fn add(value: T) {
     if self.len == self.cap {
       final size = self.cap * 2;
-      self.data = realloc(self.data, size);
+      self.data = realloc(self.data, size) as *T;
       self.cap = size;
     }
     

@@ -199,7 +199,7 @@ class AnalysisTy extends Ty {
   LLVMType get llty => throw UnimplementedError();
 
   @override
-  late final props = [pathTy];
+  late final props = [pathTy.ident, pathTy.genericInsts, pathTy.kind];
 
   @override
   String toString() {
@@ -257,14 +257,14 @@ class AnalysisVariable extends LifeCycleVariable {
 }
 
 class AnalysisFieldVariable extends AnalysisVariable {
-  AnalysisFieldVariable._(Ty ty, Identifier ident, this.body)
+  AnalysisFieldVariable._(Ty ty, Identifier ident, this.owner)
       : super._(ty, ident);
 
-  final AnalysisVariable body;
+  final AnalysisVariable owner;
 
   @override
   AnalysisFieldVariable copy({required Identifier ident}) {
-    return AnalysisFieldVariable._(ty, ident, body)
+    return AnalysisFieldVariable._(ty, ident, owner)
       ..lifecycle.from(lifecycle)
       .._isGlobal = isGlobal
       .._isAlloca = _isAlloca
@@ -314,7 +314,7 @@ class Lifecycle {
   bool get isStackRef {
     if (_isStackRef) return true;
     if (current case AnalysisFieldVariable v
-        when v.body.lifecycle._idents.contains(v.ident)) return true;
+        when v.owner.lifecycle._idents.contains(v.ident)) return true;
 
     return false;
   }
@@ -327,34 +327,32 @@ class Lifecycle {
   List<String> light() {
     return [
       if (current case AnalysisFieldVariable v
-          when v.body.lifecycle._idents.contains(v.ident))
-        ...v.body.lifecycle.light(),
+          when v.owner.lifecycle._idents.contains(v.ident))
+        ...v.owner.lifecycle.light(),
       ...?_deps?.expand((e) => e.lifecycle.light()),
       current.ident.light,
       ...?_otherDeps?.expand((e) => e.lifecycle.light()),
     ];
   }
 
-  void _updateFieldRef(bool state, Identifier ident,
-      {List<AnalysisVariable>? deps}) {
-    _isStackRef = state;
-    if (deps != null) {
-      _otherDeps ??= [];
-      if (!_idents.contains(ident)) {
-        _idents.add(ident);
-      }
-      _otherDeps!.addAll(deps);
+  void _updateOwnerRef(Identifier ident, List<AnalysisVariable> deps) {
+    _isStackRef = true;
+
+    _otherDeps ??= [];
+    if (!_idents.contains(ident)) {
+      _idents.add(ident);
     }
+    _otherDeps!.addAll(deps);
   }
 
-  void updateRef(bool state, {List<AnalysisVariable>? deps}) {
-    _isStackRef = state;
+  void updateRef(List<AnalysisVariable> deps) {
+    if (deps.isEmpty) return;
+    _isStackRef = true;
     if (current case AnalysisFieldVariable v) {
-      v.body.lifecycle._updateFieldRef(state, current.ident, deps: deps);
+      v.owner.lifecycle._updateOwnerRef(current.ident, deps);
     }
-    if (deps != null) {
-      _deps ??= [];
-      _deps!.addAll(deps);
-    }
+
+    _deps ??= [];
+    _deps!.addAll(deps);
   }
 }

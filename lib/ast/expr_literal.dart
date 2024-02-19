@@ -148,8 +148,7 @@ class StructExpr extends Expr {
       valTy = valTy.parent;
     }
 
-    return context.createVal(valTy, valTy.ident)
-      ..lifecycle.updateRef(deps.isNotEmpty, deps: deps);
+    return context.createVal(valTy, valTy.ident)..lifecycle.updateRef(deps);
   }
 }
 

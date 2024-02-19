@@ -104,10 +104,22 @@ class RefTy extends Ty {
   @override
   final Identifier ident;
 
+  static isRefTy(Ty l, Ty r) {
+    final ref = l is RefTy ? l : r;
+    final rhs = identical(l, ref) ? r : l;
+    if (rhs case BuiltInTy(literal: LiteralKind(isInt: true))
+        when ref is RefTy) {
+      return true;
+    }
+    return ref.isTy(rhs);
+  }
+
   @override
   bool isTy(Ty? other) {
     if (other is RefTy) {
       return baseTy.isTy(other.baseTy);
+    } else if (other is Fn && parent.isTy(LiteralKind.kVoid.ty)) {
+      return true;
     }
     return super.isTy(other);
   }

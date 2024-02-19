@@ -282,11 +282,9 @@ class AsExpr extends Expr {
 
   @override
   AnalysisVariable? analysis(AnalysisContext context) {
-    final r = rhs.grtOrT(context);
+    final r = rhs.grtOrT(context) ?? AnalysisTy(rhs);
     final l = lhs.analysis(context);
-
-    if (l == null || r == null) return l;
-    return context.createVal(r, l.ident);
+    return context.createVal(r, l?.ident ?? rhs.ident);
   }
 
   @override

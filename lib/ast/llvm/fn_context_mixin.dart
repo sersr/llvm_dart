@@ -81,6 +81,7 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
   bool compileRunMode(Fn fn) => currentPath == fn.currentContext!.currentPath;
 
   bool _updateRunAfter(Variable? val, FlowMixin current, bool islastStmt) {
+    assert(currentFn != null);
     if (!_inRunMode) return false;
 
     final retValue = islastStmt ? _compileRetValue : compileRetValue;

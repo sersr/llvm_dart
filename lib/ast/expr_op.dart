@@ -365,9 +365,10 @@ class RefExpr extends Expr {
     final val = current.analysis(context);
     if (val == null) return null;
     final state = kind == PointerKind.ref && val.isAlloca && !val.isGlobal;
+    final deps = state ? [val] : const <AnalysisVariable>[];
+
     final ty = kind.refDrefTy(context, val.ty);
-    return context.createVal(ty, pointerIdent)
-      ..lifecycle.updateRef(state, deps: [val]);
+    return context.createVal(ty, pointerIdent)..lifecycle.updateRef(deps);
   }
 }
 
@@ -505,13 +506,13 @@ class AssignExpr extends Expr {
       final lty = lhs.ty;
 
       if (rhs != null) {
-        if (lty is! BuiltInTy && lty is! AnalysisTy && !rhs.ty.isTy(lty)) {
-          Log.e('$lty != ${rhs.ty}');
+        if (lty is! BuiltInTy && !RefTy.isRefTy(lty, rhs.ty)) {
+          Log.e('$lty != ${rhs.ty}\n${lhs.ident.light}', showTag: false);
         }
 
         if (rhs.lifecycle.isStackRef) {
           final newVal = lhs.copy(ident: lhs.ident);
-          newVal.lifecycle.updateRef(true, deps: [rhs]);
+          newVal.lifecycle.updateRef([rhs]);
           return newVal;
         }
       }
