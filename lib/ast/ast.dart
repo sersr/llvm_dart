@@ -1,7 +1,6 @@
 // ignore_for_file: constant_identifier_names
 
 import 'dart:async';
-import 'dart:ffi';
 import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
@@ -19,7 +18,6 @@ import 'llvm/build_context_mixin.dart';
 import 'llvm/build_methods.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';
-import 'memory.dart';
 import 'stmt.dart';
 import 'tys.dart';
 
@@ -46,12 +44,11 @@ abstract class Ty extends BuildMixin with EquatableMixin implements Clone<Ty> {
 
   List<ComponentTy> _constraints = const [];
   List<ComponentTy> get constraints => _constraints;
-  bool _isLimited = false;
-  bool get isLimited => _isLimited;
-  Ty newConstraints(Tys c, List<ComponentTy> newConstraints, bool isLimited) {
+  bool get isLimited => _constraints.isNotEmpty;
+  Ty newConstraints(Tys c, List<ComponentTy> newConstraints) {
+    if (newConstraints.isEmpty && _constraints.isEmpty) return this;
     return clone()
       ..cloneTys(c, this)
-      .._isLimited = newConstraints.isNotEmpty
       .._constraints = newConstraints
       .._buildContext = _buildContext;
   }

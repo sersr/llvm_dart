@@ -249,15 +249,16 @@ class AbiFnArm64 implements AbiFn {
 
   @override
   LLVMAllocaVariable? initFnParamsImpl(
-      StoreLoadMixin context, LLVMValueRef fn, Fn fnty) {
+      StoreLoadMixin context, LLVMValueRef fn, Fn fnTy) {
     var index = 0;
+    final decl = fnTy.fnDecl;
     assert(context.isFnBBContext);
 
     LLVMAllocaVariable? sret;
 
-    var retTy = fnty.fnDecl.getRetTy(context);
+    var retTy = decl.getRetTy(context);
 
-    if (isSret(context, fnty.fnDecl)) {
+    if (isSret(context, decl)) {
       final first = llvm.LLVMGetParam(fn, index);
       final alloca = LLVMAllocaVariable(
           first, retTy, retTy.typeOf(context), Identifier.none);
@@ -265,12 +266,12 @@ class AbiFnArm64 implements AbiFn {
       sret = alloca;
     }
 
-    final params = fnty.fnDecl.fields;
+    final params = decl.fields;
     for (var i = 0; i < params.length; i++) {
       final p = params[i];
 
       final fnParam = llvm.LLVMGetParam(fn, i + index);
-      var realTy = fnty.fnDecl.getFieldTy(context, p);
+      var realTy = decl.getFieldTy(context, p);
       resolveParam(context, realTy, fnParam, p.ident);
     }
 

@@ -1,10 +1,10 @@
 import '../../llvm_core.dart';
 import '../ast.dart';
+import '../builders/coms.dart';
 import '../stmt.dart';
 import '../tys.dart';
 import 'build_context_mixin.dart';
 import 'build_methods.dart';
-import '../builders/coms.dart';
 import 'llvm_types.dart';
 
 abstract class Variable extends LifeCycleVariable {
@@ -97,6 +97,8 @@ abstract class StoreVariable extends Variable {
       }
       return;
     }
+
+    val = FnCatch.toFnClosure(c, ty, val) ?? val;
 
     if (val is LLVMAllocaProxyVariable && !val.created) {
       if (!isNew) ImplStackTy.removeStack(c, this);

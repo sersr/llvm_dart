@@ -366,10 +366,20 @@ class Parser {
     if (it.moveNext()) {
       eatLfIfNeed(it, back: false);
       final kind = getToken(it).kind;
-
-      if (getKey(it) == Key.fn) {
+      var key = getKey(it);
+      var isDyn = false;
+      if (key == Key.dyn) {
+        isDyn = true;
         it.moveNext();
-        final decl = parseFnDecl(it, Identifier.none);
+        eatLfIfNeed(it, back: false);
+        key = getKey(it);
+      }
+      if (key == Key.fn) {
+        it.moveNext();
+        var decl = parseFnDecl(it, Identifier.none);
+        if (isDyn) {
+          decl = decl.toDyn();
+        }
         ty = PathFnDeclTy(decl, pointerKind);
       } else if (kind == TokenKind.ident) {
         ty = PathTy(getIdent(it), parseGenericsInstance(it), pointerKind);
@@ -1648,6 +1658,7 @@ class Parser {
 enum Key {
   let('let'),
   fn('fn'),
+  dyn('dyn'),
   struct('struct'),
   kEnum('enum'),
   kStatic('static'),

@@ -14,6 +14,11 @@ class FnDecl extends Ty with NewInst<FnDecl> {
 
   final PathTy? _returnTy;
   final bool isVar;
+  bool? _isDyn;
+
+  set isDyn(bool v) => _isDyn = v;
+
+  bool get isDyn => _isDyn ?? _parent?.isDyn ?? false;
 
   @override
   bool isTy(Ty? other) {
@@ -50,7 +55,8 @@ class FnDecl extends Ty with NewInst<FnDecl> {
   @override
   String toString() {
     final isVals = isVar ? ', ...' : '';
-    return 'fn $ident${generics.str}(${fields.join(',')}$isVals) -> ${_returnTy ?? 'void'}${tys.str}';
+    final dyn = isDyn ? 'dyn ' : '';
+    return '${dyn}fn $ident${generics.str}(${fields.join(',')}$isVals) -> ${_returnTy ?? 'void'}${tys.str}';
   }
 
   @override
@@ -80,33 +86,13 @@ class FnDecl extends Ty with NewInst<FnDecl> {
     return ImplFnDecl(ident, fields, generics, _returnTy, isVar);
   }
 
-  final _closures = <ListKey, FnClosure>{};
-
-  FnClosure toClosure(List<Variable> variable) {
-    final keys = variable.map((e) => e.ty).toList();
-    return parentOrCurrent._closures.putIfAbsent(ListKey(keys), () {
-      final list = <FieldDef>[];
-      list.add(FieldDef.newDef(
-          'fn'.ident, PathTy.none, RefTy.pointer(LiteralKind.kVoid.ty)));
-
-      for (var val in variable) {
-        final field = FieldDef.newDef(val.ident, PathTy.none, RefTy(val.ty));
-        list.add(field);
-      }
-
-      return newClosure(list)
-        .._tys = tys
-        .._parent = parentOrCurrent;
-    });
-  }
-
   FnCatch toCatch(List<Variable> variables, List<AnalysisVariable> analysis) {
     return FnCatch._(
         ident, fields, generics, _returnTy, isVar, analysis, variables);
   }
 
-  FnClosure newClosure(List<FieldDef> catchVariables) {
-    return FnClosure(ident, fields, generics, _returnTy, isVar, catchVariables);
+  FnClosure toDyn() {
+    return FnClosure(ident, fields.clone(), generics, _returnTy, isVar);
   }
 }
 
@@ -178,7 +164,7 @@ class Fn extends Ty {
 
   @override
   Fn clone() {
-    return Fn(fnDecl, block)..copy(this);
+    return Fn(fnDecl.clone(), block)..copy(this);
   }
 
   Fn resolveGeneric(Tys context, List<FieldExpr> params) {
@@ -186,7 +172,7 @@ class Fn extends Ty {
     return Fn(newFnDecl, block)..copy(this);
   }
 
-  late final _cache = <ListKey, Map<ListKey, (Variable, Variable?)>>{};
+  late final _cache = <ListKey, Variable>{};
 
   @override
   void prepareBuild(FnBuildMixin context, {bool push = true}) {
@@ -218,8 +204,7 @@ class Fn extends Ty {
     FnDecl decl = fnDecl;
 
     late final allCatchs = <Variable>[];
-    var depFns = _depFns;
-    if (depFns == null) {
+    if (_depFns == null) {
       for (var val in variables) {
         final variable = context.getVariable(val.ident);
         if (variable != null) {
@@ -227,13 +212,12 @@ class Fn extends Ty {
         }
       }
 
-      depFns = _depFns = allCatchs
+      _depFns = allCatchs
           .map((e) => (e.pushContext as FnBuildMixin?)?.getLastFnContext())
           .toSet();
 
       if (allCatchs.isNotEmpty) {
         decl = _fnDecl.toCatch(allCatchs, variables.toList());
-        // decl = _fnDecl.toClosure(allCatchs);
       }
     }
 
@@ -241,33 +225,18 @@ class Fn extends Ty {
 
     final key = ListKey([getKey(), decl]);
 
-    final map = parentOrCurrent._cache.putIfAbsent(key, () => {});
-    final secKey = ListKey(depFns);
-    final baseValue = map.values.firstOrNull;
-    var fn = map[secKey];
+    final fn = parentOrCurrent._cache[key];
 
     if (fn != null) {
-      return fn.$2 ?? fn.$1;
-    } else if (baseValue != null && decl is FnClosure) {
-      final (base, _) = baseValue;
-      final wrapValue = decl.llty.wrapFn(context, base, allCatchs);
-      final newFn = (base, wrapValue);
-      map[secKey] = newFn;
-      return wrapValue;
+      return LLVMConstVariable(fn.getBaseValue(context), decl, ident);
     }
 
     final fnValue = AbiFn.createFunction(context, this);
-    if (decl is FnClosure) {
-      fn = (fnValue, decl.llty.wrapFn(context, fnValue, allCatchs));
-    } else {
-      fn = (fnValue, null);
-    }
-
-    map[secKey] = fn;
+    parentOrCurrent._cache[key] = fnValue;
 
     context.buildFnBB(this, fnValue: fnValue.value, ignoreFree: ignoreFree);
 
-    return fn.$2 ?? fn.$1;
+    return fnValue;
   }
 
   void pushTyGenerics(Tys context) {
@@ -382,15 +351,12 @@ class ImplFn extends Fn with ImplFnMixin {
 }
 
 class FnClosure extends FnDecl {
-  FnClosure(super.ident, super.fields, super.generics, super.returnTy,
-      super.isVar, this.catchVariables);
-
-  final List<FieldDef> catchVariables;
+  FnClosure(
+      super.ident, super.fields, super.generics, super.returnTy, super.isVar);
 
   @override
   FnClosure clone() {
-    return FnClosure(
-        ident, fields.clone(), generics, _returnTy, isVar, catchVariables)
+    return FnClosure(ident, fields.clone(), generics, _returnTy, isVar)
       .._tys = _tys
       .._parent = parentOrCurrent;
   }
@@ -400,13 +366,13 @@ class FnClosure extends FnDecl {
   late final LLVMFnClosureType llty = LLVMFnClosureType(this);
 
   @override
-  // ignore: overridden_fields
-  late final props = [super.props, catchVariables];
+  FnClosure newTy(List<FieldDef> fields) {
+    return FnClosure(ident, fields, generics, _returnTy, isVar);
+  }
 
   @override
-  FnClosure newTy(List<FieldDef> fields) {
-    return FnClosure(
-        ident, fields, generics, _returnTy, isVar, catchVariables.clone());
+  FnClosure toDyn() {
+    return this;
   }
 }
 
@@ -422,8 +388,16 @@ class FnCatch extends FnDecl {
         analysisVariables, variables);
   }
 
-  List<Variable> getVariables(FnBuildMixin c) {
-    return _variables;
+  List<Variable> getVariables() => _variables;
+
+  static Variable? toFnClosure(FnBuildMixin context, Ty? ty, Variable val) {
+    if (val.ty case FnDecl vTy when ty is FnClosure && vTy is! FnClosure) {
+      final newTy = vTy.toDyn();
+      final fnCatch = vTy is FnCatch ? vTy : vTy.toCatch(const [], const []);
+      return context.root.createClosureBase(context, fnCatch, newTy, val);
+    }
+
+    return null;
   }
 
   final List<AnalysisVariable> analysisVariables;
@@ -438,174 +412,4 @@ class FnCatch extends FnDecl {
   @override
   // ignore: overridden_fields
   late final props = [...super.props, analysisVariables];
-}
-
-class LLVMFnClosureType extends LLVMFnDeclType {
-  LLVMFnClosureType(FnClosure super.ty);
-
-  @override
-  FnClosure get ty => super.ty as FnClosure;
-
-  LLVMTypeRef? _type;
-  @override
-  LLVMTypeRef typeOf(StoreLoadMixin c) {
-    if (_type != null) return _type!;
-    final vals = <LLVMTypeRef>[];
-    for (var field in ty.catchVariables) {
-      vals.add(field.grt(c).typeOf(c));
-    }
-
-    return _type = c.typeStruct(vals, 'Fn_closure');
-  }
-
-  @override
-  int getBytes(StoreLoadMixin c) {
-    var size = 0;
-    for (var field in ty.catchVariables) {
-      size += field.grt(c).llty.getBytes(c);
-    }
-
-    return size;
-  }
-
-  @override
-  LLVMTypeRef createFnType(StoreLoadMixin context) {
-    final decl = ty;
-    final fields = decl.fields;
-    final list = <LLVMTypeRef>[];
-    var retTy = decl.getRetTy(context);
-    list.add(typeOf(context));
-
-    for (var p in fields) {
-      final realTy = ty.getFieldTy(context, p);
-      LLVMTypeRef type = realTy.typeOf(context);
-
-      list.add(type);
-    }
-    final ret = retTy.typeOf(context);
-
-    return context.typeFn(list, ret, ty.isVar);
-  }
-
-  @override
-  LLVMMetadataRef createDIType(StoreLoadMixin c) {
-    final fnClosure = c.global.getStdTy(c, 'FnClosure'.ident);
-
-    final name = fnClosure?.ident.src ?? 'FnClosure';
-    final offset = fnClosure?.ident.offset ?? Offset.zero;
-
-    final elements = <LLVMMetadataRef>[];
-    final fields = ty.catchVariables;
-    final file = llvm.LLVMDIScopeGetFile(c.scope);
-
-    var start = 0;
-    for (var field in fields) {
-      var rty = field.grt(c);
-      LLVMMetadataRef ty;
-
-      ty = rty.llty.createDIType(c);
-      final alignSize = rty.llty.getBytes(c) * 8;
-
-      final fieldName = field.ident.src;
-
-      final (namePointer, nameLength) = fieldName.toNativeUtf8WithLength();
-
-      ty = llvm.LLVMDIBuilderCreateMemberType(
-        c.dBuilder!,
-        c.scope,
-        namePointer,
-        nameLength,
-        file,
-        field.ident.offset.row,
-        alignSize,
-        alignSize,
-        start,
-        0,
-        ty,
-      );
-      elements.add(ty);
-      start += alignSize;
-    }
-    final (namePointer, nameLength) = name.toNativeUtf8WithLength();
-
-    var alignSize = fields.fold<int>(0, (previousValue, element) {
-      final size = element.grt(c).llty.getBytes(c);
-      if (previousValue > size) return previousValue;
-      return size;
-    });
-
-    return llvm.LLVMDIBuilderCreateStructType(
-      c.dBuilder!,
-      c.scope,
-      namePointer,
-      nameLength,
-      llvm.LLVMDIScopeGetFile(c.unit),
-      offset.row,
-      getBytes(c) * 8,
-      alignSize * 8,
-      0,
-      nullptr,
-      elements.toNative(),
-      elements.length,
-      0,
-      nullptr,
-      '0'.toChar(),
-      1,
-    );
-  }
-
-  Variable wrapFn(StoreLoadMixin c, Variable fn, List<Variable> variables) {
-    final alloca = createAlloca(c, Identifier.none);
-    final type = typeOf(c);
-
-    for (var i = 0; i < ty.catchVariables.length; i++) {
-      final ptr = alloca.getBaseValue(c);
-      final fieldTy = ty.catchVariables[i].grt(c);
-      final value = llvm.LLVMBuildStructGEP2(c.builder, type, ptr, i, unname);
-      final field = LLVMAllocaVariable(
-          value, fieldTy, fieldTy.typeOf(c), Identifier.none);
-      if (i == 0) {
-        field.store(c, fn.load(c));
-        continue;
-      }
-      final val = variables[i - 1];
-      field.store(c, val.getBaseValue(c));
-    }
-
-    return alloca;
-  }
-
-  void pushVariables(FnBuildMixin context, LLVMValueRef fn) {
-    final fnWrap = llvm.LLVMGetParam(fn, 0);
-    final type = typeOf(context);
-    final alloca = createAlloca(context, Identifier.none);
-    alloca.store(context, fnWrap);
-
-    for (var i = 1; i < ty.catchVariables.length; i++) {
-      final item = ty.catchVariables[i];
-      final fieldTy = item.grt(context);
-      final value = llvm.LLVMBuildStructGEP2(
-          context.builder, type, alloca.alloca, i, unname);
-      final field = LLVMAllocaVariable(
-              value, fieldTy, fieldTy.typeOf(context), item.ident)
-          .defaultDeref(context, item.ident);
-
-      context.pushVariable(field);
-    }
-  }
-
-  LLVMValueRef load(FnBuildMixin context, Variable fn) {
-    final ptr = fn.getBaseValue(context);
-    final type = typeOf(context);
-    final value =
-        llvm.LLVMBuildStructGEP2(context.builder, type, ptr, 0, unname);
-
-    final item = ty.catchVariables[0];
-
-    final fieldTy = item.grt(context);
-    final field =
-        LLVMAllocaVariable(value, fieldTy, fieldTy.typeOf(context), item.ident);
-
-    return field.load(context);
-  }
 }

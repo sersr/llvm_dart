@@ -91,6 +91,7 @@ mixin FnCallMixin {
     }
 
     final fnValue = fn.genFn();
+
     return AbiFn.fnCallInternal(
       context: context,
       fn: fnValue,

@@ -81,8 +81,6 @@ mixin NewInst<T extends Ty> on Ty {
 
   bool get done => tys.length >= generics.length;
 
-  final _tyLists = <ListKey, T>{};
-
   T? _parent;
   T get parentOrCurrent => _parent ?? this as T;
 
@@ -119,22 +117,15 @@ mixin NewInst<T extends Ty> on Ty {
     }
   }
 
-  /// todo: 使用 `context.pushDyty` 实现
   T newInst(Map<Identifier, Ty> tys, Tys c) {
     final parent = parentOrCurrent;
-    if (tys.isEmpty) return this as T;
-    final key = ListKey(tys);
 
-    final newInst = (parent as NewInst)._tyLists.putIfAbsent(key, () {
-      final newFields = fields.clone();
+    final newFields = fields.clone();
 
-      final ty = newTy(newFields);
-      (ty as NewInst)._initData(c, parent, tys);
-      ty.initNewInst(c);
-      return ty;
-    });
-
-    return newInst as T;
+    final ty = newTy(newFields);
+    (ty as NewInst)._initData(c, parent, tys);
+    ty.initNewInst(c);
+    return ty;
   }
 
   void initNewInst(Tys c) {}
@@ -193,7 +184,7 @@ mixin NewInst<T extends Ty> on Ty {
     return newInst(types, c);
   }
 
-  static (bool, ComponentTy?) checkTy(Tys c, Ty exactTy, PathTy pathTy,
+  static (bool, Ty?) checkTy(Tys c, Ty exactTy, PathTy pathTy,
       List<GenericDef> generics, Map<Identifier, Ty> genMapTy, bool isLimited) {
     if (pathTy is SlicePathTy) {
       if (exactTy is! SliceTy) return (false, null);
@@ -222,9 +213,11 @@ mixin NewInst<T extends Ty> on Ty {
       return (true, null);
     }
 
-    ComponentTy? tyConstraint;
+    Ty? tyConstraint;
 
     final pathBaseTy = pathTy.getBaseTy(c);
+    tyConstraint = pathBaseTy;
+
     var pathGenerics = const <GenericDef>[];
     var tys = const <Identifier, Ty>{};
 
@@ -244,6 +237,9 @@ mixin NewInst<T extends Ty> on Ty {
       tys = exactTy.tys;
 
       if (!exactTy.isTy(pathBaseTy)) {
+        if (exactTy is FnDecl && pathBaseTy is FnDecl) {
+          return (true, tyConstraint);
+        }
         return (false, null);
       }
     } else if (pathBaseTy is ComponentTy) {
@@ -290,14 +286,29 @@ mixin NewInst<T extends Ty> on Ty {
 
       genMapTy.putIfAbsent(pathTy.ident, () {
         final list = <ComponentTy>[];
+        var isDyn = false;
         for (var g in currentGenField.constraints) {
           final (r, com) =
               checkTy(c, exactTy, g, generics, genMapTy, isLimited);
           result &= r;
-          if (com != null) list.add(com);
+          if (com is ComponentTy) list.add(com);
+          if (com is FnDecl) {
+            isDyn = com.isDyn || com is FnClosure;
+          }
         }
 
-        return exactTy.newConstraints(c, list, isLimited);
+        if (exactTy case Fn(fnDecl: var decl)) {
+          if (decl.isDyn || isDyn) {
+            return decl.toDyn()..isDyn = true;
+          }
+          return decl.clone();
+        } else if (exactTy case FnDecl decl) {
+          if (decl.isDyn || isDyn) {
+            return decl.toDyn()..isDyn = true;
+          }
+          return decl.clone();
+        }
+        return exactTy.newConstraints(c, list);
       });
     }
 

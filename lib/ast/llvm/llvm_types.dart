@@ -167,6 +167,9 @@ class LLVMFnDeclType extends LLVMType {
     final fields = decl.fields;
     final list = <LLVMTypeRef>[];
     var retTy = decl.getRetTy(context);
+    if (decl is FnClosure) {
+      list.add(context.pointer());
+    }
 
     var retIsSret = retTy.llty.getBytes(context) > 8;
     if (retIsSret) {
@@ -194,11 +197,13 @@ class LLVMFnDeclType extends LLVMType {
       list.add(type);
     }
 
-    if (decl is FnCatch) {
-      for (var _ in decl.analysisVariables) {
-        list.add(context.pointer());
-      }
-    }
+    final size = switch (decl) {
+      FnCatch decl => decl.analysisVariables.length,
+      _ => 0,
+    };
+
+    final type = context.pointer();
+    list.addAll(List.generate(size, (index) => type));
 
     for (var p in fields) {
       final pty = ty.getFieldTy(context, p);
@@ -220,55 +225,149 @@ class LLVMFnDeclType extends LLVMType {
   }
 }
 
+class LLVMFnClosureType extends LLVMFnDeclType {
+  LLVMFnClosureType(FnClosure super.ty);
+
+  @override
+  FnClosure get ty => super.ty as FnClosure;
+
+  LLVMTypeRef? _type;
+  @override
+  LLVMTypeRef typeOf(StoreLoadMixin c) {
+    if (_type != null) return _type!;
+    return _type = c.typeStruct([c.pointer(), c.pointer()], null);
+  }
+
+  LLVMTypeRef closureTypeOf(StoreLoadMixin c, List<Variable> variables) {
+    final vals = <LLVMTypeRef>[c.pointer()];
+    for (var _ in variables) {
+      vals.add(c.pointer());
+    }
+
+    return c.typeStruct(vals, null);
+  }
+
+  @override
+  int getBytes(StoreLoadMixin c) {
+    return c.pointerSize() * 2;
+  }
+
+  @override
+  LLVMMetadataRef createDIType(StoreLoadMixin c) {
+    final fnClosure = c.global.getStdTy(c, 'FnClosure'.ident);
+
+    final name = fnClosure?.ident.src ?? 'FnClosure';
+    final offset = fnClosure?.ident.offset ?? Offset.zero;
+
+    final elements = <LLVMMetadataRef>[];
+    final file = llvm.LLVMDIScopeGetFile(c.scope);
+
+    var start = 0;
+    final p = RefTy(LiteralKind.kVoid.ty);
+    for (var field in [p, p]) {
+      var rty = field;
+      LLVMMetadataRef ty;
+
+      ty = rty.llty.createDIType(c);
+      final alignSize = rty.llty.getBytes(c) * 8;
+
+      final fieldName = field.ident.src;
+
+      final (namePointer, nameLength) = fieldName.toNativeUtf8WithLength();
+
+      ty = llvm.LLVMDIBuilderCreateMemberType(
+        c.dBuilder!,
+        c.scope,
+        namePointer,
+        nameLength,
+        file,
+        field.ident.offset.row,
+        alignSize,
+        alignSize,
+        start,
+        0,
+        ty,
+      );
+      elements.add(ty);
+      start += alignSize;
+    }
+    final (namePointer, nameLength) = name.toNativeUtf8WithLength();
+
+    var alignSize = 8;
+
+    return llvm.LLVMDIBuilderCreateStructType(
+      c.dBuilder!,
+      c.scope,
+      namePointer,
+      nameLength,
+      llvm.LLVMDIScopeGetFile(c.unit),
+      offset.row,
+      getBytes(c) * 8,
+      alignSize * 8,
+      0,
+      nullptr,
+      elements.toNative(),
+      elements.length,
+      0,
+      nullptr,
+      '0'.toChar(),
+      1,
+    );
+  }
+
+  static LLVMValueRef callClosure(
+      FnBuildMixin context, Variable fn, List<LLVMValueRef> args) {
+    final type =
+        context.typeStruct([context.pointer(), context.pointer()], null);
+    final base = fn.getBaseValue(context);
+    final ref = RefTy(LiteralKind.kVoid.ty);
+
+    final fnAddr =
+        llvm.LLVMBuildStructGEP2(context.builder, type, base, 0, unname);
+
+    final sec =
+        llvm.LLVMBuildStructGEP2(context.builder, type, base, 1, unname);
+    final secVal =
+        LLVMAllocaVariable(sec, ref, ref.typeOf(context), Identifier.none);
+    args.add(secVal.load(context));
+
+    return LLVMAllocaVariable(fnAddr, ref, ref.typeOf(context), Identifier.none)
+        .load(context);
+  }
+
+  LLVMValueRef load(FnBuildMixin context, LLVMValueRef fn, FnCatch fnCatch,
+      List<LLVMValueRef> args) {
+    final ptr = fn;
+    final type = closureTypeOf(context, fnCatch.getVariables());
+
+    final ref = RefTy(LiteralKind.kVoid.ty);
+    final fnValue =
+        llvm.LLVMBuildStructGEP2(context.builder, type, ptr, 0, unname);
+    final fnVariable =
+        LLVMAllocaVariable(fnValue, ref, ref.typeOf(context), Identifier.none);
+    final variables = fnCatch.getVariables();
+
+    for (var i = 0; i < variables.length; i++) {
+      final value =
+          llvm.LLVMBuildStructGEP2(context.builder, type, ptr, i + 1, unname);
+
+      final item = variables[i];
+
+      final field =
+          LLVMAllocaVariable(value, ref, ref.typeOf(context), item.ident);
+
+      args.add(field.load(context));
+    }
+
+    return fnVariable.load(context);
+  }
+}
+
 class LLVMFnType extends LLVMType {
   LLVMFnType(this.fn);
   final Fn fn;
   @override
   FnDecl get ty => fn.fnDecl;
-
-  // LLVMTypeRef createFnType(StoreLoadMixin c,
-  //     [Set<AnalysisVariable>? variables]) {
-  //   final fields = decl.fields;
-  //   final list = <LLVMTypeRef>[];
-  //   var retTy = decl.getRetTy(c);
-
-  //   if (ty is ImplFn) {
-  //     LLVMTypeRef forTy;
-  //     final tty = (ty as ImplFn).implty.ty;
-  //     if (tty is BuiltInTy) {
-  //       forTy = tty.typeOf(c);
-  //     } else {
-  //       forTy = c.pointer();
-  //     }
-  //     list.add(forTy);
-  //   }
-
-  //   for (var p in fields) {
-  //     final realTy = ty.getFieldTy(c, p);
-  //     LLVMTypeRef type = realTy.typeOf(c);
-
-  //     list.add(type);
-  //   }
-  //   final vv = [...ty.variables, ...?variables];
-
-  //   for (var variable in vv) {
-  //     final v = c.getVariable(variable.ident);
-
-  //     if (v != null) {
-  //       final dty = v.ty;
-  //       LLVMTypeRef ty = dty.typeOf(c);
-  //       ty = c.typePointer(ty);
-
-  //       list.add(ty);
-  //     }
-  //   }
-
-  //   LLVMTypeRef ret;
-
-  //   ret = retTy.typeOf(c);
-
-  //   return c.typeFn(list, ret, decl.isVar);
-  // }
 
   late final _cacheFns = <ListKey, LLVMConstVariable>{};
 

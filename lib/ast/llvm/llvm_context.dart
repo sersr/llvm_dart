@@ -101,62 +101,140 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
   @override
   String get currentPath => throw UnimplementedError();
 
-  // ExprTempValue? arrayBuiltin(FnBuildMixin context, Identifier ident,
-  //     String fnName, Variable? val, Ty valTy, List<FieldExpr> params) {
-  //   if (valTy is ArrayTy && val != null) {
-  //     if (fnName == 'getSize') {
-  //       final size =
-  //           LiteralKind.usize.ty.llty.createValue(ident: '${valTy.size}'.ident);
-  //       return ExprTempValue(size);
-  //     } else if (fnName == 'toStr') {
-  //       final element = valTy.llty.toStr(context, val);
-  //       return ExprTempValue(element);
-  //     }
-  //   }
-
-  //   if (valTy is StructTy) {
-  //     if (valTy.ident.src == 'Array') {
-  //       if (fnName == 'new') {
-  //         if (params.isNotEmpty) {
-  //           final first = params.first
-  //               .build(context, baseTy: LiteralKind.usize.ty)
-  //               ?.variable;
-
-  //           if (first is LLVMLitVariable) {
-  //             if (valTy.tys.isNotEmpty) {
-  //               final arr = ArrayTy(valTy.tys.values.first, first.value.iValue);
-
-  //               final value = LLVMAllocaProxyVariable(context, (value, _) {
-  //                 if (value == null) return;
-  //                 value.store(
-  //                   context,
-  //                   llvm.LLVMConstNull(arr.typeOf(context)),
-  //                 );
-  //               }, arr, arr.llty.typeOf(context), ident);
-
-  //               return ExprTempValue(value);
-  //             }
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-
-  //   return null;
-  // }
-
   final _structTypes = <ListKey, LLVMTypeRef>{};
 
-  LLVMTypeRef createStructType(
-      List<LLVMTypeRef> types, List<Ty> tys, String name) {
-    final key = ListKey([types, tys, name]);
+  @override
+  LLVMTypeRef typeStruct(List<LLVMTypeRef> types, String? ident,
+      {List<Ty> tys = const []}) {
+    if (ident == null) {
+      return llvm.LLVMStructTypeInContext(
+          llvmContext, types.toNative(), types.length, LLVMFalse);
+    }
+
+    final key = ListKey([types, ident]);
 
     return _structTypes.putIfAbsent(key, () {
       final struct =
-          llvm.LLVMStructCreateNamed(llvmContext, 'struct_$name'.toChar());
+          llvm.LLVMStructCreateNamed(llvmContext, 'struct_$ident'.toChar());
       llvm.LLVMStructSetBody(struct, types.toNative(), types.length, LLVMFalse);
       return struct;
     });
+  }
+
+  final _closureBase = <LLVMValueRef, Variable>{};
+
+  Variable createClosureBase(
+      FnBuildMixin context, FnCatch fnCatch, FnClosure ty, Variable fn) {
+    final fnValue = fn.getBaseValue(context);
+
+    return _closureBase.putIfAbsent(fnValue, () {
+      return LLVMAllocaProxyVariable(context, (variable, isProxy) {
+        final variables = fnCatch.getVariables();
+        final closureType = ty.llty.closureTypeOf(context, variables);
+        final alloca =
+            context.alloctor(closureType, ty: ty, name: Identifier.none);
+
+        final ref = RefTy(LiteralKind.kVoid.ty);
+        final value = llvm.LLVMBuildStructGEP2(
+            context.builder, closureType, alloca, 0, unname);
+        final field = LLVMAllocaVariable(
+            value, ref, ref.typeOf(context), Identifier.none);
+
+        field.store(context, fnValue);
+
+        for (var i = 0; i < variables.length; i++) {
+          final value = llvm.LLVMBuildStructGEP2(
+              context.builder, closureType, alloca, i + 1, unname);
+          final field = LLVMAllocaVariable(
+              value, ref, ref.typeOf(context), Identifier.none);
+
+          final val = variables[i];
+          field.store(context, val.getBaseValue(context));
+        }
+
+        final closureFn = createClosure(ty, fnCatch, context);
+
+        final closureAlloca =
+            variable ?? ty.llty.createAlloca(context, Identifier.none);
+        final type = closureAlloca.type;
+
+        final closurePtr = closureAlloca.alloca;
+        final first = llvm.LLVMBuildStructGEP2(
+            context.builder, type, closurePtr, 0, '_first'.toChar());
+
+        final firstVal = LLVMAllocaVariable(
+            first, ref, ref.typeOf(context), Identifier.none);
+        firstVal.store(context, closureFn.load(context));
+
+        final second = llvm.LLVMBuildStructGEP2(
+            context.builder, type, closurePtr, 1, '_second'.toChar());
+
+        final secVal = LLVMAllocaVariable(
+            second, ref, ref.typeOf(context), Identifier.none);
+        secVal.store(context, alloca);
+      }, ty, ty.typeOf(context), Identifier.none);
+    });
+  }
+
+  final _globalClosures = <ListKey, Variable>{};
+  Variable createClosure(FnClosure fn, FnCatch fnCatch, FnBuildMixin context) {
+    final fnType = fn.llty.createFnType(context);
+    final closureType = fnCatch.llty.createFnType(context);
+
+    final key = ListKey([fnType, closureType]);
+    final value = _globalClosures[key];
+    if (value != null) return value;
+
+    final ident = '_closure_ ${fn.ident.path}';
+    final v = llvm.LLVMAddFunction(module, ident.toChar(), fnType);
+    llvm.LLVMSetLinkage(v, LLVMLinkage.LLVMInternalLinkage);
+    llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
+
+    context.setFnLLVMAttr(v, -1, LLVMAttr.OptimizeNone); // Function
+    context.setFnLLVMAttr(v, -1, LLVMAttr.StackProtect); // Function
+    context.setFnLLVMAttr(v, -1, LLVMAttr.NoInline); // Function
+
+    final newFnValue = LLVMConstVariable(v, fn, fn.ident);
+    _globalClosures[key] = newFnValue;
+
+    final closureContext = context.createChildContext();
+    final bb =
+        llvm.LLVMAppendBasicBlockInContext(llvmContext, v, 'entry'.toChar());
+    llvm.LLVMPositionBuilderAtEnd(closureContext.builder, bb);
+
+    var index = 0;
+    final first = llvm.LLVMGetParam(v, index);
+
+    final args = <LLVMValueRef>[];
+    for (var _ in fn.fields) {
+      final field = llvm.LLVMGetParam(v, index);
+      args.add(field);
+      index += 1;
+    }
+
+    final addr = fn.llty.load(closureContext, first, fnCatch, args);
+    final retType = fn.getRetTy(context);
+    final isSret = retType.llty.getBytes(context) > 8;
+
+    final ret = llvm.LLVMBuildCall2(closureContext.builder, closureType, addr,
+        args.toNative(), args.length, unname);
+    if (!isSret && !retType.isTy(LiteralKind.kVoid.ty)) {
+      llvm.LLVMBuildRet(closureContext.builder, ret);
+    } else {
+      llvm.LLVMBuildRetVoid(closureContext.builder);
+    }
+    return newFnValue;
+  }
+
+  final _fnTypes = <ListKey, LLVMTypeRef>{};
+
+  @override
+  LLVMTypeRef typeFn(List<LLVMTypeRef> params, LLVMTypeRef ret, bool isVar) {
+    final key = ListKey([params, ret, isVar]);
+    return _fnTypes.putIfAbsent(
+        key,
+        () => llvm.LLVMFunctionType(
+            ret, params.toNative(), params.length, isVar.llvmBool));
   }
 }
 

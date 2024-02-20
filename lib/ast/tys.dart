@@ -84,9 +84,17 @@ mixin Tys<V extends LifeCycleVariable> {
   V? getVariable(Identifier ident) {
     var isGlobal = false;
     var ignore = false;
+
+    V? last;
+
     bool test(V variable) {
       if (isGlobal) return true;
+
       if (!ignore && variable.ident.start > ident.start) {
+        last ??= variable;
+        if (variable.ident.start < last!.ident.start) {
+          last = variable;
+        }
         return false;
       }
 
@@ -95,31 +103,30 @@ mixin Tys<V extends LifeCycleVariable> {
     }
 
     return getKV((c) {
-      isGlobal = c.isGlobal;
-      final list = c.variables[ident] as List<V>?;
-      if (list?.last case var v? when !v.ident.inSameFile(ident)) {
-        ignore = true;
-        return [v];
-      }
-      return list;
-    }, test: test);
+          isGlobal = c.isGlobal;
+          final list = c.variables[ident] as List<V>?;
+          if (list?.last case var v? when !v.ident.inSameFile(ident)) {
+            ignore = true;
+            return [v];
+          }
+          return list;
+        }, test: test) ??
+        last;
   }
 
   void pushVariable(V variable) {
     final list = variables.putIfAbsent(variable.ident, () => []);
     if (!list.contains(variable)) {
+      variable._pushContext = this;
+      list.add(variable);
+      assert(!identical(variable.ident, Identifier.none), variable);
       if (list.isEmpty) {
-        variable._pushContext = this;
-        assert(!identical(variable.ident, Identifier.none), variable);
-        list.add(variable);
-      } else {
-        final index =
-            list.indexWhere((e) => e.ident.start > variable.ident.start);
-        if (index == -1) {
-          list.add(variable);
-        } else {
-          list.insert(index, variable);
-        }
+        // final index =
+        //     list.indexWhere((e) => e.ident.start > variable.ident.start);
+        // if (index == -1) {
+        // } else {
+        //   list.insert(index, variable);
+        // }
       }
     }
   }

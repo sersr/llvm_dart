@@ -26,7 +26,12 @@ abstract class AsBuilder {
           context.builder, lv.load(context), type, unname);
       asValue = LLVMConstVariable(v, asTy, asId);
     } else {
-      asValue = lv.asType(context, asTy);
+      final v = FnCatch.toFnClosure(context, asTy, lv);
+      if (v != null) {
+        asValue = v;
+      } else {
+        asValue = lv.asType(context, asTy);
+      }
     }
 
     return asValue;

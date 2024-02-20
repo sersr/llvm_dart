@@ -30,8 +30,8 @@ mixin FnBuildMixin
     if (sret != null) _sret = sret;
   }
 
-  void initFnParams(LLVMValueRef fn, Fn fnty, {bool ignoreFree = false}) {
-    final decl = fnty.fnDecl;
+  void initFnParams(LLVMValueRef fn, Fn fnTy, {bool ignoreFree = false}) {
+    final decl = fnTy.fnDecl;
     final params = decl.fields;
     var index = 0;
     final retTy = decl.getRetTy(this);
@@ -43,22 +43,18 @@ mixin FnBuildMixin
       index += 1;
     }
 
-    if (fnty is ImplFn && !fnty.isStatic) {
-      final p = fnty.ty;
+    if (fnTy case ImplFn(isStatic: false, ty: var ty)) {
       final selfValue = llvm.LLVMGetParam(fn, index);
       final ident = Identifier.self;
 
-      final value = switch (p) {
-        BuiltInTy() => LLVMConstVariable(selfValue, p, ident),
-        _ => LLVMAllocaVariable(selfValue, p, p.typeOf(this), ident),
+      final value = switch (ty) {
+        BuiltInTy() => LLVMConstVariable(selfValue, ty, ident),
+        _ => LLVMAllocaVariable(selfValue, ty, ty.typeOf(this), ident),
       };
 
       setName(selfValue, ident.src);
-      diBuilderDeclare(ident, selfValue, p);
+      diBuilderDeclare(ident, selfValue, ty);
       pushVariable(value);
-      index += 1;
-    } else if (decl is FnClosure) {
-      decl.llty.pushVariables(this, fn);
       index += 1;
     }
 

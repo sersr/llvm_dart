@@ -62,19 +62,12 @@ mixin LLVMTypeMixin {
   }
 
   LLVMTypeRef typeFn(List<LLVMTypeRef> params, LLVMTypeRef ret, bool isVar) {
-    final type = llvm.LLVMFunctionType(
-        ret, params.toNative(), params.length, isVar.llvmBool);
-    return type;
+    return root.typeFn(params, ret, isVar);
   }
 
   LLVMTypeRef typeStruct(List<LLVMTypeRef> types, String? ident,
       {List<Ty> tys = const []}) {
-    if (ident == null) {
-      return llvm.LLVMStructTypeInContext(
-          llvmContext, types.toNative(), types.length, LLVMFalse);
-    }
-
-    return root.createStructType(types, tys, ident);
+    return root.typeStruct(types, ident, tys: tys);
   }
 
   LLVMTypeRef pointer() {
