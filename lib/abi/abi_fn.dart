@@ -85,6 +85,10 @@ abstract interface class AbiFn {
     final args = <LLVMValueRef>[];
     final retTy = decl.getRetTy(context);
 
+    final fnAddr = decl is FnClosure
+        ? LLVMFnClosureType.callClosure(context, fn, args)
+        : fn.load(context);
+
     if (struct != null) {
       if (struct.ty is BuiltInTy) {
         args.add(struct.load(context));
@@ -152,10 +156,6 @@ abstract interface class AbiFn {
         }
       }
     }
-
-    final fnAddr = decl is FnClosure
-        ? LLVMFnClosureType.callClosure(context, fn, args)
-        : fn.load(context);
 
     final fnType = decl.llty.createFnType(context);
 

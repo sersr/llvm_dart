@@ -266,16 +266,15 @@ class LLVMFnClosureType extends LLVMFnDeclType {
     final p = RefTy(LiteralKind.kVoid.ty);
     for (var field in [p, p]) {
       var rty = field;
-      LLVMMetadataRef ty;
 
-      ty = rty.llty.createDIType(c);
+      final ty = rty.llty.createDIType(c);
       final alignSize = rty.llty.getBytes(c) * 8;
 
       final fieldName = field.ident.src;
 
       final (namePointer, nameLength) = fieldName.toNativeUtf8WithLength();
 
-      ty = llvm.LLVMDIBuilderCreateMemberType(
+      final member = llvm.LLVMDIBuilderCreateMemberType(
         c.dBuilder!,
         c.scope,
         namePointer,
@@ -288,12 +287,10 @@ class LLVMFnClosureType extends LLVMFnDeclType {
         0,
         ty,
       );
-      elements.add(ty);
+      elements.add(member);
       start += alignSize;
     }
     final (namePointer, nameLength) = name.toNativeUtf8WithLength();
-
-    var alignSize = 8;
 
     return llvm.LLVMDIBuilderCreateStructType(
       c.dBuilder!,
@@ -303,7 +300,7 @@ class LLVMFnClosureType extends LLVMFnDeclType {
       llvm.LLVMDIScopeGetFile(c.unit),
       offset.row,
       getBytes(c) * 8,
-      alignSize * 8,
+      64,
       0,
       nullptr,
       elements.toNative(),

@@ -128,20 +128,24 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
     final fnValue = fn.getBaseValue(context);
 
     return _closureBase.putIfAbsent(fnValue, () {
+      final index = _closureBase.length;
+      final closureName = 'dyn_closure_$index'.ident;
+      final bodyName = 'dyn_body____$index'.ident;
       return LLVMAllocaProxyVariable(context, (variable, isProxy) {
         final variables = fnCatch.getVariables();
         final closureType = ty.llty.closureTypeOf(context, variables);
-        final alloca =
-            context.alloctor(closureType, ty: ty, name: Identifier.none);
+        final alloca = context.alloctor(closureType, ty: ty, name: bodyName);
 
         final ref = RefTy(LiteralKind.kVoid.ty);
-        final value = llvm.LLVMBuildStructGEP2(
+
+        /// store body.fn
+        final fnAddr = llvm.LLVMBuildStructGEP2(
             context.builder, closureType, alloca, 0, unname);
-        final field = LLVMAllocaVariable(
-            value, ref, ref.typeOf(context), Identifier.none);
+        final fnField = LLVMAllocaVariable(
+            fnAddr, ref, ref.typeOf(context), Identifier.none);
+        fnField.store(context, fnValue);
 
-        field.store(context, fnValue);
-
+        /// 保存所有捕获变量
         for (var i = 0; i < variables.length; i++) {
           final value = llvm.LLVMBuildStructGEP2(
               context.builder, closureType, alloca, i + 1, unname);
@@ -152,27 +156,31 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
           field.store(context, val.getBaseValue(context));
         }
 
+        /// 新建一个函数实例，通用函数，闭包函数由此函数转发
         final closureFn = createClosure(ty, fnCatch, context);
 
+        /// dyn: { ptr: first, ptr: sec }
         final closureAlloca =
-            variable ?? ty.llty.createAlloca(context, Identifier.none);
+            variable ?? ty.llty.createAlloca(context, closureName);
         final type = closureAlloca.type;
+        final addr = closureAlloca.alloca;
 
-        final closurePtr = closureAlloca.alloca;
+        /// 第一个是转发函数地址
         final first = llvm.LLVMBuildStructGEP2(
-            context.builder, type, closurePtr, 0, '_first'.toChar());
+            context.builder, type, addr, 0, '_first'.toChar());
 
         final firstVal = LLVMAllocaVariable(
             first, ref, ref.typeOf(context), Identifier.none);
         firstVal.store(context, closureFn.load(context));
 
+        /// 闭包函数本体，包括函数地址，捕获变量
         final second = llvm.LLVMBuildStructGEP2(
-            context.builder, type, closurePtr, 1, '_second'.toChar());
+            context.builder, type, addr, 1, '_second'.toChar());
 
         final secVal = LLVMAllocaVariable(
             second, ref, ref.typeOf(context), Identifier.none);
         secVal.store(context, alloca);
-      }, ty, ty.typeOf(context), Identifier.none);
+      }, ty, ty.typeOf(context), closureName);
     });
   }
 
@@ -202,13 +210,14 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
         llvm.LLVMAppendBasicBlockInContext(llvmContext, v, 'entry'.toChar());
     llvm.LLVMPositionBuilderAtEnd(closureContext.builder, bb);
 
-    var index = 0;
-    final first = llvm.LLVMGetParam(v, index);
+    final first = llvm.LLVMGetParam(v, 0);
+    var index = 1;
 
     final args = <LLVMValueRef>[];
-    for (var _ in fn.fields) {
+    for (var f in fn.fields) {
       final field = llvm.LLVMGetParam(v, index);
       args.add(field);
+      setName(field, f.ident.src);
       index += 1;
     }
 
@@ -218,6 +227,7 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
 
     final ret = llvm.LLVMBuildCall2(closureContext.builder, closureType, addr,
         args.toNative(), args.length, unname);
+
     if (!isSret && !retType.isTy(LiteralKind.kVoid.ty)) {
       llvm.LLVMBuildRet(closureContext.builder, ret);
     } else {

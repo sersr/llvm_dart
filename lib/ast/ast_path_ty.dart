@@ -1,7 +1,9 @@
+// ignore_for_file: overridden_fields
+
 part of 'ast.dart';
 
 /// [PathTy] 只用于声明
-class PathTy {
+class PathTy with EquatableMixin {
   PathTy(this.ident, this.genericInsts, [this.kind = const []]);
   final Identifier ident;
   final List<PointerKind> kind;
@@ -44,9 +46,12 @@ class PathTy {
   Ty? getBaseTy(Tys c) {
     return BuiltInTy.from(ident.src) ?? c.getTy(ident);
   }
+
+  @override
+  late final props = [ident, genericInsts, kind];
 }
 
-class PathFnDeclTy extends PathTy with EquatableMixin {
+class PathFnDeclTy extends PathTy {
   PathFnDeclTy(this.decl, [List<PointerKind> kind = const []])
       : super(Identifier.none, const [], kind);
   final FnDecl decl;
@@ -86,6 +91,9 @@ class SlicePathTy extends PathTy {
   Ty? getBaseTy(Tys<LifeCycleVariable> c) {
     return grtOrT(c);
   }
+
+  @override
+  late final props = [super.props, elementTy];
 
   @override
   String toString() {
@@ -133,6 +141,9 @@ class ArrayPathTy extends SlicePathTy {
   Ty? getBaseTy(Tys<LifeCycleVariable> c) {
     return grtOrT(c);
   }
+
+  @override
+  late final props = [super.props, size];
 
   @override
   String toString() {

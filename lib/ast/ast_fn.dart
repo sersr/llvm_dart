@@ -22,6 +22,9 @@ class FnDecl extends Ty with NewInst<FnDecl> {
 
   @override
   bool isTy(Ty? other) {
+    if (other is FnDecl) {
+      return const DeepCollectionEquality().equals(declProps, other.declProps);
+    }
     return this == other;
   }
 
@@ -53,11 +56,57 @@ class FnDecl extends Ty with NewInst<FnDecl> {
   }
 
   @override
+  FnDecl resolveGeneric(Tys context, List<FieldExpr> params) {
+    if (generics.isEmpty && !extern) {
+      final sortFields = alignParam(params, fields);
+      bool update = false;
+
+      final isBuild = context is FnBuildMixin;
+      final newFields = List.of(fields);
+
+      for (var param in params) {
+        final sfIndex = sortFields.indexOf(param);
+        assert(sfIndex >= 0);
+
+        if (sfIndex > fields.length) continue;
+
+        final fd = fields[sfIndex];
+        final baseTy = fd.grtOrTUd(context);
+        Ty? ty;
+
+        if (isBuild) {
+          ty = param.build(context, baseTy: baseTy)?.ty;
+        } else {
+          ty = param.analysis(context as AnalysisContext)?.ty;
+        }
+
+        if (ty case FnDecl decl
+            when baseTy is! FnClosure && decl.isTy(baseTy)) {
+          newFields[sfIndex] = FieldDef.newDef(fd.ident, fd.rawTy, decl);
+          update = true;
+        }
+      }
+
+      if (update) {
+        final newDecl = newTy(newFields);
+        newDecl.cloneTys(context, this);
+        return newDecl;
+      }
+
+      return this;
+    }
+
+    return super.resolveGeneric(context, params);
+  }
+
+  @override
   String toString() {
     final isVals = isVar ? ', ...' : '';
     final dyn = isDyn ? 'dyn ' : '';
     return '${dyn}fn $ident${generics.str}(${fields.join(',')}$isVals) -> ${_returnTy ?? 'void'}${tys.str}';
   }
+
+  late final declProps = [fields, _returnTy, _tys];
 
   @override
   late final props = [ident, fields, _returnTy, _tys];
@@ -168,7 +217,8 @@ class Fn extends Ty {
   }
 
   Fn resolveGeneric(Tys context, List<FieldExpr> params) {
-    final newFnDecl = fnDecl.resolveGeneric(context, params);
+    var newFnDecl = fnDecl.resolveGeneric(context, params);
+    if (newFnDecl.generics.isEmpty) {}
     return Fn(newFnDecl, block)..copy(this);
   }
 

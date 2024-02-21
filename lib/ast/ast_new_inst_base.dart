@@ -66,7 +66,7 @@ class FieldDef with EquatableMixin implements Clone<FieldDef> {
   }
 
   @override
-  late final props = [_rty, _ty, ident];
+  late final props = [_rty, _ty.ident, _ty.genericInsts, _ty.kind, ident];
 }
 
 typedef GenTy = Ty? Function(Identifier ident);

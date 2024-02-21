@@ -176,7 +176,7 @@ class StructTy extends Ty with EquatableMixin, NewInst<StructTy> {
   }
 
   @override
-  late final props = [ident, fields, _tys, _constraints];
+  late final props = [ident.toRawIdent, fields, _tys, _constraints];
 
   @override
   void prepareBuild(FnBuildMixin context) {
@@ -217,7 +217,7 @@ class EnumTy extends Ty with NewInst<EnumTy> {
   }
 
   @override
-  late final props = [ident, variants, _constraints];
+  late final props = [ident.toRawIdent, variants, _constraints];
 
   @override
   void build() {
@@ -367,7 +367,7 @@ class ComponentTy extends Ty with NewInst<ComponentTy> {
   }
 
   @override
-  late final props = [ident, fns, _tys, _constraints];
+  late final props = [ident.toRawIdent, fns, _tys, _constraints];
 
   @override
   LLVMType get llty => throw UnimplementedError();
@@ -583,7 +583,7 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   }
 
   @override
-  late List<Object?> props = [tys, struct, _constraints];
+  late List<Object?> props = [tys, struct.ident.toRawIdent, _constraints];
 
   @override
   LLVMType get llty => throw UnimplementedError();

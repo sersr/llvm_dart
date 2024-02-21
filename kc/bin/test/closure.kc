@@ -2,51 +2,54 @@
 fn main() i32 {  
   let value = 1001;
   
-  fn catch_value() {
-    printf("hello catch: %d\n", value);
+  // fn catch_value() {
+  //   printf("hello catch: %d\n", value);
+  // }
+  
+  // let y = 222; 
+  
+  // fn catchy() {
+  //   printf("hello catch: y %d %d\n", y, value);
+  // }
+  
+  // test_closure(catch_value);
+  // test_closure(catchy);
+
+  // test_catch(catch_value);
+  // test_catch(catchy);
+
+  // let y = test_main();
+  // y();
+
+  // catch_value();
+
+  fn catch_wrap(y: i32) {
+    printf("catch wrap %d %d\n", y, value);
   }
-  
-  let y = 222; 
-  
-  fn catchy() {
-    printf("hello catch: y %d %d\n", y, value);
-  }
-  
-  test_closure(catch_value);
-  test_closure(catchy);
 
-  test_catch(catch_value);
-  test_catch(catchy);
-
-  let y = test_main();
-  y();
-
-  catch_value();
-  wrap(catch_value);
-
-  let h = HA{11,22};
-  par_ha(h);
-  printf("ha: %d, %d\n", h.y,h.x);
+  wrap(catch_wrap);
+  wrap_dyn(catch_wrap);
   0;
 }
 
-fn wrap<F: fn()>(f: F) {
-  f();
+type FnType = dyn fn(y: i32);
+
+/// `dyn`: 动态类型大小固定
+fn wrap_dyn(f: FnType) {
+  f(6666);
 }
 
-struct HA {
-  y: i64,
-  x: i64,
-}
-
-fn par_ha(ha: HA) {
-  printf("ha: %d, %d\n", ha.y,ha.x);
-  ha.y = 555;
-  ha.x = 32;
-}
-
-fn ret_ha() HA {
-  return HA{110, 111};
+/// 非动态类型会破坏函数，比如 `f`是一个闭包，捕获到的变量会添加到参数后面
+/// ```rust
+/// let foo = 100;
+/// fn closure() {
+///   let bar = foo;
+/// }
+/// 
+/// wrap(closure); // => wrap(closure, &foo);
+/// ```
+fn wrap(f:  fn(y: i32)) {
+  f(8888);
 }
 
 fn test_closure<F: dyn fn()>(f: F) {
