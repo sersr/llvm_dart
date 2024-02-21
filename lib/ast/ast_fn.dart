@@ -268,12 +268,11 @@ class Fn extends Ty {
 
       if (allCatchs.isNotEmpty) {
         decl = _fnDecl.toCatch(allCatchs, variables.toList());
+        _closure = decl;
       }
     }
 
-    _closure = decl;
-
-    final key = ListKey([getKey(), decl]);
+    final key = ListKey([getKey()]);
 
     final fn = parentOrCurrent._cache[key];
 
@@ -458,8 +457,4 @@ class FnCatch extends FnDecl {
     return FnCatch._(ident, fields.clone(), generics, _returnTy, isVar,
         analysisVariables, _variables);
   }
-
-  @override
-  // ignore: overridden_fields
-  late final props = [...super.props, analysisVariables];
 }

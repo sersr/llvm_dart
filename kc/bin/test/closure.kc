@@ -2,26 +2,26 @@
 fn main() i32 {  
   let value = 1001;
   
-  // fn catch_value() {
-  //   printf("hello catch: %d\n", value);
-  // }
+  fn catch_value() {
+    printf("hello catch: %d\n", value);
+  }
   
-  // let y = 222; 
+  let y = 222; 
   
-  // fn catchy() {
-  //   printf("hello catch: y %d %d\n", y, value);
-  // }
+  fn catchy() {
+    printf("hello catch: y %d %d\n", y, value);
+  }
   
-  // test_closure(catch_value);
-  // test_closure(catchy);
+  test_closure(catch_value);
+  test_closure(catchy);
 
-  // test_catch(catch_value);
-  // test_catch(catchy);
+  test_catch(catch_value);
+  test_catch(catchy);
 
-  // let y = test_main();
-  // y();
+  let y = test_main();
+  y();
 
-  // catch_value();
+  catch_value();
 
   fn catch_wrap(y: i32) {
     printf("catch wrap %d %d\n", y, value);
@@ -58,23 +58,4 @@ fn test_closure<F: dyn fn()>(f: F) {
 
 fn test_catch<F: fn()>(f: F) {
   f();
-}
-
-fn test_main() dyn fn() {
-  printf("hello\n");
-
-  fn hello() {
-    printf("hello closure.\n");
-  }
-
-  hello;
-}
-
-struct DynFn {
-  addr: *void,
-  catch: *void,
-}
-
-struct He{
-  y: Option<&He>,
 }
