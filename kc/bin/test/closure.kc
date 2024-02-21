@@ -18,9 +18,6 @@ fn main() i32 {
   test_catch(catch_value);
   test_catch(catchy);
 
-  let y = test_main();
-  y();
-
   catch_value();
 
   fn catch_wrap(y: i32) {
