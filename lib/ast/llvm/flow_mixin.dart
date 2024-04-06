@@ -174,8 +174,197 @@ mixin FlowMixin on BuildContext, FreeMixin {
 
   void freeBr(FnBuildMixin? from);
 
+  void painc() {
+    llvm.LLVMBuildUnreachable(builder);
+  }
+
   /// math
   Variable math(Variable lhs, Variable? rhs, OpKind op, Identifier opId) {
-    return OverflowMath.math(this, lhs, rhs, op, opId);
+    var isFloat = false;
+    var signed = false;
+    var ty = lhs.ty;
+    LLVMTypeRef? type;
+
+    var l = lhs.load(this);
+    var r = rhs?.load(this);
+
+    if (r == null || rhs == null) {
+      LLVMValueRef? value;
+
+      if (op == OpKind.Eq) {
+        value = llvm.LLVMBuildIsNull(builder, l, unname);
+      } else {
+        assert(op == OpKind.Ne);
+        value = llvm.LLVMBuildIsNotNull(builder, l, unname);
+      }
+      return LLVMConstVariable(value, LiteralKind.kBool.ty, opId);
+    }
+
+    if (ty is BuiltInTy && ty.literal.isNum) {
+      final kind = ty.literal;
+      final rty = rhs.ty;
+      if (rty is BuiltInTy) {
+        final rSize = rty.llty.getBytes(this);
+        final lSize = ty.llty.getBytes(this);
+        final max = rSize > lSize ? rty : ty;
+        type = max.typeOf(this);
+        ty = max;
+      }
+      if (kind.isFp) {
+        isFloat = true;
+      } else if (kind.isInt) {
+        signed = kind.signed;
+      }
+    } else if (ty is RefTy) {
+      ty = rhs.ty;
+      type = ty.typeOf(this);
+      l = llvm.LLVMBuildPtrToInt(builder, l, type, unname);
+    }
+
+    type ??= ty.typeOf(this);
+
+    if (isFloat) {
+      l = llvm.LLVMBuildFPCast(builder, l, type, unname);
+      r = llvm.LLVMBuildFPCast(builder, r, type, unname);
+    } else {
+      l = llvm.LLVMBuildIntCast2(builder, l, type, signed.llvmBool, unname);
+      r = llvm.LLVMBuildIntCast2(builder, r, type, signed.llvmBool, unname);
+    }
+
+    if (op == OpKind.And || op == OpKind.Or) {
+      final after = buildSubBB(name: 'op_after');
+      final opBB = buildSubBB(name: 'op_bb');
+      final allocaValue = alloctor(i1);
+      final variable =
+          LLVMAllocaVariable(allocaValue, LiteralKind.kBool.ty, i1, opId);
+
+      variable.store(this, l);
+      appendBB(opBB);
+
+      if (op == OpKind.And) {
+        llvm.LLVMBuildCondBr(builder, l, opBB.bb, after.bb);
+      } else {
+        llvm.LLVMBuildCondBr(builder, l, after.bb, opBB.bb);
+      }
+      final c = opBB.context;
+
+      variable.store(c, r);
+      c.br(after.context);
+      insertPointBB(after);
+      return variable;
+    }
+
+    LLVMValueRef Function(LLVMBuilderRef b, LLVMValueRef l, LLVMValueRef r,
+        Pointer<Char> name)? llfn;
+
+    diSetCurrentLoc(opId.offset);
+
+    if (isFloat) {
+      final id = op.getFCmpId(true);
+      if (id != null) {
+        final v = llvm.LLVMBuildFCmp(builder, id, l, r, unname);
+        return LLVMConstVariable(v, LiteralKind.kBool.ty, opId);
+      }
+      LLVMValueRef? value;
+      switch (op) {
+        case OpKind.Add:
+          value = llvm.LLVMBuildFAdd(builder, l, r, unname);
+        case OpKind.Sub:
+          value = llvm.LLVMBuildFSub(builder, l, r, unname);
+        case OpKind.Mul:
+          value = llvm.LLVMBuildFMul(builder, l, r, unname);
+        case OpKind.Div:
+          value = llvm.LLVMBuildFDiv(builder, l, r, unname);
+        case OpKind.Rem:
+          value = llvm.LLVMBuildFRem(builder, l, r, unname);
+        case OpKind.BitAnd:
+        case OpKind.BitOr:
+        case OpKind.BitXor:
+        // value = llvm.LLVMBuildAnd(builder, l, r, unname);
+        // value = llvm.LLVMBuildOr(builder, l, r, unname);
+        // value = llvm.LLVMBuildXor(builder, l, r, unname);
+        default:
+      }
+      if (value != null) {
+        return LLVMConstVariable(value, ty, opId);
+      }
+    }
+
+    final isConst = lhs is LLVMLitVariable && rhs is LLVMLitVariable;
+    final cmpId = op.getICmpId(signed);
+    if (cmpId != null) {
+      final v = llvm.LLVMBuildICmp(builder, cmpId, l, r, unname);
+      return LLVMConstVariable(v, LiteralKind.kBool.ty, opId);
+    }
+
+    LLVMValueRef? value;
+
+    LLVMIntrisics? k;
+    switch (op) {
+      case OpKind.Add:
+        if (isConst) {
+          llfn = llvm.LLVMBuildAdd;
+        } else {
+          k = LLVMIntrisics.getAdd(ty, signed, this);
+        }
+        break;
+      case OpKind.Sub:
+        if (!signed || isConst) {
+          llfn = llvm.LLVMBuildSub;
+        } else {
+          k = LLVMIntrisics.getSub(ty, signed, this);
+        }
+        break;
+      case OpKind.Mul:
+        if (isConst) {
+          llfn = llvm.LLVMBuildMul;
+        } else {
+          k = LLVMIntrisics.getMul(ty, signed, this);
+        }
+        break;
+      case OpKind.Div:
+        llfn = signed ? llvm.LLVMBuildSDiv : llvm.LLVMBuildUDiv;
+        break;
+      case OpKind.Rem:
+        llfn = signed ? llvm.LLVMBuildSRem : llvm.LLVMBuildURem;
+        break;
+      case OpKind.BitAnd:
+        llfn = llvm.LLVMBuildAnd;
+        break;
+      case OpKind.BitOr:
+        llfn = llvm.LLVMBuildOr;
+        break;
+      case OpKind.BitXor:
+        llfn = llvm.LLVMBuildXor;
+        break;
+      case OpKind.Shl:
+        llfn = llvm.LLVMBuildShl;
+        break;
+      case OpKind.Shr:
+        llfn = signed ? llvm.LLVMBuildAShr : llvm.LLVMBuildLShr;
+        break;
+      default:
+    }
+
+    assert(k != null || llfn != null);
+
+    if (k != null) {
+      final mathValue = root.oMath(l, r, k, this);
+      final after = buildSubBB(name: 'math');
+      final panicBB = buildSubBB(name: 'panic');
+      appendBB(panicBB);
+      expect(mathValue.condition, v: false);
+      llvm.LLVMBuildCondBr(builder, mathValue.condition, panicBB.bb, after.bb);
+      panicBB.context.diSetCurrentLoc(opId.offset);
+      panicBB.context.painc();
+      insertPointBB(after);
+
+      return LLVMConstVariable(mathValue.value, ty, opId);
+    }
+    if (llfn != null) {
+      value = llfn(builder, l, r, unname);
+    }
+
+    return LLVMConstVariable(value ?? l, ty, opId);
   }
 }

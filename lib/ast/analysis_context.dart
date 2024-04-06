@@ -57,7 +57,7 @@ class AnalysisContext with Tys<AnalysisVariable> {
 
     if (variable case AnalysisVariable(pushContext: AnalysisContext context)
         when currentFn != null) {
-      if (context.getLastFnContext() case AnalysisContext context
+      if (context.getLastFnContext() case var context?
           when context != currentFn) {
         currentFn.catchVariables.add(variable);
       }

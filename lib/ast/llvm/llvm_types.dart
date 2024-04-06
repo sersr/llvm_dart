@@ -177,14 +177,7 @@ class LLVMFnDeclType extends LLVMType {
     }
 
     if (decl case ImplFnDecl(implFn: ImplFnMixin(isStatic: false))) {
-      LLVMTypeRef forTy;
-      final tty = decl.implFn.implty.ty;
-      if (tty is BuiltInTy) {
-        forTy = tty.typeOf(context);
-      } else {
-        forTy = context.pointer();
-      }
-      list.add(forTy);
+      list.add(context.pointer());
     }
 
     for (var p in fields) {

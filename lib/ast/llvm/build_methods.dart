@@ -413,8 +413,7 @@ mixin DebugMixin on BuildMethods {
 }
 
 /// 隐藏[BuildContext]内容，为[LLVMType],[Variable] 提供类型支持
-mixin StoreLoadMixin
-    on Tys<Variable>, BuildMethods, Consts, DebugMixin, OverflowMath {
+mixin StoreLoadMixin on Tys<Variable>, BuildMethods, Consts, DebugMixin {
   int getAlignSize(Ty ty) {
     final size = ty.llty.getBytes(this);
     final max = pointerSize();

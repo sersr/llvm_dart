@@ -254,6 +254,10 @@ class Cursor {
     return '';
   }
 
+  void back() {
+    _it.moveBack();
+  }
+
   List<int>? _lineStartCursors;
 
   List<int> get lineStartCursors => _lineStartCursors ??= _computedLFCursors();
@@ -474,20 +478,20 @@ class Cursor {
     }
     eatNumberLiteral();
 
+    isFloat &= nextCharRead == '.';
+
     if (isFloat) {
-      isFloat = nextCharRead == '.';
-
-      if (isFloat) {
-        nextChar;
-
-        if (isFloat) {
-          eatNumberLiteral();
-          if (nextCharRead == 'E' || nextCharRead == 'e') {
+      nextChar;
+      isFloat = numbers.contains(nextCharRead);
+      if (!isFloat) {
+        back();
+      } else {
+        eatNumberLiteral();
+        if (nextCharRead == 'E' || nextCharRead == 'e') {
+          nextChar;
+          if (nextCharRead == '-' || nextCharRead == '+') {
             nextChar;
-            if (nextCharRead == '-' || nextCharRead == '+') {
-              nextChar;
-              eatNumberLiteral();
-            }
+            eatNumberLiteral();
           }
         }
       }
@@ -507,13 +511,12 @@ class Cursor {
     final state = _it.cursor;
     loop((char) {
       allChar = '$allChar$char';
-      if (allChar.length > LiteralKind.max) {
-        return true;
-      }
-      final lit = LiteralKind.values
-          .firstWhereOrNull((element) => element.lit == allChar);
+      final lit = LiteralKind.from(allChar);
       if (lit != null) {
         k = lit;
+        return true;
+      }
+      if (allChar.length > LiteralKind.max) {
         return true;
       }
       return false;

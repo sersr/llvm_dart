@@ -1,8 +1,6 @@
 part of 'ast.dart';
 
 enum LiteralKind {
-  kFloat('float'),
-  kDouble('double'),
   f32('f32'),
   f64('f64'),
   kStr('str'),
@@ -48,11 +46,7 @@ enum LiteralKind {
       final diff = index - u8.index;
       return values[i8.index + diff];
     }
-    if (this == kFloat) {
-      return f32;
-    } else if (this == kDouble) {
-      return f64;
-    }
+
     return this;
   }
 
@@ -66,15 +60,14 @@ enum LiteralKind {
   final String lit;
   const LiteralKind(this.lit);
 
-  static int? _max;
-  static int get max {
-    if (_max != null) return _max!;
-    return _max = values.fold<int>(0, (previousValue, element) {
-      if (previousValue > element.lit.length) {
-        return previousValue;
-      }
-      return element.lit.length;
-    });
+  static const max = 6;
+
+  static LiteralKind? from(String src) {
+    return switch (src) {
+      'float' => f32,
+      'double' => f64,
+      var src => values.firstWhereOrNull((e) => e.lit == src)
+    };
   }
 
   BuiltInTy get ty => BuiltInTy._get(this);
@@ -88,20 +81,15 @@ class BuiltInTy extends Ty {
   static final _instances = <LiteralKind, BuiltInTy>{};
 
   factory BuiltInTy._get(LiteralKind lit) {
-    if (lit == LiteralKind.kFloat) {
-      lit = LiteralKind.f32;
-    } else if (lit == LiteralKind.kDouble) {
-      lit = LiteralKind.f64;
-    }
-
     return _instances.putIfAbsent(lit, () => BuiltInTy._lit(lit));
   }
 
   static BuiltInTy? from(String src) {
-    final lit = LiteralKind.values.firstWhereOrNull((e) => e.lit == src);
-    if (lit == null) return null;
+    if (LiteralKind.from(src) case var lit?) {
+      return BuiltInTy._get(lit);
+    }
 
-    return BuiltInTy._get(lit);
+    return null;
   }
 
   final LiteralKind literal;

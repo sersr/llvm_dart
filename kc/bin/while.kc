@@ -1,6 +1,7 @@
 
 
 fn main() i32 {
+    let suf_v = 555f64;
 
     let arr:[i32; 10] = [];
 
@@ -8,6 +9,8 @@ fn main() i32 {
     let max = arr.getSize() as i32;
 
     printf("max: %d\n", max);
+
+    122.hello();
 
     loop {
         if i >= max {
@@ -28,4 +31,10 @@ fn main() i32 {
 
 struct Base {
     y: i32,
+}
+
+impl i32 {
+    fn hello() {
+        printf("i32 : %d\n", *self);
+    }
 }

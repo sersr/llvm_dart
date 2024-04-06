@@ -47,10 +47,7 @@ mixin FnBuildMixin
       final selfValue = llvm.LLVMGetParam(fn, index);
       final ident = Identifier.self;
 
-      final value = switch (ty) {
-        BuiltInTy() => LLVMConstVariable(selfValue, ty, ident),
-        _ => LLVMAllocaVariable(selfValue, ty, ty.typeOf(this), ident),
-      };
+      final value = LLVMAllocaVariable(selfValue, ty, ty.typeOf(this), ident);
 
       setName(selfValue, ident.src);
       diBuilderDeclare(ident, selfValue, ty);

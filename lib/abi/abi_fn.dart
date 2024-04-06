@@ -90,8 +90,9 @@ abstract interface class AbiFn {
         : fn.load(context);
 
     if (struct != null) {
-      if (struct.ty is BuiltInTy) {
-        args.add(struct.load(context));
+      if (struct is LLVMLitVariable) {
+        final alloca = struct.createAlloca(context, Identifier.builtIn('_'));
+        args.add(alloca.getBaseValue(context));
       } else {
         args.add(struct.getBaseValue(context));
       }

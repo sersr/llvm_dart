@@ -426,9 +426,6 @@ class FnClosure extends FnDecl {
 }
 
 class FnCatch extends FnDecl {
-  FnCatch(super.ident, super.fields, super.generics, super.returnTy,
-      super.isVar, this.analysisVariables)
-      : _variables = const [];
   FnCatch._(super.ident, super.fields, super.generics, super.returnTy,
       super.isVar, this.analysisVariables, this._variables);
 

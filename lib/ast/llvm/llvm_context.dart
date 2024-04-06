@@ -246,6 +246,26 @@ class RootBuildContext with Tys<Variable>, LLVMTypeMixin, Consts {
         () => llvm.LLVMFunctionType(
             ret, params.toNative(), params.length, isVar.llvmBool));
   }
+
+  late final typeList = [i8, i16, i32, i64, i128];
+
+  MathValue oMath(LLVMValueRef lhs, LLVMValueRef rhs, LLVMIntrisics fn,
+      BuildMethods context) {
+    final ty = typeList[fn.index % 5];
+    final structTy = typeStruct([ty, i1], null);
+    final inFn = maps.putIfAbsent(fn.name, () {
+      return FunctionDeclare([ty, ty], fn.name, structTy);
+    });
+    final f = inFn.build(context);
+
+    final result = llvm.LLVMBuildCall2(
+        context.builder, inFn.type, f, [lhs, rhs].toNative(), 2, unname);
+    final l1 = llvm.LLVMBuildExtractValue(
+        context.builder, result, 0, '_result_0'.toChar());
+    final l2 = llvm.LLVMBuildExtractValue(
+        context.builder, result, 1, '_result_1'.toChar());
+    return MathValue(l1, l2);
+  }
 }
 
 class BuildContextImpl extends BuildContext
