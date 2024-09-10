@@ -469,14 +469,16 @@ class Cursor {
   Token number() {
     final start = cursor;
     var isFloat = true;
+    var isXRadix = false;
     if (current == '0') {
       final n = nextCharRead;
       if (n == 'x' || n == 'b' || n == 'o') {
         isFloat = false;
+        isXRadix = n == 'x';
         nextChar;
       }
     }
-    eatNumberLiteral();
+    eatNumberLiteral(isXRadix);
 
     isFloat &= nextCharRead == '.';
 
@@ -486,13 +488,15 @@ class Cursor {
       if (!isFloat) {
         back();
       } else {
-        eatNumberLiteral();
-        if (nextCharRead == 'E' || nextCharRead == 'e') {
+        eatNumberLiteral(isXRadix);
+        if(!isXRadix) {
+          if (nextCharRead == 'E' || nextCharRead == 'e') {
           nextChar;
           if (nextCharRead == '-' || nextCharRead == '+') {
             nextChar;
-            eatNumberLiteral();
+            eatNumberLiteral(false);
           }
+        }
         }
       }
     }
@@ -529,9 +533,10 @@ class Cursor {
     return k;
   }
 
-  void eatNumberLiteral() {
+  void eatNumberLiteral(bool isXRadix) {
     loop((char) {
       if (rawNumbers.contains(char)) return false;
+      if (isXRadix && _radixList.contains(char.toLowerCase())) return false;
       if (char == '_') return false;
       return true;
     });
@@ -560,6 +565,7 @@ final List<String> rawNumbers =
     List.generate(10, (index) => '$index', growable: false);
 
 List<String> floats = ['.'];
+final _radixList = ['a','b','c','d','e','f'];
 List<String> get numbers {
   if (_numbers != null) return _numbers!;
   final n = rawNumbers.toList();

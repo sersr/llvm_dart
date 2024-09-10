@@ -7,10 +7,10 @@ fn intToStr(num: i32, str: *char) {
     let isNegative = 0;
 
     // 处理负数
-    // if (num < 0) {
-    //     isNegative = 1;
-    //     num = -num;
-    // }
+    if (num < 0) {
+        isNegative = 1;
+        num = -num;
+    }
 
     // 提取每一位
     loop {
@@ -22,12 +22,12 @@ fn intToStr(num: i32, str: *char) {
 
     // 如果是负数，添加负号
     if (isNegative) {
-        // str[i] = '-';
+        str[i] = '-';
         i+=1
     }
 
     // 添加字符串终止符
-    str[i] = 0;
+    str[i] = '\0';
 
     // 反转字符串
     let len = i;
@@ -59,8 +59,8 @@ fn floatToStr(num: f32, str: *char, precision: i32) {
 
     // 添加小数点
     let len = strlen(str);
-    str[len] = 46;
-    str[len + 1] = 0;
+    str[len] = '.';
+    str[len + 1] = '\0';
 
     let i = 0;
     loop {
@@ -88,6 +88,6 @@ fn main() {
     printf(".....\n");
     str[0] = 121;
     str[49] = 0;
-    floatToStr(1002.111,(&str) as *char, 2);
+    floatToStr(-1002.111f32,(&str) as *char, 2);
     printf("float: %s\n", str.toStr())
 }

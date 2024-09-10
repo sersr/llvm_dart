@@ -39,7 +39,7 @@ class LiteralExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    if (baseTy is! BuiltInTy) {
+    if (baseTy is! BuiltInTy || ty.isTy(LiteralKind.kStr.ty)) {
       baseTy = ty;
     }
     final v = baseTy.llty.createValue(ident: ident);

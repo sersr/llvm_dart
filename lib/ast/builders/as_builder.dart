@@ -7,6 +7,11 @@ abstract class AsBuilder {
     assert(lty is! EnumItem && asTy is! EnumItem);
 
     if (asTy is BuiltInTy && lty is BuiltInTy) {
+      if (lty.literal == LiteralKind.kStr && asTy.literal.isInt) {
+        return LLVMAllocaVariable(
+            lv.getBaseValue(context), asTy, asTy.typeOf(context), asId);
+      }
+
       final val = context.castLit(lty.literal, lv.load(context), asTy.literal);
       return LLVMConstVariable(val, asTy, asId);
     }
