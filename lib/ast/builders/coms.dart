@@ -35,6 +35,7 @@ abstract class ImplStackTy {
       bool ignoreFree = false,
       bool ignoreRef = false,
       bool recursive = true}) {
+    if (variable.isIgnore) return false;
     if (!ignoreRef) {
       variable = _getDeref(context, variable);
     }
@@ -156,7 +157,7 @@ abstract class ImplStackTy {
   }
 
   static void drop(FnBuildMixin context, Variable variable,
-      bool Function(LLVMValueRef v) test) {
+      bool Function(LLVMValueRef v)? test) {
     ImplStackTy._runStackFn(context, variable, _removeStack, test: test);
   }
 }
@@ -224,7 +225,13 @@ bool _checkStack(
 }
 
 ImplFnMixin? getImplFn(Tys context, Ty ty, Identifier com, Identifier fnIdent) {
-  return context
+  final fn =
+      context.getImplWith(ty, comIdent: com, fnIdent: fnIdent)?.getFn(fnIdent);
+  if (fn != null) return fn;
+  final current = ty.currentContext;
+
+  if (current == context || current == null) return null;
+  return current
       .getImplWith(ty, comIdent: com, fnIdent: fnIdent)
       ?.getFn(fnIdent);
 }

@@ -1,8 +1,8 @@
 import '../llvm_dart.dart';
 import 'analysis_context.dart';
 import 'ast.dart';
-import 'expr.dart';
 import 'builders/coms.dart';
+import 'expr.dart';
 import 'llvm/llvm_context.dart';
 import 'llvm/llvm_types.dart';
 import 'llvm/variables.dart';
@@ -23,6 +23,8 @@ void _init() {
   memSetFn;
   memCopyFn;
   addFreeFn;
+  dropFn;
+  ignoreAddFn;
   ptrSetValueFn;
   getArraySizeFn;
 }
@@ -172,6 +174,25 @@ ExprTempValue? addFree(
 }
 
 final addFreeFn = BuiltinFn('addFree', addFree);
+
+ExprTempValue? drop(
+    FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
+  final val = params[0].build(context)!.variable!;
+  ImplStackTy.drop(context, val, null);
+
+  return null;
+}
+
+final dropFn = BuiltinFn('drop', drop);
+
+ExprTempValue? ignoreAdd(
+    FnBuildMixin context, Identifier ident, List<FieldExpr> params) {
+  final val = params[0].build(context)!.variable!;
+  val.isIgnore = true;
+  return ExprTempValue(val);
+}
+
+final ignoreAddFn = BuiltinFn('ignoreAdd', ignoreAdd);
 
 ExprTempValue? removeFn(
     FnBuildMixin context, Identifier ident, List<FieldExpr> params) {

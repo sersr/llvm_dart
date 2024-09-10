@@ -11,6 +11,7 @@ abstract class Variable extends LifeCycleVariable {
   Variable(this.ident);
 
   LLVMValueRef load(StoreLoadMixin c);
+  bool isIgnore = false;
 
   LLVMConstVariable getRef(StoreLoadMixin c, Identifier ident) {
     return LLVMConstVariable(getBaseValue(c), RefTy(ty), ident);

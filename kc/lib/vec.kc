@@ -29,12 +29,26 @@ impl<T> Vec<T> {
     self.len += 1;
   }
 
+  fn remove(index: usize) Option<T> {
+    if index >= self.len {
+      return None
+    }
+
+    let ptr = &self.data[index]
+    let ptr_next = ptr + sizeOf(*T)
+    let ret = Some(ignoreAdd(*ptr))
+    
+    printf("....\n")
+    
+    memCopy(ptr, ptr_next, self.len - index - 1)
+    self.len -= 1
+    ret
+  }
+
   fn pop() Option<T> {
     if self.len > 0 {
       self.len -= 1;
-      final ret = Some(self.data[self.len]);
-      addFree(self.data[self.len]);
-      ret
+      Option.Some(ignoreAdd(self.data[self.len]));
     } else {
       None
     }
@@ -48,5 +62,22 @@ impl<T> Vec<T> {
 impl<T> ArrayOp<T> for Vec<T> {
   fn elementAt(index: usize) &T {
     &self.data[index];
+  }
+}
+
+impl<T> Stack for Vec<T> {
+  fn removeStack() {
+    if self.len <= 0 {
+      return 
+    }
+    
+    let index = 0;
+    let size = self.len;
+    loop {
+      printf("hello %d\n", index)
+      addFree(self.data[index]);
+      index += 1;
+      if index >= size { break;}
+    }
   }
 }

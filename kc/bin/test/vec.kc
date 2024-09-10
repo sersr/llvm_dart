@@ -1,38 +1,43 @@
 
 fn main() i32 {
-  final v = Vec<i32>.new();
-  v.add(10);
+  // final v = Vec<i32>.new();
+  // v.add(10);
 
-  printf("add 10\n");
-  printf("v.len %d\n", v.getLength());
+  // printf("add 10\n");
+  // printf("v.len %d\n", v.getLength());
 
-  let x = v.pop();
+  // let x = v.pop();
 
-  match x {
-    Some(a) => {
-      printf("pop x: %d\n", a);
-    },
-    None => {
-      printf("......\n");
-    }
-  }
+  // match x {
+  //   Some(a) => {
+  //     printf("pop x: %d\n", a);
+  //   },
+  //   None => {
+  //     printf("......\n");
+  //   }
+  // }
 
-  printf("v.len %d\n", v.getLength());
+  // printf("v.len %d\n", v.getLength());
 
   let vc = Vec<Point>.new();
 
   vc.add(Point{y: 10, x: 22});
-  let x = &vc[0];
-  printf("vc[0] %d\n", x.y);
+  vc.add(Point{y: 11, x: 22});
+  vc.add(Point{y: 13, x: 22});
+  // let x = &vc[0];
+  // printf("vc[0] %d\n", x.y);
+  printf("vc.len %d\n", vc.getLength());
+  let x = vc.remove(1)
+  printf("vc[1] %d...\n", x.y);
 
   printf("vc.len %d\n", vc.getLength());
   let point = vc.pop();
 
-  match point {
-    Some(point) => {
-      printf("point x: %d, y: %d\n", point.x, point.y);
-    }
-  }
+  // match point {
+  //   Some(point) => {
+  //     printf("point x: %d, y: %d\n", point.x, point.y);
+  //   }
+  // }
 
   0;
 }

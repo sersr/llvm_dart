@@ -1,0 +1,9 @@
+com Hasher {
+  fn hashCode() u64;
+}
+
+impl Hasher for i32 {
+  fn hashCode() u64 {
+    self as u64
+  }
+}

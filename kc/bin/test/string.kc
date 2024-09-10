@@ -53,6 +53,10 @@ impl String {
     self.ptr.add_str(other);
   }
 
+  fn add_string(other: *String) {
+      self.ptr.add_str(other.ptr.data)
+  }
+
   fn ref_deref() {
     let hx = &self;
     printf("size: %d\n", self.ptr.size);
@@ -89,6 +93,7 @@ fn main(argc: i32, argv: **u8) i32 {
   final x = 10usize;
   printf("y + x = %d\n", y + x);
   
+  my_str.add_string(&String.new("\ntest"))
   printf("%s\n", my_str.c_str());
   final len = strlen(my_str.c_str());
 

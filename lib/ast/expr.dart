@@ -86,6 +86,7 @@ class StructDotFieldExpr extends Expr {
   @override
   Ty? getTy(Tys context, Ty? baseTy) {
     final ty = struct.getTy(context, null);
+    if (ty is EnumTy) return ty;
     if (ty is! StructTy) return null;
 
     for (var field in ty.fields) {
@@ -100,6 +101,13 @@ class StructDotFieldExpr extends Expr {
     final structVal = struct.build(context);
     final val = structVal?.variable;
     var newVal = val;
+    if (structVal?.ty case var ty? when ty is EnumTy && val == null) {
+      final nTy = ty.getFieldTyOrT(context, FieldDef(ident, PathTy(ident, const [])));
+      if (nTy != null) {
+        return ExprTempValue.ty(nTy, ident);
+      }
+      return null;
+    }
 
     newVal = newVal?.defaultDeref(context, newVal.ident);
 
@@ -206,6 +214,10 @@ class VariableIdentExpr extends Expr {
       case Fn(fnDecl: FnDecl(done: true)):
         final value = ty.genFn();
         return ExprTempValue(value.newIdent(ident, dirty: false));
+    }
+
+    if (ty is EnumTy) {
+      Log.w('...$ty');
     }
 
     if (ty != null) return ExprTempValue.ty(ty, ident);

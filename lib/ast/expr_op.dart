@@ -188,6 +188,8 @@ class OpExpr extends Expr {
     if (lty is BuiltInTy && rty is BuiltInTy) {
       final big = lty.literal.index > rty.literal.index;
       bestTy = big ? lty : rty;
+    } else if (lty is RefTy || rty is BuiltInTy) {
+      return LiteralKind.i64.ty;
     }
     return bestTy;
   }
@@ -197,7 +199,7 @@ class OpExpr extends Expr {
     final bestTy = getTy(context, baseTy);
 
     var l = lhs.build(context, baseTy: bestTy);
-    var r = rhs.build(context, baseTy: bestTy);
+    var r = rhs.build(context, baseTy: l?.ty ?? bestTy);
     if (l == null || r == null) return null;
 
     final value = math(context, op, l.variable, rhs, opIdent);
@@ -224,7 +226,8 @@ class OpExpr extends Expr {
   static ExprTempValue? math(FnBuildMixin context, OpKind op, Variable? l,
       Expr? rhs, Identifier opIdent) {
     if (l == null) return null;
-    final rhsExp = rhs?.build(context, baseTy: l.ty);
+    final rhsExp =
+        rhs?.build(context, baseTy: l.ty is RefTy ? LiteralKind.i64.ty : l.ty);
 
     final v = context.math(l, rhsExp?.variable, op, opIdent);
 

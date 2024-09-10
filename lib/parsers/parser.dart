@@ -419,7 +419,9 @@ class Parser {
 
     final start = getIdent(it);
     final end = getEndIdent(it);
-    it = it.current.child.tokenIt;
+    final nIt = it.current.child.tokenIt;
+    it.moveNext();
+    it = nIt;
     loop(it, () {
       final t = getToken(it);
       final k = t.kind;
@@ -861,7 +863,7 @@ class Parser {
 
     if (!onOtherExpr) return true;
     final state = it.cursor;
-    var result = true;
+    var result = false;
 
     eatLfIfNeed(it);
     // 如果紧接着是关键字，不可无视
@@ -1015,6 +1017,7 @@ class Parser {
   List<PathTy> parseGenericsInstance(TokenIterator it) {
     final idents = <PathTy>[];
     final state = it.cursor;
+
     if (it.moveNext()) {
       final kind = getToken(it).kind;
       if (kind != TokenKind.lt) {
@@ -1022,9 +1025,13 @@ class Parser {
         return idents;
       }
     }
+
+    var success = false;
+
     loop(it, () {
       if (getToken(it).kind == TokenKind.comma) return false;
       if (getToken(it).kind == TokenKind.gt) {
+        success = true;
         return true;
       }
 
@@ -1041,6 +1048,11 @@ class Parser {
       eatLfIfNeed(it);
       return false;
     });
+
+    if (!success) {
+      state.restore();
+      return const [];
+    }
 
     return idents;
   }

@@ -1,0 +1,93 @@
+
+type char = u8;
+
+// 将整数部分转换为字符串
+fn intToStr(num: i32, str: *char) {
+    let i = 0;
+    let isNegative = 0;
+
+    // 处理负数
+    // if (num < 0) {
+    //     isNegative = 1;
+    //     num = -num;
+    // }
+
+    // 提取每一位
+    loop {
+        str[i] = (num % 10) + 48i32;
+        i+=1;
+        num /= 10;
+        if num <= 0 {break;}
+    }
+
+    // 如果是负数，添加负号
+    if (isNegative) {
+        // str[i] = '-';
+        i+=1
+    }
+
+    // 添加字符串终止符
+    str[i] = 0;
+
+    // 反转字符串
+    let len = i;
+    let j = 0;
+    let max = len / 2;
+    loop {
+        if j >= max {break;}
+        let temp = str[j];
+        str[j] = str[len - 1 - j];
+        str[len - 1 - j] = temp;
+        j += 1;
+    }
+}
+
+// 将浮点数转换为字符串
+fn floatToStr(num: f32, str: *char, precision: i32) {
+    // 提取整数部分
+    let intPart = num as i32;
+    
+    // 提取小数部分
+    let decimalPart = num - intPart as f32;
+    if (decimalPart < 0) {
+        decimalPart = -decimalPart;  
+    } 
+    // 处理负数的情况
+
+    // 将整数部分转换为字符串
+    intToStr(intPart, str);
+
+    // 添加小数点
+    let len = strlen(str);
+    str[len] = 46;
+    str[len + 1] = 0;
+
+    let i = 0;
+    loop {
+        if i >= precision { break;}
+        decimalPart *= 10;
+        i += 1;
+    }
+
+    // 将小数部分转换为整数，然后转换为字符串并附加到结果中
+    let decimalInt = decimalPart as i32;
+    let decimalstr:[char; 20] =  [];
+    intToStr(decimalInt, &decimalstr as *char);
+
+    // 拼接小数部分到结果字符串
+    strcat(str, &decimalstr as *char);
+}
+
+extern fn strcat(dest: *char, src: *char);
+
+extern fn strlen(data: *void) usize;
+extern fn strcpy(dest: *char, src: *char) *char;
+fn main() {
+    
+    let str:[char;50] = [];
+    printf(".....\n");
+    str[0] = 121;
+    str[49] = 0;
+    floatToStr(1002.111,(&str) as *char, 2);
+    printf("float: %s\n", str.toStr())
+}

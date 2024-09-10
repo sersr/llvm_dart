@@ -288,6 +288,13 @@ class MethodCallExpr extends Expr with FnCallMixin {
     final temp = receiver.build(context);
     final variable = temp?.variable;
 
+    if (temp?.ty case var ty? when ty is EnumTy && variable == null) {
+      final nTy = ty.getFieldTyOrT(context, FieldDef(ident, PathTy(ident, const [])));
+      if (nTy is EnumItem) {
+         return StructExpr.buildStruct(nTy, context, params);
+      }
+    }
+
     var structTy = variable?.ty ?? temp?.ty;
     if (structTy == null) return null;
 
