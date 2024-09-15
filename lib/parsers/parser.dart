@@ -665,9 +665,7 @@ class Parser {
     bool isArrow() {
       if (it.moveNext()) {
         if (getToken(it).kind == TokenKind.eq) {
-          eatLfIfNeed(it);
           if (it.moveNext()) {
-            eatLfIfNeed(it);
             if (getToken(it).kind == TokenKind.gt) {
               it.moveNext();
               return true;
@@ -693,7 +691,6 @@ class Parser {
       if (getToken(it).kind == TokenKind.openBrace) {
         final block = parseBlock(it);
         items.add(MatchItemExpr(expr, block, op));
-        it.moveNext();
         jump();
       } else {
         final start = getIdent(it);
@@ -817,6 +814,7 @@ class Parser {
     if (!isIfExpr) return null;
     eatLfIfNeed(it);
     final ifBlock = parseIfBlock(it);
+    it.moveBack();
 
     List<IfExprBlock>? elseIfExprs = parseElseIfExpr(it);
     IfExprBlock? kElse;
@@ -906,6 +904,7 @@ class Parser {
         }
         if (hasElseIf) {
           final elf = parseIfBlock(it);
+          it.moveBack();
           final b = elseIf ??= [];
           b.add(elf);
           return false;
