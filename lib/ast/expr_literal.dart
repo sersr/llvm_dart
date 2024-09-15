@@ -23,6 +23,12 @@ class LiteralExpr extends Expr {
     }
     if (ty is! BuiltInTy) return ty;
 
+    if (ty.literal == LiteralKind.kStr) {
+      if (baseTy is RefTy) {
+        return baseTy;
+      }
+      return RefTy(baseTy);
+    }
     if (!ty.literal.isNum) return ty;
 
     if (!baseTy.literal.isNum) {
@@ -39,10 +45,18 @@ class LiteralExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    if (baseTy is! BuiltInTy || ty.isTy(LiteralKind.kStr.ty)) {
-      baseTy = ty;
+    if (baseTy case BuiltInTy t) {
+      Variable v;
+      if (ty.isTy(LiteralKind.kStr.ty)) {
+        final vx = ty.llty.createValue(ident: ident);
+        v = LLVMAllocaVariable(vx.getBaseValue(context), t, t.typeOf(context), ident);
+      } else {
+        v = t.llty.createValue(ident: ident);
+      }
+      return ExprTempValue(v);
     }
-    final v = baseTy.llty.createValue(ident: ident);
+
+    final v = ty.llty.createValue(ident: ident);
 
     return ExprTempValue(v);
   }
@@ -333,9 +347,24 @@ class ArrayOpExpr extends Expr {
   }
 
   @override
+  Ty? getTy(Tys<LifeCycleVariable> context, Ty? baseTy) {
+    final array = arrayOrPtr.getTy(context, baseTy);
+    if (array is ArrayTy) {
+      return array.elementTy;
+    }
+    return null;
+  }
+
+  @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     final array = arrayOrPtr.build(context);
-    final arrVal = array?.variable;
+    var arr = array?.variable;
+
+    if (arr?.ty case RefTy(parent: ArrayTy _)) {
+      arr = RefDerefCom.getDeref(context, arr!).defaultDeref(context, ident);
+    }
+
+    final arrVal = arr;
     final ty = arrVal?.ty;
 
     if (arrVal == null) return null;

@@ -1,26 +1,26 @@
 part of 'ast.dart';
 
 enum LiteralKind {
-  f32('f32'),
-  f64('f64'),
-  kStr('str'),
+  f32('f32',4),
+  f64('f64', 8),
+  kStr('str', 1),
 
-  i8('i8'),
-  i16('i16'),
-  i32('i32'),
-  i64('i64'),
-  i128('i128'),
-  isize('isize'),
+  i8('i8', 1),
+  i16('i16',2),
+  i32('i32',4),
+  i64('i64',8),
+  i128('i128',16),
+  isize('isize',17),
 
-  u8('u8'),
-  u16('u16'),
-  u32('u32'),
-  u64('u64'),
-  u128('u128'),
-  usize('usize'),
+  u8('u8',1),
+  u16('u16',2),
+  u32('u32',4),
+  u64('u64',8),
+  u128('u128',16),
+  usize('usize',17),
 
-  kBool('bool'),
-  kVoid('void'),
+  kBool('bool',1),
+  kVoid('void',0),
   ;
 
   bool get isSize => this == isize || this == usize;
@@ -58,7 +58,8 @@ enum LiteralKind {
   }
 
   final String lit;
-  const LiteralKind(this.lit);
+  final int size;
+  const LiteralKind(this.lit, this.size);
 
   static const max = 6;
 

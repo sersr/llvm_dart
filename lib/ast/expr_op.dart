@@ -182,11 +182,11 @@ class OpExpr extends Expr {
   @override
   Ty? getTy(Tys<LifeCycleVariable> context, Ty? baseTy) {
     final lty = lhs.getTy(context, baseTy);
-    final rty = rhs.getTy(context, baseTy);
+    final rty = rhs.getTy(context, baseTy ?? lty);
     Ty? bestTy = lty ?? rty;
 
     if (lty is BuiltInTy && rty is BuiltInTy) {
-      final big = lty.literal.index > rty.literal.index;
+      final big = lty.literal.size > rty.literal.size;
       bestTy = big ? lty : rty;
     } else if (lty is RefTy || rty is BuiltInTy) {
       return LiteralKind.i64.ty;
@@ -211,9 +211,14 @@ class OpExpr extends Expr {
     }
 
     if (baseTy is BuiltInTy && baseTy != valTy && valTy is BuiltInTy) {
-      final v =
-          context.castLit(valTy.literal, val!.load(context), baseTy.literal);
-      val = LLVMConstVariable(v, baseTy, Identifier.none);
+      if (valTy.literal == LiteralKind.kStr && baseTy.literal.isInt) {
+        val = LLVMAllocaVariable(val!.getBaseValue(context), baseTy,
+            baseTy.typeOf(context), Identifier.none);
+      } else {
+        final v =
+            context.castLit(valTy.literal, val!.load(context), baseTy.literal);
+        val = LLVMConstVariable(v, baseTy, Identifier.none);
+      }
       return ExprTempValue(val);
     } else if (l.ty is RefTy && valTy is BuiltInTy && valTy.literal.isInt) {
       return ExprTempValue(
@@ -337,17 +342,12 @@ class RefExpr extends Expr {
     }
 
     final temp = current.getTy(context, baseTy);
-
-    if (temp != null) {
-      return kind.unWrapTy(temp);
-    }
-
-    return null;
+    return temp;
   }
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    final val = current.build(context);
+    final val = current.build(context, baseTy: kind.unWrapTy(baseTy));
     var variable = val?.variable;
     if (variable == null) return val;
 
@@ -423,7 +423,7 @@ class UnaryExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    final temp = expr.build(context);
+    final temp = expr.build(context, baseTy: baseTy);
     var val = temp?.variable;
     if (val == null) return null;
     if (op == UnaryKind.Not) {

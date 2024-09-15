@@ -216,10 +216,6 @@ class VariableIdentExpr extends Expr {
         return ExprTempValue(value.newIdent(ident, dirty: false));
     }
 
-    if (ty is EnumTy) {
-      Log.w('...$ty');
-    }
-
     if (ty != null) return ExprTempValue.ty(ty, ident);
 
     return null;

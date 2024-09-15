@@ -97,7 +97,7 @@ class SlicePathTy extends PathTy {
 
   @override
   String toString() {
-    return '[$elementTy]';
+    return '${kind.join()}[$elementTy]';
   }
 }
 
@@ -147,7 +147,7 @@ class ArrayPathTy extends SlicePathTy {
 
   @override
   String toString() {
-    return '[$elementTy; $size]';
+    return '${kind.join()}[$elementTy; $size]';
   }
 }
 

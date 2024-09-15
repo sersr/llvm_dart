@@ -4,20 +4,19 @@ type char = u8;
 // 将整数部分转换为字符串
 fn intToStr(num: i32, str: *char) {
     let i = 0;
-    let isNegative = 0;
+    let isNegative = false;
 
     // 处理负数
     if (num < 0) {
-        isNegative = 1;
+        isNegative = true;
         num = -num;
     }
 
     // 提取每一位
-    loop {
-        str[i] = (num % 10) + 48i32;
+    while num > 0 {
+        str[i] = (num % 10) + '0' as u8;
         i+=1;
         num /= 10;
-        if num <= 0 {break;}
     }
 
     // 如果是负数，添加负号
@@ -33,11 +32,8 @@ fn intToStr(num: i32, str: *char) {
     let len = i;
     let j = 0;
     let max = len / 2;
-    loop {
-        if j >= max {break;}
-        let temp = str[j];
-        str[j] = str[len - 1 - j];
-        str[len - 1 - j] = temp;
+    while j < max {
+        let str[j], str[len - 1 - j] = str[len - 1 - j], str[j];
         j += 1;
     }
 }
@@ -63,8 +59,7 @@ fn floatToStr(num: f32, str: *char, precision: i32) {
     str[len + 1] = '\0';
 
     let i = 0;
-    loop {
-        if i >= precision { break;}
+    while i < precision {
         decimalPart *= 10;
         i += 1;
     }
@@ -83,11 +78,16 @@ extern fn strcat(dest: *char, src: *char);
 extern fn strlen(data: *void) usize;
 extern fn strcpy(dest: *char, src: *char) *char;
 fn main() {
-    
-    let str:[char;50] = [];
-    printf(".....\n");
-    str[0] = 121;
-    str[49] = 0;
-    floatToStr(-1002.111f32,(&str) as *char, 2);
-    printf("float: %s\n", str.toStr())
+    let str:&[u8;50] = &[];
+    let i = 0;
+    let x:[u8: 10] = [];
+    while i < 20 {
+        str[i]= i as u8 + '0';
+        i += 1;
+    }
+    str[30] = '\0';
+    printf(".....:%s.\n", str);
+
+    floatToStr(-1002.111, str as *char, 2);
+    printf("float: %s, %d, %d\n", str, str.getSize(), strlen(str))
 }

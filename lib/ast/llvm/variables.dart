@@ -146,6 +146,14 @@ class LLVMConstVariable extends Variable {
   }
 
   @override
+  LLVMConstVariable getRef(StoreLoadMixin c, Identifier ident) {
+    final refTy = RefTy(ty);
+    final a = ty.llty.createAlloca(c, ident);
+    a.store(c, value);
+    return LLVMConstVariable(a.getBaseValue(c), refTy, ident);
+  }
+
+  @override
   LLVMValueRef load(BuildMethods c) {
     return value;
   }
