@@ -23,7 +23,7 @@ class LiteralExpr extends Expr {
     }
     if (ty is! BuiltInTy) return ty;
 
-    if (ty.literal == LiteralKind.kStr) {
+    if (ty.literal == LiteralKind.kStr && ty.literal != LiteralKind.kStr) {
       if (baseTy is RefTy) {
         return baseTy;
       }
@@ -45,11 +45,12 @@ class LiteralExpr extends Expr {
 
   @override
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
-    if (baseTy case BuiltInTy t) {
+    if (baseTy case BuiltInTy t when t.literal != LiteralKind.kStr) {
       Variable v;
       if (ty.isTy(LiteralKind.kStr.ty)) {
         final vx = ty.llty.createValue(ident: ident);
-        v = LLVMAllocaVariable(vx.getBaseValue(context), t, t.typeOf(context), ident);
+        v = LLVMAllocaVariable(
+            vx.getBaseValue(context), t, t.typeOf(context), ident);
       } else {
         v = t.llty.createValue(ident: ident);
       }
