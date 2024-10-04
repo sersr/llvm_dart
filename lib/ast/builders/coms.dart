@@ -57,11 +57,11 @@ abstract class ImplStackTy {
     }
     if (test != null && test(variable.getBaseValue(context))) return false;
 
-    final fnValue = fn.genFn(ignoreFree);
+    final fnValue = fn.genFn(ignoreFree: ignoreFree);
     AbiFn.fnCallInternal(
       context: context,
       fn: fnValue,
-      decl: fn.fnDecl,
+      decl: fnValue.ty as FnDecl,
       struct: variable,
       valArgs: args,
       ignoreFree: ignoreFree,
@@ -120,7 +120,7 @@ abstract class ImplStackTy {
       FnBuildMixin context, Variable target, Variable src) {
     final fn = getImplFn(context, target.ty, _stackCom, _replaceStack);
 
-    final srcIdent = fn?.fnDecl.fields.firstOrNull?.ident ?? _srcIdent;
+    final srcIdent = fn?.fields.firstOrNull?.ident ?? _srcIdent;
     var arg = LLVMConstVariable(src.getBaseValue(context), src.ty, srcIdent);
 
     var hasFn = false;
@@ -278,13 +278,13 @@ abstract class ArrayOpImpl {
       FnBuildMixin context, Variable variable, Identifier ident, Expr param) {
     final fn = getImplFn(context, variable.ty, _arrayOpCom, _arrayOpIdent);
     if (fn == null) return null;
-    final pIdent = fn.fnDecl.fields.firstOrNull?.ident ?? _index;
+    final pIdent = fn.fields.firstOrNull?.ident ?? _index;
 
     final fnValue = fn.genFn();
     return AbiFn.fnCallInternal(
       context: context,
       fn: fnValue,
-      decl: fn.fnDecl,
+      decl: fnValue.ty as FnDecl,
       params: [FieldExpr(param, pIdent)],
       struct: variable,
     );
@@ -294,6 +294,6 @@ abstract class ArrayOpImpl {
     final fn = getImplFn(context, struct, _arrayOpCom, _arrayOpIdent);
     if (fn == null) return null;
 
-    return fn.fnDecl.getRetTyOrT(context);
+    return fn.getRetTyOrT(context);
   }
 }

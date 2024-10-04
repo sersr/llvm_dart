@@ -75,7 +75,8 @@ class FnDecl extends Ty with NewInst<FnDecl> {
         Ty? ty;
 
         if (isBuild) {
-          ty = param.build(context, baseTy: baseTy)?.ty;
+          final temp = param.build(context, baseTy: baseTy);
+          ty = temp?.variable?.ty ?? temp?.ty;
         } else {
           ty = param.analysis(context as AnalysisContext)?.ty;
         }
@@ -109,7 +110,7 @@ class FnDecl extends Ty with NewInst<FnDecl> {
   late final declProps = [fields, _returnTy, _tys];
 
   @override
-  late final props = [ident, fields, _returnTy, _tys];
+  late final props = [fields, _returnTy, _tys];
 
   void analysisFn(AnalysisContext context) {
     for (var p in fields) {
@@ -181,8 +182,12 @@ class Fn extends Ty {
   @override
   Identifier get ident => fnName;
 
+  List<FieldDef> get fields => _fnDecl.fields;
+
+  List<GenericDef> get generics => _fnDecl.generics;
+
   @override
-  bool get extern => throw "use fnDecl.extern";
+  bool get extern => _fnDecl.extern;
 
   @override
   set extern(bool v) {
@@ -196,8 +201,11 @@ class Fn extends Ty {
     block?.incLevel(count);
   }
 
+  @protected
   final FnDecl _fnDecl;
   final Block? block;
+
+  FnDecl get baseFnDecl => _fnDecl;
 
   @override
   String toString() {
@@ -205,20 +213,26 @@ class Fn extends Ty {
     if (block != null) {
       b = ' $block';
     }
-    return '$pad$fnDecl$b';
+    return '$pad$_fnDecl$b';
   }
 
   @override
   late final props = [_fnDecl, block, _constraints];
 
+  bool isVoidRet(Tys c) => _fnDecl.isVoidRet(c);
+
+  Ty getRetTy(Tys c) => _fnDecl.getRetTy(c);
+
+  Ty? getRetTyOrT(Tys c) => _fnDecl.getRetTyOrT(c);
+
   @override
   Fn clone() {
-    return Fn(fnDecl.clone(), block)..copy(this);
+    return Fn(_fnDecl.clone(), block)..copy(this);
   }
 
   Fn resolveGeneric(Tys context, List<FieldExpr> params) {
-    var newFnDecl = fnDecl.resolveGeneric(context, params);
-    if (newFnDecl.generics.isEmpty) {}
+    var newFnDecl = _fnDecl.resolveGeneric(context, params);
+
     return Fn(newFnDecl, block)..copy(this);
   }
 
@@ -227,7 +241,7 @@ class Fn extends Ty {
   @override
   void prepareBuild(FnBuildMixin context, {bool push = true}) {
     super.prepareBuild(context);
-    _depFns = null;
+    // _depFns = null;
     if (push) context.pushFn(fnName, this);
   }
 
@@ -244,35 +258,24 @@ class Fn extends Ty {
   FnBuildMixin? get currentContext =>
       super.currentContext ?? _parent?.currentContext;
 
-  FnDecl get fnDecl => _closure ?? _fnDecl;
-  FnDecl? _closure;
-
-  Set<FnBuildMixin?>? _depFns;
-
-  Variable genFn([bool ignoreFree = false]) {
+  Variable genFn({FnDecl? fnDecl, bool ignoreFree = false}) {
     final context = currentContext ?? parentOrCurrent.currentContext!;
-    FnDecl decl = fnDecl;
+    FnDecl decl = fnDecl ?? _fnDecl;
 
     late final allCatchs = <Variable>[];
-    if (_depFns == null) {
-      for (var val in variables) {
-        final variable = context.getVariable(val.ident);
-        if (variable != null) {
-          allCatchs.add(variable);
-        }
-      }
 
-      _depFns = allCatchs
-          .map((e) => (e.pushContext as FnBuildMixin?)?.getLastFnContext())
-          .toSet();
-
-      if (allCatchs.isNotEmpty) {
-        decl = _fnDecl.toCatch(allCatchs, variables.toList());
-        _closure = decl;
+    for (var val in variables) {
+      final variable = context.getVariable(val.ident);
+      if (variable != null) {
+        allCatchs.add(variable);
       }
     }
 
-    final key = ListKey([getKey()]);
+    if (allCatchs.isNotEmpty) {
+      decl = decl.toCatch(allCatchs, variables.toList());
+    }
+
+    final key = ListKey([getKey(), decl]);
 
     final fn = parentOrCurrent._cache[key];
 
@@ -280,15 +283,16 @@ class Fn extends Ty {
       return LLVMConstVariable(fn.getBaseValue(context), decl, ident);
     }
 
-    final fnValue = AbiFn.createFunction(context, this);
+    final fnValue = AbiFn.createFunction(context, this, decl);
     parentOrCurrent._cache[key] = fnValue;
 
-    context.buildFnBB(this, fnValue: fnValue.value, ignoreFree: ignoreFree);
+    context.buildFnBB(this, decl,
+        fnValue: fnValue.value, ignoreFree: ignoreFree);
 
     return fnValue;
   }
 
-  void pushTyGenerics(Tys context) {
+  void pushTyGenerics(Tys context, FnDecl fnDecl) {
     context.pushDyTys(fnDecl.tys);
   }
 
@@ -312,7 +316,7 @@ class Fn extends Ty {
     final context = analysisContext!;
 
     final child = context.childContext();
-    pushTyGenerics(child);
+    pushTyGenerics(child, _fnDecl);
 
     child.setFnContext(this);
     _fnDecl.analysisFn(child);
@@ -322,7 +326,9 @@ class Fn extends Ty {
   }
 
   @override
-  late final LLVMFnType llty = LLVMFnType(this);
+  LLVMType get llty => throw UnimplementedError('use FnDecl');
+
+  late final fnWrap = FnWrap(this);
 }
 
 mixin ImplFnMixin on Fn {
@@ -341,8 +347,8 @@ mixin ImplFnMixin on Fn {
   ImplFnMixin newWithImplTy(ImplTy ty);
 
   @override
-  void pushTyGenerics(Tys context) {
-    super.pushTyGenerics(context);
+  void pushTyGenerics(Tys context, FnDecl fnDecl) {
+    super.pushTyGenerics(context, fnDecl);
     _pushSelf(context);
   }
 
@@ -361,7 +367,7 @@ mixin ImplFnMixin on Fn {
 
 class ImplFn extends Fn with ImplFnMixin {
   ImplFn(ImplFnDecl super.fnDecl, super.block, this.implty, this.isStatic) {
-    fnDecl.implFn = this;
+    _fnDecl.implFn = this;
   }
 
   factory ImplFn.decl(FnDecl fnDecl, Block? block, ImplTy implty,
@@ -377,16 +383,16 @@ class ImplFn extends Fn with ImplFnMixin {
   final ImplTy implty;
 
   @override
-  ImplFnDecl get fnDecl => super.fnDecl as ImplFnDecl;
+  ImplFnDecl get _fnDecl => super._fnDecl as ImplFnDecl;
 
   @override
   ImplFn newWithImplTy(ImplTy ty) {
-    return ImplFn(fnDecl.clone(), block, ty, isStatic)..copy(this);
+    return ImplFn(_fnDecl.clone(), block, ty, isStatic)..copy(this);
   }
 
   @override
   ImplFn resolveGeneric(Tys context, List<FieldExpr> params) {
-    final newFnDecl = fnDecl.resolveGeneric(context, params) as ImplFnDecl;
+    final newFnDecl = _fnDecl.resolveGeneric(context, params) as ImplFnDecl;
     return ImplFn(newFnDecl, block, implty, isStatic)..copy(this);
   }
 
@@ -450,8 +456,25 @@ class FnCatch extends FnDecl {
   final List<Variable> _variables;
 
   @override
+  FnDecl copyWith(List<FieldDef> newFields) {
+    return FnCatch._(ident, newFields, generics, _returnTy, isVar,
+        analysisVariables, _variables);
+  }
+
+  @override
   FnCatch clone() {
     return FnCatch._(ident, fields.clone(), generics, _returnTy, isVar,
         analysisVariables, _variables);
+  }
+
+  @override
+  // ignore: overridden_fields
+  late final props = [super.props, ...analysisVariables.map((e) => e.ty)];
+
+  @override
+  String toString() {
+    final isVals = isVar ? ', ...' : '';
+    final dyn = isDyn ? 'dyn ' : '';
+    return '${dyn}fn $ident${generics.str}(${fields.join(',')}$isVals) -> ${_returnTy ?? 'void'}${tys.str}: {${analysisVariables.join(',')}}';
   }
 }

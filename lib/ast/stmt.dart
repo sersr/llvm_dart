@@ -46,7 +46,7 @@ class LetStmt extends Stmt {
     Ty? baseTy = realTy;
 
     if (isRet) {
-      baseTy = context.getLastFnContext()!.currentFn!.fnDecl.getRetTy(context);
+      baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
       if (baseTy.isTy(LiteralKind.kVoid.ty)) {
         baseTy = null;
       }
@@ -237,7 +237,7 @@ class ExprStmt extends Stmt implements LogPretty {
     Ty? baseTy;
 
     if (isRet) {
-      baseTy = context.getLastFnContext()!.currentFn!.fnDecl.getRetTy(context);
+      baseTy = context.getLastFnContext()!.currentFn!.getRetTy(context);
       if (baseTy.isTy(LiteralKind.kVoid.ty)) {
         baseTy = null;
       }
@@ -287,7 +287,7 @@ class RetStmt extends Stmt {
   void build(bool isRet) {
     final context = buildContext;
     Ty? baseTy =
-        context.getLastFnContext()!.currentFn!.fnDecl.getRetTy(context);
+        context.getLastFnContext()!.currentFn!.getRetTy(context);
     if (baseTy.isTy(LiteralKind.kVoid.ty)) {
       baseTy = null;
     }
@@ -325,7 +325,7 @@ class RetStmt extends Stmt {
           case AnalysisContext(
             currentFn: Fn(
               returnVariables: var variables,
-              fnDecl: var decl,
+              baseFnDecl: var decl,
             )
           ) when val != null && !decl.isVoidRet(context)) {
         final all = val.allParent;

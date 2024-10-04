@@ -353,15 +353,14 @@ class LLVMFnClosureType extends LLVMFnDeclType {
   }
 }
 
-class LLVMFnType extends LLVMType {
-  LLVMFnType(this.fn);
+final class FnWrap {
+  FnWrap(this.fn);
   final Fn fn;
-  @override
-  FnDecl get ty => fn.fnDecl;
 
   late final _cacheFns = <ListKey, LLVMConstVariable>{};
 
-  LLVMConstVariable createFunction(StoreLoadMixin c) {
+  LLVMConstVariable createFunction(StoreLoadMixin c, FnDecl fnDecl) {
+    final ty = fnDecl;
     final type = ty.llty.createFnType(c);
     var ident = fn.fnName.src;
     if (ident.isEmpty) {
@@ -380,7 +379,7 @@ class LLVMFnType extends LLVMType {
             : LLVMLinkage.LLVMInternalLinkage);
     llvm.LLVMSetFunctionCallConv(v, LLVMCallConv.LLVMCCallConv);
 
-    final scope = createScope(c);
+    final scope = createScope(c, fnDecl);
     if (scope != null) {
       llvm.LLVMSetSubprogram(v, scope);
     }
@@ -393,8 +392,10 @@ class LLVMFnType extends LLVMType {
   }
 
   LLVMMetadataRef? _scope;
-  LLVMMetadataRef? createScope(StoreLoadMixin c) {
+  LLVMMetadataRef? createScope(StoreLoadMixin c, FnDecl fnDecl) {
     final dBuilder = c.dBuilder;
+    final ty = fnDecl;
+
     if (dBuilder == null) return null;
 
     if (_scope != null) return _scope;
@@ -434,28 +435,13 @@ class LLVMFnType extends LLVMType {
     return null;
   }
 
-  @override
-  LLVMTypeRef typeOf(StoreLoadMixin c) {
-    return ty.typeOf(c);
-  }
-
-  @override
-  int getBytes(StoreLoadMixin c) {
-    return ty.llty.getBytes(c);
-  }
-
-  @override
-  LLVMMetadataRef createDIType(StoreLoadMixin c) {
-    return ty.llty.createDIType(c);
-  }
-
   LLVMConstVariable? _externFn;
 
   LLVMConstVariable getOrCreate(
-      StoreLoadMixin c, LLVMConstVariable Function() action) {
+      StoreLoadMixin c, FnDecl fnDecl, LLVMConstVariable Function() action) {
     if (_externFn != null) return _externFn!;
     final value = _externFn = action();
-    final meta = createScope(c);
+    final meta = createScope(c, fnDecl);
 
     if (meta != null) {
       llvm.LLVMSetSubprogram(value.value, meta);

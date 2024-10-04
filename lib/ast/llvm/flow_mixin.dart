@@ -30,7 +30,7 @@ mixin FlowMixin on BuildContext, FreeMixin {
       freeHeap();
 
       /// return variable
-      if (!isSretRet && !fnty.fnDecl.isVoidRet(this)) {
+      if (!isSretRet && !fnty.isVoidRet(this)) {
         final v = AbiFn.fnRet(this, fnty, val);
         diSetCurrentLoc(retOffset);
         llvm.LLVMBuildRet(builder, v);

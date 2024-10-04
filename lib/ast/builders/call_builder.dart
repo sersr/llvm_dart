@@ -16,7 +16,7 @@ abstract class CallBuilder {
     return AbiFn.fnCallInternal(
       context: context,
       fn: fnValue,
-      decl: implFn.fnDecl,
+      decl: fnValue.ty as FnDecl,
       params: params,
       struct: variable,
       extern: false,
@@ -27,7 +27,7 @@ abstract class CallBuilder {
     final implFn = context
         .getImplWith(ty, comIdent: _callCom, fnIdent: _callIdent)
         ?.getFn(_callIdent);
-    return implFn?.fnDecl.getRetTyOrT(context);
+    return implFn?.getRetTyOrT(context);
   }
 
   static AnalysisVariable? callImplTys(AnalysisContext context,
@@ -35,7 +35,7 @@ abstract class CallBuilder {
     final implFn = context
         .getImplWith(variable.ty, comIdent: _callCom, fnIdent: _callIdent)
         ?.getFn(_callIdent);
-    final ty = implFn?.fnDecl.getRetTy(context);
+    final ty = implFn?.getRetTy(context);
     if (ty != null) {
       return context.createVal(ty, variable.ident);
     }

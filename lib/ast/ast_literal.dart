@@ -109,7 +109,7 @@ class BuiltInTy extends Ty {
 
   @override
   BuiltInTy clone() {
-    return BuiltInTy._lit(literal);
+    return this;
   }
 
   @override

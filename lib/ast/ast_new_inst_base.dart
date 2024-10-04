@@ -60,9 +60,9 @@ class FieldDef with EquatableMixin implements Clone<FieldDef> {
   @override
   String toString() {
     if (!ident.isValid) {
-      return '$_ty';
+      return '${_rty ?? _ty}';
     }
-    return '$ident: $_ty';
+    return '$ident: ${_rty ?? _ty}';
   }
 
   @override
@@ -297,7 +297,7 @@ mixin NewInst<T extends Ty> on Ty {
           }
         }
 
-        if (exactTy case Fn(fnDecl: var decl)) {
+        if (exactTy case Fn(baseFnDecl: var decl)) {
           if (decl.isDyn || isDyn) {
             return decl.toDyn()..isDyn = true;
           }
@@ -344,10 +344,13 @@ mixin NewInst<T extends Ty> on Ty {
       final fd = fields[sfIndex];
       Ty? ty;
       if (isBuild) {
-        ty = param.build(context, baseTy: fd.grtOrTUd(context, gen: gen))?.ty;
+        final temp =
+            param.build(context, baseTy: fd.grtOrTUd(context, gen: gen));
+        ty = temp?.variable?.ty ?? temp?.ty;
       } else {
         ty = param.analysis(context as AnalysisContext)?.ty;
       }
+
       if (ty != null) {
         resolve(context, ty, fd.rawTy, generics, genMapTy, false);
       }

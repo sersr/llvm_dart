@@ -315,7 +315,7 @@ class Parser {
 
   Ty? parseFnOrFnDecl(TokenIterator it) {
     final fn = parseFn(it);
-    if (fn case Fn(block: null, fnDecl: var fnDecl)) {
+    if (fn case Fn(block: null, baseFnDecl: var fnDecl)) {
       return fnDecl;
     }
 

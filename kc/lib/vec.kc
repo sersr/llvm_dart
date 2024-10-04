@@ -37,9 +37,7 @@ impl<T> Vec<T> {
     let ptr = &self.data[index]
     let ptr_next = ptr + sizeOf(*T)
     let ret = Some(ignoreAdd(*ptr))
-    
-    printf("....\n")
-    
+        
     memCopy(ptr, ptr_next, self.len - index - 1)
     self.len -= 1
     ret

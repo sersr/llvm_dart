@@ -55,7 +55,7 @@ mixin SretMixin on BuildContext {
   StoreVariable? sretFromVariable(Identifier? nameIdent, Variable variable) {
     final fnContext = getLastFnContext()!;
     final fnty = fnContext.currentFn!;
-    if (fnty.fnDecl.isVoidRet(this)) return null;
+    if (fnty.isVoidRet(this)) return null;
 
     nameIdent ??= variable.ident;
     final owner = nameIdent.toRawIdent;

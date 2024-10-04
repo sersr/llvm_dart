@@ -102,7 +102,8 @@ class StructDotFieldExpr extends Expr {
     final val = structVal?.variable;
     var newVal = val;
     if (structVal?.ty case var ty? when ty is EnumTy && val == null) {
-      final nTy = ty.getFieldTyOrT(context, FieldDef(ident, PathTy(ident, const [])));
+      final nTy =
+          ty.getFieldTyOrT(context, FieldDef(ident, PathTy(ident, const [])));
       if (nTy != null) {
         return ExprTempValue.ty(nTy, ident);
       }
@@ -211,9 +212,9 @@ class VariableIdentExpr extends Expr {
       case StructTy(fields: List(isEmpty: true), done: true):
         final val = ty.llty.buildStruct(context, const []);
         return ExprTempValue(val, ty: ty);
-      case Fn(fnDecl: FnDecl(done: true)):
+      case Fn(baseFnDecl: FnDecl(done: true)):
         final value = ty.genFn();
-        return ExprTempValue(value.newIdent(ident, dirty: false));
+        return ExprTempValue(value.newIdent(ident, dirty: false),ty: ty);
     }
 
     if (ty != null) return ExprTempValue.ty(ty, ident);

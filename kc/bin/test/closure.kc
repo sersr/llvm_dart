@@ -3,25 +3,31 @@ fn main() i32 {
   let value = 1001;
   
   fn catch_value() {
-    printf("hello catch: %d\n", value);
+    printf("catch_value:       value: %d\n", value);
   }
   
   let y = 222; 
   
   fn catchy() {
-    printf("hello catch: y %d %d\n", y, value);
+    printf("catchy:     y: %d value: %d\n", y, value);
+  }
+  fn catchy2() {
+    printf("catchy2:    y: %d value: %d\n", y, value);
   }
   
   test_closure(catch_value);
   test_closure(catchy);
+  test_closure(catchy2);
+  test_closure(catchy2);
 
   test_catch(catch_value);
   test_catch(catchy);
+  test_catch(catchy2);
 
   catch_value();
 
   fn catch_wrap(y: i32) {
-    printf("catch wrap %d %d\n", y, value);
+    printf("catch wrap: y: %d value: %d\n", y, value);
   }
 
   wrap(catch_wrap);

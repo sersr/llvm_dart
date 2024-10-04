@@ -124,6 +124,9 @@ abstract interface class AbiFn {
       final temp = p.build(context, baseTy: fieldTy);
 
       var variable = temp?.variable;
+      if (temp?.ty case Fn ty when variable == null) {
+        variable = ty.genFn();
+      }
       if (variable == null) continue;
 
       final v = FnCatch.toFnClosure(context, fieldTy, variable);
@@ -207,31 +210,32 @@ abstract interface class AbiFn {
     return ExprTempValue(v);
   }
 
-  static LLVMConstVariable createFunction(FnBuildMixin c, Fn fn) {
-    if (fn.fnDecl.extern) {
-      return fn.llty.getOrCreate(c, () {
-        return AbiFn.get(c.abi).createFunctionAbi(c, fn.fnDecl);
+  static LLVMConstVariable createFunction(
+      FnBuildMixin c, Fn fn, FnDecl fnDecl) {
+    if (fn.extern) {
+      return fn.fnWrap.getOrCreate(c, fnDecl, () {
+        return AbiFn.get(c.abi).createFunctionAbi(c, fnDecl);
       });
     }
-    return fn.llty.createFunction(c);
+    return fn.fnWrap.createFunction(c, fnDecl);
   }
 
   LLVMAllocaVariable? initFnParamsImpl(
-      StoreLoadMixin context, LLVMValueRef fn, Fn fnTy);
+      StoreLoadMixin context, LLVMValueRef fn, Fn fnTy, FnDecl fnDecl);
 
   static StoreVariable? initFnParams(
-      FnBuildMixin context, LLVMValueRef fn, Fn fnTy,
+      FnBuildMixin context, LLVMValueRef fn, Fn fnTy, FnDecl fnDecl,
       {bool ignoreFree = false,
       Map<Identifier, Set<AnalysisVariable>> map = const {}}) {
-    if (fnTy.fnDecl.extern) {
-      return AbiFn.get(context.abi).initFnParamsImpl(context, fn, fnTy);
+    if (fnTy.extern) {
+      return AbiFn.get(context.abi).initFnParamsImpl(context, fn, fnTy, fnDecl);
     }
-    context.initFnParams(fn, fnTy, ignoreFree: ignoreFree);
+    context.initFnParams(fn, fnTy, fnDecl, ignoreFree: ignoreFree);
     return null;
   }
 
   static LLVMValueRef fnRet(BuildContext context, Fn fn, Variable src) {
-    if (fn.fnDecl.extern) {
+    if (fn.extern) {
       return AbiFn.get(context.abi).classifyFnRet(context, src);
     }
     return src.load(context);

@@ -240,9 +240,9 @@ class AbiFnWinx86_64 implements AbiFn {
 
   @override
   LLVMAllocaVariable? initFnParamsImpl(
-      StoreLoadMixin context, LLVMValueRef fn, Fn fnTy) {
+      StoreLoadMixin context, LLVMValueRef fn, Fn fnTy, FnDecl fnDecl) {
     var index = 0;
-    final decl = fnTy.fnDecl;
+    final decl = fnDecl;
     assert(context.isFnBBContext);
 
     LLVMAllocaVariable? sret;

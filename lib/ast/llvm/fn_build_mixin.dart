@@ -2,7 +2,7 @@ part of 'build_context_mixin.dart';
 
 mixin FnBuildMixin
     on BuildContext, SretMixin, FreeMixin, FlowMixin, FnContextMixin {
-  void buildFnBB(Fn fn,
+  void buildFnBB(Fn fn, FnDecl fnDecl,
       {required LLVMValueRef fnValue, bool ignoreFree = false}) {
     final block = fn.block?.clone();
     if (block == null) return;
@@ -14,9 +14,9 @@ mixin FnBuildMixin
     fnContext._fnScope = llvm.LLVMGetSubprogram(fnValue);
     fnContext._isFnBBContext = true;
     fnContext.instertFnEntryBB();
-    fn.pushTyGenerics(fnContext);
+    fn.pushTyGenerics(fnContext, fnDecl);
 
-    fnContext.initFnParamsStart(fnValue, fn, ignoreFree: ignoreFree);
+    fnContext.initFnParamsStart(fnValue, fn, fnDecl, ignoreFree: ignoreFree);
 
     block.build(fnContext, hasRet: true);
 
@@ -25,13 +25,15 @@ mixin FnBuildMixin
     }
   }
 
-  void initFnParamsStart(LLVMValueRef fn, Fn fnty, {bool ignoreFree = false}) {
-    final sret = AbiFn.initFnParams(this, fn, fnty, ignoreFree: ignoreFree);
+  void initFnParamsStart(LLVMValueRef fn, Fn fnty, FnDecl fnDecl,
+      {bool ignoreFree = false}) {
+    final sret =
+        AbiFn.initFnParams(this, fn, fnty, fnDecl, ignoreFree: ignoreFree);
     if (sret != null) _sret = sret;
   }
 
-  void initFnParams(LLVMValueRef fn, Fn fnTy, {bool ignoreFree = false}) {
-    final decl = fnTy.fnDecl;
+  void initFnParams(LLVMValueRef fn, Fn fnTy, FnDecl decl,
+      {bool ignoreFree = false}) {
     final params = decl.fields;
     var index = 0;
     final retTy = decl.getRetTy(this);
@@ -143,7 +145,7 @@ mixin FnBuildMixin
       pushVariable(p);
     }
 
-    fn.pushTyGenerics(this);
+    fn.pushTyGenerics(this, fn.baseFnDecl);
 
     block.build(this, hasRet: true);
 

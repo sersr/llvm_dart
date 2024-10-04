@@ -23,10 +23,10 @@ class FnExpr extends Expr {
   ExprTempValue? buildExpr(FnBuildMixin context, Ty? baseTy) {
     fn.prepareBuild(context);
 
-    if (fn.fnDecl.done) {
-      final value = fn.genFn();
-      return ExprTempValue(value);
-    }
+    // if (fn.fnDecl.done) {
+    //   final value = fn.genFn();
+    //   return ExprTempValue(value);
+    // }
 
     return ExprTempValue.ty(fn, fn.ident);
   }
@@ -35,7 +35,7 @@ class FnExpr extends Expr {
   AnalysisVariable? analysis(AnalysisContext context) {
     fn.prepareAnalysis(context);
     fn.analysisFn();
-    return context.createVal(fn, fn.fnDecl.ident);
+    return context.createVal(fn, fn.ident);
   }
 
   @override
@@ -63,7 +63,7 @@ mixin FnCallMixin {
     Variable? struct,
   }) {
     fn = fn.resolveGeneric(context, params);
-    final decl = fn.fnDecl;
+    final decl = fn.baseFnDecl;
     if (decl case ImplFnDecl(ident: Identifier(src: 'new'), implFn: var implFn)
         when implFn.isStatic) {
       final fields = decl.fields;
@@ -90,15 +90,15 @@ mixin FnCallMixin {
       return ExprTempValue(variable);
     }
 
-    final fnValue = fn.genFn();
+    final fnValue = fn.genFn(fnDecl: decl);
 
     return AbiFn.fnCallInternal(
       context: context,
       fn: fnValue,
-      decl: fn.fnDecl,
+      decl: fnValue.ty as FnDecl,
       params: params,
       struct: struct,
-      extern: fn.fnDecl.extern,
+      extern: fn.extern,
     );
   }
 }
@@ -134,7 +134,7 @@ class FnCallExpr extends Expr with FnCallMixin {
     final callTemp = CallBuilder.callImplTy(context, temp, params);
     if (callTemp != null) return callTemp;
     if (temp is FnDecl) return temp.getRetTyOrT(context);
-    if (temp is Fn) return temp.fnDecl.getRetTyOrT(context);
+    if (temp is Fn) return temp.getRetTyOrT(context);
 
     return null;
   }
@@ -148,15 +148,17 @@ class FnCallExpr extends Expr with FnCallMixin {
 
     if (variable != null) {
       ExprTempValue? temp;
+      var res = false;
       RefDerefCom.loopGetDeref(context, variable, (variable) {
         final ty = variable.ty;
         if (ty is FnDecl) {
           temp = baseCall(context, variable, ty, params);
+          res = true;
           return true;
         }
         return false;
       });
-      if (temp != null) return temp;
+      if (res) return temp;
     }
 
     if (ty is StructTy) {
@@ -207,7 +209,7 @@ class FnCallExpr extends Expr with FnCallMixin {
 
     if (valTy is! Fn) return null;
     final fn = valTy.resolveGeneric(context, params);
-    return context.createVal(fn.fnDecl.getRetTy(context), Identifier.none);
+    return context.createVal(fn.getRetTy(context), Identifier.none);
   }
 }
 
@@ -240,8 +242,8 @@ class MethodCallExpr extends Expr with FnCallMixin {
         when implFn != null && implFn.isStatic) {
       /// 对于类方法(静态方法)，struct 中存在泛型，并且没有指定时，从静态方法中的参数列表
       /// 自动获取
-      final map =
-          implFn.fnDecl.getTysWith(context, params, others: structTy.generics);
+      final map = implFn.baseFnDecl
+          .getTysWith(context, params, others: structTy.generics);
 
       final newTys = <Identifier, Ty>{}..addAll(structTy.tys);
       for (var g in structTy.generics) {
@@ -280,7 +282,7 @@ class MethodCallExpr extends Expr with FnCallMixin {
 
     final implFn = resolveImplFn(context, structTy);
 
-    return implFn?.fnDecl.getRetTyOrT(context);
+    return implFn?.getRetTyOrT(context);
   }
 
   @override
@@ -289,9 +291,10 @@ class MethodCallExpr extends Expr with FnCallMixin {
     final variable = temp?.variable;
 
     if (temp?.ty case var ty? when ty is EnumTy && variable == null) {
-      final nTy = ty.getFieldTyOrT(context, FieldDef(ident, PathTy(ident, const [])));
+      final nTy =
+          ty.getFieldTyOrT(context, FieldDef(ident, PathTy(ident, const [])));
       if (nTy is EnumItem) {
-         return StructExpr.buildStruct(nTy, context, params);
+        return StructExpr.buildStruct(nTy, context, params);
       }
     }
 
@@ -361,6 +364,6 @@ class MethodCallExpr extends Expr with FnCallMixin {
     if (fn == null) return null;
     fn = fn.resolveGeneric(context, params);
 
-    return context.createVal(fn.fnDecl.getRetTy(context), Identifier.none);
+    return context.createVal(fn.getRetTy(context), Identifier.none);
   }
 }

@@ -33,8 +33,8 @@ mixin FnContextMixin on BuildContext, FreeMixin, FlowMixin {
 
     final fn = fnContext?.currentFn;
 
-    if (fn == null || fn.fnDecl.isVoidRet(this)) return null;
-    final ty = fn.fnDecl.getRetTy(this);
+    if (fn == null || fn.isVoidRet(this)) return null;
+    final ty = fn.getRetTy(this);
 
     return _compileRetValue = LLVMAllocaProxyVariable(this, (value, isProxy) {
       if (isProxy) return;

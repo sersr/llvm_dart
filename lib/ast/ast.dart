@@ -384,10 +384,10 @@ class ComponentTy extends Ty with NewInst<ComponentTy> {
 class ImplTy extends Ty with NewInst<ImplTy> {
   ImplTy(this.generics, this.com, this.struct, this.label, List<Fn> fns,
       List<Fn> staticFns, this.aliasTys, this.orderStmts) {
-    implFns = fns.map((e) => ImplFn.decl(e.fnDecl, e.block, this)).toList();
+    implFns = fns.map((e) => ImplFn.decl(e._fnDecl, e.block, this)).toList();
 
     implStaticFns = staticFns
-        .map((e) => ImplFn.decl(e.fnDecl, e.block, this, true))
+        .map((e) => ImplFn.decl(e._fnDecl, e.block, this, true))
         .toList();
 
     for (var stmt in orderStmts) {
@@ -426,8 +426,8 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   Identifier get ident => label?.ident ?? Identifier.none;
 
   bool contains(Identifier ident) {
-    return implFns.any((e) => e.fnDecl.ident == ident) ||
-        implStaticFns.any((e) => e.fnDecl.ident == ident);
+    return implFns.any((e) => e._fnDecl.ident == ident) ||
+        implStaticFns.any((e) => e._fnDecl.ident == ident);
   }
 
   @override
@@ -443,8 +443,8 @@ class ImplTy extends Ty with NewInst<ImplTy> {
   }
 
   ImplFnMixin? _getFn(Identifier ident, ImplTy ty) {
-    final fn = implFns.firstWhereOrNull((e) => e.fnDecl.ident == ident) ??
-        implStaticFns.firstWhereOrNull((e) => e.fnDecl.ident == ident);
+    final fn = implFns.firstWhereOrNull((e) => e._fnDecl.ident == ident) ??
+        implStaticFns.firstWhereOrNull((e) => e._fnDecl.ident == ident);
     return fn?.getWith(ty);
   }
 
